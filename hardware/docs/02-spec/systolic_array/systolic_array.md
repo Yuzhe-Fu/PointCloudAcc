@@ -9,7 +9,7 @@
 
 ## 参数列表
 | Parameters | default | optional | Descriptions |
-| ---- | ---- | ---- |
+| ---- | ---- | ---- | ---- |
 | ACT_WIDTH | 8 | 4, 16 | activation的位宽 |
 | WGT_WIDTH | 8 | 4, 16 | weight的位宽 |
 | ACC_WIDTH | 26 | | 累加器的位宽，ACT_WIDTH + WGT_WIDTH +LOG(通道深度) |
