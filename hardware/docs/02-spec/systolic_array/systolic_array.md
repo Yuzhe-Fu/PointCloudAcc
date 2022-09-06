@@ -31,8 +31,8 @@
 | in_wgt_up_vld | input | 1 | 握手协议的valid信号 |
 | in_wgt_up_rdy | output | 1 | 握手协议的ready信号 |
 | out_fm | output | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列输出计算结果feature map |
-| out_fm_vld |
-| out_fm_rdy |
+| out_fm_vld | output | 1 | 握手协议的valid信号 | 
+| out_fm_rdy | input | 1 | 握手协议的ready信号 |
 
 
 
