@@ -23,7 +23,12 @@
 | clk | input | 1 | clock |
 | rst_n | input | 1 | reset, 代电平有效 |
 | --config-- |
-| mode | input | 2 | 0: 4个bank按照2x2排列，1: 按照1x4排列，2: 按照4x1排列
+| mode | input | 2 | 0: 4个bank按照2x2排列，1: 按照1x4排列，2: 按照4x1排列 |
+| -- config Quantization-- |
+| quant_scale | input | 20 | quant_psum = (computed_psum * quant_scale) >> quant_shift + quant_zero_point； 根据量化公式：y_q = y_f * s_y = (x_f\*w_f + b_f)\*s_y = Scale_y * x_q\*w_q + zero_point_y; 其中scale_y是小数，暂时用* quant_scale) >> quant_shift来近似 |
+| quant_shift | input | ACT_WIDTH | 同quant_scale |
+| quant_zero_point | input | ACT_WIDTH | 同quant_scale |
+| --data-- |
 | in_act_left | input | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列左侧输入的activation |
 | in_act_left_vld | input | 1 | 握手协议的valid信号 |
 | in_act_left_rdy | output | 1 | 握手协议的ready信号 |
@@ -33,6 +38,10 @@
 | out_fm | output | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列输出计算结果feature map |
 | out_fm_vld | output | 1 | 握手协议的valid信号 | 
 | out_fm_rdy | input | 1 | 握手协议的ready信号 |
+| --control-- |
+| in_en_left | input | 1 | 整个PE 阵列的使能输入信号，高电平时，执行乘加操作和PE手机拍输出activation, weight, 和in_acc_reset_right，一个PE row的不同PE通过依次打拍第一个PE来获得相应的en，不同pe row，通过依次打拍PE row的第一个PE来获得相应的en |
+| in_acc_reset_left | input | 1 | 传递同in_en_left，高电平时，PE内的累加器不向加法器输出值，给加法器输入0；同时表示累加器已完成累加，累加值是有效的，需要被取走 |
+| 
 
 
 
