@@ -47,7 +47,7 @@
 是一个基于OS的脉动阵列，计算一个序列点与多个filter的一维卷积，activation按通道秦顺序输入并从左PE向右PE传，weight从上PE向下PE传，不同行输入不同的点，汪同列输入不同的filter。为了让activation的通道和weight的通道在PE内对应相乘，不同行PE的点的同一个通道，输入相差一个时钟周期。不同列的filter的相同通道输入也相差一个时钟周期。PE内乘加的结果，用MUX选出输出。
 
 
-## pe 端口列表-包含于pe_array 端口列表
+## pe 端口列表-包含于pe_array 端口列表（需要额外考虑反压）
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | out_act_left | output | ACT_WIDTH | 阵列右侧输出的activation |
