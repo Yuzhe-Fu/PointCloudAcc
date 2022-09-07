@@ -1,4 +1,4 @@
-## 文件列表
+# 文件列表
 | File | Descriptions |
 | ---- | ---- |
 | pe_array.v | 脉动阵列顶层模块 |
@@ -7,7 +7,7 @@
 | pe_bank.v | 一个pe bank |
 | sync_shape.v | 将一个点的按周期顺序出来的不同通道，整形成一个word输出 |
 
-## 参数列表
+# 参数列表
 | Parameters | default | optional | Descriptions |
 | ---- | ---- | ---- | ---- |
 | ACT_WIDTH | 8 | 4, 16 | activation的位宽 |
@@ -43,11 +43,16 @@
 | in_en_left | input | 1 | 整个PE 阵列的使能输入信号，高电平时，执行乘加操作和PE手机拍输出activation, weight, 和in_acc_reset_right，一个PE row的不同PE通过依次打拍第一个PE来获得相应的en，不同pe row，通过依次打拍PE row的第一个PE来获得相应的en; 目前没有反压机制，全靠控制en信号 |
 | in_acc_reset_left | input | 1 | 传递同in_en_left，高电平时，PE内的累加器不向加法器输出值，给加法器输入0；同时表示累加器已完成累加，累加值是有效的，需要被取走 |
 
+## 模块陈述
+是一个基于OS的脉动阵列，计算一个序列点与多个filter的一维卷积，activation按通道秦顺序输入并从左PE向右PE传，weight从上PE向下PE传，不同行输入不同的点，汪同列输入不同的filter。为了让activation的通道和weight的通道在PE内对应相乘，不同行PE的点的同一个通道，输入相差一个时钟周期。不同列的filter的相同通道输入也相差一个时钟周期。PE内乘加的结果，用MUX选出输出。
+
+
 ## pe 端口列表-包含于pe_array 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | out_act_left | output | ACT_WIDTH | 阵列右侧输出的activation |
 | out_wgt_above | output | WGT_WIDTH | 阵列右侧输出的weight |
+## 模块陈述
 
 ## pe_row 端口列表-包含于pe_array 端口列表和pe 端口列表
 ## pe_bank 端口列表-包含于pe_array 端口列表和pe 端口列表
@@ -61,6 +66,7 @@
 | out_data | output | SRAM_WIDTH\*2 | 同一个点的不同channel同时出来 |
 | out_data_vld | output | 2 | |
 | out_data_rdy | input | 2 | |
-
+## 模块陈述
+由于脉动阵列在PE从左向右传activation，导致同一个点的不同通道，是按时钟串行输出，但是如果下一层是pooling层，则需要一次取点的所有通道，则要求点的所有通道在时钟上对齐，形成一个word存入SRAM，因此需要设计这个同步整形模块
 
 
