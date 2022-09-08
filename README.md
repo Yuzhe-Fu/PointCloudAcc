@@ -8,6 +8,6 @@
 | 丘思远 | 脉动阵列 | spec文档位于hardware/docs/02-spec/systolic_array/；源代码位于/hardware/src/systolic_array/；仿真脚本位于/hardware/sim/systolic_array/ |
 | 付宇哲 | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
 | 管宇江，孙天逸 | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ |
-| | 排序模块 |  spec文档位于hardware/docs/02-spec/sort/ |
+| | 排序模块 |  spec文档位于hardware/docs/02-spec/construct/ |
 | | 池化模块 | spec文档位于hardware/docs/02-spec/pooling/ |
 
