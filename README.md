@@ -1,6 +1,7 @@
 
 # User guide
-参考这个[链接](https://developer.aliyun.com/article/604633)，把自己的修改提交到此源仓库的master分支。
+参考[教程](https://docs.github.com/cn/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)，编辑readme.md。
+参考这个[教程](https://developer.aliyun.com/article/604633)，把自己的修改提交到此源仓库的master分支。
 
 # 分工及目录
 | 人员 | 负责 | 目录 |
