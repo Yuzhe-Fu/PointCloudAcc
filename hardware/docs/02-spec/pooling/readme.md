@@ -6,7 +6,7 @@
 | pooling.v | 顶层模块 |
 | multi_if.v | 多个pooling核读global buffer的接口模块 |
 | pooling_core.v | 做pooling的核 |
-| out.v | 输出转换模块，多个pooling核写output buffer |
+| // out.v | 输出转换模块，多个pooling核写output buffer |
 | comp_core.v | pooling里面具体做计算的核，比较做max, average |
 | arb_net.v | 仲裁多个请求，选出一个请求信息输出，并响应请求 |
 | fifo.v | 现成的模块，直接调用 |
@@ -14,8 +14,10 @@
 # 参数列表
 | Parameters | default | optional | Descriptions |
 | ---- | ---- | ---- | ---- |
-| ACT_WIDTH | 8 | 4, 16 | activation的位宽 |
-
+| IDX_WIDTH | 10 | 10, 12 | 点的index位宽，1024个点即10b |
+| MAP_DEPTH_WIDTH | 5 | | map的深度的位宽，Ball Query有32个邻近点，位宽为5 |
+| RD_CMD_DEPTH_WIDTH | 2 | 2, 3 | 每个被读global buffer的指令FIFO深度 |
+| 
 
 ## pe_array 端口列表
 | Ports | Input/Output | Width | Descriptions |
