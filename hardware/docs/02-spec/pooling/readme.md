@@ -9,7 +9,7 @@
 | // pool_out.v | 输出转换模块，多个pooling核写output buffer |
 | pool_comp_core.v | pooling里面具体做计算的核，比较做max, average |
 | pool_arb_net.v | 仲裁多个请求，选出一个请求信息输出，并响应请求 |
-| fifo.v | 现成的模块，直接调用 |
+| fifo.v | 通用模块，直接调用 |
 
 # 参数列表
 | Parameters | default | optional | Descriptions |
@@ -31,9 +31,9 @@
 | pool_idx_vld | input | 1 | 握手协议的valid信号 |
 | pool_idx | input | IDX_WIDTH | 输入的map idx |
 | pool_idx_rdy | output | 1 | 握手协议的ready信号 |
-| in_wgt_above | input | WGT_WIDTH\*NUM_COL\*NUM_BANK | 阵列左侧输入的weight |
-| in_wgt_above_vld | input | 1 | 握手协议的valid信号 |
-| in_wgt_above_rdy | output | 1 | 握手协议的ready信号 |
+| pool_in_fm | input | ACT_WIDTH\*POOL_CORE | 阵列左侧输入的weight |
+| pool_in_fm_vld | input | 1 | 握手协议的valid信号 |
+| pool_in_fm_rdy | output | 1 | 握手协议的ready信号 |
 | out_fm | output | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列输出计算结果feature map |
 | out_fm_vld | output | 1 | 握手协议的valid信号 | 
 | out_fm_rdy | input | 1 | 握手协议的ready信号 |
