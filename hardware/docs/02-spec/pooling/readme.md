@@ -125,7 +125,7 @@
 | gnt | output | REQ_WIDTH | 响应 |
 
 ## 模块陈述
-[代码位于](hardware/src/primitives/prior_arb.v), prior_arb负责接收多个请求信息（多位req），并仲裁出一个来输出（gnt中只有一位被拉高）。仲裁方法为最简单的固定优先级的仲裁，参考[博文](https://mp.weixin.qq.com/s/82o9iAIw1LiDsjBNmiBVDQ)
+[代码位于](/hardware/src/primitives/prior_arb.v), prior_arb负责接收多个请求信息（多位req），并仲裁出一个来输出（gnt中只有一位被拉高）。仲裁方法为最简单的固定优先级的仲裁，参考[博文](https://mp.weixin.qq.com/s/82o9iAIw1LiDsjBNmiBVDQ)
 
 
 
