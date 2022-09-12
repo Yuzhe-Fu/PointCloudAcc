@@ -10,6 +10,7 @@
 | pool_comp_core.v | pooling里面具体做计算的核，比如做max, average |
 | pool_arb_net.v | 仲裁多个请求，选出一个请求信息输出，并响应请求 |
 | fifo.v | 通用模块，直接调用 |
+| prior_arb.v | 通用模块，直接调用 |
 
 # 参数列表
 | Parameters | default | optional | Descriptions |
@@ -21,11 +22,12 @@
 | POOL_CORE | 6 | |pooling有多个少核，对应多少个读的口 |
 | POOL_COMP_CORE | 64 | | pool_core里面有多个做计算的核 |
 
+# 模块详解
 ## pooling 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | clk | input | 1 | clock |
-| rst_n | input | 1 | reset, 代电平有效 |
+| rst_n | input | 1 | reset, 低电平有效 |
 | --config-- |
 | K | input | 24 | 24: KNN, 32: Ball Query |
 | --data-- |
@@ -51,7 +53,7 @@
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | clk | input | 1 | clock |
-| rst_n | input | 1 | reset, 代电平有效 |
+| rst_n | input | 1 | reset, 低电平有效 |
 | --config-- |
 | K | input | 24 | 24: KNN, 32: Ball Query |
 | --data-- |
@@ -75,7 +77,7 @@
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | clk | input | 1 | clock |
-| rst_n | input | 1 | reset, 代电平有效 |
+| rst_n | input | 1 | reset, 低电平有效 |
 | --data-- |
 | if_addr_vld | output | 1 | 握手协议的valid信号 |
 | if_addr | output | IDX_WIDTH*\POOL_CORE | 输出的地址来请求读数据 |
@@ -89,6 +91,42 @@
 
 ## 模块陈述
 作为global buffer与pool_core的接口模块，multi_if是为了满足6个pool_core能够同时读取global buffer的需求（6个口的带宽），因为feature map被均分到6块buffer中（即6个SRAM）中，因此每个pool_core都有可能同时读取同一块SRAM，导致读取同一块SRAM有多个口出现冲突，结果一次只能有一个口能成功读取，其它5个口闲置。为了解决这个问题，multi_if用来仲裁6个SRAM的读口与6个pool_core的读请求。整体概念上是，6个pool_core同时发出6个读的信息(idx, vld)，每个arb_net接收到这6个信息，并根据自身的地址范围，确认其对应的global buffer块是否有其需要的数据，然后仲裁出一个pool_core，并将其pool_core编号(idx_core(0-5))和请求的idx存入指令cmd_fifo，cmd_fifo不断地取出里面的指令解析出pool_addr给global buffer来执行里面的指令，并把idx_core和读到的数据pool_in_fm合并，一起写入out_fifo；为了响应6个pool_core，有6个输出的仲裁器，每个输出的仲裁器负责把6个out_fifo中，正确的idx_core对应的数据取出来，给相应的pool_core。
+
+
+## arb_net参数列表
+| Parameters | default | optional | Descriptions |
+| ---- | ---- | ---- | ---- |
+| NUM_PORT | 6 |  | 请求的端口数 |
+| IN_INFO_WIDTH | 10 | | 请求附加信息的位宽 |
+| OUT_INFO_WIDTH | 10+3 | | 请求附加信息的位宽 |
+
+## arb_net端口列表
+| Ports | Input/Output | Width | Descriptions |
+| ---- | ---- | ---- | ---- |
+| clk | input | 1 | clock |
+| rst_n | input | 1 | reset, 低电平有效 |
+| --data-- |
+| req_vld | input | NUM_PORT | 握手协议的valid信号 |
+| req_info | input | INFO_WIDTH\*NUM_PORT | 输出的地址来请求读数据 |
+| req_rdy | output | NUM_PORT | 握手协议的ready信号 |
+| out_info | output | OUT_INFO_WIDTH |  |
+| out_vld | output | 1 | 握手协议的valid信号 |
+| out_rdy | input | 1 | 握手协议的ready信号 |
+
+## prior_arb参数列表（通用模块）
+| Parameters | default | optional | Descriptions |
+| ---- | ---- | ---- | ---- |
+| REQ_WIDTH | 6 |  | 请求的端口数 |
+
+## prior_arb端口列表
+| Ports | Input/Output | Width | Descriptions |
+| ---- | ---- | ---- | ---- |
+| req | input | REQ_WIDTH |  |
+| gnt | output | REQ_WIDTH | 响应 |
+
+## 模块陈述
+prior_arb负责接收多个请求信息（多位req），并仲裁出一个来输出（gnt中只有一位被拉高）。仲裁方法为最简单的固定优先级的仲裁，参考[博文](https://mp.weixin.qq.com/s/82o9iAIw1LiDsjBNmiBVDQ)
+
 
 
 
