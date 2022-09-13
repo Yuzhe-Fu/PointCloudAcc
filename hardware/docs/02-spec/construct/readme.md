@@ -43,7 +43,6 @@
 | cfg_num_FPS | input | NUM_FPS_WIDTH | FPS的层数 |
 | cfg_FPS_factor | 1 |  2 | FPS筛选出原始点数的>> FPS_factor，例如当FPS_factor=1时，>>1表示一半 |
 | cfg_K | input | 24 | KNN需要找出多少个邻近点 |
-
 | --data-- |
 | in_coord | input | SRAM_WIDTH | 输入的坐标 |
 | in_coord_vld | input | 1 | 握手协议的valid信号 |
