@@ -79,11 +79,9 @@
 | in_cp_idx | input | IDX_WIDTH | KNN中心点的index |
 | in_cp_idx_vld | input | 1 | 握手协议的valid信号 |
 | in_cp_idx_rdy | output | 1 | 握手协议的ready信号 |
-
 | in_lp | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
 | in_lp_vld | input | 1 | 握手协议的valid信号 |
 | in_lp_rdy | output | 1 | 握手协议的ready信号 |
-
 | out_idx | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
 | out_idx_vld | output | 1 | 握手协议的valid信号 | 
 | out_idx_rdy | input | 1 | 握手协议的ready信号 |
@@ -109,11 +107,9 @@
 | in_cp_idx | input | IDX_WIDTH | KNN中心点的index |
 | in_cp_idx_vld | input | 1 | 握手协议的valid信号 |
 | in_cp_idx_rdy | output | 1 | 握手协议的ready信号 |
-
 | in_lp | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
 | in_lp_vld | input | 1 | 握手协议的valid信号 |
 | in_lp_rdy | output | 1 | 握手协议的ready信号 |
-
 | out_idx | output | IDX_WIDTH\*K_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx组合 |
 | out_idx_vld | output | 1 | 握手协议的valid信号 | 
 | out_idx_rdy | input | 1 | 握手协议的ready信号 |
