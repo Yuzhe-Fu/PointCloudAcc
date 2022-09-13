@@ -1,4 +1,4 @@
-# task list
+# Task List
 - FPS KNN的概念
 - 结合硬件图数据流
 
@@ -20,6 +20,7 @@
 | ---- | ---- | ---- | ---- |
 | COORD_WIDTH | 16 | 8 | 坐标x, y, z的位宽 |
 | NUM_COORD | 3 |  | 坐标的维度，默认是3维 |
+| DIST_WIDTH | LOG2(NUM_COORD\*COORD_WIDTH^2) | 17 | 距离的位宽 |
 | SRAM_WIDTH | 256 | | SRAM Bank的位宽 |
 <!-- | ACC_WIDTH | 26 | | 累加器的位宽，ACT_WIDTH + WGT_WIDTH +LOG(通道深度) |
 | NUM_ROW | 16 | | PE阵列的行数 |
@@ -53,7 +54,7 @@
 ## 模块陈述
 构建模块是用来将原始点云采样（FPS)后，找出每个点的K邻近点的index（K个index称为这个点的map即映射）。在顶层模块construct硬件图中，FPS和KNN复用部分硬件（黑色），FPS独有的是青色，KNN独有的是蓝色。在子模块中一律用黑色，不作区别
 - FPS
-  - 输入点的坐标从global buffer传进来，经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD），写入Crd_In_Buffer后，dist_comp从Crd_In_Buffer，一次取一个点的坐标，如point_n，与base_point（FPS中，base_point是上一次找出的最远点的坐标，KNN中，base_point是当前需要找出邻近点的中心点坐标），计算欧式距离ed_n，然后从Dist_Buffer中取出point_n与上一次FPS点集的距离dist_ps_n，比较出ed_n和dist_ps_n的最小值，作为point_n与上当前FPS点集的距离dist_ps_n，并更新到Dist_Buffer；当前点point_n的dist_ps_n需要与之前点到点集的距离比较出最大值，并更新这个最大值，最大值对应的点的index，和最大值对应的点的坐标；对于固定的base——point，当所有非点集的点遍历完成后，这个最大值的点坐标成为新的base_point，对应的index输出到FPS_out_buffer，让表示1024个点是否有效的bit-vector里面对应的bit位置为1（每次FPS开始时，bit-vector全0）；当FPS选出的点集点数达到所需的点数（由cfg_FPS_factor决定每层倍减）时。
+  - 输入点的坐标从global buffer传进来，经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD），写入Crd_In_Buffer后，dist_comp从Crd_In_Buffer，一次取一个点的坐标，如point_n，与base_point（FPS中，base_point是上一次找出的最远点的坐标，KNN中，base_point是当前需要找出邻近点的中心点坐标），计算欧式距离ed_n，然后从Dist_Buffer中取出point_n与上一次FPS点集的距离dist_ps_n，比较出ed_n和dist_ps_n的最小值，作为point_n与上当前FPS点集的距离dist_ps_n，并更新到Dist_Buffer；当前点point_n的dist_ps_n需要与之前点到点集的距离比较出最大值，并更新这个最大值，最大值对应的点的index，和最大值对应的点的坐标；对于固定的base——point，当所有非点集的点遍历完成后，这个最大值的点坐标成为新的base_point，对应的index输出到FPS_out_buffer，让表示1024个点是否有效的mask里面对应的bit位置为1（每次FPS开始时，mask全0）；当FPS选出的点集点数达到所需的点数（由cfg_FPS_factor决定每层倍减）时。
 - KNN
   - 从第0个点到最后一个点，轮流作为中心点base_point，dist_comp将所有点依次从Crd_In_Buffer取出后，与base_point计算出ed，输出到par_sple_sort模块，par_sple_sort计算出的每个点的map，输出out_idx到global buffer
 
@@ -66,13 +67,25 @@
 | --config-- |
 | cfg_num_in_points | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
 | cfg_K | input | 24 | KNN需要找出多少个邻近点 |
+| in_mask | input | IDX_WIDTH | FPS输出给KNN的mask |
+| in_mask_vld | input | 1 | 握手协议的valid信号 |
+| in_mask_rdy | output | 1 | 握手协议的ready信号 |
 | in_cp_idx | input | IDX_WIDTH | KNN中心点的index |
-| in_lp_idx | input | IDX_WIDTH | KNN被遍历(looped)到的点的index |
-| in_lp_dist | input| IDX_WIDTH | KNN被遍历(looped)到的点与中心点的距离，即上述的ed |
+| in_cp_idx_vld | input | 1 | 握手协议的valid信号 |
+| in_cp_idx_rdy | output | 1 | 握手协议的ready信号 |
+
+| in_lp | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
+| in_lp_vld | input | 1 | 握手协议的valid信号 |
+| in_lp_rdy | output | 1 | 握手协议的ready信号 |
 
 | out_idx | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
 | out_idx_vld | output | 1 | 握手协议的valid信号 | 
 | out_idx_rdy | input | 1 | 握手协议的ready信号 |
 
-
+## 模块陈述
+- par_sple_sort用于将construct模块输入进来的每个中心点in_cp_idx的邻近点in_lp，经FPS传进来的mask，逐层过滤后，输入到insert_sort排序。
+- FPS后面接KNN是一个构建组合，在点云网络里，连续有多个这样的组合，因此KNN排序的是经FPS的mask过滤后的点的距离，而每层FPS的mask由顶层construct模块生成后，每层依次输入到par_sple_sort里面的每个的sple_sort_core的mask寄存器组，（注意第一个sple_sort_core接收的是第一个FPS层的mask，第一个sple_sort_core接收的是第二个FPS层的mask与第一个FPS层的mask的按位与）。
+- 从construct输入的in_lp包含index和距离，同时输入到每个sple_sort_core，lp的index要在每个sple_sort_core的mask中找对应的bit是否为1，如果为1，说明在这层FPS是保留的，则将其in_lp包含index和距离输入到这个sple_sort_core里面的参与排序，否则不输入到sple_sort_core。
+- 从所有sple_sort_core输出的map（最邻近的K个点的indx组合），与中心点in_cp_idx组成新的map （即(cp_idx, lp_idx\*K)），将其转成SRAM_WIDTH位宽后，存入输出Map_Out_Buffer。
+- 
 
