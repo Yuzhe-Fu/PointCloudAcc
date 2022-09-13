@@ -4,7 +4,7 @@
 
 - 参考这个[教程](https://developer.aliyun.com/article/604633)，把自己的修改提交到此源仓库的master分支。
 ！注意，只上传源文件如代码和脚本，不要上传生成文件和大文件(>1M)
-  - 提交的格式参考 [教程] (https://www.cnblogs.com/daysme/p/7722474.html); 
+  - 提交的格式参考 [教程](https://www.cnblogs.com/daysme/p/7722474.html); 
     - 简化格式是<type是操作的类型>(<scope是操作的对象>): <subject是具体操作的描述> (例如feat(hardware/pool.v): add a arb_fifo module))
   
 
