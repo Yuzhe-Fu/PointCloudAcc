@@ -15,11 +15,16 @@
 - verilog模块库位于[primitives](/hardware/src/primitives)
 
 # 分工及目录
-| 人员 | 负责 | 目录 |
+- spec文档位于hardware/docs/02-spec/；
+- 源代码位于/hardware/src/；
+- 仿真脚本位于/hardware/sim/;
+- 验证代码位于/hardware/vrf;
+
+|  | 负责 | 目录 |
 | ---- | ---- | ---- |
-| 丘思远 | 脉动阵列 | spec文档位于hardware/docs/02-spec/systolic_array/；源代码位于/hardware/src/systolic_array/；仿真脚本位于/hardware/sim/systolic_array/ |
-| 付宇哲 | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
-| 管宇江，孙天逸 | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ |
-| | 排序模块 |  spec文档位于hardware/docs/02-spec/construct/ |
-| 宋祥杰 | 池化模块 | spec文档位于hardware/docs/02-spec/pooling/； 源代码位于/hardware/src/pooling/；仿真脚本位于/hardware/sim/poolingy/|
+|  | 脉动阵列 |  |
+|  | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
+|  | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ |
+|  | 构建模块 |  |
+|  | 池化模块 |  |
 
