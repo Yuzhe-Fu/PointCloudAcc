@@ -22,10 +22,10 @@
 
 |  | 负责 | 目录 |
 | ---- | ---- | ---- |
-|  | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
 |  | 脉动阵列 |  |
 |  | 池化模块 |  |
 |  | 构建模块 |  |
+|  | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
 |  | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ |
 
 
