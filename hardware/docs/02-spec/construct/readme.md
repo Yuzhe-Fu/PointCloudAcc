@@ -21,7 +21,11 @@
 | COORD_WIDTH | 16 | 8 | 坐标x, y, z的位宽 |
 | NUM_COORD | 3 |  | 坐标的维度，默认是3维 |
 | DIST_WIDTH | LOG2(NUM_COORD\*COORD_WIDTH^2) | 17 | 距离的位宽 |
+| NUM_SORT_CORE | 8 | | 排序的核数 |
+| NUM_FPS_WIDTH | 3 | | FPS的层数位宽，层数需小于NUM_SORT_CORE |
+| K_WIDTH | 5 | | KNN邻点个数的位宽 |
 | SRAM_WIDTH | 256 | | SRAM Bank的位宽 |
+
 <!-- | ACC_WIDTH | 26 | | 累加器的位宽，ACT_WIDTH + WGT_WIDTH +LOG(通道深度) |
 | NUM_ROW | 16 | | PE阵列的行数 |
 | NUM_COL | 16 | | PE阵列的列数，默认是正方形阵列即NUM_COL=NUM_ROW | 
@@ -36,6 +40,7 @@
 | --config-- |
 | cfg_mode | input | 1 | 0: 执行FPS，1: 执行KNN |
 | cfg_num_in_points | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
+| cfg_num_FPS | input | NUM_FPS_WIDTH | FPS的层数 |
 | cfg_FPS_factor | 1 |  2 | FPS筛选出原始点数的>> FPS_factor，例如当FPS_factor=1时，>>1表示一半 |
 | cfg_K | input | 24 | KNN需要找出多少个邻近点 |
 
@@ -66,6 +71,7 @@
 | rst_n | input | 1 | reset, 低电平有效 |
 | --config-- |
 | cfg_num_in_points | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
+| cfg_num_FPS | input | NUM_FPS_WIDTH | FPS的层数 |
 | cfg_K | input | 24 | KNN需要找出多少个邻近点 |
 | in_mask | input | IDX_WIDTH | FPS输出给KNN的mask |
 | in_mask_vld | input | 1 | 握手协议的valid信号 |
@@ -87,5 +93,55 @@
 - FPS后面接KNN是一个构建组合，在点云网络里，连续有多个这样的组合，因此KNN排序的是经FPS的mask过滤后的点的距离，而每层FPS的mask由顶层construct模块生成后，每层依次输入到par_sple_sort里面的每个的sple_sort_core的mask寄存器组，（注意第一个sple_sort_core接收的是第一个FPS层的mask，第一个sple_sort_core接收的是第二个FPS层的mask与第一个FPS层的mask的按位与）。
 - 从construct输入的in_lp包含index和距离，同时输入到每个sple_sort_core，lp的index要在每个sple_sort_core的mask中找对应的bit是否为1，如果为1，说明在这层FPS是保留的，则将其in_lp包含index和距离输入到这个sple_sort_core里面的参与排序，否则不输入到sple_sort_core。
 - 从所有sple_sort_core输出的map（最邻近的K个点的indx组合），与中心点in_cp_idx组成新的map （即(cp_idx, lp_idx\*K)），将其转成SRAM_WIDTH位宽后，存入输出Map_Out_Buffer。
-- 
+
+## sple_sort_core 端口列表
+| Ports | Input/Output | Width | Descriptions |
+| ---- | ---- | ---- | ---- |
+| clk | input | 1 | clock |
+| rst_n | input | 1 | reset, 低电平有效 |
+| --config-- |
+| cfg_num_in_points | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
+| cfg_num_FPS | input | NUM_FPS_WIDTH | FPS的层数 |
+| cfg_K | input | 24 | KNN需要找出多少个邻近点 |
+| in_mask | input | IDX_WIDTH | FPS输出给每个sple_sort_core的mask |
+| in_mask_vld | input | 1 | 握手协议的valid信号 |
+| in_mask_rdy | output | 1 | 握手协议的ready信号 |
+| in_cp_idx | input | IDX_WIDTH | KNN中心点的index |
+| in_cp_idx_vld | input | 1 | 握手协议的valid信号 |
+| in_cp_idx_rdy | output | 1 | 握手协议的ready信号 |
+
+| in_lp | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
+| in_lp_vld | input | 1 | 握手协议的valid信号 |
+| in_lp_rdy | output | 1 | 握手协议的ready信号 |
+
+| out_idx | output | IDX_WIDTH\*K_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx组合 |
+| out_idx_vld | output | 1 | 握手协议的valid信号 | 
+| out_idx_rdy | input | 1 | 握手协议的ready信号 |
+
+## 模块陈述
+sple_sort_core是具体执行上述过滤和排序的模块，输出是经过一层的mask过滤后排序出K个最小距离的index组合。
+
+## insert_sort 端口列表
+| Ports | Input/Output | Width | Descriptions |
+| ---- | ---- | ---- | ---- |
+| clk | input | 1 | clock |
+| rst_n | input | 1 | reset, 低电平有效 |
+| --config-- |
+| in_lp | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
+| in_lp_vld | input | 1 | 握手协议的valid信号 |
+| in_lp_rdy | output | 1 | 握手协议的ready信号 |
+| out_idx | output | IDX_WIDTH\*K_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx组合 |
+| out_idx_vld | output | 1 | 握手协议的valid信号 | 
+| out_idx_rdy | input | 1 | 握手协议的ready信号 |
+
+## 模块陈述
+insert_sort是插入排序模块，输入的in_lp，包含要排序的点的index和距离，根据距离从小到大对index排序后输出。
+具体工作方式是：输入的in_lp_dist_n，同时与Dist_reg_array里面的前(n-1)的排序好的距离，比较得出Cur_insert是否为1，Dist_reg_array里面的距离比in_lp_dist_n小，则dist和index不动，最开始距离比in_lp_dist_n大，则这个位置插入in_lp_dist_n和其对应的in_lp_idx_n，往后的寄存器依次移位。
+因此Dist_reg_array有三种更新情况：
+  - Cur_insert = 0，则保持不变，同时向后面的寄存器输出cur_shift =0（是否需要往后移位）
+  - Cur_insert = 1，且cur_shift =0，说明当前位置上刚好需要插入in_lp_dist_n和其对应的in_lp_idx_n， 同时向后面的寄存器输出cur_shift =1
+  - Cur_insert = 1，且cur_shift =1，说明已经插入在前面了，此位置需要接收前面一个寄存器移位过来，同时向后面的寄存器输出cur_shift =1
+
+
+
 
