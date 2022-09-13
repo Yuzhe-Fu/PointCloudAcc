@@ -47,9 +47,6 @@
 | in_coord | input | SRAM_WIDTH | 输入的坐标 |
 | in_coord_vld | input | 1 | 握手协议的valid信号 |
 | in_coord_rdy | output | 1 | 握手协议的ready信号 |
-<!-- | in_wgt_above | input | WGT_WIDTH\*NUM_COL\*NUM_BANK | 阵列左侧输入的weight |
-| in_wgt_above_vld | input | 1 | 握手协议的valid信号 |
-| in_wgt_above_rdy | output | 1 | 握手协议的ready信号 | -->
 | out_idx | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
 | out_idx_vld | output | 1 | 握手协议的valid信号 | 
 | out_idx_rdy | input | 1 | 握手协议的ready信号 |
