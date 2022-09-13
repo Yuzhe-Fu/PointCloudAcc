@@ -15,7 +15,7 @@
 - verilog模块库位于[primitives](/hardware/src/primitives)
 
 # 分工及目录
-- spec文档位于hardware/docs/02-spec/；
+- spec文档位于hardware/docs/02-spec/；里面的readme.md是说明文档，.excalidraw文件是硬件框图，下载之后用[网站](https://excalidraw.com/)打开，修改后上传并同步到源仓库；
 - 源代码位于/hardware/src/；
 - 仿真脚本位于/hardware/sim/;
 - 验证代码位于/hardware/vrf;
