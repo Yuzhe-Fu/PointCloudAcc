@@ -18,7 +18,7 @@
 - spec文档位于hardware/docs/02-spec/；里面的readme.md是说明文档，.excalidraw文件是硬件框图，下载之后用[网站](https://excalidraw.com/)打开，修改后上传并同步到源仓库；
 - 源代码位于/hardware/src/；
 - 仿真脚本位于/hardware/sim/;
-- 验证代码位于/hardware/vrf;
+- 验证C 代码位于/hardware/vrf;
 
 |  | 负责 | 目录 |
 | ---- | ---- | ---- |
