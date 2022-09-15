@@ -1,1 +1,1 @@
-
+必须使用C model来自动比对，参考[教程](https://blog.csdn.net/evolone/article/details/83151393?spm=1001.2101.3001.6650.11&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-11-83151393-blog-117145240.pc_relevant_aa&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-11-83151393-blog-117145240.pc_relevant_aa&utm_relevant_index=14)

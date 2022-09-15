@@ -4,7 +4,7 @@
 
 - 参考这个[教程](https://developer.aliyun.com/article/604633)，把自己的修改提交到此源仓库的master分支。
 ！注意，只上传源文件如代码和脚本，不要上传生成文件和大文件(>1M)
-  - 提交的格式参考 [教程] (https://www.cnblogs.com/daysme/p/7722474.html); 
+  - 提交的格式参考 [教程](https://www.cnblogs.com/daysme/p/7722474.html); 
     - 简化格式是<type是操作的类型>(<scope是操作的对象>): <subject是具体操作的描述> (例如feat(hardware/pool.v): add a arb_fifo module))
   
 
@@ -15,16 +15,17 @@
 - verilog模块库位于[primitives](/hardware/src/primitives)
 
 # 分工及目录
-- spec文档位于hardware/docs/02-spec/；
+- spec文档位于hardware/docs/02-spec/；里面的readme.md是说明文档，.excalidraw文件是硬件框图，下载之后用[网站](https://excalidraw.com/)打开，修改后上传并同步到源仓库；
 - 源代码位于/hardware/src/；
 - 仿真脚本位于/hardware/sim/;
-- 验证代码位于/hardware/vrf;
+- 验证C 代码位于/hardware/vrf;
 
 |  | 负责 | 目录 |
 | ---- | ---- | ---- |
 |  | 脉动阵列 |  |
+|  | 池化模块 |  |
+|  | 构建模块 |  |
 |  | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
 |  | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ |
-|  | 构建模块 |  |
-|  | 池化模块 |  |
+
 
