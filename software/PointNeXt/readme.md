@@ -3,7 +3,8 @@
   - 判断输入activation维度是否包含K=32：已确认包含了
   - 判断conv2d是否是全连接，即每个点单独与1x1的filter卷积: 已确认（即便是Conv2d的kernel也是1x1，等价于FC)
 2. :question: 确认作为feature的一部分的坐标是原始坐标还是经过变换的坐标: 直接保存原始index及其对应坐标，和卷积输入feature的坐标和对应的index，把结果上传到git
-  - PointNet++中，MSG方法是用相对坐标
+  - PointNet++中，MSG方法是使用相对于中心的坐标，SSG是不中心化
+    - DGCNN不中心化，是否也能支持？
   - PointMLP直接不使用坐标作为feature一部分
   - PointNeXt很可能因基于PointNet++而使用相对坐标
 3. 量化：weight到4b和8b，activation到8b；记录train, val, test的acc和loss，并与全精度比较
