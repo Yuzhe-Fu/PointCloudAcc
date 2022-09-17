@@ -36,10 +36,11 @@ software/PointNeXt/PointNeXt-master/wandb
 
 *.checkpoint
 *.log
-
-
-
 #######################################################
+#      The above part is Yuzhe Fu software part
+#      May Buddha Blesses u~
+#######################################################
+
 .svn/
 INCA_libs/
 log/
