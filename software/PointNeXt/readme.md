@@ -1,4 +1,4 @@
-# 任务列表
+# 任务列表：:question:md和源码
 1. :white_check_mark:确定软件是按照map卷积，之后再mp的：
   - 判断输入activation维度是否包含K=32：已确认包含了
   - 判断conv2d是否是全连接，即每个点单独与1x1的filter卷积: 已确认（即便是Conv2d的kernel也是1x1，等价于FC)
