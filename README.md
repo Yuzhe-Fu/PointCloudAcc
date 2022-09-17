@@ -4,6 +4,7 @@
 
 - 参考这个[教程](https://developer.aliyun.com/article/604633)，把自己的修改提交到此源仓库的master分支。
 ！注意，只上传源文件如代码和脚本，不要上传生成文件和大文件(>1M)
+  - 检查是否包含大于1M的文件的linux命令：find ./ -type f -size +1M -printf '%s %p\n' | sort -r
   - 提交的格式参考 [教程](https://www.cnblogs.com/daysme/p/7722474.html); 
     - 简化格式是<type是操作的类型>(<scope是操作的对象>): <subject是具体操作的描述> (例如feat(hardware/pool.v): add a arb_fifo module))
   
@@ -23,8 +24,8 @@
 |  | 负责 | 目录 |
 | ---- | ---- | ---- |
 |  | 脉动阵列 |  |
-|  | 池化模块 |  |
-|  | 构建模块 |  |
+|  | 池化模块 | 9.24 写RTL, 9.30仿真通过，10. 15 C model自动对比 |
+|  | 构建模块 | 9.24 写RTL, 9.30仿真通过，10. 15 C model自动对比 |
 |  | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
 |  | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ |
 
