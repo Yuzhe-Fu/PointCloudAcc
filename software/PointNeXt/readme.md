@@ -6,7 +6,8 @@
   - :white_check_mark:PointNet++中，MSG方法是使用相对于中心的坐标，SSG是不中心化
     - :question:DGCNN不中心化，是否也能支持？
   - :white_check_mark:PointMLP直接不使用坐标作为feature一部分
-    - :question:改不要中心化试试
+    - :white_check_mark:改不要中心化试试,8b量化下降0.3%
 3. 量化：weight到4b和8b，activation到8b；记录train, val, test的acc和loss，并与全精度比较
+  - weight 1b, activation 8b
 4. 剪枝：weight剪枝稀疏度到80%
 5. 探索数据压缩方法
