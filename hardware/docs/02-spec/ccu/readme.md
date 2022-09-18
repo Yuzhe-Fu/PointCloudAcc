@@ -17,22 +17,31 @@
 | Layer Parameters |
 | 0-1 | 2-33 | 34-65 | 66-81 | 82-93 | 94-105 |
 | Op_code: Conv (FC, POOL) | D_addr: 32b, Base addr of input data | W_addr: 32b, Base addr of weights | N: 16b, # of input points | Chi: # of input channels | | Cho: # of output channels |  
+| 0-1 | 2-33 |  66-81 | 82-93 | 
+| Op_code:  POOL (Conv,FC),当片上存不下时，就需要从片外拿 | D_addr: 32b, Base addr of input data |  N: 16b, # of input points | Chi: # of input channels |  
 | 0-1 | 2-33 | 34-65 | 66-81 | 82-93 | 94-105 |
-| Op_code: FC (Conv, POOL) | D_addr: 32b, Base addr of input data | W_addr: 32b, Base addr of weights | N: 16b, # of input points | Chi: # of input channels | | Cho: # of output channels |  
-
+| Op_code: FC (Conv, POOL) | D_addr: 32b, Base addr of input data | W_addr: 32b, Base addr of weights | N: 16b, # of input points | Chi: # of input channels | | Cho: # of output channels | 
+| Module Parameters |
+| GB |
+| SA |
+| POOL |
+| Construct |
 
 
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
-| construct.v | 顶层模块 |
-| par_sple_sort.v | parallel_sample_sort，并行采样和排序模块 |
-| sple_sort_core. v | 采样和排序核 |
-| insert_sort.v | 插入排序模块 |
-| dist_comp.v | 欧式距离计算模块 |
+| ccu.v | 顶层模块 |
 | RAM_wrap.v | 通用SRAM模块，直接在primitives调用 |
+| 
 
 # 参数列表
 | Parameters | default | optional | Descriptions |
 | ---- | ---- | ---- | ---- |
 | COORD_WIDTH | 16 | 8 | 坐标x, y, z的位宽 |
+
+
+# 模块描述
+CCU是中央控制器，有专门的4bit IO来读指令集，先从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters，用FSM，解析出每个子模块需要执行的每周期的配置的index，用index来取出每个模块每周期的配置。
+
+
