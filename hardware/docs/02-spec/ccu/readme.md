@@ -1,4 +1,4 @@
-# 指令集-基本参考Thinker
+# 指令集-基本参考Thinker，:question: 也参考dnnweaver的指令及如何使用
 包含有
 - Array parameter：提前确定硬件结构，多少层，第一层参数的基址
 - Layer parameter：层参数：控制每层具体的执行
