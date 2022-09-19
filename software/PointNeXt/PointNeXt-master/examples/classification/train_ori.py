@@ -41,7 +41,7 @@ from openpoints.models.layers import furthest_point_sample, fps
 import time    
 import sys
 sys.setrecursionlimit(1000000)
-sys.path.append("../../../distiller/")
+sys.path.append("./distiller/")
 # import train_model //FIXME
 import logging
 import argparse
@@ -65,6 +65,8 @@ from torch.autograd import Variable
 # ==================================
 from fnmatch import fnmatch
 # from Function_self import Function_self
+
+import to_csv
 
 
 
@@ -236,6 +238,11 @@ def main(gpu, cfg, profile=False):
         lr = optimizer.param_groups[0]['lr']
         logging.info(f'Epoch {epoch} LR {lr:.6f} '
                      f'train_oa {train_oa:.2f}, val_oa {val_oa:.2f}, best val oa {best_val:.2f}')
+
+        csv_path = './data/TrainingData/test.csv'
+        csv_list = [lr, train_oa, train_loss, val_oa, val_macc, best_epoch, best_val, macc_when_best]
+        to_csv.to_csv(csv_path, epoch, csv_list)
+        
         if writer is not None:
             writer.add_scalar('train_loss', train_loss, epoch)
             writer.add_scalar('train_oa', train_macc, epoch)

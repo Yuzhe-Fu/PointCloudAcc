@@ -21,14 +21,17 @@
 7. 剪枝：weight剪枝稀疏度到80%
 8. 探索数据压缩方法
 
-    | Type                             	| relative_xyz 	| OA    	| mAcc  	|
-    |----------------------------------	|--------------	|-------	|-------	|
-    | Original github                  	| True         	| 93.7  	| 90.9  	|
-    | full-acu<br>epoch80 best@57      	| True         	| 92.91 	| 89.55 	|
-    | comp w8a8b8<br>epoch80 best@45   	| True         	| 92.34 	| 87.87 	|
-    | comp w4a8b8<br>epoch80 best@40   	| True         	| 92.30 	| 88.79 	|
-    | full-acu<br>epoch80 best@64      	| False        	| 91.73 	| 88.35 	|
-    | full-acu<br>epoch200 best@121    	| False        	| 91.82 	| 88.43 	|
-    | comp w8a8b8<br>epoch80 best@72   	| False        	| 91.45 	| 87.42 	|
-    | comp w8a8b8<br>epoch120 best@113 	| False        	| 92.02 	| 89.35 	|
-    | comp w8a8b8<br>epoch200 best@177 	| False        	| 91.94 	| 89.38 	|
+    | Type                             	| Channel | relative_xyz 	| OA    	| mAcc  	|
+    |----------------------------------	|-------- |--------------	|-------	|-------	|
+    | Original github                  	| 64      | True         	| 93.7  	| 90.9  	|
+    | full-acu<br>epoch80 best@57      	| 32      | True         	| 92.91 	| 89.55 	|
+    | comp w8a8b8<br>epoch80 best@45   	| 32      | True         	| 92.34 	| 87.87 	|
+    | comp w4a8b8<br>epoch80 best@40   	| 32      | True         	| 92.30 	| 88.79 	|
+    | ----------------------------   	| ---     | ----         	| ------	| ----- 	|
+    | full-acu<br>epoch80 best@64      	| 32      | False        	| 91.73 	| 88.35 	|
+    | full-acu<br>epoch200 best@121    	| 32      | False        	| 91.82 	| 88.43 	|
+    | comp w8a8b8<br>epoch80 best@72   	| 32      | False        	| 91.45 	| 87.42 	|
+    | comp w8a8b8<br>epoch120 best@113 	| 32      | False        	| 92.02 	| 89.35 	|
+    | comp w8a8b8<br>epoch200 best@177 	| 32      | False        	| 91.94 	| 89.38 	|
+    | ----------------------------   	| ---     | ----         	| ------	| ----- 	|
+    | full-acu<br>epoch600 best@522  	| 64      | False         	| 92.54 	| 89.89 	|
