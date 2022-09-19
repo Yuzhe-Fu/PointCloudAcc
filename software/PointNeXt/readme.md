@@ -23,7 +23,7 @@
 
     | Type                             	| Channel | relative_xyz 	| OA    	| mAcc  	|
     |----------------------------------	|-------- |--------------	|-------	|-------	|
-    | Original github                  	| 32      | True         	| 93.7  	| 90.9  	|
+    | Original github                  	| 64      | True         	| 93.7  	| 90.9  	|
     | full-acu<br>epoch80 best@57      	| 32      | True         	| 92.91 	| 89.55 	|
     | comp w8a8b8<br>epoch80 best@45   	| 32      | True         	| 92.34 	| 87.87 	|
     | comp w4a8b8<br>epoch80 best@40   	| 32      | True         	| 92.30 	| 88.79 	|
