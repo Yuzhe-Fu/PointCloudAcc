@@ -36,7 +36,7 @@
     | w1a8<br>epoch300 best@   	    | 1   | 8   | 32      | False        | True      | 300   |   |  	|  	|
     | ----------------------------  | --- | --- | ---     | ----         | --------- | ----- | ---- | ------	| ----- 	|
     | Original (C=64)               | 32  | 32  | 64      | True         | Ture      | 600   | 537  | 93.7+-0.3 | 90.9+-0.5 |
-    | full-acu<br>epoch600 best@522 | 32  | 32  | 64      | False        | Ture      | 600   |   |  	|  	|
+    | full-acu<br>epoch600 best@    | 32  | 32  | 64      | False        | Ture      | 600   |   |  	|  	|
     | w8a8<br>epoch600 best@        | 8   | 8   | 64      | False        | Ture      | 600   |   |  	|  	|
     | w4a8<br>epoch600 best@        | 4   | 8   | 64      | False        | Ture      | 600   |   |  	|  	|
     
