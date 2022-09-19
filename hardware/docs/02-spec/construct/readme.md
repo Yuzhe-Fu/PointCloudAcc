@@ -39,9 +39,9 @@
 | rst_n | input | 1 | reset, 低电平有效 |
 | --config-- |
 | cfg_mode | input | 1 | 0: 执行FPS，1: 执行KNN |
-| cfg_num_in_points | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
-| cfg_num_FPS | input | NUM_FPS_WIDTH | FPS的层数 |
-| cfg_FPS_factor | 1 |  2 | FPS筛选出原始点数的>> FPS_factor，例如当FPS_factor=1时，>>1表示一半 |
+| cfg_Ni | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
+| cfg_NFPS | input | NUM_FPS_WIDTH | FPS的层数 |
+| cfg_No | IDX_WIDTH |   | FPS筛选出的点数 |
 | cfg_K | input | 24 | KNN需要找出多少个邻近点 |
 | --data-- |
 | in_coord | input | SRAM_WIDTH | 输入的坐标 |

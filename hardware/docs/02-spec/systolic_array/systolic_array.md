@@ -31,6 +31,8 @@
 | quant_scale | input | 20 | quant_psum = (computed_psum * quant_scale) >> quant_shift + quant_zero_point； 根据量化公式：y_q = y_f * s_y = (x_f\*w_f + b_f)\*s_y = Scale_y * x_q\*w_q + zero_point_y; 其中scale_y是小数，暂时用* quant_scale) >> quant_shift来近似 |
 | quant_shift | input | ACT_WIDTH | 同quant_scale |
 | quant_zero_point | input | ACT_WIDTH | 同quant_scale |
+| --control-- |
+| CCUSA_start | input | 1 | 启动信号 |
 | --data-- |
 | in_act_left | input | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列左侧输入的activation |
 | in_act_left_vld | input | 1 | 握手协议的valid信号 |

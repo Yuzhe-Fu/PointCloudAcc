@@ -10,9 +10,11 @@
   
 
 - verilog设计编程风格
-  - 优先参考[Verilog编程艺术](./hardware/docs/tutorial/0-Verilog编程艺术_compressed.pdf)
-  - verilog项目参考[DnnWeaver开源AI加速器](https://github.com/zhouchch3/DNNWeaver/tree/master/hsharma35-dnnweaver.public/hsharma35-dnnweaver.public-6be20110b751/fpga/hardware/source)
-  - 完整详细代码编写说明参考[Verilog/SystemVerilog 设计编码风格指南](https://verilogcodingstyle.readthedocs.io/en/latest/index.html)
+  - **[Verilog代码命名六大黄金规则](https://mp.weixin.qq.com/s/oWlD29XnpDYwF3h5qvGI_Q)**
+  - 整体参考[Verilog编程艺术](./hardware/docs/tutorial/0-Verilog编程艺术_compressed.pdf)
+  - 备用参考
+    - verilog项目参考[DnnWeaver开源AI加速器](https://github.com/zhouchch3/DNNWeaver/tree/master/hsharma35-dnnweaver.public/hsharma35-dnnweaver.public-6be20110b751/fpga/hardware/source)
+    - 完整详细代码编写说明参考[Verilog/SystemVerilog 设计编码风格指南](https://verilogcodingstyle.readthedocs.io/en/latest/index.html)
 - verilog模块库位于[primitives](/hardware/src/primitives)
 
 # 分工及目录
@@ -21,12 +23,12 @@
 - 仿真脚本位于/hardware/sim/;
 - 验证C 代码位于/hardware/vrf;
 
-|  | 负责 | 目录 |
-| ---- | ---- | ---- |
-|  | 脉动阵列 |  |
-|  | 池化模块 | 9.24 写RTL, 9.30仿真通过，10. 15 C model自动对比 |
-|  | 构建模块 | 9.24 写RTL, 9.30仿真通过，10. 15 C model自动对比 |
-|  | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md |
-|  | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ |
+|  | 负责 | 目录 | 时间表 |
+| ---- | ---- | ---- |---- |
+|  | 脉动阵列 |  | |
+|  | 池化模块 | |9.24 写RTL, 9.30仿真通过，10. 15 C model自动对比，合系统，10.30前验证完成确实设计 |
+|  | 构建模块 | |9.24 写RTL, 9.30仿真通过，10. 15 C model自动对比，合系统 |
+|  | 适配硬件的算法 | 文档位于software/PointNeXt/readme.md | 9.24前，确定用于跑硬件的网络结构位宽；9.30前提取出硬件输入数据，10.10前自动生成输入数据脚本 |
+|  | 综合及后端 | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ | 10.5初步总体综合，10.15总体综合，11.1第一版后端，11.15终版后端|
 
 
