@@ -11,7 +11,7 @@
 
 - verilog设计编程风格
   - **[Verilog代码命名六大黄金规则](https://mp.weixin.qq.com/s/oWlD29XnpDYwF3h5qvGI_Q)**
-  - module文件格式参考[模板](hardware/src/primitives/template/template.v)
+  - module文件格式参考[](hardware/src/primitives/template/template.v)
   - 整体参考[Verilog编程艺术](./hardware/docs/tutorial/0-Verilog编程艺术_compressed.pdf)
   - 备用参考
     - verilog项目参考[DnnWeaver开源AI加速器](https://github.com/zhouchch3/DNNWeaver/tree/master/hsharma35-dnnweaver.public/hsharma35-dnnweaver.public-6be20110b751/fpga/hardware/source)
