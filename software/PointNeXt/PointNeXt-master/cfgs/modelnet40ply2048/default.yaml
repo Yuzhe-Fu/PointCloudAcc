@@ -32,15 +32,22 @@ num_classes: 40
 # ---------------------------------------------------------------------------- #
 # this one is better. 
 sched: cosine
-epochs: 1
+epochs: 600
 warmup_epochs: 0
 min_lr: null
 
 # Training parameters
+#original set
 lr: 0.001
 optimizer:
  NAME: 'adamw'
  weight_decay: 0.05
+
+#used the pretrained model
+# lr: 0.00001
+# optimizer:
+#  NAME: 'adamw'
+#  weight_decay: 0.0005
 
 grad_norm_clip: 1
 
@@ -58,6 +65,7 @@ val_freq: 1
 # ----------------- Model related
 val_batch_size: 64
 pretrained_path: null 
+# './log/github_pretrained/checkpoint/modelnet40ply2048-train-pointnext-s-ngpus1-seed6848-model.encoder_args.width=64-20220525-145053-7tGhBV9xR9yQEBtN4GPcSc_ckpt_best.pth'
 
 wandb:
   project: PointNeXt-ModelNet40Ply2048
