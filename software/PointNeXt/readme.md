@@ -21,17 +21,24 @@
 7. 剪枝：weight剪枝稀疏度到80%
 8. 探索数据压缩方法
 
-    | Type                             	| Channel | relative_xyz 	| OA    	| mAcc  	|
-    |----------------------------------	|-------- |--------------	|-------	|-------	|
-    | Original github                  	| 64      | True         	| 93.7  	| 90.9  	|
-    | full-acu<br>epoch80 best@57      	| 32      | True         	| 92.91 	| 89.55 	|
-    | comp w8a8b8<br>epoch80 best@45   	| 32      | True         	| 92.34 	| 87.87 	|
-    | comp w4a8b8<br>epoch80 best@40   	| 32      | True         	| 92.30 	| 88.79 	|
-    | ----------------------------   	| ---     | ----         	| ------	| ----- 	|
-    | full-acu<br>epoch80 best@64      	| 32      | False        	| 91.73 	| 88.35 	|
-    | full-acu<br>epoch200 best@121    	| 32      | False        	| 91.82 	| 88.43 	|
-    | comp w8a8b8<br>epoch80 best@72   	| 32      | False        	| 91.45 	| 87.42 	|
-    | comp w8a8b8<br>epoch120 best@113 	| 32      | False        	| 92.02 	| 89.35 	|
-    | comp w8a8b8<br>epoch200 best@177 	| 32      | False        	| 91.94 	| 89.38 	|
-    | ----------------------------   	| ---     | ----         	| ------	| ----- 	|
-    | full-acu<br>epoch600 best@522  	| 64      | False         	| 92.54 	| 89.89 	|
+    | Type                      | Wei | Act | Channel | relative_xyz | BatchNorm | Epoch | Best | OA    	| mAcc  	|
+    |-------------------------- | --- | --- |-------- |--------------| --------- | ----- | ---- |-------	|-------	|
+    | Original (C=32)           | 32  | 32  | 32      | True         | Ture      | None  | None | 93.2+-0.1	| 90.8+-0.2 |
+    | full-acu<br>epoch80 @57   | 32  | 32  | 32      | True         | True      | 80    | 57   | 92.91 	| 89.55 	|
+    | w8a8<br>epoch80 @45       | 8   | 8   | 32      | True         | True      | 80    | 45   | 92.34 	| 87.87 	|
+    | w4a8<br>epoch80 @40       | 4   | 8   | 32      | True         | True      | 80    | 40   | 92.30 	| 88.79 	|
+    | ------------------------  | --- | --- | ---     | ----------   | --------- | ----- | ---- | ------	| ----- 	|
+    | full-acu<br>epoch80 @64   | 32  | 32  | 32      | False        | True      | 80    | 64   | 91.73 	| 88.35 	|
+    | full-acu<br>epoch200 @121 | 32  | 32  | 32      | False        | True      | 200   | 121  | 91.82 	| 88.43 	|
+    | w8a8<br>epoch80 @72       | 8   | 8   | 32      | False        | True      | 80    | 72   | 91.45 	| 87.42 	|
+    | w8a8<br>epoch120 @113     | 8   | 8   | 32      | False        | True      | 120   | 113  | 92.02 	| 89.35 	|
+    | w8a8<br>epoch200 @177     | 8   | 8   | 32      | False        | True      | 200   | 177  | 91.94 	| 89.38 	|
+    | w4a8<br>epoch600 @        | 4   | 8   | 32      | False        | True      |       |      |       	|       	|
+    | w414a8<br>epoch117 @116   |4-1-4| 8   | 32      | False        | True      | 117   | 116  | 41.53 	| 27.52 	|
+    | ------------------------  | --- | --- | ---     | ----         | --------- | ----- | ---- | ------	| ----- 	|
+    | Original (C=64)           | 32  | 32  | 64      | True         | True      | 600   | 537  | 93.7+-0.3 | 90.9+-0.5 |
+    | full-acu<br>epoch600 @    | 32  | 32  | 64      | True         | True      | 600   | 486  | 93.44 	| 90.79 	|
+    | full-acu<br>epoch600 @522 | 32  | 32  | 64      | False        | True      | 600   | 522  | 92.54 	| 89.89 	|
+    | w8a8<br>epoch600 @        | 8   | 8   | 64      | True         | True      | 600   |   |  	|  	|
+    | w4a8<br>epoch600 @        | 4   | 8   | 64      | True         | True      | 600   |   |  	|  	|
+    
