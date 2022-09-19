@@ -1,4 +1,4 @@
-# 任务列表：:question:md和源码
+# 任务列表：
 1. :white_check_mark:确定软件是按照map卷积，之后再mp的：
   - 判断输入activation维度是否包含K=32：已确认包含了
   - 判断conv2d是否是全连接，即每个点单独与1x1的filter卷积: 已确认（即便是Conv2d的kernel也是1x1，等价于FC)
@@ -21,8 +21,13 @@
     | comp w8a8b8<br>epoch120 best@113 	| False        	| 92.02 	| 89.35 	|
     | comp w8a8b8<br>epoch200 best@177 	| False        	| 91.94 	| 89.38 	|
 
-3. 量化：weight到4b和8b，activation到8b；记录train, val, test的acc和loss，并与全精度比较
+3. 量化：relative=False；记录train, val, test的acc和loss，并与全精度比较
+  - weight 8b, activation 8b
+  - weight 4b, activation 8b
   - weight 1b, activation 8b
-4. 剪枝：weight剪枝稀疏度到80%
-5. 探索数据压缩方法
+4. 去掉Batch Normoralization：（relative=False）
+  - 全精度
+  - weight 8b, activation 8b
+5. 剪枝：weight剪枝稀疏度到80%
+6. 探索数据压缩方法
 
