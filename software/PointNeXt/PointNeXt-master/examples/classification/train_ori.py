@@ -239,7 +239,7 @@ def main(gpu, cfg, profile=False):
         logging.info(f'Epoch {epoch} LR {lr:.6f} '
                      f'train_oa {train_oa:.2f}, val_oa {val_oa:.2f}, best val oa {best_val:.2f}')
 
-        csv_path = './data/TrainingData/test.csv'
+        csv_path = './data/TrainingData/relative_true_fullacc_epoch600.csv'
         csv_list = [lr, train_oa, train_loss, val_oa, val_macc, best_epoch, best_val, macc_when_best]
         to_csv.to_csv(csv_path, epoch, csv_list)
         

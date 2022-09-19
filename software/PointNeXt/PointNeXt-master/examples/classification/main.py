@@ -10,8 +10,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('S3DIS scene segmentation training')
     parser.add_argument('--cfg', type=str, required=True, help='config file')
     parser.add_argument('--profile', action='store_true', default=False, help='set to True to profile speed')
-    # parser.add_argument('--compress',dest='compress',type=str,nargs='?',action='store',default='./distiller/myfile/prune_quant_sensitivity.yaml')
-    # parser.add_argument('--name',dest='name',type=str,default='prune_test')
+    parser.add_argument('--compress',dest='compress',type=str,nargs='?',action='store',default='./distiller/myfile/prune_quant_sensitivity.yaml')
+    # parser.add_argument('--compress',dest='compress',type=str,nargs='?',action='store',default='./distiller/myfile/mix_quant_sensitivity.yaml')
+    parser.add_argument('--name',dest='name',type=str,default='prune_test')
     # parser.add_argument('--compress',dest='compress',type=str,nargs='?',action='store',default=False)
     # parser.add_argument('--name',dest='name',type=str,default=False)
 
@@ -67,5 +68,5 @@ if __name__ == "__main__":
         print('using mp spawn for distributed training')
         mp.spawn(main, nprocs=cfg.world_size, args=(cfg, args.profile))
     else:
-        # main(0, cfg, profile=args.profile, compress_path=args.compress, save_name=args.name)
-        main(0, cfg, profile=args.profile)
+        main(0, cfg, profile=args.profile, compress_path=args.compress, save_name=args.name)
+        # main(0, cfg, profile=args.profile)

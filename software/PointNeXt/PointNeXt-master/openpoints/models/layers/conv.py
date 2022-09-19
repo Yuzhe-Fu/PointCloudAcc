@@ -5,7 +5,6 @@ import torch.nn as nn
 from .activation import create_act
 from .norm import create_norm, create_norm1d
 
-
 class Conv2d(nn.Conv2d):
     def __init__(self, *args, **kwargs):
         if len(args) == 2 and 'kernel_size' not in kwargs.keys():
