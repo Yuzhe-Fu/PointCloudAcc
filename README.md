@@ -11,13 +11,19 @@
 
 - verilog设计编程风格
   - **[Verilog代码命名六大黄金规则](https://mp.weixin.qq.com/s/oWlD29XnpDYwF3h5qvGI_Q)**
+        - 模块名一律用三个大写字母，除通用模块
+        - 内部信号用大驼峰：如WrVld, RdRdy
+        - 端口信号用模块到模块_信号名，如CCUGLB_Vld
+        - 参数用大写字母
   - module文件格式参考[template.v](hardware/src/primitives/template/template.v)
   - 整体参考[Verilog编程艺术](./hardware/docs/tutorial/0-Verilog编程艺术_compressed.pdf)
   - 备用参考
     - verilog项目参考[DnnWeaver开源AI加速器](https://github.com/zhouchch3/DNNWeaver/tree/master/hsharma35-dnnweaver.public/hsharma35-dnnweaver.public-6be20110b751/fpga/hardware/source)
     - 完整详细代码编写说明参考[Verilog/SystemVerilog 设计编码风格指南](https://verilogcodingstyle.readthedocs.io/en/latest/index.html)
 - verilog模块库位于[primitives](/hardware/src/primitives)
-
+- 硬件框图设计规范
+    - 端口信号用紫色，位于模块框线上
+    
 # 分工及目录
 - spec文档位于hardware/docs/02-spec/；里面的readme.md是说明文档，.excalidraw文件是硬件框图，下载之后用[网站](https://excalidraw.com/)打开，修改后上传并同步到源仓库；
 - 源代码位于/hardware/src/；
