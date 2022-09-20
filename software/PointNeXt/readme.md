@@ -47,8 +47,8 @@
     | ------------------------  | Wei       | Act | Channel | relative_xyz | BatchNorm | Epoch | Best | OA    	    | mAcc  	|
     | w8a8 bnf<br>epoch600 @544 | 8         | 8   | 32      | False        | False     | 600   | 544  | 79.09 	    | 70.96 	|
 
-    *note:
+    *note: <br>
     mix epoch117 @116这一栏中的4-1-4代表，第一层weight4bit，最后一层的最后一个linear用4bit，其余均为1bit
-    mix<br>epoch600 @584这一栏中的44-1-4代表，第两层weight4bit，最后一层三个linear用4bit，其余均为1bit
+    mix epoch600 @584这一栏中的44-1-4代表，前两层weight4bit，最后一层三个linear用4bit，其余均为1bit
 
     
