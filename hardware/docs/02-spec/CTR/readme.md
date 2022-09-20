@@ -8,12 +8,12 @@
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
-| construct.v | 顶层模块 |
-| par_sple_sort.v | parallel_sample_sort，并行采样和排序模块 |
-| sple_sort_core. v | 采样和排序核 |
-| insert_sort.v | 插入排序模块 |
-| dist_comp.v | 欧式距离计算模块 |
-| RAM_wrap.v | 通用SRAM模块，直接在primitives调用 |
+| CTR.v | 顶层模块 |
+| PSS.v | parallel_sample_sort，并行采样和排序模块 |
+| SSC. v | 采样和排序核 |
+| INS.v | 插入排序模块 |
+| EDC.v | dist_comp欧式距离计算模块 |
+| RAM.v | 通用SRAM模块，直接在primitives调用 |
 
 # 参数列表
 | Parameters | default | optional | Descriptions |
@@ -24,7 +24,7 @@
 | NUM_SORT_CORE | 8 | | 排序的核数 |
 | NUM_FPS_WIDTH | 3 | | FPS的层数位宽，层数需小于NUM_SORT_CORE |
 | K_WIDTH | 5 | | KNN邻点个数的位宽 |
-| SRAM_WIDTH | 256 | | SRAM Bank的位宽 |
+| IF_WIDTH | 96 | | SRAM Bank的位宽 |
 
 <!-- | ACC_WIDTH | 26 | | 累加器的位宽，ACT_WIDTH + WGT_WIDTH +LOG(通道深度) |
 | NUM_ROW | 16 | | PE阵列的行数 |
@@ -38,26 +38,44 @@
 | clk | input | 1 | clock |
 | rst_n | input | 1 | reset, 低电平有效 |
 | --config-- |
-| cfg_mode | input | 1 | 0: 执行FPS，1: 执行KNN |
-| cfg_Ni | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
-| cfg_NFPS | input | NUM_FPS_WIDTH | FPS的层数 |
-| cfg_No | IDX_WIDTH |   | FPS筛选出的点数 |
-| cfg_K | input | 24 | KNN需要找出多少个邻近点 |
+| CCUCTR_CfgMod | input | 1 | 0: 执行FPS，1: 执行KNN |
+| CCUCTR_CfgNip | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
+| CCUCTR_CfgNfl | input | NUM_FPS_WIDTH | FPS的层数 |
+| CCUCTR_CfgNop | IDX_WIDTH |   | FPS筛选出的点数 |
+| CCUCTR_CfgK | input | 24 | KNN需要找出多少个邻近点,最大是32 |
 | --data-- |
-| in_coord | input | SRAM_WIDTH | 输入的坐标 |
-| in_coord_vld | input | 1 | 握手协议的valid信号 |
-| in_coord_rdy | output | 1 | 握手协议的ready信号 |
-| out_idx | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
-| out_idx_vld | output | 1 | 握手协议的valid信号 | 
-| out_idx_rdy | input | 1 | 握手协议的ready信号 |
+| GLBCTR_Crd | input | SRAM_WIDTH | 输入的坐标 |
+| GLBCTR_CrdVld | input | 1 | 握手协议的valid信号 |
+| GLBCTR_CrdRdy | output | 1 | 握手协议的ready信号 |
+| CTRGLB_CrcAddr | output | ADDR_WIDTH |  |
+| CTRGLB_CrdAddrVld | output | 1 | 握手协议的valid信号 |
+| CTRGLB_CrdAddrRdy | input | 1 | 握手协议的ready信号 |
+
+| GLBCTR_Dist | input | SRAM_WIDTH | 输入的距离 |
+| GLBCTR_DistVld | input | 1 | 握手协议的valid信号 |
+| GLBCTR_DistRdy | output | 1 | 握手协议的ready信号 |
+| CTRGLB_DistAddr | output | ADDR_WIDTH |  |
+| CTRGLB_DistAddrVld | output | 1 | 握手协议的valid信号 |
+| CTRGLB_DistAddrRdy | input | 1 | 握手协议的ready信号 |
+
+| CTRGLB_Idx | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
+| CTRGLB_IdxVld | output | 1 | 握手协议的valid信号 |
+| CTRGLB_IdxRdy | input | 1 | 握手协议的ready信号 |
 
 
 ## 模块陈述
+**增加使用状态机：IDLE, SORT, OUTPUT**
 构建模块是用来将原始点云采样（FPS)后，找出每个点的K邻近点的index（K个index称为这个点的map即映射）。在顶层模块construct硬件图中，FPS和KNN复用部分硬件（黑色），FPS独有的是青色，KNN独有的是蓝色。在子模块中一律用黑色，不作区别
 - FPS
-  - 输入点的坐标从global buffer传进来，经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD），写入Crd_In_Buffer后，dist_comp从Crd_In_Buffer，一次取一个点的坐标，如point_n，与base_point（FPS中，base_point是上一次找出的最远点的坐标，KNN中，base_point是当前需要找出邻近点的中心点坐标），计算欧式距离ed_n，然后从Dist_Buffer中取出point_n与上一次FPS点集的距离dist_ps_n，比较出ed_n和dist_ps_n的最小值，作为point_n与上当前FPS点集的距离dist_ps_n，并更新到Dist_Buffer；当前点point_n的dist_ps_n需要与之前点到点集的距离比较出最大值，并更新这个最大值，最大值对应的点的index，和最大值对应的点的坐标；对于固定的base——point，当所有非点集的点遍历完成后，这个最大值的点坐标成为新的base_point，对应的index输出到FPS_out_buffer，让表示1024个点是否有效的mask里面对应的bit位置为1（每次FPS开始时，mask全0）；当FPS选出的点集点数达到所需的点数（由cfg_FPS_factor决定每层倍减）时。
+    - 输入点的坐标从global buffer传进来，经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD），写入Crd_In_Buffer后，dist_comp从Crd_In_Buffer，一次取一个点的坐标，如point_n，与base_point（FPS中，base_point是上一次找出的最远点的坐标，KNN中，base_point是当前需要找出邻近点的中心点坐标），计算欧式距离ed_n，然后从Dist_Buffer中取出point_n与上一次FPS点集的距离dist_ps_n，比较出ed_n和dist_ps_n的最小值，作为point_n与上当前FPS点集的距离dist_ps_n，并更新到Dist_Buffer；当前点point_n的dist_ps_n需要与之前点到点集的距离比较出最大值，并更新这个最大值，最大值对应的点的index，和最大值对应的点的坐标；对于固定的base_point，当所有非点集的点遍历完成后，这个最大值的点坐标成为新的base_point，对应的index输出到FPS_out_buffer，让表示1024个点是否有效的mask里面对应的bit位置为1（每次FPS开始时，mask全0）；当FPS选出的点集点数达到所需的点数（由cfg_FPS_factor决定每层倍减）时。
 - KNN
-  - 从第0个点到最后一个点，轮流作为中心点base_point，dist_comp将所有点依次从Crd_In_Buffer取出后，与base_point计算出ed，输出到par_sple_sort模块，par_sple_sort计算出的每个点的map，输出out_idx到global buffer
+    - 从第0个点到最后一个点，轮流作为中心点base_point，dist_comp将所有点依次从Crd_In_Buffer取出后，与base_point计算出ed，输出到par_sple_sort模块，par_sple_sort计算出的每个点的map，输出out_idx到global buffer
+- 随网络Scaling
+    - Crd_Buffer是用GLB还是内建？Dist_Buffer是内建还是统一？
+        - 取决于有多大？ModelNet40有1024,那最大的S3DIS呢？有15, 000个点，96KB，scanoPart也有2K个点，需要放到GLB，而且可以给SA让位灵活测试
+    - K最大多少？32，即使是S3DIS的最大nsample也是32
+    - FPS层最大？S3DIS XL也才5个
+    - KNN层最大？
 
 
 ## par_sple_sort 端口列表
@@ -119,12 +137,12 @@ sple_sort_core是具体执行上述过滤和排序的模块，输出是经过一
 | clk | input | 1 | clock |
 | rst_n | input | 1 | reset, 低电平有效 |
 | --config-- |
-| in_lp | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
-| in_lp_vld | input | 1 | 握手协议的valid信号 |
-| in_lp_rdy | output | 1 | 握手协议的ready信号 |
-| out_idx | output | IDX_WIDTH\*K_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx组合 |
-| out_idx_vld | output | 1 | 握手协议的valid信号 | 
-| out_idx_rdy | input | 1 | 握手协议的ready信号 |
+| SSCINS_Lop    | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
+| SSCINS_LopVld | input | 1 | 握手协议的valid信号 |
+| SSCINS_LopRdy | output | 1 | 握手协议的ready信号 |
+| INSSSC_Idx    | output | IDX_WIDTH\*K_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx组合 |
+| INSSSC_IdxVld | output | 1 | 握手协议的valid信号 | 
+| INSSSC_IdxRdy | input | 1 | 握手协议的ready信号 |
 
 ## 模块陈述
 insert_sort是插入排序模块，输入的in_lp，包含要排序的点的index和距离，根据距离从小到大对index排序后输出。

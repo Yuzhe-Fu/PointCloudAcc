@@ -15,6 +15,7 @@
         - 内部信号用大驼峰：如WrVld, RdRdy
         - 端口信号用模块到模块_信号名，如CCUGLB_Vld
         - 参数用大写字母
+        - 模块例化用U编号_模块名_功能，如U1_FIFO_CMD
   - module文件格式参考[template.v](hardware/src/primitives/template/template.v)
   - 整体参考[Verilog编程艺术](./hardware/docs/tutorial/0-Verilog编程艺术_compressed.pdf)
   - 备用参考
