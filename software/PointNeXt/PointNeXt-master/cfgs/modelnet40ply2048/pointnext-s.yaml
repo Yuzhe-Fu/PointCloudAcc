@@ -12,7 +12,7 @@ model:
     NAME: PointNextEncoder
     blocks: [1, 1, 1, 1, 1, 1]
     strides: [1, 2, 2, 2, 2, 1]
-    width: 64 #used to be 32
+    width: 32 #used to be 32
     in_channels: 3 
     radius: 0.15
     radius_scaling: 1.5
@@ -31,7 +31,8 @@ model:
     act_args:
       act: 'relu'
     norm_args:
-      norm: 'bn'
+      # norm: 'bn'
+      norm: null
   cls_args: 
     NAME: ClsHead
     num_classes: 40
