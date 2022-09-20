@@ -38,6 +38,6 @@
 |       | 全局缓存GLB       |
 |       | 中央控制CCU       |           
 |       | 适配硬件的算法    | 文档位于software/PointNeXt/readme.md | 9.24前，确定用于跑硬件的网络结构位宽；9.30前提取出硬件输入数据，10.10前自动生成输入数据脚本 |
-|       | 综合及后端        | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ | 10.5初步总体综合，10.15总体综合，11.1第一版后端，11.15终版后端|
+|       | 综合及后端        | 文档位于hardware/work/readme.md，脚本位于 hardware/work/syn/；库及生成文件位于hardware/project/ | 10.5初步总体综合，10.15总体综合，11.1第一版后端，11.15终版后端, 仿真使用TT corner|
 
 
