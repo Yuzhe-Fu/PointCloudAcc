@@ -37,7 +37,8 @@
     | w8a8<br>epoch200 @177     | 8         | 8   | 32      | False        | True      | 200   | 177  | 91.94 	    | 89.38 	|
     | w4a8<br>epoch600 @580     | 4         | 8   | 32      | False        | True      | 600   | 580  | 92.59       | 89.66    	|
     | mix<br>epoch117 @116      |4-1-4      | 8   | 32      | False        | True      | 117   | 116  | 41.53 	    | 27.52 	|
-    | mix<br>epoch600 @584      |44-1-4     | 8   | 32      | False        | True      | 117   | 116  | 41.53 	    | 27.52 	|
+    | mix<br>epoch600 @584      |44-1-4     | 8   | 32      | False        | True      | 600   | 584  | 85.7 	    | 78.57 	|
+    | mix<br>epoch600 @597      |88-1-8     | 8   | 32      | False        | True      | 600   | 597  | 84.36 	    | 75.81 	|
     | ------------------------  | Wei       | Act | Channel | relative_xyz | BatchNorm | Epoch | Best | OA    	    | mAcc  	|
     | Original (C=64)           | 32        | 32  | 64      | True         | True      | 600   | 537  | 93.7+-0.3   | 90.9+-0.5 |
     | full-acu<br>epoch600 @486 | 32        | 32  | 64      | True         | True      | 600   | 486  | 93.44 	    | 90.79 	|
@@ -50,5 +51,6 @@
     *note: <br>
     mix epoch117 @116这一栏中的4-1-4代表，第一层weight4bit，最后一层的最后一个linear用4bit，其余均为1bit
     mix epoch600 @584这一栏中的44-1-4代表，前两层weight4bit，最后一层三个linear用4bit，其余均为1bit
+    感觉mix的都不是很稳定，在训练时的val_oa变化幅度巨大
 
     
