@@ -3,14 +3,14 @@
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
-| pool.v | 顶层模块 |
-| pool_multi_if.v | 多个pooling核读global buffer的接口模块 |
-| pool_core.v | 做pooling的核 |
+| POL.v | 顶层模块 |
+| POL_MIF.v | multiple interface module多个pooling核读global buffer的接口模块 |
+| PLC.v | pool_core做pooling的核 |
 | // pool_out.v | 输出转换模块，多个pooling核写output buffer |
-| pool_comp_core.v | pooling里面具体做计算的核，比如做max, average |
-| pool_arb_net.v | 仲裁多个请求，选出一个请求信息输出，并响应请求 |
-| fifo.v | 通用模块，直接调用 |
-| prior_arb.v | 通用模块，直接调用 |
+| PLCC.v | pool_compute_core, pooling里面具体做计算的核，比如做max, average |
+| PAN.v | pool_arb_net仲裁多个请求，选出一个请求信息输出，并响应请求 |
+| FIFO.v | 通用模块，直接调用 |
+| PARB.v | prior arb通用模块，直接调用 |
 
 # 参数列表
 | Parameters | default | optional | Descriptions |
@@ -31,19 +31,18 @@
 | --config-- |
 | K | input | 24 | 24: KNN, 32: Ball Query |
 | --data-- |
-| pool_idx_vld | input | 1 | 握手协议的valid信号 |
-| pool_idx | input | SRAM_WIDTH | 输入的map idx |
-| pool_idx_rdy | output | 1 | 握手协议的ready信号 |
-| pool_addr_vld | output | 1 | 握手协议的valid信号 |
-| pool_addr | output | IDX_WIDTH\*POOL_CORE | 输出的地址来请求读数据 |
-| pool_addr_rdy | input | 1 | 握手协议的ready信号 |
-| pool_in_fm | input | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | 输入的feature map=fm，同时给6个pool_core |
-| pool_in_fm_vld | input | 1 | 握手协议的valid信号 |
-| pool_in_fm_rdy | output | 1 | 握手协议的ready信号 |
-| pool_out_fm | output | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | pool输出计算结果 |
-| pool_out_fm_vld | output | 1 | 握手协议的valid信号 | 
-| pool_out_fm_rdy | input | 1 | 握手协议的ready信号 |
-| --control-- |
+| GLBPOL_IdxVld  | input | 1 | 握手协议的valid信号 |
+| GLBPOL_Idx      | input | SRAM_WIDTH | 输入的map idx |
+| POLGLB_IdxRdy | output | 1 | 握手协议的ready信号 |
+| POLGLB_AddrVld | output | 1 | 握手协议的valid信号 |
+| POLGLB_Addr | output | IDX_WIDTH\*POOL_CORE | 输出的地址来请求读数据 |
+| GLBPOL_AddrRdy | input | 1 | 握手协议的ready信号 |
+| GLBPOL_Fm | input | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | 输入的feature map=fm，同时给6个pool_core |
+| GLBPOL_Fmld | input | 1 | 握手协议的valid信号 |
+| POLGLB_FmRdy | output | 1 | 握手协议的ready信号 |
+| POLGLB_Fm | output | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | pool输出计算结果 |
+| POLGLB_FmVld | output | 1 | 握手协议的valid信号 | 
+| GLBPOL_FmRdy | input | 1 | 握手协议的ready信号 |
 
 ## 模块陈述
 背景：需要做pooling的整块feature map，均匀分为6块，存于global buffer中。
@@ -52,26 +51,38 @@
 ## pool_core 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
-| clk | input | 1 | clock |
-| rst_n | input | 1 | reset, 低电平有效 |
-| --config-- |
-| K | input | 24 | 24: KNN, 32: Ball Query |
-| --data-- |
-| pool_core_idx_vld | input | 1 | 握手协议的valid信号 |
-| pool_core_idx | input | IDX_WIDTH | 输入的map idx,从pool顶层模块的SRAM_WIDTH位宽的pool_idx分割出来的 |
-| pool_core_idx_rdy | output | 1 | 握手协议的ready信号 |
-| pool_core_addr_vld | output | 1 | 握手协议的valid信号 |
-| pool_core_addr | output | IDX_WIDTH | 输出的地址来请求读数据 |
-| pool_core_addr_rdy | input | 1 | 握手协议的ready信号 |
-| pool_core_in_fm | input | ACT_WIDTH\*POOL_COMP_CORE | 输入的feature map=fm |
-| pool_core_in_fm_vld | input | 1 | 握手协议的valid信号 |
-| pool_core_in_fm_rdy | output | 1 | 握手协议的ready信号 |
-| pool_core_out_fm | output | ACT_WIDTH\*POOL_COMP_CORE | pool输出计算结果 |
-| pool_core_out_fm_vld | output | 1 | 握手协议的valid信号 | 
-| pool_core_out_fm_rdy | input | 1 | 握手协议的ready信号 |
+| clk           | input | 1 | clock |
+| rst_n         | input | 1 | reset, 低电平有效 |
+| K             | input | 24 | 24: KNN, 32: Ball Query |
+| POLPLC_IdxVld | input | 1 | 握手协议的valid信号 |
+| POLPLC_Idx    | input | IDX_WIDTH | 输入的map idx,从pool顶层模块的SRAM_WIDTH位宽的pool_idx分割出来的 |
+| PLCPOL_IdxRdy | output | 1 | 握手协议的ready信号 |
+| PLCPOL_AddrVld| output | 1 | 握手协议的valid信号 |
+| PLCPOL_Addr   | output | IDX_WIDTH | 输出的地址来请求读数据 |
+| POLPLC_AddrRdy| input | 1 | 握手协议的ready信号 |
+| POLPLC_Fm     | input | ACT_WIDTH\*POOL_COMP_CORE | 输入的feature map=fm |
+| POLPLC_FmVld  | input | 1 | 握手协议的valid信号 |
+| PLCPOL_FmRdy  | output | 1 | 握手协议的ready信号 |
+| POLPCL_Fm     | output | ACT_WIDTH\*POOL_COMP_CORE | pool输出计算结果 |
+| POLPCL_FmVld  | output | 1 | 握手协议的valid信号 | 
+| PCLPOL_FmRdy  | input | 1 | 握手协议的ready信号 |
 
 ## 模块陈述
 每个pool_core根据index序列（可以简单理解为取读取用来pooling的feature map中点的地址，序列长度为2^POOL_MAP_DEPTH_WIDTH），依次取index序列中的index，作为地址向multi_if模块请求读取数据，将读取的64个通道数据并行同时送入64个pool_comp_core，计算出64个最大值，当比较完index序列中指向的所有点后，输出到pool_out_fm，拉高pool_out_fm_vld等待被取走后，再比较下一轮index序列中的数；
+
+## pool_comp_core 端口列表
+| Ports | Input/Output | Width | Descriptions |
+| ---- | ---- | ---- | ---- |
+| clk       | input | 1 | clock |
+| rst_n     | input | 1 | reset, 低电平有效 |
+| DatInVld  | input | 1 | 握手协议的valid信号 |
+| DatInLast | input | 1 | 最后一个有效的数 |
+| DatIn     | input | IDX_WIDTH | 输入的map idx,从pool顶层模块的SRAM_WIDTH位宽的pool_idx分割出来的 |
+| DatInRdy  | output | 1 | 握手协议的ready信号 |
+| DatOutVld | output | 1 | 握手协议的valid信号 |
+| DatOut    | output | IDX_WIDTH | 输出的地址来请求读数据 |
+| DatOutRdy | input | 1 | 握手协议的ready信号 |
+
 
 ## multi_if 端口列表
 | Ports | Input/Output | Width | Descriptions |
