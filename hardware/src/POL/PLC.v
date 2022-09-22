@@ -13,71 +13,42 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
-module CCU #(
-    parameter NUM_PEB         = 16,
-    parameter FIFO_ADDR_WIDTH = 6  
+// `include "../source/include/dw_params_presim.vh"
+module PLC #(
+    parameter IDX_WIDTH             = 10,
+    parameter ACT_WIDTH             = 8,
+    parameter POOL_COMP_CORE        = 64,
+    parameter POOL_MAP_DEPTH_WIDTH  = 5
     )(
-    input                               clk                     ,
-    input                               rst_n                   ,
+    input                                       clk           ,
+    input                                       rst_n         ,
 
-K             
-POLPLC_IdxVld 
-POLPLC_Idx    
-output PLCPOL_IdxRdy 
-PLCPOL_AddrVld
-PLCPOL_Addr   
-POLPLC_AddrRdy
-POLPLC_Fm     
-POLPLC_FmVld  
-PLCPOL_FmRdy  
-POLPCL_Fm     
-POLPCL_FmVld  
-PCLPOL_FmRdy  
+    input       [POOL_MAP_DEPTH_WIDTH   -1 : 0] K             ,
+    input                                       POLPLC_IdxVld ,
+    input       [IDX_WIDTH              -1 : 0] POLPLC_Idx    ,
+    output                                      PLCPOL_IdxRdy ,
+    output                                      PLCPOL_AddrVld,
+    output      [IDX_WIDTH              -1 : 0] PLCPOL_Addr   ,
+    input                                       POLPLC_AddrRdy,
+
+    input       [ACT_WIDTH*POOL_COMP_CORE-1 : 0]POLPLC_Fm     ,
+    input                                       POLPLC_FmVld  ,
+    output                                      PLCPOL_FmRdy  ,
+    output      [ACT_WIDTH*POOL_COMP_CORE-1 : 0]PLCPOL_Fm   ,
+    output                                      PLCPOL_FmVld,
+    input                                       POLPLC_FmRdy,
 
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam IDLE     = 3'b000;
-localparam IDX      = 3'b001;
-localparam ADDR     = 3'b010;
-localparam OUTPUT   = 3'b011;
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-
-//=====================================================================================================================
-// Logic Design 1: FSM
-//=====================================================================================================================
-
-reg [ 3     -1 : 0] state       ;
-reg [ 3     -1 : 0] next_state  ;
-always @(*) begin
-    case ( state )
-        IDLE : if( ASICCCU_start)
-                    next_state <= CFG; //A network config a time
-                else
-                    next_state <= IDLE;
-        CFG: if( fifo_full)
-                    next_state <= CMP;
-                else
-                    next_state <= CFG;
-        CMP: if( all_finish) /// CMP_FRM CMP_PAT CMP_...
-                    next_state <= IDLE;
-                else
-                    next_state <= CMP;
-        default: next_state <= IDLE;
-    endcase
-end
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        state <= IDLE;
-    end else begin
-        state <= next_state;
-    end
-end
+wire DatInLast;
+wire overflow, inc_addr, clear_addr;
+wire empty, full;
 
 //=====================================================================================================================
 // Logic Design 2: Addr Gen.
@@ -85,46 +56,62 @@ end
 
 assign DatInLast  = overflow; // & &
 assign inc_addr   = POLPLC_AddrRdy & PLCPOL_AddrVld;
-assign clear_addr = POLPLC_IdxVld  & PLCPOL_IdxRdy ;
-
-assign PLCPOL_IdxRdy  = state == IDX;
-assign PLCPOL_AddrVld = state == ADDR;
-
+assign clear_addr = PLCPOL_FmVld  & POLPLC_FmRdy ;
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 
-PLCC#(
-    .NUM_MAX   ( 64 ),
-    .DATA_WIDTH ( 8 )
+PLCC#(s
+    .NUM_MAX    ( POOL_COMP_CORE),
+    .DATA_WIDTH ( ACT_WIDTH     )
 )U1_PLCC(
-    .clk       ( clk       ),
-    .rst_n     ( rst_n     ),
-    .DatInVld  ( POLPLC_FmVld  ),
-    .DatInLast ( DatInLast ),
-    .DatIn     ( POLPLC_Fm     ),
-    .DatInRdy  ( PLCPOL_FmRdy  ),
-    .DatOutVld ( POLPCL_FmVld ),
-    .DatOut    ( POLPCL_Fm    ),
-    .DatOutRdy  ( PCLPOL_FmRdy  )
+    .clk       ( clk            ),
+    .rst_n     ( rst_n          ),
+    .DatInVld  ( POLPLC_FmVld   ),
+    .DatInLast ( DatInLast      ),
+    .DatIn     ( POLPLC_Fm      ),
+    .DatInRdy  ( PLCPOL_FmRdy   ),
+    .DatOutVld ( PLCPOL_FmVld   ),
+    .DatOut    ( PLCPOL_Fm      ),
+    .DatOutRdy (POLPLC_FmRdy    )
 );
 
 counter#(
-    .COUNT_WIDTH ( 3 )
+    .COUNT_WIDTH ( POOL_MAP_DEPTH_WIDTH )
 )u_counter(
-    .CLK       ( clk       ),
-    .RESET_N   ( rst_n   ),
-    .CLEAR     ( clear_addr     ),
-    .DEFAULT   ( 0   ),
-    .INC       ( inc_addr       ),
+    .CLK       ( clk        ),
+    .RESET_N   ( rst_n      ),
+    .CLEAR     ( clear_addr ),
+    .DEFAULT   ( 0          ),
+    .INC       ( inc_addr   ),
     .DEC       ( 1'b0       ),
-    .MIN_COUNT ( 0 ),
-    .MAX_COUNT ( K-1 ),
-    .OVERFLOW  ( overflow  ),
-    .UNDERFLOW ( UNDERFLOW ),
-    .COUNT     ( addr     )
+    .MIN_COUNT ( 0          ),
+    .MAX_COUNT ( K-1        ),
+    .OVERFLOW  ( overflow   ),
+    .UNDERFLOW (            ),
+    .COUNT     (            )
 );
+
+fifo_fwft#(
+    .INIT       ( "init.mif" ),
+    .DATA_WIDTH ( IDX_WIDTHS ),
+    .ADDR_WIDTH ( POOL_MAP_DEPTH_WIDTH ),
+    .INITIALIZE_FIFO ( "no" )
+)u_fifo_fwft(
+    .clk        ( clk                           ),
+    .Reset      ( 1'b0                          ),
+    .rst_n      ( rst_n                         ),
+    .push       ( POLPLC_IdxVld &  PLCPOL_IdxRdy),
+    .pop        ( PLCPOL_AddrVld & POLPLC_AddrRdy),
+    .data_in    ( POLPLC_Idx                    ),
+    .data_out   ( PLCPOL_Addr                   ),
+    .empty      ( empty                         ),
+    .full       ( full                          ),
+    .fifo_count (                               )
+);
+assign PLCPOL_AddrVld = !empty;
+assign PLCPOL_IdxRdy  = !full;
 
 
 endmodule

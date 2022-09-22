@@ -12,26 +12,26 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
+
 module PLCC #(
     parameter NUM_MAX         = 64,
     parameter DATA_WIDTH      = 8
     )(
-    input                               clk                     ,
-    input                               rst_n                   ,   
-    input   DatInVld ,
-input   DatInLast,
-input   DatIn    ,
-output DatInRdy ,
-output DatOutVld,
-output DatOut   ,
-input DatOutRdy
+    input                                   clk                     ,
+    input                                   rst_n                   ,   
+    input                                   DatInVld ,
+    input                                   DatInLast,
+    input       [DATA_WIDTH*NUM_MAX -1 : 0] DatIn    ,
+    output                                  DatInRdy ,
+    output                                  DatOutVld,
+    output      [DATA_WIDTH*NUM_MAX -1 : 0] DatOut   ,
+    input                                   DatOutRdy
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
 localparam IDLE     = 3'b000;
-localparam CMP      = 3'b001;
+localparam COMP     = 3'b001;
 localparam OUTPUT   = 3'b011;
 
 //=====================================================================================================================
@@ -49,9 +49,9 @@ generate
         always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
                 MaxArray[i] <= 0;
-            end else if ( state == OUTPUT & (next_state == CMP | next_state == IDLE) ) begin
+            end else if ( state == OUTPUT & (next_state == COMP | next_state == IDLE) ) begin
                 MaxArray[i] <= 0;                
-            end else if ( state == CMP & (DatInVld & DatInRdy) ) begin
+            end else if ( state == COMP & (DatInVld & DatInRdy) ) begin
                 MaxArray[i] <= (DatIn > MaxArray[i] )? DatIn : MaxArray[i];
             end
         end
@@ -59,7 +59,7 @@ generate
     end
 endgenerate
 assign DatOutVld = state == OUTPUT;
-
+assign DatInRdy = state == COMP;
 
 //=====================================================================================================================
 // Logic Design 2: Addr Gen.
@@ -69,13 +69,13 @@ reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE : 
-                    next_state <= CMP;
-        CMP: if ( DatInLast & (DatInVld & DatInRdy))
+                    next_state <= COMP;
+        COMP: if ( DatInLast & (DatInVld & DatInRdy))
                     next_state <= OUTPUT;
                 else
-                    next_state <= CMP;
-        OUTPUT: if( DatOutVld & DatOutRdy) /// CMP_FRM CMP_PAT CMP_...
-                    next_state <= CMP;
+                    next_state <= COMP;
+        OUTPUT: if( DatOutVld & DatOutRdy) /// 
+                    next_state <= COMP;
                 else
                     next_state <= OUTPUT;
 

@@ -13,7 +13,7 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 `include "../source/include/dw_params_presim.vh"
-module CCU #(
+module MIF #(
     parameter NUM_PEB         = 16,
     parameter FIFO_ADDR_WIDTH = 6  
     )(
@@ -21,8 +21,18 @@ module CCU #(
     input                               rst_n                   ,
 
     // Configure
-    input                               GBCFG_rdy               , // level
-    output reg                          CFGGB_val               , // level
+input  POLMIF_AddrVld
+input  POLMIF_Addr   
+output MIFPOL_Rdy    
+output MIFGLB_AddrVld
+output MIFGLB_Addr   
+input  GLBMIF_AddrRdy
+input  GLBMIF_Fm     
+input  GLBMIF_FmVld  
+output MIFGLB_FmRdy  
+output MIFPOL_Fm     
+output MIFPOL_FmVld  
+input  MIFPOL_FmRdy  
 
 );
 //=====================================================================================================================
@@ -73,6 +83,7 @@ end
 //=====================================================================================================================
 // Logic Design 2: Addr Gen.
 //=====================================================================================================================
+
 
 
 
