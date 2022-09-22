@@ -1,11 +1,12 @@
-`define CLOCK_PERIOD_ASIC 10
-module RAM_ACT_wrap #(
+module RAM #(
     parameter SRAM_BIT = 128,
     parameter SRAM_BYTE = 1,
     parameter SRAM_WORD = 64,
+    parameter CLOCK_PERIOD = 10,
 
     parameter SRAM_WIDTH = SRAM_BIT*SRAM_BYTE,
     parameter SRAM_DEPTH_BIT = `C_LOG_2(SRAM_WORD)
+
 )(
     input                           clk,
     input                           rst_n,
@@ -28,10 +29,10 @@ wire [ SRAM_BYTE               -1 : 0] WEB;
 wire                                   CSB;
 // delay 1/2 clock period
 `ifdef DELAY_SRAM // Delay for sim
-    assign #(`CLOCK_PERIOD_ASIC/2) A   = Addr;
-    assign #(`CLOCK_PERIOD_ASIC/2) DI  = data_in[SRAM_WIDTH -1 : 0];
-    assign #(`CLOCK_PERIOD_ASIC/2) WEB = ~write_en ? {SRAM_BYTE{1'b1}}: {SRAM_BYTE{1'b0}};
-    assign #(`CLOCK_PERIOD_ASIC/2) CSB = (~write_en)&(~read_en);
+    assign #(`CLOCK_PERIOD/2) A   = Addr;
+    assign #(`CLOCK_PERIOD/2) DI  = data_in[SRAM_WIDTH -1 : 0];
+    assign #(`CLOCK_PERIOD/2) WEB = ~write_en ? {SRAM_BYTE{1'b1}}: {SRAM_BYTE{1'b0}};
+    assign #(`CLOCK_PERIOD/2) CSB = (~write_en)&(~read_en);
 `else
     assign  A   = Addr;
     assign  DI  = data_in[SRAM_WIDTH -1 : 0];
