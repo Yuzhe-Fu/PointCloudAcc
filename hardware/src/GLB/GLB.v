@@ -21,8 +21,31 @@ module GLB #(
     input                               rst_n                   ,
 
     // Configure
-    input                               GBCFG_rdy               , // level
-    output reg                          CFGGB_val               , // level
+input   CCUGLB_CfgPort_BankIdx
+input  CCUGLB_CfgSA_Mod
+output GLBCCU_Bank_fnh 
+output CCUGLB_Bank_rst 
+input  ITFGLB_Dat      
+input  ITFGLB_DatVld   
+output GLBITF_DatRdy   
+output GLBITF_Dat      
+output GLBITF_DatVld   
+input  ITFGLB_DatRdy   
+output GLBSYA_Act      
+output GLBSYA_ActVld   
+input  SYAGLB_ActRdy   
+output GLBSYA_Wgt      
+output GLBSYA_WgtVld   
+input  SYAGLB_WgtRdy   
+input  SYAGLB_Fm       
+input  SYAGLB_FmVld    
+output GLBSYA_FmRdy    
+output GLBPOL_Fm       
+output GLBPOL_FmVld    
+input  POLGLB_FmRdy    
+input  POLGLB_Fm       
+input  POLGLB_FmVld    
+output GLBPOL_FmRdy    
 
 );
 //=====================================================================================================================
@@ -74,26 +97,68 @@ end
 // Logic Design 2: Addr Gen.
 //=====================================================================================================================
 
+wire [ADDR_WIDTH                -1: 0] WrPortAddr_Array[0: NUM_WRPORT -1];
+wire [ADDR_WIDTH                -1: 0] RdPortAddr_Array[0: NUM_RDPORT -1];
+wire [1                         -1: 0] WrPortEn_Array[0  : NUM_WRPORT -1];
+wire [1                         -1: 0] RdPortEn_Array[0  : NUM_RDPORT -1];
+wire [`C_LOG_2(NUM_RDPORT)      -1: 0] BankRdPort[0      : NUM_BANK -1];
+wire [`C_LOG_2(NUM_WRPORT)      -1: 0] BankWrPort[0      : NUM_BANK -1];
+wire [SRAM_WIDTH*MAXPAR      -1: 0] RdPortDat_Array[0      : NUM_RDPORT -1];
+wire [SRAM_WIDTH*MAXPAR      -1: 0] WrPortDat_Array[0      : NUM_WRPORT -1];
 
 
+for(j=0; j)
+wire [`C_LOG_2(NUM_BANK)    -1 : 0] Rel_BankIdx [0: NUM_BANK -1];
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 
-FIFO #(
-    .DATA_WIDTH(PORT_WIDTH ),
-    .ADDR_WIDTH(FIFO_ADDR_WIDTH )
-    ) U1_FIFO_CMD(
-    .clk ( clk ),
-    .rst_n ( rst_n ),
-    .Reset ( 1'b0), 
-    .push(fifo_push) ,
-    .pop(fifo_pop ) ,
-    .data_in( IFCFG_data),
-    .data_out (fifo_out ),
-    .empty(fifo_empty ),
-    .full (fifo_full )
-    );
+genvar i;
+generate
+    for(i=0; i<NUM_BANK; i=i+1) begin: GEN_BANK
+        RAM#(
+                .SRAM_BIT     ( 128 ),
+                .SRAM_BYTE    ( 1 ),
+                .SRAM_WORD    ( 64 ),
+                .CLOCK_PERIOD ( 10 )
+            )U_RAM(
+                .clk          ( clk          ),
+                .rst_n        ( rst_n        ),
+                .addr_r       ( addr_r       ),
+                .addr_w       ( addr_w       ),
+                .read_en      ( read_en      ),
+                .write_en     ( write_en     ),
+                .data_in      ( data_in      ),
+                .data_out     ( data_out     )
+            );
+
+        assign RdAloc = ( (RdPortAddr_Array[BankRdPort[i]] >> SRAM_DEPTH_WIDTH )*RdPortParBank[BankRdPort[i]] == Rel_BankIdx[i]);
+        assign read_en  = RdPortEn_Array[BankRdPort[i]] & RdAloc ;     
+        assign addr_r   = RdPortAddr_Array[BankRdPort[i]]          ;
+
+
+
+        assign WrAloc = ( (WrPortAddr_Array[BankRdPort[i]] >> SRAM_DEPTH_WIDTH )*WrPortParBank[BankRdPort[i]] == Rel_BankIdx[i]);
+        assign write_en = !read_en & WrPortEn_Array[BankWrPort[i]] & WrAloc ;
+        assign addr_w   = WrPortAddr_Array[BankWrPort[i]]          ;
+
+        assign ParIdx  = WrPortNumBank[BankRdPort[i]] % WrPortParBank[BankRdPort[i]];
+        assign data_in = WrPortDat_Array[BankRdPort[i]][SRAM_WIDTH*ParIdx +: SRAM_WIDTH];
+
+    end
+endgenerate
+
+genvar j, k;
+generate
+    for(j=0; j<NUM_RDPORT; j=j+1) begin
+        always @() begin
+            for(k=0; k<RdPortNumBank[j]; k=k+1)
+                if (GEN_BANK[RdPortBank[k]].read_en_d)
+                    RdPortDat_Array[j][SRAM_WIDTH*k +: SRAM_WIDTH] = GEN_BANK[RdPortBank[k]].data_out;
+        end
+endgenerate
+
+
 
 
 endmodule
