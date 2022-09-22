@@ -13,14 +13,14 @@
     - :white_check_mark:weight 4b, activation 8b
     - :white_check_mark:weight 1b, activation 8b
     - :white_check_mark:weight(4b, 1b...1b, 4b) activation 8b
-    - :question:weight(4b, 4b, 1b...1b, 4b, 4b) activation 8b
+    - :question:weight(4b, 4b, 1b...1b, 4b, 4b) activation 8b 已经跑了，精度比较差
 4. :white_check_mark:使用pretrained模型
     - 原汁原味
     - relative=false
 6. :question:去掉Batch Normoralization：（relative=False, C=32）
     - 全精度
     - weight 8b, activation 8b
-7. 剪枝：weight剪枝稀疏度到80%
+7. 剪枝：weight剪枝稀疏度到80% 正在跑~ (๑•̀ㅂ•́)و✧
 8. 探索数据压缩方法
 
     | Type                      | Wei       | Act | Channel | relative_xyz | BatchNorm | Epoch | Best | OA    	    | mAcc  	|
