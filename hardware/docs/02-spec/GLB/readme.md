@@ -20,7 +20,7 @@
 | ADDR_WIDTH | 16 | 128KB/32B=4K, 12|
 
 
-## global_buffer 端口列表
+## GLB (global_buffer) 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | clk                   | input     | 1 | clock |
@@ -86,8 +86,8 @@ FSM： IDLE， CFG，WORK;
                 - 即并行读第几块\*并行度（RdPortParBank）==自身第几块(读写口第几块都一样）：例如(IF_RdAddr>>7)*2 == Rel_BankIdx(reg在配置时，就可以自身第几块用for来遍历判断)
         - 有读不能写：单口SRAM
 - 计算读口数据往哪里去？大选择器取32个地址的哪几个：
-    - 读口划分的是哪些Bank： RdPortBank组，直接片外配置
-    - Bank组里，有哪些是上个周期RdEn为高的，则这个周期就被取出来了
+    - 读口划分的是哪些Bank： RdPortBank组(由配置生成)
+    - Bank组里，有哪些是上个周期RdEn（read_en_d）为高的，则这个周期就被取出来了
 - 每个Bank写口数据从哪里来？
     - 这个Bank分到哪个Port，第几个Bank(Rel_BankIdx), Port总共有多少个Bank Port的并行度WrPortNumBank
     - Port的并行度WrPortParBank
