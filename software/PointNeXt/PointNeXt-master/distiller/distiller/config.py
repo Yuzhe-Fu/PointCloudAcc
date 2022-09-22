@@ -44,6 +44,7 @@ from distiller.regularization import *
 from distiller.learning_rate import *
 from distiller.quantization import *
 from distiller.utils import filter_kwargs
+import pdb
 
 msglogger = logging.getLogger()
 app_cfg_logger = logging.getLogger("app_cfg")
@@ -70,12 +71,18 @@ def dict_config(model, optimizer, sched_dict, scheduler=None, resumed_epoch=None
         for policy_def in sched_dict['policies']:
             policy = None
             if 'pruner' in policy_def:
+                # OrderedDict([('pruner', OrderedDict([('instance_name', 'conv1_pruner')])),
+                # ('starting_epoch', 0),
+                # ('ending_epoch', 2),
+                # ('frequency', 1)])
                 try:
-                    instance_name, args = __policy_params(policy_def, 'pruner')
+                    # pdb.set_trace()
+                    instance_name, args = __policy_params(policy_def, 'pruner') # FIXME the args is none, which is a bug!!!
                 except TypeError as e:
                     print('\n\nFatal Error: a policy is defined with a null pruner')
                     print('Here\'s the policy definition for your reference:\n{}'.format(json.dumps(policy_def, indent=1)))
                     raise
+                # pdb.set_trace()
                 assert instance_name in pruners, "Pruner {} was not defined in the list of pruners".format(instance_name)
                 pruner = pruners[instance_name]
                 policy = distiller.PruningPolicy(pruner, args)

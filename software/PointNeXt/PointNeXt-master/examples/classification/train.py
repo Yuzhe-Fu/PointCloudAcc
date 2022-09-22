@@ -275,9 +275,9 @@ def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
         logging.info(f'Epoch {epoch} LR {lr:.6f} '
                      f'train_oa {train_oa:.2f}, val_oa {val_oa:.2f}, best val oa {best_val:.2f}')
         
-        csv_path = './data/TrainingData/relafalse_bnfalse_ch32_w8a8b8_epo600.csv'
-        csv_list = [lr, train_oa, train_loss, val_oa, val_macc, best_epoch, best_val, macc_when_best]
-        to_csv.to_csv(csv_path, epoch, csv_list)
+        # csv_path = './data/TrainingData/relafalse_bntrue_ch32_w88-1-8a8_epo600.csv'
+        # csv_list = [lr, train_oa, train_loss, val_oa, val_macc, best_epoch, best_val, macc_when_best]
+        # to_csv.to_csv(csv_path, epoch, csv_list)
         
         if writer is not None:
             writer.add_scalar('train_loss', train_loss, epoch)
@@ -383,6 +383,7 @@ def train_one_epoch(model, train_loader, criterion, optimizer, scheduler, epoch,
 
         loss.backward()
         if compression_scheduler:
+            # pdb.set_trace()
             compression_scheduler.before_parameter_optimization(epoch,minibatch_id=idx,minibatches_per_epoch=batch_size,optimizer=optimizer)
 
 
