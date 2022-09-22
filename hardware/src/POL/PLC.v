@@ -1,3 +1,4 @@
+
 // This is a simple example.
 // You can make a your own header file and set its path to settings.
 // (Preferences > Package Settings > Verilog Gadget > Settings - User)
@@ -20,25 +21,33 @@ module CCU #(
     input                               clk                     ,
     input                               rst_n                   ,
 
-    // Configure
-    input                               GBCFG_rdy               , // level
-    output reg                          CFGGB_val               , // level
+K             
+POLPLC_IdxVld 
+POLPLC_Idx    
+output PLCPOL_IdxRdy 
+PLCPOL_AddrVld
+PLCPOL_Addr   
+POLPLC_AddrRdy
+POLPLC_Fm     
+POLPLC_FmVld  
+PLCPOL_FmRdy  
+POLPCL_Fm     
+POLPCL_FmVld  
+PCLPOL_FmRdy  
 
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam IDLE    = 3'b000;
-localparam CFG     = 3'b001;
-localparam CMP     = 3'b010;
-localparam STOP    = 3'b011;
-localparam WAITGBF = 3'b100;
+localparam IDLE     = 3'b000;
+localparam IDX      = 3'b001;
+localparam ADDR     = 3'b010;
+localparam OUTPUT   = 3'b011;
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                                start_cmp                       ;
-wire [ 6                    -1 : 0] MEM_CCUGB_block[0 : NUM_PEB -1 ];
+
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -74,26 +83,48 @@ end
 // Logic Design 2: Addr Gen.
 //=====================================================================================================================
 
+assign DatInLast  = overflow; // & &
+assign inc_addr   = POLPLC_AddrRdy & PLCPOL_AddrVld;
+assign clear_addr = POLPLC_IdxVld  & PLCPOL_IdxRdy ;
+
+assign PLCPOL_IdxRdy  = state == IDX;
+assign PLCPOL_AddrVld = state == ADDR;
 
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 
-FIFO #(
-    .DATA_WIDTH(PORT_WIDTH ),
-    .ADDR_WIDTH(FIFO_ADDR_WIDTH )
-    ) U1_FIFO_CMD(
-    .clk ( clk ),
-    .rst_n ( rst_n ),
-    .Reset ( 1'b0), 
-    .push(fifo_push) ,
-    .pop(fifo_pop ) ,
-    .data_in( IFCFG_data),
-    .data_out (fifo_out ),
-    .empty(fifo_empty ),
-    .full (fifo_full )
-    );
+PLCC#(
+    .NUM_MAX   ( 64 ),
+    .DATA_WIDTH ( 8 )
+)U1_PLCC(
+    .clk       ( clk       ),
+    .rst_n     ( rst_n     ),
+    .DatInVld  ( POLPLC_FmVld  ),
+    .DatInLast ( DatInLast ),
+    .DatIn     ( POLPLC_Fm     ),
+    .DatInRdy  ( PLCPOL_FmRdy  ),
+    .DatOutVld ( POLPCL_FmVld ),
+    .DatOut    ( POLPCL_Fm    ),
+    .DatOutRdy  ( PCLPOL_FmRdy  )
+);
+
+counter#(
+    .COUNT_WIDTH ( 3 )
+)u_counter(
+    .CLK       ( clk       ),
+    .RESET_N   ( rst_n   ),
+    .CLEAR     ( clear_addr     ),
+    .DEFAULT   ( 0   ),
+    .INC       ( inc_addr       ),
+    .DEC       ( 1'b0       ),
+    .MIN_COUNT ( 0 ),
+    .MAX_COUNT ( K-1 ),
+    .OVERFLOW  ( overflow  ),
+    .UNDERFLOW ( UNDERFLOW ),
+    .COUNT     ( addr     )
+);
 
 
 endmodule

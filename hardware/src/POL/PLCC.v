@@ -13,55 +13,76 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 `include "../source/include/dw_params_presim.vh"
-module CCU #(
-    parameter NUM_PEB         = 16,
-    parameter FIFO_ADDR_WIDTH = 6  
+module PLCC #(
+    parameter NUM_MAX         = 64,
+    parameter DATA_WIDTH      = 8
     )(
     input                               clk                     ,
-    input                               rst_n                   ,
-
-    // Configure
-    input                               GBCFG_rdy               , // level
-    output reg                          CFGGB_val               , // level
-
+    input                               rst_n                   ,   
+    input   DatInVld ,
+input   DatInLast,
+input   DatIn    ,
+output DatInRdy ,
+output DatOutVld,
+output DatOut   ,
+input DatOutRdy
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam IDLE    = 3'b000;
-localparam CFG     = 3'b001;
-localparam CMP     = 3'b010;
-localparam STOP    = 3'b011;
-localparam WAITGBF = 3'b100;
+localparam IDLE     = 3'b000;
+localparam CMP      = 3'b001;
+localparam OUTPUT   = 3'b011;
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                                start_cmp                       ;
-wire [ 6                    -1 : 0] MEM_CCUGB_block[0 : NUM_PEB -1 ];
+
+reg [DATA_WIDTH     -1 : 0] MaxArray[0 : NUM_MAX    -1];
+
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
+genvar i;
+generate 
+    for(i=0; i<NUM_MAX; i=i+1) begin
+        always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+                MaxArray[i] <= 0;
+            end else if ( state == OUTPUT & (next_state == CMP | next_state == IDLE) ) begin
+                MaxArray[i] <= 0;                
+            end else if ( state == CMP & (DatInVld & DatInRdy) ) begin
+                MaxArray[i] <= (DatIn > MaxArray[i] )? DatIn : MaxArray[i];
+            end
+        end
+        assign DatOut[DATA_WIDTH*i +: DATA_WIDTH] =  MaxArray[i];
+    end
+endgenerate
+assign DatOutVld = state == OUTPUT;
 
+
+//=====================================================================================================================
+// Logic Design 2: Addr Gen.
+//=====================================================================================================================
 reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE : if( ASICCCU_start)
-                    next_state <= CFG; //A network config a time
-                else
-                    next_state <= IDLE;
-        CFG: if( fifo_full)
+        IDLE : 
                     next_state <= CMP;
-                else
-                    next_state <= CFG;
-        CMP: if( all_finish) /// CMP_FRM CMP_PAT CMP_...
-                    next_state <= IDLE;
+        CMP: if ( DatInLast & (DatInVld & DatInRdy))
+                    next_state <= OUTPUT;
                 else
                     next_state <= CMP;
+        OUTPUT: if( DatOutVld & DatOutRdy) /// CMP_FRM CMP_PAT CMP_...
+                    next_state <= CMP;
+                else
+                    next_state <= OUTPUT;
+
         default: next_state <= IDLE;
     endcase
 end
+
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         state <= IDLE;
@@ -70,30 +91,11 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
-//=====================================================================================================================
-// Logic Design 2: Addr Gen.
-//=====================================================================================================================
-
-
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 
-FIFO #(
-    .DATA_WIDTH(PORT_WIDTH ),
-    .ADDR_WIDTH(FIFO_ADDR_WIDTH )
-    ) U1_FIFO_CMD(
-    .clk ( clk ),
-    .rst_n ( rst_n ),
-    .Reset ( 1'b0), 
-    .push(fifo_push) ,
-    .pop(fifo_pop ) ,
-    .data_in( IFCFG_data),
-    .data_out (fifo_out ),
-    .empty(fifo_empty ),
-    .full (fifo_full )
-    );
 
 
 endmodule

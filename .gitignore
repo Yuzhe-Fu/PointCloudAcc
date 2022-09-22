@@ -40,6 +40,15 @@ software/PointNeXt/PointNeXt-master/wandb
 #      The above part is Yuzhe Fu software part
 #      May Buddha Blesses u~
 #######################################################
+hardware/work/
+hardware/project/
+hardware/vft/
+
+#######################################################
+#      The above part is Yuzhe Fu software part
+#      May Buddha Blesses u~
+#######################################################
+
 
 .svn/
 INCA_libs/

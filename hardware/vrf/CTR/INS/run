@@ -1,0 +1,9 @@
+#!/bin/csh
+
+irun -fsmdebug -access +rwc -sv -64bit +nctimescale+1ns/100ps +override_timescale +notimingchecks +ncno_notifier gui  -f ./filelist.f -l ./log/irun.log
+
+# terminal: csh run
+
+
+
+

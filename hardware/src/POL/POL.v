@@ -12,8 +12,8 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
-module CCU #(
+// `include "../source/include/dw_params_presim.vh"
+module POL #(
     parameter NUM_PEB         = 16,
     parameter FIFO_ADDR_WIDTH = 6  
     )(
