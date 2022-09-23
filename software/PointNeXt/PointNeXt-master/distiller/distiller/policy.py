@@ -27,6 +27,7 @@ import torch.optim.lr_scheduler
 from collections import namedtuple, OrderedDict
 import logging
 import distiller
+import pdb
 
 
 __all__ = ['PruningPolicy', 'RegularizationPolicy', 'QuantizationPolicy', 'LRPolicy', 'ScheduledTrainingPolicy',

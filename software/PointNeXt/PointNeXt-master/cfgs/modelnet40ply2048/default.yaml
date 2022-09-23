@@ -32,7 +32,7 @@ num_classes: 40
 # ---------------------------------------------------------------------------- #
 # this one is better. 
 sched: cosine
-epochs: 600
+epochs: 100
 warmup_epochs: 0
 min_lr: null
 
