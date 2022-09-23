@@ -38,7 +38,7 @@ module GLB #(
     input  wire [NUM_WRPORT                     -1: 0] WrPortDatVld,
     output wire [NUM_WRPORT                     -1: 0] WrPortDatRdy,
     output wire [SRAM_WIDTH*MAXPAR*NUM_RDPORT   -1: 0] RdPortDat,
-    output wire [NUM_RDPORT                     -1: 0] RdPortDatVld,
+    output reg  [NUM_RDPORT                     -1: 0] RdPortDatVld,
     input  wire [NUM_RDPORT                     -1: 0] RdPortDatRdy
 
 );
@@ -54,51 +54,26 @@ localparam WAITGBF = 3'b100;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                                start_cmp                       ;
-wire [ 6                    -1 : 0] MEM_CCUGB_block[0 : NUM_PEB -1 ];
-//=====================================================================================================================
-// Logic Design 1: FSM
-//=====================================================================================================================
-
-reg [ 3     -1 : 0] state       ;
-reg [ 3     -1 : 0] next_state  ;
-always @(*) begin
-    case ( state )
-        IDLE : if( ASICCCU_start)
-                    next_state <= CFG; //A network config a time
-                else
-                    next_state <= IDLE;
-        CFG: if( fifo_full)
-                    next_state <= CMP;
-                else
-                    next_state <= CFG;
-        CMP: if( all_finish) /// CMP_FRM CMP_PAT CMP_...
-                    next_state <= IDLE;
-                else
-                    next_state <= CMP;
-        default: next_state <= IDLE;
-    endcase
-end
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        state <= IDLE;
-    end else begin
-        state <= next_state;
-    end
-end
-
-//=====================================================================================================================
-// Logic Design 2: Addr Gen.
-//=====================================================================================================================
-
 wire [ADDR_WIDTH                -1: 0] WrPortAddr_Array[0: NUM_WRPORT -1];
 wire [ADDR_WIDTH                -1: 0] RdPortAddr_Array[0: NUM_RDPORT -1];
 wire [1                         -1: 0] WrPortEn_Array[0  : NUM_WRPORT -1];
 wire [1                         -1: 0] RdPortEn_Array[0  : NUM_RDPORT -1];
 wire [$clog2(NUM_RDPORT)      -1: 0] BankRdPort[0      : NUM_BANK -1];
 wire [$clog2(NUM_WRPORT)      -1: 0] BankWrPort[0      : NUM_BANK -1];
-wire [SRAM_WIDTH*MAXPAR      -1: 0] RdPortDat_Array[0      : NUM_RDPORT -1];
+reg  [SRAM_WIDTH*MAXPAR      -1: 0] RdPortDat_Array[0      : NUM_RDPORT -1];
 wire [SRAM_WIDTH*MAXPAR      -1: 0] WrPortDat_Array[0      : NUM_WRPORT -1];
+
+
+//=====================================================================================================================
+// Logic Design 1: FSM
+//=====================================================================================================================
+
+
+//=====================================================================================================================
+// Logic Design 2: Addr Gen.
+//=====================================================================================================================
+
+
 // 
 
 for(j=0; j)
@@ -110,32 +85,37 @@ wire [$clog2(NUM_BANK)    -1 : 0] Rel_BankIdx [0: NUM_BANK -1];
 genvar i;
 generate
     for(i=0; i<NUM_BANK; i=i+1) begin: GEN_BANK
-        RAM#(
-                .SRAM_BIT     ( 128 ),
-                .SRAM_BYTE    ( 1 ),
-                .SRAM_WORD    ( 64 ),
-                .CLOCK_PERIOD ( 10 )
-            )U_RAM(
-                .clk          ( clk          ),
-                .rst_n        ( rst_n        ),
-                .addr_r       ( addr_r       ),
-                .addr_w       ( addr_w       ),
-                .read_en      ( read_en      ),
-                .write_en     ( write_en     ),
-                .data_in      ( data_in      ),
-                .data_out     ( data_out     )
-            );
+        RAM_HS#(
+            .SRAM_BIT     ( 128 ),
+            .SRAM_BYTE    ( 1 ),
+            .SRAM_WORD    ( 64 ),
+            .CLOCK_PERIOD ( 10 )
+        )u_RAM_HS(
+            .clk          ( clk          ),
+            .rst_n        ( rst_n        ),
+            .wvalid       ( wvalid       ),
+            .wready       (              ),
+            .waddr        ( waddr        ),
+            .wdata        ( wdata        ),
+            .arvalid      ( arvalid      ),
+            .arready      ( arready      ),
+            .araddr       ( araddr       ),
+            .rvalid       ( rvalid       ),
+            .rready       ( rready       ),
+            .rdata        ( rdata        )
+        );
 
         assign RdAloc = ( (RdPortAddr_Array[BankRdPort[i]] >> SRAM_DEPTH_WIDTH )*RdPortParBank[BankRdPort[i]] == Rel_BankIdx[i]);
-        assign read_en  = RdPortEn_Array[BankRdPort[i]] & RdAloc ;     
-        assign addr_r   = RdPortAddr_Array[BankRdPort[i]]          ;
+        assign arvalid  = RdPortEn_Array[BankRdPort[i]] & RdAloc ;     
+        assign araddr   = RdPortAddr_Array[BankRdPort[i]]          ;
+        assign rready = RdPortDatRdy[BankRdPort[i]];
 
         assign WrAloc = ( (WrPortAddr_Array[BankRdPort[i]] >> SRAM_DEPTH_WIDTH )*WrPortParBank[BankRdPort[i]] == Rel_BankIdx[i]);
-        assign write_en = !read_en & WrPortEn_Array[BankWrPort[i]] & WrAloc ;
-        assign addr_w   = WrPortAddr_Array[BankWrPort[i]]          ;
+        assign wvalid = !arvalid & WrPortEn_Array[BankWrPort[i]] & WrAloc ;
+        assign waddr   = WrPortAddr_Array[BankWrPort[i]]          ;
 
         assign ParIdx  = WrPortNumBank[BankRdPort[i]] % WrPortParBank[BankRdPort[i]];
-        assign data_in = WrPortDat_Array[BankRdPort[i]][SRAM_WIDTH*ParIdx +: SRAM_WIDTH];
+        assign wdata = WrPortDat_Array[BankRdPort[i]][SRAM_WIDTH*ParIdx +: SRAM_WIDTH];
 
     end
 endgenerate
@@ -148,13 +128,31 @@ generate
             RdPortDat_Array[j] = 0;
             RdPortDatVld[j]     = 0;
             for(k=0; k<RdPortNumBank[j]; k=k+1) begin
-                if (GEN_BANK[RdPortBank[k]].read_en_d) begin
-                    RdPortDat_Array[j][SRAM_WIDTH*ByteIdx +: SRAM_WIDTH] = GEN_BANK[RdPortBank[k]].data_out;
+                if (GEN_BANK[RdPortBank[k]].rvalid) begin
+                    RdPortDat_Array[j][SRAM_WIDTH*ByteIdx +: SRAM_WIDTH] = GEN_BANK[RdPortBank[k]].rdata;
                     ByteIdx = ByteIdx + 1;
                     RdPortDatVld[j] = 1;
                 end
             end
         end
+        assign RdPortDat[SRAM_WIDTH*MAXPAR*j +: SRAM_WIDTH*MAXPAR] =  RdPortDat_Array[j];
+
+endgenerate
+
+genvar m, n;
+generate
+    for(m=0; m<NUM_WRPORT; m=m+1) begin
+        always @(*) begin
+            WrPortDatRdy[m] = 0;
+            for(n=0; n<WdPortNumBank[m]; n=n+1) begin
+                if (GEN_BANK[WrPortBank[k]].wvalid) begin
+                    WrPortDatRdy[m] = 1'b1;
+                end
+            end
+        end
+        assign WrPortDat_Array[m] = WrPortDat[SRAM_WIDTH*MAXPAR*m +: SRAM_WIDTH*MAXPAR];
+        assign WrPortEn_Array[m] = WrPortDatVld[m];
+
 endgenerate
 
 
