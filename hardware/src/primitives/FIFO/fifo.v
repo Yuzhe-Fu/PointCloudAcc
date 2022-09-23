@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module fifo_asic
+module FIFO
 #(  // Parameters
     parameter   DATA_WIDTH          = 64,
     parameter   INIT                = "init.mif",

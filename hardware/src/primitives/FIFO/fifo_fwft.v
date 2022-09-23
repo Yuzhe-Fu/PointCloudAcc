@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module fifo_fwft 
+module FIFO_FWFT
 // ******************************************************************
 // Parameters
 // ******************************************************************
@@ -66,13 +66,13 @@ module fifo_fwft
 //-----------------------------------
 // FIFO
 //-----------------------------------
-fifo_asic #(
+FIFO #(
         .DATA_WIDTH         ( DATA_WIDTH   ),
         .ADDR_WIDTH         ( ADDR_WIDTH   ),
         .INIT               ( "init_x.mif" ),
         .INITIALIZE_FIFO    ( "no"         ))
 
-    fifo_buffer(
+    U_FIFO(
         .clk                ( clk           ),  //input
         .rst_n              ( rst_n         ),  //input
         .Reset              ( Reset         ),
