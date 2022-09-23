@@ -25,6 +25,7 @@ from functools import partial
 from .quantization.quantizer import FP_BKP_PREFIX
 from .policy import PolicyLoss, LossComponent
 from .utils import model_device, normalize_module_name
+import pdb
 
 
 __all__ = ["CompressionScheduler", "ParameterMasker", "create_model_masks_dict"]
@@ -164,6 +165,8 @@ class CompressionScheduler(object):
                 continue
             masker = ParameterMasker(name)
             self.zeros_mask_dict[name] = masker
+            #FIXME
+            # self.zeros_mask_dict[name].apply_mask(param)
             # Must Annotate
 			#param.register_hook(partial(masker.apply_mask,is_regularization_mask=True))
         return
@@ -196,10 +199,10 @@ class CompressionScheduler(object):
         try:
             loaded_masks = state['masks_dict']
         except KeyError as exception:
-            msglogger.error('could not load the CompressionScheduler state.'
+            logging.info('could not load the CompressionScheduler state.'
                             ' masks_dict is missing from state')
             with contextlib.suppress(TypeError):
-                msglogger.debug('Scheduler state keys are: {}'.format(', '.join(state)))
+                logging.info('Scheduler state keys are: {}'.format(', '.join(state)))
             raise
 
         if normalize_dataparallel_keys:
@@ -274,7 +277,8 @@ class ParameterMasker(object):
 
     def revert_weights(self, parameter):
         if not self.use_double_copies or self.unmasked_copy is None:
-            msglogger.debug('Parameter {0} does not maintain double copies'.format(self.param_name))
+            # pdb.set_trace()
+            # logging.info('Parameter {0} does not maintain double copies'.format(self.param_name))
             return
         parameter.data.copy_(self.unmasked_copy)
         self.unmasked_copy = None

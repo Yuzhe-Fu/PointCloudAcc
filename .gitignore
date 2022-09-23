@@ -23,6 +23,7 @@
 software/PointNeXt/PointNeXt-master/data
 software/PointNeXt/PointNeXt-master/distiller/*
 !software/PointNeXt/PointNeXt-master/distiller/distiller
+!software/PointNeXt/PointNeXt-master/distiller/myfile
 
 software/PointNeXt/PointNeXt-master/inter_data
 software/PointNeXt/PointNeXt-master/latest_log_dir

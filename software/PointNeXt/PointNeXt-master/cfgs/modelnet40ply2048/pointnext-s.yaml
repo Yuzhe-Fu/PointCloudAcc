@@ -14,7 +14,7 @@ model:
     strides: [1, 2, 2, 2, 2, 1]
     width: 32 #used to be 32
     in_channels: 3 
-    radius: 0.15
+    radius: 0.15 
     radius_scaling: 1.5
     sa_layers: 2
     sa_use_res: True
@@ -31,8 +31,8 @@ model:
     act_args:
       act: 'relu'
     norm_args:
-      # norm: 'bn'
-      norm: null
+      norm: 'bn'
+      # norm: null
   cls_args: 
     NAME: ClsHead
     num_classes: 40
