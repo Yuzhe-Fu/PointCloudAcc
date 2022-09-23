@@ -88,6 +88,7 @@ FSM： IDLE， CFG，WORK;
 - 计算读口数据往哪里去？大选择器取32个地址的哪几个：
     - 读口划分的是哪些Bank： RdPortBank组(由配置生成)
     - Bank组里，有哪些是上个周期RdEn（read_en_d）为高的，则这个周期就被取出来了
+    - 注意，从RdPortRdy(RdPortEn)到RdPortDat会延时一个周期，相当于fifo的pop，vld&rdy取走的同时会再pop出一次相同addr的数据，
 - 每个Bank写口数据从哪里来？
     - 这个Bank分到哪个Port，第几个Bank(Rel_BankIdx), Port总共有多少个Bank Port的并行度WrPortNumBank
     - Port的并行度WrPortParBank

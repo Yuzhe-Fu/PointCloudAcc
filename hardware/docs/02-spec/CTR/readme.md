@@ -78,7 +78,7 @@
     - KNN层最大？
 
 
-## par_sple_sort 端口列表
+## PSS par_sple_sort 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | clk | input | 1 | clock |
@@ -87,18 +87,18 @@
 | cfg_num_in_points | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
 | cfg_num_FPS | input | NUM_FPS_WIDTH | FPS的层数 |
 | cfg_K | input | 24 | KNN需要找出多少个邻近点 |
-| in_mask | input | IDX_WIDTH | FPS输出给KNN的mask |
-| in_mask_vld | input | 1 | 握手协议的valid信号 |
-| in_mask_rdy | output | 1 | 握手协议的ready信号 |
-| in_cp_idx | input | IDX_WIDTH | KNN中心点的index |
-| in_cp_idx_vld | input | 1 | 握手协议的valid信号 |
-| in_cp_idx_rdy | output | 1 | 握手协议的ready信号 |
-| in_lp | input| IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(looped)到的点与中心点的距离，即上述的ed) |
-| in_lp_vld | input | 1 | 握手协议的valid信号 |
-| in_lp_rdy | output | 1 | 握手协议的ready信号 |
-| out_idx | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
-| out_idx_vld | output | 1 | 握手协议的valid信号 | 
-| out_idx_rdy | input | 1 | 握手协议的ready信号 |
+| CTRPSS_Mask       | input | IDX_WIDTH | FPS输出给KNN的mask |
+| CTRPSS_MaskVld    | input | 1 | 握手协议的valid信号 |
+| PSSCTR_MaskRdy    | output| 1 | 握手协议的ready信号 |
+| CTRPSS_CpIdx      | input | IDX_WIDTH | KNN中心点的index |
+| CTRPSS_CpIdxVld   | input | 1 | 握手协议的valid信号 |
+| PSSCTR_CpIdxRdy   | output| 1 | 握手协议的ready信号 |
+| CTRPSS_Lp         | input | IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(l)到的点与中心点的距离，即上述的ed) |
+| CTRPSS_LpVld      | input | 1 | 握手协议的valid信号 |
+| PSSCTR_LpRdy      | output| 1 | 握手协议的ready信号 |
+| PSSCTR_Idx        | output| SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
+| PSSCTR_IdxVld     | output| 1 | 握手协议的valid信号 | 
+| PSSCTR_IdxRdy     | input | 1 | 握手协议的ready信号 |
 
 ## 模块陈述
 - par_sple_sort用于将construct模块输入进来的每个中心点in_cp_idx的邻近点in_lp，经FPS传进来的mask，逐层过滤后，输入到insert_sort排序。
