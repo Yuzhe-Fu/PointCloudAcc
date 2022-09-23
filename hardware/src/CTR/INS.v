@@ -12,7 +12,7 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
+
 module INS #(
     SORT_LEN_WIDTH  = 5                 ,
     IDX_WIDTH       = 10                ,
