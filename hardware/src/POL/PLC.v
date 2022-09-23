@@ -93,12 +93,12 @@ counter#(
     .COUNT     (            )
 );
 
-fifo_fwft#(
+FIFO_FWFT#(
     .INIT       ( "init.mif" ),
     .DATA_WIDTH ( IDX_WIDTHS ),
     .ADDR_WIDTH ( POOL_MAP_DEPTH_WIDTH ),
     .INITIALIZE_FIFO ( "no" )
-)u_fifo_fwft(
+)U_FIFO_FWFT(
     .clk        ( clk                           ),
     .Reset      ( 1'b0                          ),
     .rst_n      ( rst_n                         ),

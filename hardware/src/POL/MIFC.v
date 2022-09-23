@@ -66,12 +66,12 @@ wire                                out_full;
 // Sub-Module :
 //=====================================================================================================================
 
-fifo_fwft#(
+FIFO_FWFT#(
     .INIT       ( "init.mif"                    ),
     .DATA_WIDTH ( $clog2(POOL_CORE) + ACT_WIDTH ),
     .ADDR_WIDTH ( 2                             ),
     .INITIALIZE_FIFO ( "no"                     )
-)U0_fifo_fwft_OUT(
+)U0_FIFO_FWFT_OUT(
     .clk        ( clk                               ),
     .Reset      ( 1'b0                              ),
     .rst_n      ( rst_n                             ),
@@ -87,12 +87,12 @@ fifo_fwft#(
 assign MIFPOL_FmVld = !out_empty;
 assign MIFGLB_FmRdy = !out_full;
 
-fifo_fwft#(
+FIFO_FWFT#(
     .INIT       ( "init.mif"                    ),
     .DATA_WIDTH ( $clog2(POOL_CORE) + IDX_WIDTH ),
     .ADDR_WIDTH ( 2                             ),
     .INITIALIZE_FIFO ( "no"                     )
-)U0_fifo_fwft_CMD(
+)U0_FIFO_FWFT_CMD(
     .clk        ( clk                                                       ),
     .Reset      ( 1'b0                                                      ),
     .rst_n      ( rst_n                                                     ),
