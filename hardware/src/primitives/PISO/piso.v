@@ -1,15 +1,17 @@
 `timescale 1ns/1ps
-module piso
+module PISO 
 #( // INPUT PARAMETERS
     parameter integer DATA_IN_WIDTH  = 64,
     parameter integer DATA_OUT_WIDTH = 16
 )( // PORTS
     input  wire                         CLK,
-    input  wire                         RESET,
-    input  wire                         LOAD,
-    input  wire                         SHIFT,
+    input  wire                         RESET_N,
+    input  wire                         ENABLE,
     input  wire [DATA_IN_WIDTH -1 : 0]  DATA_IN,
-    output wire [DATA_OUT_WIDTH -1 : 0] DATA_OUT
+    output wire                         READY,
+    output wire [DATA_OUT_WIDTH -1 : 0] DATA_OUT,
+    output wire                         OUT_VALID,
+    input  wire                         OUT_READY     
 );
 
 // ******************************************************************
@@ -21,22 +23,37 @@ module piso
 // ******************************************************************
 // WIRES and REGS
 // ******************************************************************
-    reg [DATA_IN_WIDTH -1 : 0]  serial;
+  reg [NUM_SHIFTS -1    : 0]  shift_count;
+  reg [DATA_IN_WIDTH -1 : 0]  serial;
 // ******************************************************************
 
-assign DATA_OUT = serial [DATA_OUT_WIDTH-1:0];
+  assign OUT_VALID = |shift_count;
+  assign READY = !(OUT_VALID);
 
-always @(posedge CLK)
+  assign DATA_OUT = serial [DATA_OUT_WIDTH-1:0];
+
+  always @(posedge CLK or negedge RESET_N)
+  begin: SHIFTER_COUNT
+    if (!RESET_N)
+      shift_count <= 0;
+    else if (ENABLE & READY)
+      shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
+    else if (OUT_VALID & OUT_READY) 
+      shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b0};
+  end
+
+
+always @(posedge CLK or negedge RESET_N)
 begin: DATA_SHIFT
-    if (RESET)
+    if (!RESET_N)
         serial <= 0;
     else begin
-        if (LOAD)
+        if (ENABLE & READY)
             serial <= DATA_IN;
-        else if (SHIFT)
-            //serial <= {{DATA_OUT_WIDTH{1'b0}}, serial[DATA_IN_WIDTH-1:DATA_OUT_WIDTH]};
-            serial <= serial >> DATA_OUT_WIDTH;
+        else if (OUT_VALID & OUT_READY)
+            serial <= {{DATA_OUT_WIDTH{1'b0}}, serial[DATA_IN_WIDTH-1:DATA_OUT_WIDTH]};
     end
 end
+
 
 endmodule
