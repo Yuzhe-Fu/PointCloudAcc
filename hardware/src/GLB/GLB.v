@@ -31,7 +31,7 @@ module GLB #(
     // Configure
     input                                               CCUGLB_CfgVld,
     output                                              GLBCCU_CfgRdy,
-    input [NUM_BANK*(NUM_RDPORT+NUM_WRPORT)     -1 : 0] CCUGLB_CfgPort_BankFlg,
+    input [($clog2(NUM_RDPORT) + $clog2(NUM_WRPORT))* NUM_BANK     -1 : 0] CCUGLB_CfgBankPort,
 
     input [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)   -1 : 0] CCUGLB_CfgPort_AddrMax,
     input [($clog2(MAXPAR) + 1)*NUM_RDPORT      -1 : 0] CCUGLB_CfgRdPortParBank,
@@ -59,7 +59,7 @@ localparam SRAM_DEPTH_WIDTH = $clog2(SRAM_WORD);
 
 localparam IDLE = 3'b000;
 localparam CFG  = 3'b001;
-localparam COMP = 3'b010;
+localparam WORK = 3'b010;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -71,8 +71,6 @@ wire [SRAM_WIDTH*MAXPAR -1 : 0] WrPortDat_Array[0 : NUM_WRPORT -1];
 // Map
 reg [$clog2(NUM_RDPORT) -1 : 0] BankRdPort[0      : NUM_BANK -1];
 reg [$clog2(NUM_WRPORT) -1 : 0] BankWrPort[0      : NUM_BANK -1];
-reg [$clog2(NUM_BANK)   -1 : 0] WrPortBank [0 : NUM_WRPORT -1];
-reg [$clog2(NUM_BANK)   -1 : 0] RdPortBank [0 : NUM_RDPORT -1];
 reg [$clog2(NUM_BANK)   -1 : 0] BankWrPortRelIdx [0: NUM_BANK -1];
 reg [$clog2(NUM_BANK)   -1 : 0] BankRdPortRelIdx [0: NUM_BANK -1];
 
@@ -94,13 +92,13 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CFG: if( CCUGLB_CfgVld &  GLBCCU_CfgRdy)
-                    next_state <= COMP;
+                    next_state <= WORK;
                 else
                     next_state <= CFG;
-        COMP: if( CCUGLB_CfgVld ) /// COMP_FRM COMP_PAT COMP_...
+        WORK: if( CCUGLB_CfgVld ) /// COMP_FRM COMP_PAT COMP_...
                     next_state <= CFG;
                 else
-                    next_state <= COMP;
+                    next_state <= WORK;
         default: next_state <= IDLE;
     endcase
 end
@@ -123,7 +121,6 @@ always @(posedge clk or rst_n) begin
         for(bk=0; bk<NUM_BANK; bk=bk+1) begin
             for(pt=0; pt<NUM_WRPORT; pt=pt+1) begin
                     BankWrPort[bk] < = 0;
-                    WrPortBank[pt] < = 0;
                     WrPortNumBank[pt] <= 0;
                     WrPortParBank[pt] <= 0;
                     BankWrPortRelIdx[bk] <= 0;
@@ -131,7 +128,6 @@ always @(posedge clk or rst_n) begin
             end
             for(pt=NUM_WRPORT; pt<NUM_RDPORT+NUM_WRPORT; pt=pt+1) begin
                     BankRdPort[bk]            <= 0;
-                    RdPortBank[pt-NUM_WRPORT] <= 0;
                     RdPortNumBank[pt-NUM_WRPORT]<= 0;
                     RdPortParBank[pt-NUM_WRPORT] <= 0;
                     BankRdPortRelIdx[bk]      <= 0;
@@ -146,9 +142,8 @@ always @(posedge clk or rst_n) begin
         for(bk=0; bk<NUM_BANK; bk=bk+1) begin
             BankWrPortRelIdx[bk] = 0;
             for(pt=0; pt<NUM_WRPORT; pt=pt+1) begin
-                if (CCUGLB_CfgPort_BankFlg[NUM_BANK*pt+bk])begin
+                if (CCUGLB_CfgBankPort[($clog2(NUM_RDPORT) + $clog2(NUM_WRPORT))*bk +: $clog2(NUM_WRPORT)] == pt)begin
                     BankWrPort[bk] <= pt;
-                    WrPortBank[pt] <= bk;
                     WrPortNumBank[pt] <= WrPortNumBank[pt] + 1;
                     WrPortParBank[pt] <= CCUGLB_CfgWrPortParBank[($clog2(MAXPAR) + 1)*pt +: ($clog2(MAXPAR) + 1)];
                     BankWrPortRelIdx[bk] <= BankWrPortRelIdx + 1;
@@ -156,9 +151,8 @@ always @(posedge clk or rst_n) begin
             end
             BankRdPortRelIdx[bk] = 0;
             for(pt=NUM_WRPORT; pt<NUM_RDPORT+NUM_WRPORT; pt=pt+1) begin
-                if (CCUGLB_CfgPort_BankFlg[NUM_BANK*pt+bk])begin
+                if (CCUGLB_CfgBankPort[($clog2(NUM_RDPORT) + $clog2(NUM_WRPORT))*bk + $clog2(NUM_WRPORT) +: $clog2(NUM_RDPORT)])begin
                     BankRdPort[bk]            <= pt-NUM_WRPORT;
-                    RdPortBank[pt-NUM_WRPORT] <= bk;
                     RdPortNumBank[pt-NUM_WRPORT]<= RdPortNumBank[pt-NUM_WRPORT] + 1;
                     RdPortParBank[pt-NUM_WRPORT] <= CCUGLB_CfgRdPortParBank[($clog2(MAXPAR) + 1)*(pt-NUM_RDPORT +: ($clog2(MAXPAR) + 1)];
                     BankRdPortRelIdx[bk]      <= BankRdPortRelIdx + 1;
@@ -209,13 +203,13 @@ generate
         );
         wire RdAloc;
         assign RdAloc = ( (RdPortAddr_Array[BankRdPort[i]] >> SRAM_DEPTH_WIDTH )*RdPortParBank[BankRdPort[i]] == BankRdPortRelIdx[i]);
-        assign arvalid  = RdPortDatRdy[BankRdPort[i]] & RdAloc & (araddr < waddr) & & (state == COMP);     
+        assign arvalid  = RdPortDatRdy[BankRdPort[i]] & RdAloc & (araddr < waddr) & & (state == WORK);     
         assign araddr   = RdPortAddr_Array[BankRdPort[i]] - SRAM_WORD * BankRdPortRelIdx[i] ; 
         assign rready = RdPortDatRdy[BankRdPort[i]];
 
         wire WrAloc;
         assign WrAloc = ( (WrPortAddr_Array[BankRdPort[i]] >> SRAM_DEPTH_WIDTH )*WrPortParBank[BankRdPort[i]] == BankWrPortRelIdx[i]);
-        assign wvalid = !(arvalid & arready) & WrPortDatVld[BankWrPort[i]] & WrAloc & (state == COMP);
+        assign wvalid = !(arvalid & arready) & WrPortDatVld[BankWrPort[i]] & WrAloc & (state == WORK);
         assign waddr   = WrPortAddr_Array[BankWrPort[i]] - SRAM_WORD * BankWrPortRelIdx[i]        ;
 
         assign ParIdx  = WrPortNumBank[BankRdPort[i]] % WrPortParBank[BankRdPort[i]];
@@ -239,14 +233,16 @@ generate
             RdPortDat_Array[j] = 0;
             RdPortDatVld[j]     = 0;
             INC = 0;
-            for(k=0; k<RdPortNumBank[j]; k=k+1) begin
-                if (GEN_BANK[RdPortBank[k]].rvalid) begin
-                    RdPortDat_Array[j][SRAM_WIDTH*ByteIdx +: SRAM_WIDTH] = GEN_BANK[RdPortBank[k]].rdata;
-                    ByteIdx = ByteIdx + 1;
-                    RdPortDatVld[j] = 1;
-                end
-                if (GEN_BANK[RdPortBank[k]].arvalid & GEN_BANK[RdPortBank[k]].arready) begin
-                    INC = 1'b1;
+            for (bk=0; bk<NUM_BANK; bk=bk+1) begin
+                if (BankRdPort[bk]==j) begin
+                    if (GEN_BANK[bk].rvalid) begin
+                        RdPortDat_Array[j][SRAM_WIDTH*ByteIdx +: SRAM_WIDTH] = GEN_BANK[bk].rdata;
+                        ByteIdx = ByteIdx + 1;
+                        RdPortDatVld[j] = 1;
+                    end
+                    if (GEN_BANK[bk].arvalid & GEN_BANK[bk].arready) begin
+                        INC = 1'b1;
+                    end
                 end
             end
         end
@@ -281,10 +277,13 @@ generate
         always @(*) begin
             WrPortDatRdy[m] = 0;
             INC             = 0;
-            for(n=0; n<WrPortNumBank[m]; n=n+1) begin
-                if (GEN_BANK[WrPortBank[k]].wvalid) begin
-                    WrPortDatRdy[m] = 1'b1;
-                    INC = 1'b1;
+            // for(n=0; n<WrPortNumBank[m]; n=n+1) begin
+            for (bk=0; bk<NUM_BANK; bk=bk+1) begin
+                if (BankWrPort[bk]==m) begin
+                    if (GEN_BANK[bk].wvalid) begin
+                        WrPortDatRdy[m] = 1'b1;
+                        INC = 1'b1;
+                    end
                 end
             end
         end
