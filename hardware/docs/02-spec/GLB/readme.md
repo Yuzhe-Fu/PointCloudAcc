@@ -14,11 +14,12 @@
 | NUM_BANK | 32 |  | SRAM BANK的个数 |
 | IF_WIDTH | 96 | | 接口的位宽，即数据pad个数 |
 | BANK_IDX_WIDTH | LOG2(NUM_BANK) | | SRAM BANK的索引的位宽 |
-| NUM_GLBPORT | 7 | |读写GLB总共口数 |
-|NUM_WRPORT | 3 |
+| NUM_WRPORT | 3 |
 | NUM_RDPORT | 4 |
 | ADDR_WIDTH | 16 | 128KB/32B=4K, 12|
-
+| SRAM_WIDTH |
+| SRAM_WORD  |
+| CLOCK_PERIOD | 
 
 ## GLB (global_buffer) 端口列表
 | Ports | Input/Output | Width | Descriptions |
@@ -26,11 +27,14 @@
 | clk                   | input     | 1 | clock |
 | rst_n                 | input     | 1 | reset, 低电平有效 |
 | --config--            |           | | 顶层模块只分最顶层的东西，跟网络相关的，比如： |
-| CCUGLB_CfgPort_BankFlg| input     | NUM_BANK*NUM_GLBPORT | 每个Port分给读/写Bank是哪些，用1表示分了，0表示未被分，其实是一个矩阵LUT查表 |
-| CCUGLB_CfgSA_Mod      | input     | | 决定act, weight, sa_fm的输出位宽 |
+| CCUGLB_CfgVld | input | SRAM_WIDTH | 
+| GLBCCU_CfgRdy | output | SRAM_WIDTH | 
+| CCUGLB_CfgPort_BankFlg| input     | ($clog2(NUM_RDPORT) + $clog2(NUM_WRPORT))* NUM_BANK | 为每个Bank分配读/写Port是两个， |
 | GLBCCU_Port_fnh       | output    | NUM_RDPORT+NUM_WRPORT | 电平信号，表示读写口读写完了数，后让地址复位, 低位是写，高位是读｜
 | CCUGLB_Port_rst       | output    | NUM_RDPORT+NUM_WRPORT | 电平信号，控制器让读写口的地址复位 |
-| CCUGLB_Port_AddrMax 
+| CCUGLB_CfgPort_AddrMax |input     | 
+| CCUGLB_CfgRdPortParBank|input     | 
+| CCUGLB_CfgWrPortParBank|input     | 
 | ITFGLB_Dat            | input     | IF_WIDTH | IF写入到SRAM的数 |
 | ITFGLB_DatVld         | input     |
 | GLBITF_DatRdy         | output    |
@@ -57,7 +61,7 @@
 # 模块陈述
 **目标是写成通用的多Bank，多读写口的存储模块。**
 将32块单口SRAM Bank并联，封装成32B*32宽，深为128的整个大的SRAM_GB具备自动SRAM读写功能，但需要顶层里面loop来控制地址复位，Bank_finish和Bank_reset信号。读写口统一为多个二维阵列，RdPortDat_Array和WrPortDat_Array，宽度取最大并行度MAXPAR，在综合时会去除掉无用的口。
-FSM： IDLE， CFG，WORK;
+FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于araddrvld和wvalid才有可能有效
 - 写口：
     - 0: IF根据数据类型和其分配的SRAM Bank ID，写入到Bank，位宽  固定为96b转成256b，固定为一个Bank位宽
     - 1: SA写sa_fm  Bank，64B，固定为两个Bank位宽

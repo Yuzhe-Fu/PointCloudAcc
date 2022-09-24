@@ -42,7 +42,7 @@
 | CCUCTR_CfgNip | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
 | CCUCTR_CfgNfl | input | NUM_FPS_WIDTH | FPS的层数 |
 | CCUCTR_CfgNop | IDX_WIDTH |   | FPS筛选出的点数 |
-| CCUCTR_CfgK | input | 24 | KNN需要找出多少个邻近点,最大是32 |
+| CCUCTR_CfgK | input | K_WIDTH | KNN需要找出多少个邻近点,最大是32 |
 | --data-- |
 | GLBCTR_Crd | input | SRAM_WIDTH | 输入的坐标 |
 | GLBCTR_CrdVld | input | 1 | 握手协议的valid信号 |

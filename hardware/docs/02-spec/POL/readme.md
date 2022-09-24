@@ -29,7 +29,7 @@
 | clk | input | 1 | clock |
 | rst_n | input | 1 | reset, 低电平有效 |
 | --config-- |
-| K | input | 24 | 24: KNN, 32: Ball Query |
+| CCUPOL_CfgK | input | 24 | 24: KNN, 32: Ball Query |
 | --data-- |
 | GLBPOL_IdxVld  | input | 1 | 握手协议的valid信号 |
 | GLBPOL_Idx      | input | SRAM_WIDTH | 输入的map idx |
