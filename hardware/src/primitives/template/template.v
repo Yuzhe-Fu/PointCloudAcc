@@ -30,14 +30,14 @@ module CCU #(
 //=====================================================================================================================
 localparam IDLE    = 3'b000;
 localparam CFG     = 3'b001;
-localparam CMP     = 3'b010;
+localparam COMP     = 3'b010;
 localparam STOP    = 3'b011;
 localparam WAITGBF = 3'b100;
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                                start_cmp                       ;
+wire                                start_COMP                       ;
 wire [ 6                    -1 : 0] MEM_CCUGB_block[0 : NUM_PEB -1 ];
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -52,13 +52,13 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CFG: if( fifo_full)
-                    next_state <= CMP;
+                    next_state <= COMP;
                 else
                     next_state <= CFG;
-        CMP: if( all_finish) /// CMP_FRM CMP_PAT CMP_...
+        COMP: if( all_finish) /// COMP_FRM COMP_PAT COMP_...
                     next_state <= IDLE;
                 else
-                    next_state <= CMP;
+                    next_state <= COMP;
         default: next_state <= IDLE;
     endcase
 end
