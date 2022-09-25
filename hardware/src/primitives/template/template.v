@@ -12,7 +12,6 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
 module CCU #(
     parameter NUM_PEB         = 16,
     parameter FIFO_ADDR_WIDTH = 6  
@@ -30,15 +29,14 @@ module CCU #(
 //=====================================================================================================================
 localparam IDLE    = 3'b000;
 localparam CFG     = 3'b001;
-localparam COMP     = 3'b010;
+localparam COMP    = 3'b010;
 localparam STOP    = 3'b011;
 localparam WAITGBF = 3'b100;
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                                start_COMP                       ;
-wire [ 6                    -1 : 0] MEM_CCUGB_block[0 : NUM_PEB -1 ];
+
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -47,19 +45,19 @@ reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE : if( ASICCCU_start)
+        IDLE:   if( ASICCCU_start)
                     next_state <= CFG; //A network config a time
                 else
                     next_state <= IDLE;
-        CFG: if( fifo_full)
+        CFG :   if( fifo_full)
                     next_state <= COMP;
                 else
                     next_state <= CFG;
-        COMP: if( all_finish) /// COMP_FRM COMP_PAT COMP_...
+        COMP:   if( all_finish) /// COMP_FRM COMP_PAT COMP_...
                     next_state <= IDLE;
                 else
                     next_state <= COMP;
-        default: next_state <= IDLE;
+        default:    next_state <= IDLE;
     endcase
 end
 always @ ( posedge clk or negedge rst_n ) begin
@@ -81,18 +79,18 @@ end
 //=====================================================================================================================
 
 FIFO #(
-    .DATA_WIDTH(PORT_WIDTH ),
+    .DATA_WIDTH(PORT_WIDTH      ),
     .ADDR_WIDTH(FIFO_ADDR_WIDTH )
     ) U1_FIFO_CMD(
-    .clk ( clk ),
-    .rst_n ( rst_n ),
-    .Reset ( 1'b0), 
-    .push(fifo_push) ,
-    .pop(fifo_pop ) ,
+    .clk    ( clk       ),
+    .rst_n  ( rst_n     ),
+    .Reset  ( 1'b0      ), 
+    .push   (fifo_push  ) ,
+    .pop    (fifo_pop   ) ,
     .data_in( IFCFG_data),
-    .data_out (fifo_out ),
-    .empty(fifo_empty ),
-    .full (fifo_full )
+    .data_out(fifo_out  ),
+    .empty  (fifo_empty ),
+    .full   (fifo_full  )
     );
 
 
