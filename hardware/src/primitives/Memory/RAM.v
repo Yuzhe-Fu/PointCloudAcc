@@ -5,7 +5,7 @@ module RAM #(
     parameter CLOCK_PERIOD = 10,
 
     parameter SRAM_WIDTH = SRAM_BIT*SRAM_BYTE,
-    parameter SRAM_DEPTH_BIT = `C_LOG_2(SRAM_WORD)
+    parameter SRAM_DEPTH_BIT = $clog2(SRAM_WORD)
 
 )(
     input                           clk,
@@ -29,10 +29,10 @@ wire [ SRAM_BYTE               -1 : 0] WEB;
 wire                                   CSB;
 // delay 1/2 clock period
 `ifdef DELAY_SRAM // Delay for sim
-    assign #(`CLOCK_PERIOD/2) A   = Addr;
-    assign #(`CLOCK_PERIOD/2) DI  = data_in[SRAM_WIDTH -1 : 0];
-    assign #(`CLOCK_PERIOD/2) WEB = ~write_en ? {SRAM_BYTE{1'b1}}: {SRAM_BYTE{1'b0}};
-    assign #(`CLOCK_PERIOD/2) CSB = (~write_en)&(~read_en);
+    assign #(CLOCK_PERIOD/2) A   = Addr;
+    assign #(CLOCK_PERIOD/2) DI  = data_in[SRAM_WIDTH -1 : 0];
+    assign #(CLOCK_PERIOD/2) WEB = ~write_en ? {SRAM_BYTE{1'b1}}: {SRAM_BYTE{1'b0}};
+    assign #(CLOCK_PERIOD/2) CSB = (~write_en)&(~read_en);
 `else
     assign  A   = Addr;
     assign  DI  = data_in[SRAM_WIDTH -1 : 0];
