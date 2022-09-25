@@ -13,7 +13,7 @@ module RAM_HS #(
     parameter CLOCK_PERIOD = 10,
     
     parameter SRAM_WIDTH = SRAM_BIT*SRAM_BYTE,
-    parameter SRAM_DEPTH_BIT = `C_LOG_2(SRAM_WORD)
+    parameter SRAM_DEPTH_BIT = $clog2(SRAM_WORD)
 )(
 	input clk,
 	input rst_n,
@@ -81,5 +81,23 @@ assign rvalid = ram_renc_ff;
 assign rdata = ram_rdata;
 assign arready = rready;
 
+//=====================================================================================================================
+// Sub-Module :
+//=====================================================================================================================
+RAM#(
+    .SRAM_BIT     ( SRAM_BIT ),
+    .SRAM_BYTE    ( SRAM_BYTE ),
+    .SRAM_WORD    ( SRAM_WORD ),
+    .CLOCK_PERIOD ( CLOCK_PERIOD )
+)u_RAM(
+    .clk          ( clk          ),
+    .rst_n        ( rst_n        ),
+    .addr_r       ( ram_raddr       ),
+    .addr_w       ( ram_waddr       ),
+    .read_en      ( ram_renc      ),
+    .write_en     ( ram_wenc     ),
+    .data_in      ( ram_wdata      ),
+    .data_out     ( ram_rdata     )
+);
 
 endmodule
