@@ -30,12 +30,11 @@ module GLB #(
     input                                               rst_n                   ,
 
     // Configure
-    input                                               CCUGLB_CfgVld,
-    output                                              GLBCCU_CfgRdy,
+    input  [NUM_RDPORT+NUM_WRPORT               -1 : 0] CCUGLB_CfgVld,
+    output [NUM_RDPORT+NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy,
 
     input [($clog2(NUM_RDPORT) + $clog2(NUM_WRPORT))* NUM_BANK     -1 : 0] CCUGLB_CfgBankPort,
 
-    input [1*(NUM_RDPORT+NUM_WRPORT)            -1 : 0] CCUGLB_CfgPortMod,
     input [LOOP_WIDTH*NUM_RDPORT                -1 : 0] CCUGLB_CfgRdPortLoop,
     input [LOOP_WIDTH*NUM_WRPORT                -1 : 0] CCUGLB_CfgWrPortLoop,
     input [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)   -1 : 0] CCUGLB_CfgPort_AddrMax,
@@ -44,8 +43,8 @@ module GLB #(
 
 
     // Control
-    output [NUM_RDPORT+NUM_WRPORT               -1 : 0] GLBCCU_Port_fnh ,
-    input  [NUM_RDPORT+NUM_WRPORT               -1 : 0] CCUGLB_Port_rst ,
+    // output [NUM_RDPORT+NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy ,
+    // input  [NUM_RDPORT+NUM_WRPORT               -1 : 0] CCUGLB_CfgVld ,
 
     // Data
     input  wire [SRAM_WIDTH*MAXPAR*NUM_WRPORT   -1: 0] WrPortDat,
@@ -167,7 +166,6 @@ always @(posedge clk or rst_n) begin
     end
 end
 
-assign GLBCCU_CfgRdy = 1'b1;
 
 //=====================================================================================================================
 // Logic Design 3: Bank read and write
@@ -257,7 +255,7 @@ generate
         )u_counter_RdPortAddr(
             .CLK       ( clk                                                            ),
             .RESET_N   ( rst_n                                                          ),
-            .CLEAR     ( CCUGLB_Port_rst[NUM_WRPORT+j] | ( overflow_RdPortAddr &!overflow_RdPortLoop)                                  ),
+            .CLEAR     ( CCUGLB_CfgVld[NUM_WRPORT+j] | ( overflow_RdPortAddr &!overflow_RdPortLoop)                                  ),
             .DEFAULT   ( 0                                                              ),
             .INC       ( INC                                                            ),
             .DEC       ( 1'b0                                                           ),
@@ -272,7 +270,7 @@ generate
         )u_counter_RdLoop(
             .CLK       ( clk                                                            ),
             .RESET_N   ( rst_n                                                          ),
-            .CLEAR     ( CCUGLB_Port_rst[NUM_WRPORT+j]                                 ),
+            .CLEAR     ( CCUGLB_CfgVld[NUM_WRPORT+j]                                 ),
             .DEFAULT   ( 0                                                              ),
             .INC       ( overflow_RdPortAddr                                                            ),
             .DEC       ( 1'b0                                                           ),
@@ -282,7 +280,7 @@ generate
             .UNDERFLOW (                                                                ),
             .COUNT     ( RdPortLoop[j]                                            )
         );
-        assign GLBCCU_Port_fnh[NUM_WRPORT+j] = overflow_RdPortLoop;
+        assign GLBCCU_CfgRdy[NUM_WRPORT+j] = overflow_RdPortLoop;
     end
 
 endgenerate
@@ -314,7 +312,7 @@ generate
         )u_counter(
             .CLK       ( clk                                            ),
             .RESET_N   ( rst_n                                          ),
-            .CLEAR     ( CCUGLB_Port_rst[m] | (CCUGLB_CfgPortMod[m]==1 & overflow_WrPortAddr & !overflow_WrPortLoop) ),
+            .CLEAR     ( CCUGLB_CfgVld[m] | (overflow_WrPortAddr & !overflow_WrPortLoop) ),
             .DEFAULT   ( 0                                              ),
             .INC       ( INC                                            ),
             .DEC       ( 1'b0                                           ),
@@ -329,7 +327,7 @@ generate
         )u_counter_WrLoop(
             .CLK       ( clk                                                            ),
             .RESET_N   ( rst_n                                                          ),
-            .CLEAR     ( CCUGLB_Port_rst[m]                                 ),
+            .CLEAR     ( CCUGLB_CfgVld[m]                                 ),
             .DEFAULT   ( 0                                                              ),
             .INC       ( overflow_WrPortAddr                                                            ),
             .DEC       ( 1'b0                                                           ),
@@ -339,7 +337,7 @@ generate
             .UNDERFLOW (                                                                ),
             .COUNT     ( WrPortLoop[m]                                            )
         );
-        assign GLBCCU_Port_fnh[m] = overflow_WrPortLoop;
+        assign GLBCCU_CfgRdy[m] = overflow_WrPortLoop;
 endgenerate
 
 //=====================================================================================================================
