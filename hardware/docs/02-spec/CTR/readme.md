@@ -12,7 +12,7 @@
 | PSS.v | parallel_sample_sort，并行采样和排序模块 |
 | SSC. v | 采样和排序核 |
 | INS.v | 插入排序模块 |
-| EDC.v | dist_comp欧式距离计算模块 |
+| EDC.v | 欧式dist_comp欧式距离计算模块 |
 | RAM.v | 通用SRAM模块，直接在primitives调用 |
 
 # 参数列表
@@ -37,30 +37,33 @@
 | ---- | ---- | ---- | ---- |
 | clk | input | 1 | clock |
 | rst_n | input | 1 | reset, 低电平有效 |
+| --control-- |
+| CCUCTR_Rst | input | 1 | 整个网络完成后Rst |
 | --config-- |
+| CCUCTR_CfgVld
+| CTRCCU_CfgRdy
 | CCUCTR_CfgMod | input | 1 | 0: 执行FPS，1: 执行KNN |
 | CCUCTR_CfgNip | input | IDX_WIDTH | 第一层输入点的个数，1023表示1024个点 |
-| CCUCTR_CfgNfl | input | NUM_FPS_WIDTH | FPS的层数 |
+<!-- | CCUCTR_CfgNfl | input | NUM_FPS_WIDTH | FPS的层数 | -->
 | CCUCTR_CfgNop | IDX_WIDTH |   | FPS筛选出的点数 |
-| CCUCTR_CfgK | input | K_WIDTH | KNN需要找出多少个邻近点,最大是32 |
+| CCUCTR_CfgK   | input | K_WIDTH | KNN需要找出多少个邻近点,最大是32 |
+
 | --data-- |
-| GLBCTR_Crd | input | SRAM_WIDTH | 输入的坐标 |
-| GLBCTR_CrdVld | input | 1 | 握手协议的valid信号 |
-| GLBCTR_CrdRdy | output | 1 | 握手协议的ready信号 |
-| CTRGLB_CrcAddr | output | ADDR_WIDTH |  |
+| CTRGLB_CrdAddr    | output | ADDR_WIDTH |  |
 | CTRGLB_CrdAddrVld | output | 1 | 握手协议的valid信号 |
 | CTRGLB_CrdAddrRdy | input | 1 | 握手协议的ready信号 |
-
-| GLBCTR_Dist | input | SRAM_WIDTH | 输入的距离 |
-| GLBCTR_DistVld | input | 1 | 握手协议的valid信号 |
-| GLBCTR_DistRdy | output | 1 | 握手协议的ready信号 |
-| CTRGLB_DistAddr | output | ADDR_WIDTH |  |
-| CTRGLB_DistAddrVld | output | 1 | 握手协议的valid信号 |
-| CTRGLB_DistAddrRdy | input | 1 | 握手协议的ready信号 |
-
-| CTRGLB_Idx | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
-| CTRGLB_IdxVld | output | 1 | 握手协议的valid信号 |
-| CTRGLB_IdxRdy | input | 1 | 握手协议的ready信号 |
+| GLBCTR_Crd        | input | SRAM_WIDTH | 输入的坐标 |
+| GLBCTR_CrdVld     | input | 1 | 握手协议的valid信号 |
+| GLBCTR_CrdRdy     | output | 1 | 握手协议的ready信号 |
+| CTRGLB_DistAddr   | output | ADDR_WIDTH |  |
+| CTRGLB_DistAddrVld| output | 1 | 握手协议的valid信号 |
+| CTRGLB_DistAddrRdy| input | 1 | 握手协议的ready信号 |
+| GLBCTR_Dist       | input | SRAM_WIDTH | 输入的距离 |
+| GLBCTR_DistVld    | input | 1 | 握手协议的valid信号 |
+| GLBCTR_DistRdy    | output | 1 | 握手协议的ready信号 |
+| CTRGLB_Idx        | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
+| CTRGLB_IdxVld     | output | 1 | 握手协议的valid信号 |
+| CTRGLB_IdxRdy     | input | 1 | 握手协议的ready信号 |
 
 
 ## 模块陈述

@@ -17,14 +17,14 @@
 | Layer Parameters |
 | 0-2       | 3-34          | 35-66         | 67-82 | 83-94 |   | 96-107| 108:127   | 128:135       | 136:143           | 144:145           | 146: 161      | 162: 177 | 178: 193 |
 | OpCodeCON| DatAddr(32b)   | WgtAddr(32b)  | Nip   | Chi   | 1b| Cho   |quant_scale| quant_shift   | quant_zero_point  | CCUSYA_CfgMod(2b) | WgtAddrRange  |     DatAddrRange | OfmAddrRange | 
-| 0-2       | 2-33          | 66-81         | 82-93 | 
-| OpCodePOL | DatAddr       | Nip           | Chi   |  
+| 0-2       | 3-34          | 35-50         | 51-62 | 63-68 |
+| OpCodePOL | DatAddr       | Nip           | Chi   |  K    |
 | 0-2       | 2-33          | 34-65         | 66-81 | 82-93 | 94-105|
 | OpCodeFC  | DatAddr       | WgtAddr       | Nip   | Chi   | Cho   | 
-| 0-2       | 2-33          | 34-65         | 66-81 | 
+| 0-2       | 3-34          | 35-66         | 67-82 | 
 | OpCodeFPS | Crd_addr      | Ni            | No    | 
-| 0-2       | 2-33          | 34-65         | 66-70 |
-| OpCodeKNN | Idx_addr      | K             |
+| 0-2       | 3-34          | 35-66         | 67-72 |
+| OpCodeKNN | Map_Idx       |  Ni           | K     | 0:表示没有，1-32 |
 
 
 
@@ -41,7 +41,7 @@
 | 0-2 | 2-33 |  34-65 | 66-81 | 
 | OpCode: FPS | Crd_addr: 32b, Base addr of coordinates  | Ni: 16b, # of input points | No: 16b, # of output points | 
 | 0-2 | 2-33 |  34-65 | 66-70 |
-| OpCode: KNN | Idx_addr: 32b, Base addr of Index of KNN Map | K: 5b, # of neghbor points |
+| OpCode: KNN | Map_Idx: 32b, Base addr of Index of KNN Map | K: 5b, # of neghbor points |
 
 | Module Parameters |
 | GLB |
@@ -100,17 +100,18 @@
 | CCUGLB_Port_rst           | output |1
 
 # 模块描述
-CCU是中央控制器，有专门的4bit IO来读指令集
+CCU是中央控制器，有专门的4bit IO来读指令集，负责配置模块和模块的**最顶层控制**（模块内部只要配置能控制的都不要用CCU控制，多少层由CCU控制，CfgVld相当于控制了层的开始，CfgRdy相当于模块反馈结束，再加上整个网络的Rst）
     - 与片外通信：先通过统一接口，从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
     - FSM控制片内：用FSM，t每层输出一次配置，IDLE(芯片启动空状态）->RD_CFG(读取整个网络的参数配置）->->FNH（整个网络计算完成）
         - 转到配置子FSM: IDLE_CFG ->if (ReqCfg)...ARRAY_CFG, CONV_CFG（配置网络一层）， FC....-> 
-    根据模块反馈出FPS、KNN、CONV、POL、FC等层的完成情况，各自取各自下一层的配置
+    根据模块请求FPS、KNN、CONV、POL、FC等层的配置，各自取各自下一层的配置
     - RAM_ISA：
         - 写：每次请求的就是一整个RAM深度的，addr_w是所有层数，是深度的倍数，满深度后，仍然加1，相当于重新写RAM
-        - 读：每种层单独配置，Cfg不同信息归属不同种的层，所有种层的信息连续存到RAM，RAM的宽度就是PORT_WIDTH=96，每个种层有多个PROT_WIDTH的word，深度为64（PointMLP-lite就有43层）每个种层有个地址，根据取到的OpCode确认是否取到相应的配置，否则地址加1，当取完各种层一层的所有word后，完成配置
-    - 。
-    (解析出每个子模块需要执行的每周期的配置的index，用index来取出每个模块每周期的配置)
+        - 读：每种层单独配置，Cfg不同信息归属不同种的层，所有种层的信息连续存到RAM，RAM的宽度就是PORT_WIDTH=96，每个种层有多个PROT_WIDTH的word，深度为64（PointMLP-lite就有43层）
+            - 用FSM直接使能读RAM，用读数中的OpCode确认是否取到相应的种层的配置，否则地址加1，当取完各种层一层的所有word后（当取到配置数为需要的-1且当前取的match时），完成种层的配置
+    - 
     - Debug: 暂未考虑
-# 下一步：回到怎么生成输出？？？？？？再完善细节代码
+# 下一步：回到怎么生成每个输出？？？？？？再完善细节代码，简化逻辑：易懂，功能模块，去除中间冗余信号
+
 
 

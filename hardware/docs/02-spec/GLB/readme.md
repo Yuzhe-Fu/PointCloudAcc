@@ -26,6 +26,8 @@
 | ---- | ---- | ---- | ---- |
 | clk                   | input     | 1 | clock |
 | rst_n                 | input     | 1 | reset, 低电平有效 |
+| --control--            |
+| CCUGLB_Rst            |
 | --config--            |           | | 顶层模块只分最顶层的东西，跟网络相关的，比如： |
 | CCUGLB_CfgVld | input | SRAM_WIDTH | 
 | GLBCCU_CfgRdy | output | SRAM_WIDTH | 

@@ -23,13 +23,19 @@
 | POOL_COMP_CORE | 64 | | pool_core里面有多个做计算的核 |
 
 # 模块详解
-## pooling 端口列表
+## POL 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
 | clk | input | 1 | clock |
 | rst_n | input | 1 | reset, 低电平有效 |
+| --control-- |
+| CCUPOL_Rst |
 | --config-- |
+| CCUPOL_CfgVld | 
+| POLCCU_CfgRdy | 
 | CCUPOL_CfgK | input | 24 | 24: KNN, 32: Ball Query |
+| CCUPOL_CfgNip | input | 
+| CCUPOL_CfgChi | input | 
 | --data-- |
 | GLBPOL_IdxVld  | input | 1 | 握手协议的valid信号 |
 | GLBPOL_Idx      | input | SRAM_WIDTH | 输入的map idx |
@@ -53,7 +59,7 @@
 | ---- | ---- | ---- | ---- |
 | clk           | input | 1 | clock |
 | rst_n         | input | 1 | reset, 低电平有效 |
-| K             | input | POOL_MAP_DEPTH_WIDTH | 24: KNN, 32: Ball Query |
+| CCUPOL_CfgK   | input | POOL_MAP_DEPTH_WIDTH | 24: KNN, 32: Ball Query |
 | POLPLC_IdxVld | input | 1 | 握手协议的valid信号 |
 | POLPLC_Idx    | input | IDX_WIDTH | 输入的map idx,从pool顶层模块的SRAM_WIDTH位宽的pool_idx分割出来的 |
 | PLCPOL_IdxRdy | output | 1 | 握手协议的ready信号 |
