@@ -90,26 +90,46 @@
 | CCUCTR_CfgNfl             | output | NUM_FPS_WIDTH| FPS的层数     |
 | CCUCTR_CfgNop             | output |IDX_WIDTH     |  2            | FPS筛选出原始点数的>> FPS_factor，例如当FPS_factor=1时，>>1表示一半 |
 | CCUCTR_CfgK               | output | K_WIDTH           | KNN/BQ需要找出多少个邻近点 |
-| CCUGLB_CfgVld             | output |1
-| GLBCCU_CfgRdy             | input  |1
+| CCUGLB_CfgVld             | output |NUM_PORT| 每个Port单独配置和使能，vld rdy取代rst和fnh
+| GLBCCU_CfgRdy             | input  |NUM_PORT|
 | CCUGLB_CfgPort_BankFlg    | output |
 | CCUGLB_CfgPort_AddrMax    | output |
 | CCUGLB_CfgRdPortParBank   | output |
 | CCUGLB_CfgWrPortParBank   | output |
-| GLBCCU_Port_fnh           | input  |1
-| CCUGLB_Port_rst           | output |1
+<!-- | GLBCCU_Port_fnh           | input  |1
+| CCUGLB_Port_rst           | output |1 -->
 
 # 模块描述
 CCU是中央控制器，有专门的4bit IO来读指令集，负责配置模块和模块的**最顶层控制**（模块内部只要配置能控制的都不要用CCU控制，多少层由CCU控制，CfgVld相当于控制了层的开始，CfgRdy相当于模块反馈结束，再加上整个网络的Rst）
     - 与片外通信：先通过统一接口，从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
     - FSM控制片内：用FSM，t每层输出一次配置，IDLE(芯片启动空状态）->RD_CFG(读取整个网络的参数配置）->->FNH（整个网络计算完成）
-        - 转到配置子FSM: IDLE_CFG ->if (ReqCfg)...ARRAY_CFG, CONV_CFG（配置网络一层）， FC....-> 
+        - 转到配置子FSM: IDLE_CFG ->接收到Triggerif (ReqCfg)...ARRAY_CFG, CONV_CFG（配置网络一层）， FC....-> 
     根据模块请求FPS、KNN、CONV、POL、FC等层的配置，各自取各自下一层的配置
     - RAM_ISA：
         - 写：每次请求的就是一整个RAM深度的，addr_w是所有层数，是深度的倍数，满深度后，仍然加1，相当于重新写RAM
         - 读：每种层单独配置，Cfg不同信息归属不同种的层，所有种层的信息连续存到RAM，RAM的宽度就是PORT_WIDTH=96，每个种层有多个PROT_WIDTH的word，深度为64（PointMLP-lite就有43层）
             - 用FSM直接使能读RAM，用读数中的OpCode确认是否取到相应的种层的配置，否则地址加1，当取完各种层一层的所有word后（当取到配置数为需要的-1且当前取的match时），完成种层的配置
-    - 
+    - GLB控制：达到单独控制一个Port转移到另一个Bank，需要：
+        - 单独控制到哪个Bank：
+            - 不影响其它Bank：在刷新时，其它的配置信息应该是不变的
+            - 从Bank哪个地址开始读写起止，（IF还有DRAM的读写起止地址）：
+                - 用相应的CfgVld的bit位，是一个脉冲，与SYA_RdPortActBank等信息同时变化。
+        - 配置信息怎么来？
+            - 直接从片外配置的来得出，每个口随层变：但什么时候Port改变呢？**每种层变化时也即取配置时**
+                - 每种层配置port的bank flag，得到如下口的信息，然后assign 给让CCUGLB_CfgBankPort，CCUGLB_CfgPortMod，防止multidriver
+                - SYA_RdPortAct
+                - SYA_RdPortWgt
+                - SYA_WrPortFm
+                - POL_RdPortFm
+                - POL_WrPortFm
+                - ITF_RdPort
+                - ITF_WrPort
+            - 先一步步回溯：
+                - CCUGLB_CfgBankPort：每个口单独配置：
+                    - 对SYA：SYA的mode决定RdPortParBank和WrPortParBank即基数，在知道整个filter数量和ifm的情况下，假设只有loop ifm和loop filter两种情况（由片外配置），固定的项的总量可得到，Loop项的可以是1或多个，RdPortLoop的次数用总数除以Bank量，CCUGLB_CfgPort_AddrMax为Bank数，
+                    - 对IF口：哪里没有了就去哪里，灵活配置
+                    - 对POOL：根据片外配置的Nip和Chi，分配Bank
+                    - 
     - Debug: 暂未考虑
 # 下一步：回到怎么生成每个输出？？？？？？再完善细节代码，简化逻辑：易懂，功能模块，去除中间冗余信号
 
