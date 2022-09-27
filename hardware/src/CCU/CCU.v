@@ -56,10 +56,9 @@ output CCUCTR_CfgNop
 output CCUCTR_CfgK  
 
 output CCUGLB_Rst
-output CCUGLB_CfgVld          
-input  GLBCCU_CfgRdy          
+// output CCUGLB_CfgVld          
+// input  GLBCCU_CfgRdy          
 output CCUGLB_CfgBankPort 
-output CCUGLB_CfgPortMod,
 output CCUGLB_CfgRdPortLoop,
 output CCUGLB_CfgWrPortLoop,
 output CCUGLB_CfgPort_AddrMax 
@@ -128,7 +127,8 @@ always @(*) begin
         POL_CFG :
         FPS_CFG :
         KNN_CFG :
-        default:    next_state <= IDLE;
+        FINISH  : 
+        default :   next_state <= IDLE;
     endcase
 end
 always @ ( posedge clk or negedge rst_n ) begin
@@ -140,19 +140,9 @@ always @ ( posedge clk or negedge rst_n ) begin
 end
 
 //=====================================================================================================================
-// Logic Design 2: GLB Max Addr Gen.
-//=====================================================================================================================
-
-
-
-
-
-
-//=====================================================================================================================
-// Logic Design 3: Cfg Memory Address Gen: input ReqCfg, output AckCfg
+// Logic Design 3: Address of ISA RAM: input ReqCfg, output AckCfg
 //=====================================================================================================================
 // ReqCfg and AckCfg is only for state transfer
-
 
 assign ReqCfgTri[0] =   state == IDLE & next_state == RD_CFG;//localparam OpCode_Array = 3'd0;
 assign ReqCfgTri[1] = ( state == IDLE & next_state == RD_CFG ) | (SYACCU_CfgRdy & !SYACCU_CfgRdy);//localparam OpCode_Conv  = 3'd1;
@@ -210,7 +200,6 @@ generate
 endgenerate
 
 
-
 always @(*) begin
     match = 0;
     addr_r = 0;
@@ -224,7 +213,31 @@ always @(*) begin
     end
 end
 
+//=====================================================================================================================
+// Logic Design 3: ISA RAM Read and Write
+//=====================================================================================================================
+// Write Path
+assign write_en = ITFCCU_DatVld & CCUITF_DatRdy;
+assign CCUITF_DatRdy = state == RD_CFG;
 
+always @(posedge clk or rst_n) begin
+    if (!rst_n) begin
+        addr_w <= 0;
+    end else if (state == IDLE ) begin
+        addr_w <= 0;
+    end else if (write_en ) begin
+        addr_w <= addr_w + 1;
+    end
+end
+
+assign full = addr_w - min(addr[]) == SRAM_WORD_ISA;
+assign empty = addr_w == min(addr[];
+
+// Read Path
+
+//=====================================================================================================================
+// Logic Design 3: ISA Decoder
+//=====================================================================================================================
 assign OpCode == data_out[0 +: 3];
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -248,6 +261,23 @@ always @(posedge clk or negedge rst_n) begin
                 DatAddrRange    <= data_out[66 : 81];
                 OfmAddrRange    <= data_out[82 : 95]; // ?? =97
                 CCUSYA_CfgVld   <= 1'b1;
+            // end else if (cnt_word == 2) begin
+                // GLB Ports
+                SYA_RdPortActBank <= // CCUGLB_CfgBankPort[4, NUM_PORT+4, NUM_PORT*2 + 4...]<= ; // 
+                SYA_RdPortWgtBank <= // CCUGLB_CfgBankPort[5, NUM_PORT+5, NUM_PORT*2 + 5...]<= ; 
+                SYA_WrPortOFmBank  <= // CCUGLB_CfgBankPort[1, NUM_PORT+1, NUM_PORT*2 + 1...]<= ; ????????????????????????????????????
+                SYA_RdPortActMod  <= 
+                SYA_RdPortWgtMod
+                SYA_WrPortOFmMod 
+                SYA_RdPortActLop  <= 
+                SYA_RdPortWgtLop
+                SYA_WrPortOFmLop 
+                SYA_RdPortAct_AddrMax  <= 
+                SYA_RdPortWgt_AddrMax
+                SYA_WrPortOFm_AddrMax 
+                SYA_RdPortActParBank  <= 
+                SYA_RdPortWgtParBank
+                SYA_WrPortOFmParBank 
             end
             if ( CCUSYA_CfgVld & SYACCU_CfgRdy)
                 CCUSYA_CfgVld   <= 1'b0;
@@ -260,23 +290,46 @@ always @(posedge clk or negedge rst_n) begin
 
         end else if (OpCode == OpCode_FPS) begin
                 CCUCTR_CfgMod   <= 1'b0;
-                Crd_addr        <= data_out[3 : 34];
+                Crd_addr        <= data_out[3  : 34];
                 CCUCTR_CfgNip   <= data_out[35 : 66];
                 CCUCTR_CfgNop   <= data_out[67 : 82];
                 
         end else if (OpCode == OpCode_KNN) begin
                 CCUCTR_CfgMod   <= 1'b1;
-                Map_addr        <= data_out[3 : 34];
+                Map_addr        <= data_out[3  : 34];
                 CCUCTR_CfgNip   <= data_out[35 : 66];
                 CCUCTR_CfgK     <= data_out[67 : 72];
         end
     end 
 end
 
+
 //=====================================================================================================================
 // Logic Design 3: SYA Control
 //=====================================================================================================================
-assign CCUSYA_Start = ( state == CONV_CFG | state == FC_CFG ) & next_state == IDLE_CFG; // finish configure
+assign CCUSYA_Rst = state == IDLE;
+assign CCUPOL_Rst = state == IDLE;
+assign CCUCTR_Rst = state == IDLE;
+assign CCUGLB_Rst = state == IDLE;
+
+
+//=====================================================================================================================
+// Logic Design 4: GLB Control
+//=====================================================================================================================
+assign SYA_RdPortActRst  = (read_en_d & OpCode == OpCode_Conv & cnt_word == 2)_d; // Paulse, same with SYA_RdPortActBank;
+assign SYA_RdPortWgtRst ???????????????????????????????????????????????????????????????????????
+assign SYA_WrPortOFmRst 
+
+
+genvar i;
+generate
+    for (i=0; i<NUM_BANK; i=i+1) begin
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 4] = SYA_RdPortActBank[i];
+            assign ???????????????????????????????????????????????????????????????????????
+        end
+endgenerate
+
+
 
 
 //=====================================================================================================================
@@ -284,9 +337,9 @@ assign CCUSYA_Start = ( state == CONV_CFG | state == FC_CFG ) & next_state == ID
 //=====================================================================================================================
 
 RAM#(
-    .SRAM_BIT     ( PORT_WIDTH ),
-    .SRAM_BYTE    ( 1 ),
-    .SRAM_WORD    ( SRAM_WORD_ISA ),
+    .SRAM_BIT     ( PORT_WIDTH   ),
+    .SRAM_BYTE    ( 1            ),
+    .SRAM_WORD    ( SRAM_WORD_ISA),
     .CLOCK_PERIOD ( CLOCK_PERIOD )
 )u_RAM_ISA(
     .clk          ( clk          ),
@@ -295,27 +348,10 @@ RAM#(
     .addr_w       ( addr_w       ),
     .read_en      ( read_en      ),
     .write_en     ( write_en     ),
-    .data_in      ( ITFCCU_Dat      ),
+    .data_in      ( ITFCCU_Dat   ),
     .data_out     ( data_out     )
 );
-// Write Path
-assign write_en = ITFCCU_DatVld & CCUITF_DatRdy;
-assign CCUITF_DatRdy = state == RD_CFG;
 
-always @(posedge clk or rst_n) begin
-    if (!rst_n) begin
-        addr_w <= 0;
-    end else if (state == IDLE ) begin
-        addr_w <= 0;
-    end else if (write_en ) begin
-        addr_w <= addr_w + 1;
-    end
-end
-
-assign full = addr_w - min(addr[]) == SRAM_WORD_ISA;
-assign empty = addr_w == min(addr[];
-
-// Read Path
 
 
 endmodule
