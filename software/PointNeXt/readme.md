@@ -13,7 +13,7 @@
     - :white_check_mark:weight 4b, activation 8b
     - :white_check_mark:weight 1b, activation 8b
     - :white_check_mark:weight(4b, 1b...1b, 4b) activation 8b
-    - :question:weight(4b, 4b, 1b...1b, 4b, 4b) activation 8b
+    - :white_check_mark:weight(4b, 4b, 1b...1b, 4b, 4b) activation 8b
 ===================
 已跑成功，结果在表中，精度较差，稳定性较差
 ===================
@@ -32,7 +32,10 @@
     - 坐标: 按照(x, y, z)各8位组一个word，到Crd.txt
     - activation: 先按点数排阵列个，再按通道排列，存到Act.txt
         - 设变量点数Nip，通道数Chi，阵列行数Row，参考[SYA.excalidraw](hardware/docs/02-spec/SYA\SYA.excalidraw)
-    - weight：设变量点数Cho，通道数Chi，阵列列数Col，操作同act，存到Wgt.txt 
+    - weight：设变量filter个数Cho，通道数Chi，阵列列数Col，操作同act，存到Wgt.txt 
+    - 步骤：
+        - 1. 用hook，存每层的tensor(坐标，act, weight output): <torch.save(tensor, tensor.pth.tar)>
+        - 2. tensor.pth.tar送入到脚本(torch.load(tensor, tensor.pth.tar))
 
     | Type                              | Wei       | Act | Channel | relative_xyz | BatchNorm | Prune | Epoch | Best | OA    	    | mAcc  	|
     |--------------------------         | ---       | --- |-------- |--------------| --------- | ----- | ----- | ---- |-------	    |-------	|
