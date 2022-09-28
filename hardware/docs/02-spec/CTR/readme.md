@@ -49,18 +49,18 @@
 | CCUCTR_CfgK   | input | K_WIDTH | KNN需要找出多少个邻近点,最大是32 |
 
 | --data-- |
-| CTRGLB_CrdAddr    | output | ADDR_WIDTH |  |
+| CTRGLB_CrdAddr    | output | IDX_WIDTH |  |
 | CTRGLB_CrdAddrVld | output | 1 | 握手协议的valid信号 |
-| CTRGLB_CrdAddrRdy | input | 1 | 握手协议的ready信号 |
+| GLBCTR_CrdAddrRdy | input | 1 | 握手协议的ready信号 |
 | GLBCTR_Crd        | input | SRAM_WIDTH | 输入的坐标 |
 | GLBCTR_CrdVld     | input | 1 | 握手协议的valid信号 |
-| GLBCTR_CrdRdy     | output | 1 | 握手协议的ready信号 |
-| CTRGLB_DistAddr   | output | ADDR_WIDTH |  |
+| CTRGLB_CrdRdy     | output | 1 | 握手协议的ready信号 |
+| CTRGLB_DistAddr   | output | IDX_WIDTH |  |
 | CTRGLB_DistAddrVld| output | 1 | 握手协议的valid信号 |
-| CTRGLB_DistAddrRdy| input | 1 | 握手协议的ready信号 |
-| GLBCTR_Dist       | input | SRAM_WIDTH | 输入的距离 |
-| GLBCTR_DistVld    | input | 1 | 握手协议的valid信号 |
-| GLBCTR_DistRdy    | output | 1 | 握手协议的ready信号 |
+| GLBCTR_DistAddrRdy| input | 1 | 握手协议的ready信号 |
+| GLBCTR_DistIdx       | input | SRAM_WIDTH | 输入的距离 |
+| GLBCTR_DistIdxVld    | input | 1 | 握手协议的valid信号 |
+| CTRGLB_DistIdxRdy    | output | 1 | 握手协议的ready信号 |
 | CTRGLB_Idx        | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
 | CTRGLB_IdxVld     | output | 1 | 握手协议的valid信号 |
 | CTRGLB_IdxRdy     | input | 1 | 握手协议的ready信号 |
