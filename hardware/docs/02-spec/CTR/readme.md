@@ -72,7 +72,7 @@
 - FPS
     - 输入点的坐标从global buffer传进来，经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD），写入Crd_In_Buffer后，dist_comp从Crd_In_Buffer，一次取一个点的坐标，如point_n，与base_point（FPS中，base_point是上一次找出的最远点的坐标，KNN中，base_point是当前需要找出邻近点的中心点坐标），计算欧式距离ed_n，然后从Dist_Buffer中取出point_n与上一次FPS点集的距离dist_ps_n，比较出ed_n和dist_ps_n的最小值，作为point_n与上当前FPS点集的距离dist_ps_n，并更新到Dist_Buffer；当前点point_n的dist_ps_n需要与之前点到点集的距离比较出最大值，并更新这个最大值，最大值对应的点的index，和最大值对应的点的坐标；对于固定的base_point，当所有非点集的点遍历完成后，这个最大值的点坐标成为新的base_point，对应的index输出到FPS_out_buffer，让表示1024个点是否有效的mask里面对应的bit位置为1（每次FPS开始时，mask全0）；当FPS选出的点集点数达到所需的点数（由cfg_FPS_factor决定每层倍减）时。
 - KNN
-    - 从第0个点到最后一个点，轮流作为中心点base_point，dist_comp将所有点依次从Crd_In_Buffer取出后，与base_point计算出ed，输出到par_sple_sort模块，par_sple_sort计算出的每个点的map，输出out_idx到global buffer
+    - 从第0个点到最后一个点，轮流作为中心点base_point，dist_comp将所有点依次从Crd_In_Buffer取出后，与base_point计算出ed，有打拍，pipe0是送地址，pipe是把SRAM取来的数存到LopCrd_pipe，直接输出到par_sple_sort模块，par_sple_sort计算出的每个点的map，输出out_idx到global buffer
 - 随网络Scaling
     - Crd_Buffer是用GLB还是内建？Dist_Buffer是内建还是统一？
         - 取决于有多大？ModelNet40有1024,那最大的S3DIS呢？有15, 000个点，96KB，scanoPart也有2K个点，需要放到GLB，而且可以给SA让位灵活测试
