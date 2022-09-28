@@ -85,21 +85,29 @@ FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于a
         - Mode1: 写入的数只被读一次，相当于串入串出的FIFO，addrmax/numbank表圈数
 
 - 计算每个单口Bank的输入地址：地址由各个SRAM Bank的读/写口的选择器生成
-    - 来源：各个GLB读/写口的地址生成器：
-        - CCU根据CCUGLB_CfgPort_BankIdx，控制地址计数器0-多少的地址范围，当达到最大值addrmax时，写等CfgVld重新配置置位，读直接循环
-        - 自己根据能否读/写成功(Port对应的Bank只要有arrvalid & arready握手），控制什么时候INC,CLEAR还有让地址重新有效即启动读写的功能
+    - 来源：用是否分配到读写口来选择来源1和来源2
+        - 来源1. 各个GLB读/写口的地址生成器：
+            - CCU根据CCUGLB_CfgPort_BankIdx，控制地址计数器0-多少的地址范围，当达到最大值addrmax时，写等CfgVld重新配置置位，读直接循环
+            - 自己根据能否读/写成功(Port对应的Bank只要有arrvalid & arready握手），控制什么时候INC,CLEAR还有让地址重新有效即启动读写的功能
+            - **但写地址作为判断读地址，当写口如ITF移走时，写地址是空？？？？？**
+                - 应该换以数据集为中心，分了哪些Bank，分了哪些读写Port吗，如果数据是同一个呢？无所谓？，但与做成通用模块，只定义读写口的个数位宽相违背！
+                - 需要保持读口对应的写地址来判断空满
+                    - 读这一大块Bank应该会保留之前写的地址：但地址不能由每个bank内部产生，需要额外一个表来记录每个Bank的读写地址：当有分到写口时，以写口为准，没有则以表为准
+                    - 在下一次换写的时候被更新
+        - 来源2. 各个Bank各自存储的上一次读写的地址
+        - 使能生成
+            - 有读写请求才读写使能，直接用端口的RdPortDatRdy作为arvalid的一部分，和WrPortDatVld作为wvalid的一部分
+            - 读空写满：
+                - 读：有写入了数才能读：假定读写口分配相同Bank且读写顺序一致，则非空时可以读，即RdEn= !(RdAddr == WrAddr); 且RdAddr=WrAddr，（圈数GLB自己控制，GCCU只负责配置，比如有多少圈，当Mode0时，WrAddr大于最后一个有效地址，当RdAddr也最后一个有效地址时，发出CfgRdy，然后复位0）
+                - 写：有写满的存在(像FIFO），只当串入串出时，RdAddr相差WrAddr一圈
+            - 有读不能写：单口SRAM
     - 选择：
         - 首先是判断是读/写，读优先
         - 分配的读/写口的Port_Idx：由配置的RdPortBank生成
-    - AddrEn
-        - 有读写请求才读写使能，直接用端口的RdPortDatRdy作为arvalid的一部分，和WrPortDatVld作为wvalid的一部分
+    - AddrEn选择
         - Addr的选择器能决定接到口所分配的所有Bank的addr，但不同Bank的En肯定不一样，由Bank所在第几个Bank，和同时读取几个块决定
             - 如分配4个Bank，并行读2个，则第0个bank：是否En=是否读&是否这个Bank是要读的Bank( Wr allocated或Rd allocated)
                 - 即并行读第几块\*并行度（RdPortParBank）==自身第几块(读写口第几块都一样）：例如(IF_RdAddr>>7)*2 == BankRelIdx(reg在配置时，就可以自身第几块用for来遍历判断)
-        - 有读不能写：单口SRAM
-        - 读空写满：
-            - 读：有写入了数才能读：假定读写口分配相同Bank且读写顺序一致，则非空时可以读，即RdEn= !(RdAddr == WrAddr); 且RdAddr=WrAddr，（圈数GLB自己控制，GCCU只负责配置，比如有多少圈，当Mode0时，WrAddr大于最后一个有效地址，当RdAddr也最后一个有效地址时，发出CfgRdy，然后复位0）
-            - 写：有写满的存在(像FIFO），只当串入串出时，RdAddr相差WrAddr一圈
 
 - 计算读口数据往哪里去？大选择器取32个地址的哪几个：
     - 读口划分的是哪些Bank： RdPortBank组(由配置生成)
