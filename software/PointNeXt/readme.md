@@ -20,15 +20,19 @@
 4. :white_check_mark:使用pretrained模型
     - 原汁原味
     - relative=false
-6. :question:去掉Batch Normoralization：（relative=False, C=32）
+6. :white_check_mark:去掉Batch Normoralization：（relative=False, C=32）
     - 全精度
     - weight 8b, activation 8b
-7. 剪枝：weight剪枝稀疏度到80% 
-===================
-已跑成功，结果在表中
-===================
-
 9. 探索数据压缩方法
+    - 剪枝：
+        - :white_check_mark:weight剪枝稀疏度到80% 
+        - sensitivity到平均95%稀疏度
+        - 统计activation的稀疏度
+10. :question: 提取跑硬件每层的数据(hex格式, MSB-LSB，脚本存于HW/scripts，数据存到DRAM文件夹)
+    - 坐标: 按照(x, y, z)各8位组一个word，到Crd.txt
+    - activation: 先按点数排阵列个，再按通道排列，存到Act.txt
+        - 设变量点数Nip，通道数Chi，阵列行数Row，参考[SYA.excalidraw](hardware/docs/02-spec/SYA\SYA.excalidraw)
+    - weight：设变量点数Cho，通道数Chi，阵列列数Col，操作同act，存到Wgt.txt 
 
     | Type                              | Wei       | Act | Channel | relative_xyz | BatchNorm | Prune | Epoch | Best | OA    	    | mAcc  	|
     |--------------------------         | ---       | --- |-------- |--------------| --------- | ----- | ----- | ---- |-------	    |-------	|
