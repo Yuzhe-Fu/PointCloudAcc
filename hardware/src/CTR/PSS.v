@@ -21,20 +21,20 @@ module PSS #(
     parameter SRAM_WIDTH      = 256                 
 
     )(
-input                                   CTRPSS_LopLast  ,
-input                                   CTRPSS_Rst      ,
-input   [2**IDX_WIDTH           -1 : 0] CTRPSS_Mask     ,
-input                                   CTRPSS_MaskVld  ,
-output                                  PSSCTR_MaskRdy  ,
-input   [IDX_WIDTH              -1 : 0] CTRPSS_CpIdx    ,
-// input   CTRPSS_CpIdxVld
-// output  PSSCTR_CpIdxRdy
-input   [IDX_WIDTH+DIST_WIDTH   -1 : 0] CTRPSS_Lop      ,  
-input                                   CTRPSS_LopVld   ,  
-output                                  PSSCTR_LopRdy   ,  
-output  [SRAM_WIDTH             -1 : 0] PSSCTR_Idx      , 
-output                                  PSSCTR_IdxVld   , 
-input                                   PSSCTR_IdxRdy    
+    input                                   CTRPSS_LopLast  ,
+    input                                   CTRPSS_Rst      ,
+    input   [2**IDX_WIDTH           -1 : 0] CTRPSS_Mask     ,
+    input                                   CTRPSS_MaskVld  ,
+    output                                  PSSCTR_MaskRdy  ,
+    input   [IDX_WIDTH              -1 : 0] CTRPSS_CpIdx    ,
+    // input   CTRPSS_CpIdxVld
+    // output  PSSCTR_CpIdxRdy
+    input   [IDX_WIDTH+DIST_WIDTH   -1 : 0] CTRPSS_Lop      ,  
+    input                                   CTRPSS_LopVld   ,  
+    output                                  PSSCTR_LopRdy   ,  
+    output  [SRAM_WIDTH             -1 : 0] PSSCTR_Idx      , 
+    output                                  PSSCTR_IdxVld   , 
+    input                                   PSSCTR_IdxRdy    
 );
 //=====================================================================================================================
 // Constant Definition :
