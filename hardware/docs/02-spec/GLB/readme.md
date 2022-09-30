@@ -83,15 +83,18 @@ FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于a
     - 写
         - Mode0: 一次写的数固定到Bank，循环读，写完发送CfgRdy到CCU，读完，CCU再会发送CfgVld重新
         - Mode1: 写入的数只被读一次，相当于串入串出的FIFO，addrmax/numbank表圈数
-
+- 配置：
+    - 由于需要不中断其它口实时动态配置Bank，因此CCU给GLB的所有配置和控制信号需要同一个周期变，
+    - 而且给Bank都要是reg信号
+    - 因此把CfgVld和CfgInfo，组合逻辑从原始配置生成**所有**需要的控制的信号，再统一打一拍（后面再加上输出的控制reg）
 - 计算每个单口Bank的输入地址：地址由各个SRAM Bank的读/写口的选择器生成
     - 来源：用是否分配到读写口来选择来源1和来源2
         - 来源1. 各个GLB读/写口的地址生成器：
             - CCU根据CCUGLB_CfgPort_BankIdx，控制地址计数器0-多少的地址范围，当达到最大值addrmax时，写等CfgVld重新配置置位，读直接循环
             - 自己根据能否读/写成功(Port对应的Bank只要有arrvalid & arready握手），控制什么时候INC,CLEAR还有让地址重新有效即启动读写的功能
-            - **但写地址作为判断读地址，当写口如ITF移走时，写地址是空？？？？？**
-                - 应该换以数据集为中心，分了哪些Bank，分了哪些读写Port吗，如果数据是同一个呢？无所谓？，但与做成通用模块，只定义读写口的个数位宽相违背！
-                - 需要保持读口对应的写地址来判断空满
+            - 但写地址作为判断读地址，当写口如ITF移走时，写地址是空：
+                <!-- - 应该换以数据集为中心，分了哪些Bank，分了哪些读写Port吗，如果数据是同一个呢？无所谓？，但与做成通用模块，只定义读写口的个数位宽相违背！ -->
+                - 每个Bank需要保持读口对应的写地址来判断空满
                     - 读这一大块Bank应该会保留之前写的地址：但地址不能由每个bank内部产生，需要额外一个表来记录每个Bank的读写地址：当有分到写口时，以写口为准，没有则以表为准
                     - 在下一次换写的时候被更新
         - 来源2. 各个Bank各自存储的上一次读写的地址
@@ -116,7 +119,7 @@ FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于a
 - 每个Bank写口数据从哪里来？
     - 这个Bank分到哪个Port，第几个Bank(BankRelIdx), Port总共有多少个Bank Port的并行度WrPortNumBank
     - Port的并行度WrPortParBank
-    - = PortDat_Arry[][ParIdx], ParIdx=WrPortNumBank % WrPortParBank, 表示Port并行写时，Port里第几个SRAM_WIDTH的数据的位置
+    - = PortDat_Arry[][ParIdx], BankWrPortParIdx, 表示Port并行写时，Port里第几个SRAM_WIDTH的数据的位置，是0, 1,..到WrPortParBank-1的循环，BankWrPortRelIdx是处于第几个循环
 - 多个Bank怎么实现同时读写？
     - 因为同一数据类型，读写分的Bank块组是相同的，可以控制En，使得写完第一块后，**同时读第一块和写第二块。**
 - 通用模块的SRAM输出怎么打拍？师姐没有刻意打拍
