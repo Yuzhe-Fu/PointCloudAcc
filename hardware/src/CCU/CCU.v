@@ -56,16 +56,12 @@ output CCUCTR_CfgNop
 output CCUCTR_CfgK  
 
 output CCUGLB_Rst
-// output CCUGLB_CfgVld          
-// input  GLBCCU_CfgRdy          
+output CCUGLB_CfgVld          
+input  GLBCCU_CfgRdy          
 output CCUGLB_CfgBankPort 
-output CCUGLB_CfgRdPortLoop,
-output CCUGLB_CfgWrPortLoop,
 output CCUGLB_CfgPort_AddrMax 
 output CCUGLB_CfgRdPortParBank
-output CCUGLB_CfgWrPortParBank
-input  GLBCCU_Port_fnh        
-output CCUGLB_Port_rst        
+output CCUGLB_CfgWrPortParBank      
 
 );
 //=====================================================================================================================
@@ -266,12 +262,6 @@ always @(posedge clk or negedge rst_n) begin
                 SYA_RdPortActBank <= // CCUGLB_CfgBankPort[4, NUM_PORT+4, NUM_PORT*2 + 4...]<= ; // 
                 SYA_RdPortWgtBank <= // CCUGLB_CfgBankPort[5, NUM_PORT+5, NUM_PORT*2 + 5...]<= ; 
                 SYA_WrPortOFmBank  <= // CCUGLB_CfgBankPort[1, NUM_PORT+1, NUM_PORT*2 + 1...]<= ; ????????????????????????????????????
-                SYA_RdPortActMod  <= 
-                SYA_RdPortWgtMod
-                SYA_WrPortOFmMod 
-                SYA_RdPortActLop  <= 
-                SYA_RdPortWgtLop
-                SYA_WrPortOFmLop 
                 SYA_RdPortAct_AddrMax  <= 
                 SYA_RdPortWgt_AddrMax
                 SYA_WrPortOFm_AddrMax 
@@ -286,6 +276,12 @@ always @(posedge clk or negedge rst_n) begin
                 CCUPOL_CfgNip   <= data_out[35 : 50];
                 CCUPOL_CfgChi   <= data_out[51 : 62];// 
                 CCUPOL_CfgK     <= data_out[63 : 68];// 
+                POL_RdPortOfmBank <= 
+                POL_WrPortOfmBank <=
+                POL_RdPortOfm_AddrMax <= 
+                POL_WrPortOfm_AddrMax <=
+                POL_RdPortOfmBank_AddrMax <= 
+                POL_WrPortOfmBank_AddrMax <=
         // end else if (OpCode == OpCode_FC) begin
 
         end else if (OpCode == OpCode_FPS) begin
@@ -317,19 +313,23 @@ assign CCUGLB_Rst = state == IDLE;
 // Logic Design 4: GLB Control
 //=====================================================================================================================
 assign SYA_RdPortActRst  = (read_en_d & OpCode == OpCode_Conv & cnt_word == 2)_d; // Paulse, same with SYA_RdPortActBank;
-assign SYA_RdPortWgtRst ???????????????????????????????????????????????????????????????????????
-assign SYA_WrPortOFmRst 
+assign SYA_RdPortWgtRst  = SYA_RdPortActRst;
+assign SYA_WrPortOFmRst  = SYA_RdPortActRst;
 
 
 genvar i;
 generate
-    for (i=0; i<NUM_BANK; i=i+1) begin
-            assign CCUGLB_CfgBankPort[i*NUM_PORT + 4] = SYA_RdPortActBank[i];
-            assign ???????????????????????????????????????????????????????????????????????
+    for (i=0; i<NUM_BANK; i=i+1) begin 
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 0] = ITF_WrPortDatBank[i];     CCU Control, Not Configuration       ???????????????????????????????????????????????????????????????????????
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 1] = SYA_WrPortOfmBank[i];
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 2] = POL_WrPortOfmBank[i];
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 3] = ITF_RdPortDatBank[i];
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 4] = SYA_RdPortActBank[i];// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 5] = SYA_RdPortWgtBank[i];
+            assign CCUGLB_CfgBankPort[i*NUM_PORT + 6] = POL_RdPortOfmBank[i];
+
         end
 endgenerate
-
-
 
 
 //=====================================================================================================================
