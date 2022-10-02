@@ -31,32 +31,10 @@
 | --config--            |           | | 顶层模块只分最顶层的东西，跟网络相关的，比如： |
 | CCUGLB_CfgVld | input | NUM_PORT | 每个Port单独配置和使能，vld rdy取代rst和fnh, 重置Port所有信号
 | GLBCCU_CfgRdy | output | NUM_PORT | 表示读写口完成配置的addrmax次读写
-| CCUGLB_CfgBankPort| input     | ($clog2(NUM_RDPORT) + $clog2(NUM_WRPORT))* NUM_BANK | 为每个Bank分配读/写Port是两个，1表示有分到，也表示Port是否有效 |
+| CCUGLB_CfgBankPort| input     | (NUM_RDPORT + NUM_WRPORT)* NUM_BANK | 为每个Bank分配读/写Port是两个，1表示有分到，也表示Port是否有效 |
 | CCUGLB_CfgPort_AddrMax |input     | 
 | CCUGLB_CfgRdPortParBank|input     | 
 | CCUGLB_CfgWrPortParBank|input     | 
-<!-- | ITFGLB_Dat            | input     | IF_WIDTH | IF写入到SRAM的数 |
-| ITFGLB_DatVld         | input     |
-| GLBITF_DatRdy         | output    |
-| GLBITF_Dat            | output    |
-| GLBITF_DatVld         | output    |
-| ITFGLB_DatRdy         | input     |
-| GLBSYA_Act            | output    |
-| GLBSYA_ActVld         | output    |
-| SYAGLB_ActRdy         | input     |
-| GLBSYA_Wgt            | output    |
-| GLBSYA_WgtVld         | output    |
-| SYAGLB_WgtRdy         | input     |
-| SYAGLB_Fm             | input     |
-| SYAGLB_FmVld          | input     |
-| GLBSYA_FmRdy          | output    |
-| GLBPOL_Fm             | output    |
-| GLBPOL_FmVld          | output    |
-| POLGLB_FmRdy          | input     |
-| POLGLB_Fm             | input     |
-| POLGLB_FmVld          | input     |
-| GLBPOL_FmRdy          | output    | -->
-
 
 # 模块陈述
 **目标是写成通用的多Bank，多读写口的存储模块。**
@@ -125,7 +103,7 @@ FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于a
 - 通用模块的SRAM输出怎么打拍？师姐没有刻意打拍
 
 # 下一步
-- 合并读写的generate
+
 
 
  
