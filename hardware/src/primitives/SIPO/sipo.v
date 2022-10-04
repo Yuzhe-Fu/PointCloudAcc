@@ -1,24 +1,24 @@
-`timescale 1ns/100ps
-`include "../source/include/dw_params_presim.vh"
-module sipo
+
+module SIPO
 #( // INPUT PARAMETERS
     parameter  DATA_IN_WIDTH  = 16,
     parameter  DATA_OUT_WIDTH = 64
 )( // PORTS
-    input  wire                         clk,
-    input  wire                         rst_n,
-    input  wire                         enable,
-    input  wire [DATA_IN_WIDTH -1 : 0]  data_in,
-    output wire                         ready,
-    output wire [DATA_OUT_WIDTH -1 : 0] data_out,
-    output wire                         out_valid
+    input  wire                         CLK,
+    input  wire                         RST_N,
+    input  wire                         ENABLE,
+    input  wire [DATA_IN_WIDTH -1 : 0]  DATA_IN,
+    output wire                         IN_READY,
+    output wire [DATA_OUT_WIDTH -1 : 0] DATA_OUT,
+    output wire                         OUT_VALID,
+    input  wire                         OUT_READY
 );
 
 // ******************************************************************
 // LOCALPARAMS
 // ******************************************************************
     localparam integer NUM_SHIFTS = DATA_OUT_WIDTH / DATA_IN_WIDTH;
-    localparam integer SHIFT_COUNT_WIDTH = `C_LOG_2(NUM_SHIFTS)+1;
+    localparam integer SHIFT_COUNT_WIDTH = $clog2(NUM_SHIFTS)+1;
 // ******************************************************************
 
 // ******************************************************************
@@ -30,44 +30,36 @@ module sipo
 // ******************************************************************
 wire   parallel_load_d;
     assign parallel_load = shift_count == NUM_SHIFTS;
-    assign ready = 1'b1;
-    assign out_valid = !parallel_load_d && parallel_load;
-    assign data_out = shift;
+    assign IN_READY = !OUT_VALID | (OUT_VALID & OUT_READY);
+    assign OUT_VALID = parallel_load;
+    assign DATA_OUT = shift;
 
-    always @(posedge clk or negedge rst_n)
+    always @(posedge CLK or negedge RST_N)
     begin: SHIFTER_COUNT
-      if (!rst_n)
+      if (!RST_N)
         shift_count <= 0;
       else
       begin
-        if (enable && !out_valid)
+        if ( (ENABLE & IN_READY) && !OUT_VALID)
           shift_count <= shift_count + 1;
-        else if (enable && out_valid)
+        else if ( (ENABLE& IN_READY) && (OUT_VALID & OUT_READY) )
           shift_count <= 1;
-        else if (out_valid)
+        else if (OUT_VALID & OUT_READY)
           shift_count <= 0;
       end
     end
 
-    always @(posedge clk or negedge rst_n)
+    always @(posedge CLK or negedge RST_N)
     begin: DATA_SHIFT
-      if (!rst_n)
+      if (!RST_N)
         shift <= 0;
-      else if (enable) begin
+      else if (ENABLE & IN_READY) begin
         if (DATA_OUT_WIDTH == DATA_IN_WIDTH)
-          shift <={data_in};
+          shift <={DATA_IN};
         else
-          shift <= {data_in, shift[DATA_OUT_WIDTH-1:DATA_IN_WIDTH]};
+          shift <= {DATA_IN, shift[DATA_OUT_WIDTH-1:DATA_IN_WIDTH]};
       end
     end
 
-    Delay #(
-    .NUM_STAGES               ( 1                        )
-    ) push_delay (
-    .CLK                      ( clk                      ),
-    .RESET_N                    ( rst_n                 ),
-    .DIN                      ( parallel_load            ),
-    .DOUT                     ( parallel_load_d          )
-    );
 
 endmodule
