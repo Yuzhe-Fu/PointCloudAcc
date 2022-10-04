@@ -42,14 +42,17 @@
 FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于araddrvld和wvalid才有可能有效
 
 - 写口：
-    - 0: IF根据数据类型和其分配的SRAM Bank ID，写入到Bank，位宽  固定为96b转成256b，固定为一个Bank位宽
-    - 1: SA写sa_fm  Bank，64B，固定为两个Bank位宽
-    - 2: POOL写pool_fm
+    - 0: IF写Act
+    - 1: IF写Wgt
+    - 2: SA写sa_fm  Bank，64B，固定为两个Bank位宽
+    - 3: POOL写pool_fm
 - 读口：
-    - 3: IF读
-    - 4: SA读sa_fm(act/ofm)
-    - 5: SA读weight
-    - 6: POOL读sa_fm，固定为64B*6，12个Bank位宽
+    - 4: IF读MAP
+    - 5: IF读ofm
+    - 6: SA读sa_fm(act/ofm)
+    - 7: SA读weight
+    - 8: POOL读sa_fm，固定为64B*6，12个Bank位宽
+
 
 - 存的数据类型：
     - activation
