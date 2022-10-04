@@ -1,8 +1,8 @@
-`timescale 1ns/1ps
+
 module PISO 
 #( // INPUT PARAMETERS
-    parameter integer DATA_IN_WIDTH  = 64,
-    parameter integer DATA_OUT_WIDTH = 16
+    parameter DATA_IN_WIDTH  = 64,
+    parameter DATA_OUT_WIDTH = 16
 )( // PORTS
     input  wire                         CLK,
     input  wire                         RESET_N,
