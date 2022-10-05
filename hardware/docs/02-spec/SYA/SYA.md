@@ -23,8 +23,8 @@
 ## pe_array 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
-| clk | input | 1 | clock |
-| rst_n | input | 1 | reset, 代电平有效 |
+| C input | 1 | clock |
+| C | input | 1 | reset, 代电平有效 |
 | --control-- |
 | CCUSYA_Rst |
 | --config-- |
@@ -38,15 +38,15 @@
 | CCUSYA_CfgShift | input | ACT_WIDTH | 同quant_scale |
 | CCUSYA_CfgZp | input | ACT_WIDTH | 同quant_scale |
 | --data-- |
-| in_act_left | input | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列左侧输入的activation |
-| in_act_left_vld | input | 1 | 握手协议的valid信号 |
-| in_act_left_rdy | output | 1 | 握手协议的ready信号 |
-| in_wgt_above | input | WGT_WIDTH\*NUM_COL\*NUM_BANK | 阵列左侧输入的weight |
-| in_wgt_above_vld | input | 1 | 握手协议的valid信号 |
-| in_wgt_above_rdy | output | 1 | 握手协议的ready信号 |
-| out_fm | output | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列输出计算结果feature map |
-| out_fm_vld | output | 1 | 握手协议的valid信号 | 
-| out_fm_rdy | input | 1 | 握手协议的ready信号 |
+| GLBSYA_Act    | input | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列左侧输入的activation |
+| GLBSYA_ActVld | input | 1 | 握手协议的valid信号 |
+| SYAGLB_ActRdy | output | 1 | 握手协议的ready信号 |
+| GLBSYA_Wgt    | input | WGT_WIDTH\*NUM_COL\*NUM_BANK | 阵列左侧输入的weight |
+| GLBSYA_WgtVld | input | 1 | 握手协议的valid信号 |
+| SYAGLB_WgtRdy | output | 1 | 握手协议的ready信号 |
+| SYAGLB_Ofm    | output | ACT_WIDTH\*NUM_ROW\*NUM_BANK | 阵列输出计算结果feature map |
+| SYAGLB_OfmVld | output | 1 | 握手协议的valid信号 | 
+| GLBSYA_OfmRdy | input | 1 | 握手协议的ready信号 |
 <!-- | --control-- |
 | CCUSYA_EnLeft | input | 1 | 不需要，只需要千诉有多少个点CCUSYA_CfgNip，整个PE 阵列的使能输入信号，高电平时，执行乘加操作和PE手机拍输出activation, weight, 和in_acc_reset_right，一个PE row的不同PE通过依次打拍第一个PE来获得相应的en，不同pe row，通过依次打拍PE row的第一个PE来获得相应的en; 目前没有反压机制，全靠控制en信号 |
 | CCUSYA_AccRstLeft | input | 1 | 不需要，告诉有多少输入通道CCUSYA_CfgChi，传递同in_en_left，高电平时，PE内的累加器不向加法器输出值，给加法器输入0；同时表示累加器已完成累加，累加值是有效的，需要被取走 | -->
