@@ -12,99 +12,96 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
 module MIF #(
-    parameter NUM_PEB         = 16,
-    parameter FIFO_ADDR_WIDTH = 6  
+    parameter POOL_CORE     = 6,
+    parameter POOL_COMP_CORE= 64,
+    parameter IDX_WIDTH     = 10,
+    parameter ACT_WIDTH     = 8
     )(
     input                               clk                     ,
     input                               rst_n                   ,
 
     // Configure
-input  POLMIF_AddrVld
-input  POLMIF_Addr   
-output MIFPOL_Rdy    
-output MIFGLB_AddrVld
-output MIFGLB_Addr   
-input  GLBMIF_AddrRdy
-input  GLBMIF_Fm     
-input  GLBMIF_FmVld  
-output MIFGLB_FmRdy  
-output MIFPOL_Fm     
-output MIFPOL_FmVld  
-input  MIFPOL_FmRdy  
+    input  [POOL_CORE                               -1 : 0] POLMIF_AddrVld,
+    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] POLMIF_Addr   ,
+    output [POOL_CORE                               -1 : 0] MIFPOL_Rdy    ,
+    output [POOL_CORE                               -1 : 0] MIFGLB_AddrVld,
+    output [IDX_WIDTH*POOL_CORE                     -1 : 0] MIFGLB_Addr   ,
+    input  [POOL_CORE                               -1 : 0] GLBMIF_AddrRdy,
+    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBMIF_Fm     ,
+    input  [POOL_CORE                               -1 : 0] GLBMIF_FmVld  ,
+    output [POOL_CORE                               -1 : 0] MIFGLB_FmRdy  ,
+    output reg [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE-1 : 0] MIFPOL_Fm     ,
+    output reg [POOL_CORE                           -1 : 0] MIFPOL_FmVld  ,
+    input  [POOL_CORE                               -1 : 0] MIFPOL_FmRdy   
 
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam IDLE    = 3'b000;
-localparam CFG     = 3'b001;
-localparam CMP     = 3'b010;
-localparam STOP    = 3'b011;
-localparam WAITGBF = 3'b100;
+
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                                start_cmp                       ;
-wire [ 6                    -1 : 0] MEM_CCUGB_block[0 : NUM_PEB -1 ];
-//=====================================================================================================================
-// Logic Design 1: FSM
-//=====================================================================================================================
 
-reg [ 3     -1 : 0] state       ;
-reg [ 3     -1 : 0] next_state  ;
-always @(*) begin
-    case ( state )
-        IDLE : if( ASICCCU_start)
-                    next_state <= CFG; //A network config a time
-                else
-                    next_state <= IDLE;
-        CFG: if( fifo_full)
-                    next_state <= CMP;
-                else
-                    next_state <= CFG;
-        CMP: if( all_finish) /// CMP_FRM CMP_PAT CMP_...
-                    next_state <= IDLE;
-                else
-                    next_state <= CMP;
-        default: next_state <= IDLE;
-    endcase
-end
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        state <= IDLE;
-    end else begin
-        state <= next_state;
-    end
-end
+wire [$clog2(POOL_CORE)         -1 : 0] PolCoreIdx  [0 : POOL_CORE-1];
+wire [ACT_WIDTH*POOL_COMP_CORE  -1 : 0] Ofm         [0 : POOL_CORE-1];
+reg [POOL_CORE     -1 : 0] MIFMIFC_FmRdy
+wire [POOL_CORE     -1 : 0] MIFCMIF_FmVld;
+
+integer j;
+
+genvar i;
 
 //=====================================================================================================================
-// Logic Design 2: Addr Gen.
+// Logic Design : 
 //=====================================================================================================================
 
+generate
+    for(i=0; i<POOL_CORE; i=i+1) begin
+        wire [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0] MIFCMIF_Fm;
+        MIFC#(
+            .POOL_CORE      ( POOL_CORE ),
+            .POOL_COMP_CORE ( POOL_COMP_CORE ),
+            .IDX_WIDTH      ( IDX_WIDTH ),
+            .ACT_WIDTH      ( ACT_WIDTH )
+        )u_MIFC(
+            .clk            ( clk            ),
+            .rst_n          ( rst_n          ),
+            .POLMIF_AddrVld ( POLMIF_AddrVld ),
+            .POLMIF_Addr    ( POLMIF_Addr    ),
+            .MIFPOL_Rdy     ( MIFPOL_Rdy     ),
+            .MIFGLB_AddrVld ( MIFGLB_AddrVld[i] ),
+            .MIFGLB_Addr    ( MIFGLB_Addr[IDX_WIDTH*i +: IDX_WIDTH]    ),
+            .GLBMIF_AddrRdy ( GLBMIF_AddrRdy[i] ),
+            .GLBMIF_Fm      ( GLBMIF_Fm[(ACT_WIDTH*POOL_COMP_CORE)*i +: (ACT_WIDTH*POOL_COMP_CORE)]      ),
+            .GLBMIF_FmVld   ( GLBMIF_FmVld[i]   ),
+            .MIFGLB_FmRdy   ( MIFGLB_FmRdy[i]   ),
+            .MIFCMIF_Fm      ( MIFCMIF_Fm      ),
+            .MIFCMIF_FmVld   ( MIFCMIF_FmVld[j]   ),
+            .MIFMIFC_FmRdy   ( MIFMIFC_FmRdy[j]   )
+        );
+        assign {PolCoreIdx[i], Ofm[i]} = MIFCMIF_Fm;
 
+        //  ==========================
+        always @(*) begin
+            MIFPOL_Fm[(ACT_WIDTH*POOL_COMP_CORE)*i +: (ACT_WIDTH*POOL_COMP_CORE)] = 0;
+            MIFPOL_FmVld[i] = 0;
+            for(j=0; j<POOL_CORE; j=j+1) begin // Loop MIFC
+                if(PolCoreIdx[j]=i & MIFCMIF_FmVld[j]) begin
+                    MIFPOL_Fm[i] = Ofm[j];
+                    MIFPOL_FmVld[i] = 1'b1;
+                    MIFMIFC_FmRdy[j] = MIFPOL_FmRdy[i]; // ?????????????????????????????????????????????????????
+                end
+            end
+        end
 
+    end 
+endgenerate
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-
-FIFO #(
-    .DATA_WIDTH(PORT_WIDTH ),
-    .ADDR_WIDTH(FIFO_ADDR_WIDTH )
-    ) U1_FIFO_CMD(
-    .clk ( clk ),
-    .rst_n ( rst_n ),
-    .Reset ( 1'b0), 
-    .push(fifo_push) ,
-    .pop(fifo_pop ) ,
-    .data_in( IFCFG_data),
-    .data_out (fifo_out ),
-    .empty(fifo_empty ),
-    .full (fifo_full )
-    );
-
 
 endmodule
