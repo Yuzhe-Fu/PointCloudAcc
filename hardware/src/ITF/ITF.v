@@ -18,11 +18,11 @@ module ITF #(
     parameter ADDR_WIDTH = 16,
 
     parameter NUM_RDPORT = 2,
-    parameter NUM_WRPORT = 2
+    parameter NUM_WRPORT = 3
 
     )(
-    input                                               clk                     ,
-    input                                               rst_n                   ,
+    input                                               clk  ,
+    input                                               rst_n,
 
     output [PORT_WIDTH                          -1 : 0] ITFPAD_Dat     ,
     output [1                                   -1 : 0] ITFPAD_DatVld  ,

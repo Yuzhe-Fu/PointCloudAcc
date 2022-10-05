@@ -13,11 +13,11 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 // `include "../source/include/dw_params_presim.vh"
-module MIF #(
-    POOL_CORE   = 6,
-    POOL_COMP_CORE = 64,
-    IDX_WIDTH = 10,
-    ACT_WIDTH = 8
+module MIFC #(
+    parameter POOL_CORE   = 6,
+    parameter POOL_COMP_CORE = 64,
+    parameter IDX_WIDTH = 10,
+    parameter ACT_WIDTH = 8
     )(
     input                                                           clk                     ,
     input                                                           rst_n                   ,
@@ -34,7 +34,7 @@ module MIF #(
     input       [ACT_WIDTH*POOL_COMP_CORE                   -1 : 0] GLBMIF_Fm     ,
     input                                                           GLBMIF_FmVld  ,
     output                                                          MIFGLB_FmRdy  ,
-    output      [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE -1 : 0]MIFPOL_Fm     ,
+    output      [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0]MIFPOL_Fm     ,
     output                                                          MIFPOL_FmVld  ,
     input                                                           MIFPOL_FmRdy  
 
@@ -56,7 +56,7 @@ wire                                out_empty;
 wire                                out_full;  
 
 //=====================================================================================================================
-// Logic Design 2: Addr Gen.
+// Logic Design : 
 //=====================================================================================================================
 
 

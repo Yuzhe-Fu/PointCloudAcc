@@ -23,7 +23,7 @@ module PLC #(
     input                                       clk           ,
     input                                       rst_n         ,
 
-    input       [POOL_MAP_DEPTH_WIDTH   -1 : 0] K             ,
+    input       [POOL_MAP_DEPTH_WIDTH   -1 : 0] POLPLC_CfgK             ,
     input                                       POLPLC_IdxVld ,
     input       [IDX_WIDTH              -1 : 0] POLPLC_Idx    ,
     output                                      PLCPOL_IdxRdy ,
@@ -36,7 +36,7 @@ module PLC #(
     output                                      PLCPOL_FmRdy  ,
     output      [ACT_WIDTH*POOL_COMP_CORE-1 : 0]PLCPOL_Fm   ,
     output                                      PLCPOL_FmVld,
-    input                                       POLPLC_FmRdy,
+    input                                       POLPLC_FmRdy
 
 );
 //=====================================================================================================================
@@ -87,7 +87,7 @@ counter#(
     .INC       ( inc_addr   ),
     .DEC       ( 1'b0       ),
     .MIN_COUNT ( 0          ),
-    .MAX_COUNT ( K-1        ),
+    .MAX_COUNT ( POLPLC_CfgK-1        ),
     .OVERFLOW  ( overflow   ),
     .UNDERFLOW (            ),
     .COUNT     (            )
