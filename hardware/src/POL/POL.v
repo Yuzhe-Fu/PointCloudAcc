@@ -12,88 +12,139 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-// `include "../source/include/dw_params_presim.vh"
+
 module POL #(
-    parameter NUM_PEB         = 16,
-    parameter FIFO_ADDR_WIDTH = 6  
+    parameter IDX_WIDTH             = 10,
+    parameter ACT_WIDTH             = 8,
+    parameter POOL_COMP_CORE        = 64,
+    parameter POOL_MAP_DEPTH_WIDTH  = 5,
+    parameter POOL_CORE             = 6
     )(
     input                               clk                     ,
     input                               rst_n                   ,
 
     // Configure
-    input                               GBCFG_rdy               , // level
-    output reg                          CFGGB_val               , // level
-
+    input                                                   CCUPOL_Rst,
+    input                                                   CCUPOL_CfgVld,
+    output                                                  POLCCU_CfgRdy,
+    input  [POOL_MAP_DEPTH_WIDTH                    -1 : 0] CCUPOL_CfgK  , // 24
+    input  [IDX_WIDTH                               -1 : 0] CCUPOL_CfgNip, // 1024
+    input  [CHN_WIDTH                               -1 : 0] CCUPOL_CfgChi, // 64
+    input                                                   GLBPOL_IdxVld ,
+    input  [SRAM_WIDTH                              -1 : 0] GLBPOL_Idx    ,
+    output                                                  POLGLB_IdxRdy ,
+    output                                                  POLGLB_AddrVld,
+    output [IDX_WIDTH                               -1 : 0] POLGLB_Addr  ,
+    input                                                   GLBPOL_AddrRdy,
+    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_Fm     ,
+    input                                                   GLBPOL_FmVld   ,
+    output                                                  POLGLB_FmRdy  ,
+    output reg[(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE -1 : 0] POLGLB_Fm     ,
+    output reg                                              POLGLB_FmVld  ,
+    input                                                   GLBPOL_FmRdy   
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam IDLE    = 3'b000;
-localparam CFG     = 3'b001;
-localparam CMP     = 3'b010;
-localparam STOP    = 3'b011;
-localparam WAITGBF = 3'b100;
+
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                                start_cmp                       ;
-wire [ 6                    -1 : 0] MEM_CCUGB_block[0 : NUM_PEB -1 ];
+wire [POOL_CORE                             -1 : 0] PLCPOL_IdxRdy;
+wire [POOL_CORE                             -1 : 0] PLCPOL_AddrVld;
+wire [IDX_WIDTH*POOL_CORE                   -1 : 0] PLCPOL_Addr;
+wire [POOL_CORE                             -1 : 0] POLPLC_AddrRdy;
+wire [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE  -1 : 0] POLPLC_Fm;
+wire [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE  -1 : 0] PLCPOL_Fm;
+
+wire [POOL_CORE                             -1 : 0] POLPLC_FmVld;
+wire [POOL_CORE                             -1 : 0] PLCPOL_FmRdy;
+
+wire [POOL_CORE                             -1 : 0] PLCPOL_FmVld;
+reg [POOL_CORE                              -1 : 0] POLPLC_FmRdy;
+
+
 //=====================================================================================================================
-// Logic Design 1: FSM
+// Logic Design 
 //=====================================================================================================================
 
-reg [ 3     -1 : 0] state       ;
-reg [ 3     -1 : 0] next_state  ;
+
+genvar i;
+generate
+    for(i=0; i<POOL_CORE; i=i+1) begin
+        wire POLPLC_IdxVld;
+        wire [IDX_WIDTH     -1 : 0] POLPLC_Idx;
+
+
+        PLC#(
+            .IDX_WIDTH      ( IDX_WIDTH ),
+            .ACT_WIDTH      ( ACT_WIDTH ),
+            .POOL_COMP_CORE ( POOL_COMP_CORE ),
+            .POOL_MAP_DEPTH_WIDTH ( POOL_MAP_DEPTH_WIDTH )
+        )u_PLC(
+            .clk            ( clk            ),
+            .rst_n          ( rst_n          ),
+            .POLPLC_CfgK    ( CCUPOL_CfgK    ),
+            .POLPLC_IdxVld  ( POLPLC_IdxVld  ),
+            .POLPLC_Idx     ( POLPLC_Idx     ),
+            .PLCPOL_IdxRdy  ( PLCPOL_IdxRdy[i]  ),
+            .PLCPOL_AddrVld ( PLCPOL_AddrVld[i] ),
+            .PLCPOL_Addr    ( PLCPOL_Addr[IDX_WIDTH*i +: IDX_WIDTH]    ),
+            .POLPLC_AddrRdy ( POLPLC_AddrRdy[i] ),
+            .POLPLC_Fm      ( POLPLC_Fm[(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]      ),
+            .POLPLC_FmVld   ( POLPLC_FmVld[i]   ),
+            .PLCPOL_FmRdy   ( PLCPOL_FmRdy[i]   ),
+            .PLCPOL_Fm      ( PLCPOL_Fm [(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]     ),
+            .PLCPOL_FmVld   ( PLCPOL_FmVld[i]   ),
+            .POLPLC_FmRdy   ( POLPLC_FmRdy[i]   ) 
+        );
+        assign POLPLC_Idx = GLBPOL_Idx[IDX_WIDTH*i +: IDX_WIDTH];
+        assign POLPLC_IdxVld = GLBPOL_IdxVld;
+    end
+
+assign POLGLB_IdxRdy = &PLCPOL_IdxRdy;
+
+integer  j;
 always @(*) begin
-    case ( state )
-        IDLE : if( ASICCCU_start)
-                    next_state <= CFG; //A network config a time
-                else
-                    next_state <= IDLE;
-        CFG: if( fifo_full)
-                    next_state <= CMP;
-                else
-                    next_state <= CFG;
-        CMP: if( all_finish) /// CMP_FRM CMP_PAT CMP_...
-                    next_state <= IDLE;
-                else
-                    next_state <= CMP;
-        default: next_state <= IDLE;
-    endcase
-end
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        state <= IDLE;
-    end else begin
-        state <= next_state;
+    POLGLB_Fm = 0;
+    POLGLB_FmVld = 0;
+    POLPLC_FmRdy = 0;
+    for(j=0; j<POOL_CORE; j=j+1) begin
+        if(PLCPOL_FmVld[j]) begin
+            POLGLB_Fm = PLCPOL_Fm[(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE];
+            POLGLB_FmVld = 1'b1;
+            POLPLC_FmRdy[j] = GLBPOL_FmRdy;
+        end
     end
 end
-
-//=====================================================================================================================
-// Logic Design 2: Addr Gen.
-//=====================================================================================================================
-
 
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
+MIF#(
+    .POOL_CORE      ( POOL_CORE ),
+    .POOL_COMP_CORE ( POOL_COMP_CORE ),
+    .IDX_WIDTH      ( IDX_WIDTH ),
+    .ACT_WIDTH      ( ACT_WIDTH )
+)u_MIF(
+    .clk            ( clk            ),
+    .rst_n          ( rst_n          ),
+    .POLMIF_AddrVld ( PLCPOL_AddrVld ),
+    .POLMIF_Addr    ( PLCPOL_Addr    ),
+    .MIFPOL_Rdy     ( POLPLC_AddrRdy ),
+    .MIFGLB_AddrVld ( POLGLB_AddrVld ),
+    .MIFGLB_Addr    ( POLGLB_Addr    ),
+    .GLBMIF_AddrRdy ( GLBPOL_AddrRdy ),
+    .GLBMIF_Fm      ( GLBPOL_Fm      ),
+    .GLBMIF_FmVld   ( GLBPOL_FmVld   ),
+    .MIFGLB_FmRdy   ( POLGLB_FmRdy   ),
+    .MIFPOL_Fm      ( POLPLC_Fm      ),
+    .MIFPOL_FmVld   ( POLPLC_FmVld   ),
+    .MIFPOL_FmRdy   ( PLCPOL_FmRdy   )
+);
 
-FIFO #(
-    .DATA_WIDTH(PORT_WIDTH ),
-    .ADDR_WIDTH(FIFO_ADDR_WIDTH )
-    ) U1_FIFO_CMD(
-    .clk ( clk ),
-    .rst_n ( rst_n ),
-    .Reset ( 1'b0), 
-    .push(fifo_push) ,
-    .pop(fifo_pop ) ,
-    .data_in( IFCFG_data),
-    .data_out (fifo_out ),
-    .empty(fifo_empty ),
-    .full (fifo_full )
-    );
 
 
 endmodule
