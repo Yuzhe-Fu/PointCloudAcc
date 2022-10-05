@@ -53,20 +53,19 @@
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
-| ccu.v | 顶层模块 |
+| CCU.v | 顶层模块 |
 | RAM_wrap.v | 通用SRAM模块，直接在primitives调用 |
 | counter.v |
 
 # 参数列表
 | Parameters | default | optional | Descriptions |
 | ---- | ---- | ---- | ---- |
-| MODE_WIDTH | 1 |  |  |
 | NUM_LAYER_WIDTH | 20 |  |  |
 | ADDR_WIDTH | 16 |  |  |
-| OP_WIDTH | 3 | |  |
-| NP_WIDTH | 16 |   |  |
+| OPCODE_WIDTH | 3 | |  |
+| IDX_WIDTH | 16 |   |  |
 | CHN_WIDTH | 12 |   |  |
-| PORT_WIDTH | 96 | 96 | PAD数据宽度 |
+| SRAM_WIDTH | 256 | 256 | GLB宽度 |
 | SRAM_WORD_ISA | 64 | 
 
 # 端口列表
@@ -75,7 +74,7 @@
 | clk | input | 1 | clock |
 | rst_n | input | 1 | reset, 代电平有效 |
 
-| ITFCCU_Dat                | input | 
+| ITFCCU_Dat                | input | SRAM_WIDTH | 从GLB统一取的 |
 | ITFCCU_DatVld             | input |
 | ITFCCU_DatRdy             | output |
 // SYA
@@ -100,8 +99,8 @@
 | CCUGLB_Port_rst           | output |1 -->
 
 # 模块描述
-- CCU是中央控制器，有专门的4bit IO来读指令集，负责配置模块和模块的**最顶层控制**（模块内部只要配置能控制的都不要用CCU控制，多少层由CCU控制，CfgVld相当于控制了层的开始，CfgRdy相当于模块反馈结束，再加上整个网络的Rst）
-    - 与片外通信：先通过统一接口，从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
+- CCU是中央控制器，负责配置模块和模块的**最顶层控制**（模块内部只要配置能控制的都不要用CCU控制，多少层由CCU控制，CfgVld相当于控制了层的开始，CfgRdy相当于模块反馈结束，再加上整个网络的Rst）
+    - 与片外通信：先通过统一接口(ITF->GLB->CCU)，从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
     - FSM控制片内：用FSM，t每层输出一次配置，IDLE(芯片启动空状态）->RD_CFG(读取整个网络的参数配置）->->FNH（整个网络计算完成）
         - 转到配置子FSM: IDLE_CFG ->接收到Triggerif (ReqCfg)...ARRAY_CFG, CONV_CFG（配置网络一层）， FC....-> 
     根据模块请求FPS、KNN、CONV、POL、FC等层的配置，各自取各自下一层的配置
@@ -129,8 +128,6 @@
                     - 对SYA：SYA的mode决定RdPortParBank和WrPortParBank即基数，在知道整个filter数量和ifm的情况下，假设只有loop ifm和loop filter两种情况（由片外配置），固定的项的总量可得到，Loop项的可以是1或多个，RdPortLoop的次数用总数除以Bank量，CCUGLB_CfgPort_AddrMax为Bank数，
                     - 对IF口：哪里没有了就去哪里，灵活配置
                     - 对POOL：根据片外配置的Nip和Chi，分配Bank
-                    - 
-   
         - 与GLB的Bank通过CfgInfo
             - 输出到Bank的地址是相对地址
     - Debug: 暂未考虑

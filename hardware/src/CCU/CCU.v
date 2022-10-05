@@ -13,55 +13,64 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module CCU #(
-    parameter NUM_PEB         = 16,
-    parameter FIFO_ADDR_WIDTH = 6  
+    parameter SRAM_WORD_ISA         = 64,
+    parameter SRAM_WIDTH            = 256,
+
+    parameter ADDR_WIDTH            = 16,
+    parameter NUM_RDPORT            = 2,
+    parameter NUM_WRPORT            = 3,
+    parameter IDX_WIDTH             = 16,
+    parameter CHN_WIDTH             = 12,
+    parameter ACT_WIDTH             = 8,
+    parameter MAP_WIDTH             = 5,
+
+    parameter MAXPAR                = 32,
+    parameter NUM_BANK              = 32
+
     )(
     input                               clk                     ,
     input                               rst_n                   ,
     input                               TOPCCU_start,
 
-    // Configure
-input  ITFCCU_Dat             
-input  ITFCCU_DatVld          
-output CCUITF_DatRdy
+        // Configure
+    input   [SRAM_WSITH                         -1 : 0] ITFCCU_Dat,             
+    input                                               ITFCCU_DatVld,          
+    output                                              CCUITF_DatRdy,
 
-output CCUSYA_Rst  //
-output CCUSYA_CfgVld
-input  SYACCU_CfgRdy
-output CCUSYA_CfgMod
-output CCUSYA_CfgNip 
-output CCUSYA_CfgChi         
-output CCUSYA_CfgScale        
-output CCUSYA_CfgShift        
-output CCUSYA_CfgZp
-         
-// output CCUSYA_Start
-// input  SYACCU_Fnh
-// output CCUSYA_EnLeft
-// output CCUSYA_AccRstLeft
+    output  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT) -1 : 0] CCUITF_BaseAddr,
 
-output CCUPOL_Rst
-output CCUPOL_CfgVld
-input  POLCCU_CfgRdy
-output CCUPOL_CfgK
-output CCUPOL_CfgNip
-output CCUPOL_CfgChi
+    output                                              CCUSYA_Rst,  //
+    output                                              CCUSYA_CfgVld,
+    input                                               SYACCU_CfgRdy,
+    output  [2                                  -1 : 0] CCUSYA_CfgMod,
+    output  [IDX_WIDTH                          -1 : 0] CCUSYA_CfgNip, 
+    output  [CHN_WIDTH                          -1 : 0] CCUSYA_CfgChi,         
+    output  [20                                 -1 : 0] CCUSYA_CfgScale,        
+    output  [ACT_WIDTH                          -1 : 0] CCUSYA_CfgShift,        
+    output  [ACT_WIDTH                          -1 : 0] CCUSYA_CfgZp,
 
-output CCUCTR_Rst
-output CCUCTR_CfgVld
-input  CTRCCU_CfgRdy
-output CCUCTR_CfgMod          
-output CCUCTR_CfgNip                    
-output CCUCTR_CfgNop          
-output CCUCTR_CfgK  
+    output                                              CCUPOL_Rst,
+    output                                              CCUPOL_CfgVld,
+    input                                               POLCCU_CfgRdy,
+    output  [MAP_WIDTH                          -1 : 0] CCUPOL_CfgK,
+    output  [IDX_WIDTH                          -1 : 0] CCUPOL_CfgNip,
+    output  [CHN_WIDTH                          -1 : 0] CCUPOL_CfgChi,
 
-output CCUGLB_Rst
-output CCUGLB_CfgVld          
-input  GLBCCU_CfgRdy          
-output CCUGLB_CfgBankPort 
-output CCUGLB_CfgPort_AddrMax 
-output CCUGLB_CfgRdPortParBank
-output CCUGLB_CfgWrPortParBank      
+    output                                              CCUCTR_Rst,
+    output                                              CCUCTR_CfgVld,
+    input                                               CTRCCU_CfgRdy,
+    output                                              CCUCTR_CfgMod,         
+    output  [IDX_WIDTH                          -1 : 0] CCUCTR_CfgNip,                    
+    output  [IDX_WIDTH                          -1 : 0] CCUCTR_CfgNop,          
+    output  [MAP_WIDTH                          -1 : 0] CCUCTR_CfgK,  
+
+    output                                              CCUGLB_Rst,
+    output                                              CCUGLB_CfgVld ,         
+    input                                               GLBCCU_CfgRdy ,         
+    output [(NUM_RDPORT + NUM_WRPORT)* NUM_BANK -1 : 0] CCUGLB_CfgBankPort ,
+    output [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] CCUGLB_CfgPort_AddrMax, 
+    output [($clog2(MAXPAR) + 1)*NUM_RDPORT     -1 : 0] CCUGLB_CfgRdPortParBank,
+    output [($clog2(MAXPAR) + 1)*NUM_WRPORT     -1 : 0] CCUGLB_CfgWrPortParBank      
 
 );
 //=====================================================================================================================
@@ -331,6 +340,10 @@ generate
         end
 endgenerate
 
+assign CCUITF_BaseAddr[ADDR_WIDTH*0 +: ADDR_WIDTH] = DatAddr; // Write GLB
+assign CCUITF_BaseAddr[ADDR_WIDTH*1 +: ADDR_WIDTH] = WgtAddr; // Write
+assign CCUITF_BaseAddr[ADDR_WIDTH*2 +: ADDR_WIDTH] = Map_addr; // Read MAP from GLB to Off-Chip
+assign CCUITF_BaseAddr[ADDR_WIDTH*3 +: ADDR_WIDTH] = OfmAddr; // Read ?????????
 
 //=====================================================================================================================
 // Sub-Module :
