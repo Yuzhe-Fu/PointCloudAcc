@@ -32,7 +32,7 @@ num_classes: 40
 # ---------------------------------------------------------------------------- #
 # this one is better. 
 sched: cosine
-epochs: 100
+epochs: 600
 warmup_epochs: 0
 min_lr: null
 
@@ -58,7 +58,7 @@ criterion:
 # ---------------------------------------------------------------------------- #
 # io and misc
 # ---------------------------------------------------------------------------- #
-log_dir: 'modelnet40'
+log_dir: 'modelnet40_hook'
 print_freq: 10
 val_freq: 1
 

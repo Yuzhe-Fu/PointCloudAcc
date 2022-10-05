@@ -2,15 +2,15 @@
 import os
 
 
-        file = open(os.path.join(self.output_dir, "ROM.coe"), "w")  
-        file_sim = open(os.path.join(self.output_dir,"ROM.txt"), "w")
-        file.write("memory_initialization_radix=16;\n")
+    file = open(os.path.join(self.output_dir, "ROM.coe"), "w")  
+    file_sim = open(os.path.join(self.output_dir,"ROM.txt"), "w")
+    file.write("memory_initialization_radix=16;\n")
 
-        # write config
-        for i in range(64):
-            # 00A01002_18022428_22800804_00002012
-            file.write(hex(int(config_info,2)).lstrip('0x').rstrip("L").zfill(32) + ",\n")
-            file_sim.write(hex(int(config_info,2)).lstrip('0x').rstrip("L").zfill(32) + "\n")
+    # write config
+    for i in range(64):
+        # 00A01002_18022428_22800804_00002012
+        file.write(hex(int(config_info,2)).lstrip('0x').rstrip("L").zfill(32) + ",\n")
+        file_sim.write(hex(int(config_info,2)).lstrip('0x').rstrip("L").zfill(32) + "\n")
 
     def bin2hex_file (self, file_bin, file_hex, file_sim):
         temp = file_bin.readline().rstrip('\n').rstrip('\r')
