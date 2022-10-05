@@ -43,10 +43,17 @@ module GLB #(
     // Data
     input  wire [SRAM_WIDTH*MAXPAR*NUM_WRPORT   -1: 0] WrPortDat,
     input  wire [NUM_WRPORT                     -1: 0] WrPortDatVld,
-    output wire [NUM_WRPORT                     -1: 0] WrPortDatRdy,
+    output reg  [NUM_WRPORT                     -1: 0] WrPortDatRdy,
+    output reg  [NUM_WRPORT                     -1: 0] WrPortFull,
+    output reg  [ADDR_WIDTH*NUM_WRPORT          -1: 0] WrPortReqNum,
+    output wire [ADDR_WIDTH*NUM_WRPORT          -1: 0] WrPortAddr,
+
     output wire [SRAM_WIDTH*MAXPAR*NUM_RDPORT   -1: 0] RdPortDat,
     output reg  [NUM_RDPORT                     -1: 0] RdPortDatVld,
-    input  wire [NUM_RDPORT                     -1: 0] RdPortDatRdy
+    input  wire [NUM_RDPORT                     -1: 0] RdPortDatRdy,
+    output reg  [NUM_RDPORT                     -1: 0] RdPortEmpty,
+    output reg  [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortReqNum,
+    output wire [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortAddr,
 
 );
 
@@ -226,6 +233,9 @@ generate
         reg  [SRAM_DEPTH_WIDTH  -1 : 0] RdPortAddr_Mnt;
         reg  [SRAM_DEPTH_WIDTH  -1 : 0] WrPortAddr_Mnt;
 
+        wire [ADDR_WIDTH        -1 : 0] WrPortAddr;
+        wire [ADDR_WIDTH        -1 : 0] RdPortAddr;
+
         RAM_HS#(
             .SRAM_BIT     ( SRAM_WIDTH ),
             .SRAM_BYTE    ( 1 ),
@@ -277,7 +287,11 @@ generate
         // Logic Design 4: Write Port
         //=====================================================================================================================
         wire    WrAloc;
-        assign PortWrEn = !(arvalid & arready) & WrPortDatVld[BankWrPort[i]]  & !( (WrPortAddr - RdPortaddr)>>SRAM_DEPTH_WIDTH == BankWrPortParIdx[i]);
+        wire    Full;
+        wire    WrReqNum;
+        assign WrReqNum = CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*BankWrPort[i] +: ADDR_WIDTH] - (WrPortAddr - RdPortaddr)
+        assign Full = ( (WrPortAddr - RdPortaddr)== CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*BankWrPort[i] +: ADDR_WIDTH] );
+        assign PortWrEn = !(arvalid & arready) & WrPortDatVld[BankWrPort[i]]  & !Full;
         assign WrAloc = ( (WrPortAddr >> SRAM_DEPTH_WIDTH )*BankWrPortParBank == BankWrPortRelIdx[i]);
         assign wvalid = PortWrEn & WrAloc;
         assign waddr   = WrPortAddr - SRAM_WORD * BankWrPortRelIdx[i]        ;
@@ -288,7 +302,11 @@ generate
         // Logic Design 4: Read Port
         //=====================================================================================================================
         wire RdAloc;
-        assign PortRdEn = BankRdPortDatRdy & !(WrPortAddr==RdPortAddr) ;     
+        wire Empty;
+        wire [ADDR_WIDTH    -1 : 0] RdReqNum;
+        assign RdReqNum = WrPortAddr - RdPortAddr;
+        assign Empty = (WrPortAddr==RdPortAddr);
+        assign PortRdEn = BankRdPortDatRdy & ! Empty;     
         assign RdAloc = ( (RdPortAddr >> SRAM_DEPTH_WIDTH )*BankRdPortParBank == BankRdPortRelIdx[i]);
         assign arvalid  = PortRdEn & RdAloc;    
         assign araddr   = RdPortAddr - SRAM_WORD * BankRdPortRelIdx[i]; 
@@ -311,6 +329,8 @@ generate
             RdPortDat_Array[j] = 0;
             RdPortDatVld[j]     = 0;
             INC = 0;
+            RdPortEmpty[j] = 1'b0;
+            RdPortReqNum[j] = 1'b0;
             for (bk=0; bk<NUM_BANK; bk=bk+1) begin
                 if (BankRdPort[bk]==j) begin
                     if (GEN_BANK[bk].rvalid) begin
@@ -321,11 +341,13 @@ generate
                     if (GEN_BANK[bk].arvalid & GEN_BANK[bk].arready) begin
                         INC = 1'b1;
                     end
+                    RdPortEmpty[j] = GEN_BANK[bk].Empty;
+                    RdPortReqNum[j] = GEN_BANK[bk].RdReqNum;
                 end
             end
         end
         assign RdPortDat[SRAM_WIDTH*MAXPAR*j +: SRAM_WIDTH*MAXPAR] =  RdPortDat_Array[j];
-
+        assign RdPortAddr = RdPortAddr_Array[j];
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter_RdPortAddr(
@@ -371,6 +393,8 @@ generate
         always @(*) begin
             WrPortDatRdy[m] = 0;
             INC             = 0;
+            WrPortFull[m]   = 0;
+            WrPortReqNum[m] = 0;
             // for(n=0; n<WrPortNumBank[m]; n=n+1) begin
             for (bk=0; bk<NUM_BANK; bk=bk+1) begin
                 if (BankWrPort[bk]==m) begin
@@ -378,11 +402,13 @@ generate
                         WrPortDatRdy[m] = 1'b1;
                         INC = 1'b1;
                     end
+                    WrPortFull[m] = GEN_BANK[bk].full;
+                    WrPortReqNum[m] = GEN_BANK[bk].WrReqNum;
                 end
             end
         end
         assign WrPortDat_Array[m] = WrPortDat[SRAM_WIDTH*MAXPAR*m +: SRAM_WIDTH*MAXPAR];
-
+        assign WrPortAddr[m] = WrPortAddr_Array[m];
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter(
@@ -415,6 +441,18 @@ generate
         );
         assign CfgRdy[m] = overflow_WrPortLoop;
 endgenerate
+
+
+//=====================================================================================================================
+// Logic Design 5: ITF
+//=====================================================================================================================
+
+
+
+
+
+
+
 
 //=====================================================================================================================
 // Sub-Module :
