@@ -4,14 +4,16 @@ module SIPO
     parameter  DATA_IN_WIDTH  = 16,
     parameter  DATA_OUT_WIDTH = 64
 )( // PORTS
-    input  wire                         CLK,
-    input  wire                         RST_N,
-    input  wire                         ENABLE,
-    input  wire [DATA_IN_WIDTH -1 : 0]  DATA_IN,
-    output wire                         IN_READY,
-    output wire [DATA_OUT_WIDTH -1 : 0] DATA_OUT,
-    output wire                         OUT_VALID,
-    input  wire                         OUT_READY
+    input  wire                         CLK     ,
+    input  wire                         RST_N   ,
+    input  wire                         IN_VLD  ,
+    input  wire                         IN_LAST ,
+    input  wire [DATA_IN_WIDTH -1 : 0]  IN_DAT  ,
+    output wire                         IN_RDY  ,
+    output wire [DATA_OUT_WIDTH -1 : 0] OUT_DAT ,
+    output wire                         OUT_VLD ,
+    output wire                         OUT_LAST,
+    input  wire                         OUT_RDY 
 );
 
 // ******************************************************************
@@ -24,15 +26,17 @@ module SIPO
 // ******************************************************************
 // WIRES and REGS
 // ******************************************************************
-  wire                                        parallel_load;
-  reg  [ SHIFT_COUNT_WIDTH    -1 : 0 ]        shift_count;
-  reg  [ DATA_OUT_WIDTH       -1 : 0 ]        shift;
+  wire                                  parallel_load;
+  reg  [ SHIFT_COUNT_WIDTH    -1 : 0 ]  shift_count;
+  reg  [ DATA_OUT_WIDTH       -1 : 0 ]  shift;
+  reg                                     last;
 // ******************************************************************
 wire   parallel_load_d;
     assign parallel_load = shift_count == NUM_SHIFTS;
-    assign IN_READY = !OUT_VALID | (OUT_VALID & OUT_READY);
-    assign OUT_VALID = parallel_load;
-    assign DATA_OUT = shift;
+    assign IN_RDY = !OUT_VLD | (OUT_VLD & OUT_RDY);
+    assign OUT_VLD = parallel_load;
+    assign OUT_LAST = last & parallel_load;
+    assign OUT_DAT = shift;
 
     always @(posedge CLK or negedge RST_N)
     begin: SHIFTER_COUNT
@@ -40,11 +44,11 @@ wire   parallel_load_d;
         shift_count <= 0;
       else
       begin
-        if ( (ENABLE & IN_READY) && !OUT_VALID)
+        if ( (IN_VLD & IN_RDY) && !OUT_VLD)
           shift_count <= shift_count + 1;
-        else if ( (ENABLE& IN_READY) && (OUT_VALID & OUT_READY) )
+        else if ( (IN_VLD& IN_RDY) && (OUT_VLD & OUT_RDY) )
           shift_count <= 1;
-        else if (OUT_VALID & OUT_READY)
+        else if (OUT_VLD & OUT_RDY)
           shift_count <= 0;
       end
     end
@@ -53,11 +57,13 @@ wire   parallel_load_d;
     begin: DATA_SHIFT
       if (!RST_N)
         shift <= 0;
-      else if (ENABLE & IN_READY) begin
+        last  <= 0;
+      else if (IN_VLD & IN_RDY) begin
+        last  <= IN_LAST;
         if (DATA_OUT_WIDTH == DATA_IN_WIDTH)
-          shift <={DATA_IN};
+          shift <={IN_DAT};
         else
-          shift <= {DATA_IN, shift[DATA_OUT_WIDTH-1:DATA_IN_WIDTH]};
+          shift <= {IN_DAT, shift[DATA_OUT_WIDTH-1:DATA_IN_WIDTH]};
       end
     end
 
