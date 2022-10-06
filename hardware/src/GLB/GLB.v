@@ -21,7 +21,6 @@ module GLB #(
     parameter NUM_WRPORT   = 3,
     parameter NUM_RDPORT   = 4,
     parameter MAXPAR       = 32,
-    parameter LOOP_WIDTH   = 10,
     
     parameter CLOCK_PERIOD = 10
 
@@ -53,7 +52,7 @@ module GLB #(
     input  wire [NUM_RDPORT                     -1: 0] RdPortDatRdy,
     output reg  [NUM_RDPORT                     -1: 0] RdPortEmpty,
     output reg  [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortReqNum,
-    output wire [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortAddr,
+    output wire [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortAddr
 
 );
 
@@ -353,32 +352,17 @@ generate
         )u_counter_RdPortAddr(
             .CLK       ( clk                                                            ),
             .RESET_N   ( rst_n                                                          ),
-            .CLEAR     ( CfgVld[NUM_WRPORT+j] | ( overflow_RdPortAddr &!overflow_RdPortLoop)                                  ),
+            .CLEAR     ( CfgVld[NUM_WRPORT+j]                                           ),
             .DEFAULT   ( 0                                                              ),
             .INC       ( INC                                                            ),
             .DEC       ( 1'b0                                                           ),
             .MIN_COUNT ( 0                                                              ),
             .MAX_COUNT ( CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*(NUM_WRPORT+j) +: ADDR_WIDTH]   ),
-            .OVERFLOW  ( overflow_RdPortAddr                                  ),
+            .OVERFLOW  ( CfgRdy[NUM_WRPORT+j]                                  ),
             .UNDERFLOW (                                                                ),
             .COUNT     ( RdPortAddr_Array[j]                                            )
         );
-        counter#(
-            .COUNT_WIDTH ( 10 ) // ??
-        )u_counter_RdLoop(
-            .CLK       ( clk                                                            ),
-            .RESET_N   ( rst_n                                                          ),
-            .CLEAR     ( CfgVld[NUM_WRPORT+j]                                 ),
-            .DEFAULT   ( 0                                                              ),
-            .INC       ( overflow_RdPortAddr                                                            ),
-            .DEC       ( 1'b0                                                           ),
-            .MIN_COUNT ( 0                                                              ),
-            .MAX_COUNT ( CCUGLB_CfgRdPortLoop[LOOP_WIDTH*(NUM_WRPORT+j) +: LOOP_WIDTH]   ),
-            .OVERFLOW  ( overflow_RdPortLoop                                  ),
-            .UNDERFLOW (                                                                ),
-            .COUNT     ( RdPortLoop[j]                                            )
-        );
-        assign CfgRdy[NUM_WRPORT+j] = overflow_RdPortLoop;
+
     end
 
 endgenerate
@@ -414,32 +398,17 @@ generate
         )u_counter(
             .CLK       ( clk                                            ),
             .RESET_N   ( rst_n                                          ),
-            .CLEAR     ( CfgVld[m] | (overflow_WrPortAddr & !overflow_WrPortLoop) ),
+            .CLEAR     ( CfgVld[m] ),
             .DEFAULT   ( 0                                              ),
             .INC       ( INC                                            ),
             .DEC       ( 1'b0                                           ),
             .MIN_COUNT ( 0                                              ),
             .MAX_COUNT ( CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*m +: ADDR_WIDTH]),
-            .OVERFLOW  ( overflow_WrPortAddr                             ),
+            .OVERFLOW  ( CfgRdy[m]                             ),
             .UNDERFLOW (                                                ),
             .COUNT     ( WrPortAddr_Array[m]                            )
         );
-        counter#(
-            .COUNT_WIDTH ( 10 ) // ??
-        )u_counter_WrLoop(
-            .CLK       ( clk                                                            ),
-            .RESET_N   ( rst_n                                                          ),
-            .CLEAR     ( CfgVld[m]                                 ),
-            .DEFAULT   ( 0                                                              ),
-            .INC       ( overflow_WrPortAddr                                                            ),
-            .DEC       ( 1'b0                                                           ),
-            .MIN_COUNT ( 0                                                              ),
-            .MAX_COUNT ( CCUGLB_CfgWrPortLoop[LOOP_WIDTH*m +: LOOP_WIDTH]   ),
-            .OVERFLOW  ( overflow_WrPortLoop                                  ),
-            .UNDERFLOW (                                                                ),
-            .COUNT     ( WrPortLoop[m]                                            )
-        );
-        assign CfgRdy[m] = overflow_WrPortLoop;
+
 endgenerate
 
 
