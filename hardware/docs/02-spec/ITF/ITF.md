@@ -20,7 +20,7 @@
 | rst_n                     | input | 1                                 | reset, 代电平有效 |
 | ITFPAD_Dat                | output| PORT_WIDTH                        | |
 | ITFPAD_DatVld             | output| 1                                 ||
-| ITFPAD_DatLast            | output| 1                                 ||
+| ITFPAD_DatLast            | output| 1                                 ||????????????????????????????????????????????????:question
 | PADITF_DatRdy             | input | 1                                 ||
 | PADITF_Dat                | input | PORT_WIDTH                        || 
 | PADITF_DatVld             | input | 1                                 ||

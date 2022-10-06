@@ -15,9 +15,9 @@
 | ACT_WIDTH | 8 | 4, 16 | activation的位宽 |
 | WGT_WIDTH | 8 | 4, 16 | weight的位宽 |
 | ACC_WIDTH | 26 | | 累加器的位宽，ACT_WIDTH + WGT_WIDTH +LOG(通道深度) |
-| NUM_ROW | 16 | | PE阵列的行数 |
-| NUM_COL | 16 | | PE阵列的列数，默认是正方形阵列即NUM_COL=NUM_ROW | 
-| NUM_BANK | 4 | | PE有多个Bank |
+| NUM_ROW   | 16 | | PE阵列的行数 |
+| NUM_COL   | 16 | | PE阵列的列数，默认是正方形阵列即NUM_COL=NUM_ROW | 
+| NUM_BANK  | 4 | | PE有多个Bank |
 | SRAM_WIDTH | 256 | | SRAM Bank的位宽 |
 
 ## pe_array 端口列表

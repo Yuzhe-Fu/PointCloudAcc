@@ -24,14 +24,14 @@
 ## GLB (global_buffer) 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |
-| clk                   | input     | 1 | clock |
-| rst_n                 | input     | 1 | reset, 低电平有效 |
+| clk                       | input     | 1 | clock |
+| rst_n                     | input     | 1 | reset, 低电平有效 |
 | --control--            |
 | CCUGLB_Rst            |
 | --config--            |           | | 顶层模块只分最顶层的东西，跟网络相关的，比如： |
-| CCUGLB_CfgVld | input | NUM_PORT | 每个Port单独配置和使能，vld rdy取代rst和fnh, 重置Port所有信号
-| GLBCCU_CfgRdy | output | NUM_PORT | 表示读写口完成配置的addrmax次读写
-| CCUGLB_CfgBankPort| input     | (NUM_RDPORT + NUM_WRPORT)* NUM_BANK | 为每个Bank分配读/写Port是两个，1表示有分到，也表示Port是否有效 |
+| CCUGLB_CfgVld             | i nput | NUM_PORT | 每个Port单独配置和使能，vld rdy取代rst和fnh, 重置Port所有信号
+| GLBCCU_CfgRdy             | output | NUM_PORT | 表示读写口完成配置的addrmax次读写
+| CCUGLB_CfgBankPort        | input     | (NUM_RDPORT + NUM_WRPORT)* NUM_BANK | 为每个Bank分配读/写Port是两个，1表示有分到，也表示Port是否有效 |
 | CCUGLB_CfgPort_AddrMax |input     | 
 | CCUGLB_CfgRdPortParBank|input     | 
 | CCUGLB_CfgWrPortParBank|input     | 
@@ -83,7 +83,7 @@ FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于a
             - 有读写请求才读写使能，直接用端口的RdPortDatRdy作为arvalid的一部分，和WrPortDatVld作为wvalid的一部分
             - 读空写满：
                 - 读：有写入了数才能读：假定读写口分配相同Bank且读写顺序一致，则非空时可以读，即RdEn= !(RdAddr == WrAddr); 且RdAddr=WrAddr，（圈数GLB自己控制，GCCU只负责配置，比如有多少圈，当Mode0时，WrAddr大于最后一个有效地址，当RdAddr也最后一个有效地址时，发出CfgRdy，然后复位0）
-                - 写：有写满的存在(像FIFO），只当串入串出时，RdAddr相差WrAddr一圈
+                - 写：有写满的存在(像FIFO），只当串入串出时，RdAddr相差WrAddr一圈(AddrMax)
             - 有读不能写：单口SRAM
     - 选择：
         - 首先是判断是读/写，读优先

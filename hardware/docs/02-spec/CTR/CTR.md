@@ -64,14 +64,13 @@
 | CTRGLB_IdxRdy     | input | 1 | 握手协议的ready信号 |
 
 
-## 模块陈述
-**增加使用状态机：IDLE, SORT, OUTPUT**
+## 模块陈述s
 构建模块是用来将原始点云采样（FPS)后，找出每个点的K邻近点的index（K个index称为这个点的map即映射）。在顶层模块construct硬件图中，FPS和KNN复用部分硬件（黑色），FPS独有的是青色，KNN独有的是蓝色。在子模块中一律用黑色，不作区别
 - FPS
     - Stage0: **两个计数器：Cp和Lop** 生成地址
         - FPS时，Cp计数从0到Nop-1，Lop从0到Nip-CpIdx
         - KNN时，Cp和Lop都从0到Nip
-    - Stage1: 同时取1. 输入点的坐标LopIdx的GLBCTR_Crd从global buffer（经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD））和2. Dist_Buffer中取出与上一次FPS点集的距离FPS_LastPsDist，
+    - Stage1: 同时取1. 输入点的坐标LopIdx的GLBCTR_Crd从ITF（经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD））和2. Dist_Buffer中取出与上一次FPS点集的距离FPS_LastPsDist，
     - Stage2: 都同时打一拍后，得(LopCrd_s2,LopIdx_s2)和(FPS_LastPsIdx_s2, FPS_LastPsDist_s2)
         - 将LopCrd_s2与FPS_CpCrd（FPS中，FPS_CpCrd是上一次找出的最远点的坐标，KNN中，KNN_CpCrd_s2是当前需要找出邻近点的中心点坐标），计算欧式距离EDC LopDist_s2，比较出LopDist_s2和FPS_LastPsDist_s2的最小值，作为与当前FPS点集的距离FPS_PsDist，当前点FPS_PsDist需要与之前点到点集的距离FPS_MaxDist比较出最大值FPS_UpdMax，
     - Stage3: 并更新到Dist_Buffer；和更新这个最大值FPS_MaxDist，最大值对应的点的index FPS_MaxIdx，和最大值对应的点的坐标FPS_MaxCrd；
@@ -79,10 +78,13 @@
         - 当FPS选出的点集点数达到所需的点数（Nop）时，CTRPSS_Mask输出给PSS，state转到FNH，后转到IDLE，发出CfgRdy，配置下一层FPS
 
 - KNN
-    - stage0是送地址：从第0个点到最后一个点，轮流作为中心点KNN_CpCrd_s2，将所有点LopIdx依次从GLB取出后，stage2:pipe是把SRAM取来的数存到LopCrd_s2, LopCrd_s2与KNN_CpCrd_s2计算出LopDist_s2，直接输出到PSS模块，PSS计算出的每个点的map，输出out_idx到global buffer
+    - stage0是送地址：从第0个点到最后一个点，轮流作为中心点KNN_CpCrd_s2，将所有点LopIdx依次从GLB取出后，stage2:pipe是把SRAM取来的数存到LopCrd_s2, LopCrd_s2与KNN_CpCrd_s2计算出LopDist_s2，直接输出到PSS模块，PSS计算出的每个点的map，输出out_idx到ITF
 - 随网络Scaling
     - Crd_Buffer是用GLB还是内建？Dist_Buffer是内建还是统一？
-        - 取决于有多大？ModelNet40有1024,那最大的S3DIS呢？有15, 000个点，96KB，scanoPart也有2K个点，需要放到GLB，而且可以给SA让位灵活测试
+        - 取决于有多大？ModelNet40有1024,那最大的S3DIS呢？有15, 000个点，96KB，ScanNetPart也有2K个点，需要放到GLB，而且可以给SA让位灵活测试
+        - 取决于能否用GLB? 
+            -（Crd_buffer是单口读，Dist_Buffer是双口？无所谓，可以用PingPong buffer），
+            - 而且是:question:**用地址取的，需要GLB修改支持？？**先不管先这样
     - K最大多少？32，即使是S3DIS的最大nsample也是32
     - FPS层最大？S3DIS XL也才5个
     - KNN层最大？

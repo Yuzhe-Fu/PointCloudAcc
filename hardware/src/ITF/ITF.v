@@ -23,7 +23,9 @@ module ITF #(
     )(
     input                                               clk  ,
     input                                               rst_n,
-
+    output                                              CCUITF_Empty, 
+    output [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum,
+    output [ADDR_WIDTH                          -1 : 0] CCUITF_Addr,  
     output [PORT_WIDTH                          -1 : 0] ITFPAD_Dat     ,
     output [1                                   -1 : 0] ITFPAD_DatVld  ,
     output [1                                   -1 : 0] ITFPAD_DatLast ,

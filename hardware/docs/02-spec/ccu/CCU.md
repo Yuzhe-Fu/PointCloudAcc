@@ -100,7 +100,7 @@
 
 # 模块描述
 - CCU是中央控制器，负责配置模块和模块的**最顶层控制**（模块内部只要配置能控制的都不要用CCU控制，多少层由CCU控制，CfgVld相当于控制了层的开始，CfgRdy相当于模块反馈结束，再加上整个网络的Rst）
-    - 与片外通信：先通过统一接口(ITF->GLB->CCU)，从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
+    - 与片外通信：先直接通过统一接口ITF（ITF相当于挂载了CCU和GLB），从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
     - FSM控制片内：用FSM，t每层输出一次配置，IDLE(芯片启动空状态）->RD_CFG(读取整个网络的参数配置）->->FNH（整个网络计算完成）
         - 转到配置子FSM: IDLE_CFG ->接收到Triggerif (ReqCfg)...ARRAY_CFG, CONV_CFG（配置网络一层）， FC....-> 
     根据模块请求FPS、KNN、CONV、POL、FC等层的配置，各自取各自下一层的配置
