@@ -58,6 +58,8 @@ from datetime import datetime
 import torch.onnx
 from torch import optim
 from torch.autograd import Variable
+import pandas as pd
+
 
 # ==================================
 # loading the train_model.py library~
@@ -65,8 +67,8 @@ from torch.autograd import Variable
 from fnmatch import fnmatch
 # from Function_self import Function_self
 
-import pdb
-import to_csv
+import pdb, csv
+
 
 def get_features(input_features_dim, data):
     if input_features_dim == 3:
@@ -99,10 +101,25 @@ def print_cls_results(oa, macc, accs, epoch, cfg):
     s += f'E@{epoch}\tOA: {oa:3.2f}\tmAcc: {macc:3.2f}\n'
     logging.info(s)
 
+input_data = {}
+output_data = {}
+activation = {}
+def get_activation(name):
+    def hook(model,input,output):
+        # output_data[name] = output.numpy()
+        input_data[name] = input[0].detach() # input type is tulple, only has one element, which is the tensor
+        output_data[name] = output.detach()  # output type is tensor
+    return hook
 
 def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
-    logging.basicConfig(level=logging.DEBUG)
+
     torch.cuda.empty_cache()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--compress',dest='compress',type=str,nargs='?',action='store',default='../../../distiller/myfile/prune_quant_sensitivity.yaml')
+    # parser.add_argument('--name',dest='name',type=str,default='prune_test')
+    # distiller.quantization.add_post_train_quant_args(parser)
+    # Check complete args
+    # args = parser.parse_args()
     
     if cfg.distributed:
         if cfg.mp:
@@ -120,11 +137,11 @@ def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
         writer = None
     set_random_seed(cfg.seed + cfg.rank, deterministic=cfg.deterministic)
     torch.backends.cudnn.enabled = True
-    logging.info(cfg)
+    # logging.info(cfg)
 
     model = build_model_from_cfg(cfg.model).to(cfg.rank)
     model_size = cal_model_parm_nums(model)
-    logging.info(model)
+    # logging.info(model)
 
     logging.info('Number of params: %.4f M' % (model_size / 1e6))
     criterion = build_criterion_from_cfg(cfg.criterion).cuda()
@@ -143,6 +160,15 @@ def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
     # optimizer & scheduler
     optimizer = build_optimizer_from_cfg(model, lr=cfg.lr, **cfg.optimizer)
     scheduler = build_scheduler_from_cfg(cfg, optimizer)
+
+    compression_scheduler = None
+    if compress_path:
+        source = compress_path
+        # pdb.set_trace()
+        compression_scheduler=distiller.file_config(model,optimizer=optimizer,filename=source,resumed_epoch=None)
+        compression_scheduler.append_float_weight_after_quantizer()
+    if compression_scheduler ==None:
+        print('ERROR --------------------------No compress------------------------')
 
     # build dataset
     val_loader = build_dataloader_from_cfg(cfg.get('val_batch_size', cfg.batch_size),
@@ -183,10 +209,10 @@ def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
         else:
             if cfg.mode == 'test':
                 # test mode
-                epoch, best_val = load_checkpoint(
-                    model, pretrained_path=cfg.pretrained_path)
+                epoch, best_val = load_checkpoint(model, pretrained_path=cfg.pretrained_path)
                 macc, oa, accs, cm = validate_fn(model, test_loader, cfg)
-                print_cls_results(oa, macc, accs, epoch, cfg)
+                # print_cls_results(oa, macc, accs, epoch, cfg)
+                print('Finish test, data see in data/TensorData')
                 return True
             elif cfg.mode == 'val':
                 # validation mode
@@ -204,244 +230,160 @@ def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
                 load_checkpoint(model.encoder, cfg.pretrained_path)
     else:
         logging.info('Training from scratch')
-    logging.info('next line after scratch')
-
     
-    # ==================================
-    # From Prune_quant.py
-    # ==================================
-    #FIXME name he svedir need to be changed~
-    # pdb.set_trace()
-    if save_name:
-        logging.info('get in save_name')
-        # msglogger = apputils.config_pylogger('logging.conf',experiment_name=save_name,output_dir='./msglogger_out')
-        msglogger = logging
-        # tflogger = TensorBoardLogger(msglogger.logdir)
-        tflogger = TensorBoardLogger(cfg.log_path)
-        tflogger.log_gradients = True
-        pylogger = PythonLogger(msglogger)
-
-    compression_scheduler = None
-    if compress_path:
-        logging.info('get in compress_path')
-        source = compress_path
-        # pdb.set_trace()
-        compression_scheduler=distiller.file_config(model,optimizer=optimizer,filename=source,resumed_epoch=None)
-        compression_scheduler.append_float_weight_after_quantizer()
-    if compression_scheduler ==None:
-        print('ERROR --------------------------No compress------------------------')
-
-    train_loader = build_dataloader_from_cfg(cfg.batch_size,
-                                             cfg.dataset,
-                                             cfg.dataloader,
-                                             datatransforms_cfg=cfg.datatransforms,
-                                             split='train',
-                                             distributed=cfg.distributed,
-                                             )
-    logging.info(f"length of training dataset: {len(train_loader.dataset)}")
-
-    # ===> start training
-    val_macc, val_oa, val_accs, best_val, macc_when_best, best_epoch = 0., 0., [], 0., 0., 0
-    model.zero_grad()
-    for epoch in range(cfg.start_epoch, cfg.epochs + 1):
-        # ==================================
-        # From Train_model.py
-        # ==================================
-        if compression_scheduler:
-            print('compression is valid')
-            compression_scheduler.on_epoch_begin(epoch)
-
-        if cfg.distributed:
-            train_loader.sampler.set_epoch(epoch)
-        if hasattr(train_loader.dataset, 'epoch'):
-            train_loader.dataset.epoch = epoch - 1
-        train_loss, train_macc, train_oa, _, _, compression_scheduler = \
-            train_one_epoch(model, train_loader, criterion,
-                            optimizer, scheduler, epoch, cfg, compression_scheduler, tflogger, pylogger)
-
-        is_best = False
-        if epoch % cfg.val_freq == 0:
-            val_macc, val_oa, val_accs, val_cm = validate_fn(
-                model, val_loader, cfg)
-            is_best = val_oa > best_val
-            if is_best:
-                best_val = val_oa
-                macc_when_best = val_macc
-                best_epoch = epoch
-                logging.info(f'Find a better ckpt @E{epoch}')
-                print_cls_results(val_oa, val_macc, val_accs, epoch, cfg)
-
-        lr = optimizer.param_groups[0]['lr']
-        logging.info(f'Epoch {epoch} LR {lr:.6f} '
-                     f'train_oa {train_oa:.2f}, val_oa {val_oa:.2f}, best val oa {best_val:.2f}')
-        
-        # csv_path = './data/TrainingData/relafalse_bntrue_ch32_w88-1-8a8_epo600.csv'
-        # csv_list = [lr, train_oa, train_loss, val_oa, val_macc, best_epoch, best_val, macc_when_best]
-        # to_csv.to_csv(csv_path, epoch, csv_list)
-        
-        if writer is not None:
-            writer.add_scalar('train_loss', train_loss, epoch)
-            writer.add_scalar('train_oa', train_macc, epoch)
-            writer.add_scalar('lr', lr, epoch)
-            writer.add_scalar('val_oa', val_oa, epoch)
-            writer.add_scalar('mAcc_when_best', macc_when_best, epoch)
-            writer.add_scalar('best_val', best_val, epoch)
-            writer.add_scalar('epoch', epoch, epoch)
-
-        if cfg.sched_on_epoch:
-            scheduler.step(epoch)
-        if cfg.rank == 0:
-            save_checkpoint(cfg, model, epoch, optimizer, scheduler,
-                            additioanl_dict={'best_val': best_val},
-                            is_best=is_best
-                            )
-    # test the last epoch
-    test_macc, test_oa, test_accs, test_cm = validate(model, test_loader, cfg)
-    print_cls_results(test_oa, test_macc, test_accs, best_epoch, cfg)
-    if writer is not None:
-        writer.add_scalar('test_oa', test_oa, epoch)
-        writer.add_scalar('test_macc', test_macc, epoch)
-
-    # test the best validataion model
-    best_epoch, _ = load_checkpoint(model, pretrained_path=os.path.join(
-        cfg.ckpt_dir, f'{cfg.run_name}_ckpt_best.pth'))
-    test_macc, test_oa, test_accs, test_cm = validate(model, test_loader, cfg)
-    if writer is not None:
-        writer.add_scalar('test_oa', test_oa, best_epoch)
-        writer.add_scalar('test_macc', test_macc, best_epoch)
-    print_cls_results(test_oa, test_macc, test_accs, best_epoch, cfg)
-
-    if writer is not None:
-        writer.close()
 
 
-def train_one_epoch(model, train_loader, criterion, optimizer, scheduler, epoch, cfg, compression_scheduler, tflogger, pylogger):
-    loss_meter = AverageMeter()
-    cm = ConfusionMatrix(num_classes=cfg.num_classes)
-    npoints = cfg.num_points
-
-    model.train()  # set model to training mode
-    batch_size = train_loader.__len__()
-    pbar = tqdm(enumerate(train_loader), total=train_loader.__len__())
-    num_iter = 0
-    for idx, data in pbar:
-        for key in data.keys():
-            data[key] = data[key].cuda(non_blocking=True)
-        num_iter += 1
-        points = data['x']
-        target = data['y']
-        """ bebug
-        from openpoints.dataset import vis_points 
-        vis_points(data['pos'].cpu().numpy()[0])
-        """
-        num_curr_pts = points.shape[1]
-        if num_curr_pts > npoints:  # point resampling strategy
-            if npoints == 1024:
-                point_all = 1200
-            elif npoints == 4096:
-                point_all = 4800
-            elif npoints == 8192:
-                point_all = 8192
-            else:
-                raise NotImplementedError()
-            if  points.size(1) < point_all:
-                point_all = points.size(1)
-            fps_idx = furthest_point_sample(
-                points[:, :, :3].contiguous(), point_all)
-            fps_idx = fps_idx[:, np.random.choice(
-                point_all, npoints, False)]
-            points = torch.gather(
-                points, 1, fps_idx.unsqueeze(-1).long().expand(-1, -1, points.shape[-1]))
-
-        data['pos'] = points[:, :, :3].contiguous()
-        data['x'] = points[:, :, :cfg.model.in_channels].transpose(1, 2).contiguous()
-
-        # ==================================
-        # From Train_model.py
-        # ==================================
-        if compression_scheduler:
-            compression_scheduler.on_minibatch_begin(
-            epoch,minibatch_id=idx,minibatches_per_epoch=
-            batch_size,optimizer=optimizer)
-
-        data = torch.cat((data['pos'], data['x'].transpose(1, 2).contiguous()),2) # (batch, 1024, 6)
-        # assert data.is_contiguous() #yes
-        # print('data size is', data.size())
-        # pdb.set_trace()
-
-        logits = model(data)
-        # pdb.set_trace()
-        
-
-        loss = criterion(logits, target)
-
-        if compression_scheduler:        
-            agg_loss = compression_scheduler.before_backward_pass(
-            epoch,minibatch_id=idx,minibatches_per_epoch=batch_size,
-            loss=loss,return_loss_components=True,optimizer=optimizer)
-            loss = agg_loss.overall_loss
-
-        loss.backward()
-        if compression_scheduler:
-            # pdb.set_trace()
-            compression_scheduler.before_parameter_optimization(epoch,minibatch_id=idx,minibatches_per_epoch=batch_size,optimizer=optimizer)
 
 
-        # optimize
-        if num_iter == cfg.step_per_update:
-            if cfg.get('grad_norm_clip') is not None and cfg.grad_norm_clip > 0.:
-                torch.nn.utils.clip_grad_norm_(
-                    model.parameters(), cfg.grad_norm_clip, norm_type=2)
-            num_iter = 0
-            optimizer.step()
-            model.zero_grad()
-            if not cfg.sched_on_epoch:
-                scheduler.step(epoch)
-
-        # update confusion matrix
-        cm.update(logits.argmax(dim=1), target)
-        loss_meter.update(loss.item())
-
-        if compression_scheduler:
-            compression_scheduler.on_minibatch_end(epoch,minibatch_id=idx,
-            minibatches_per_epoch=batch_size,optimizer=optimizer)
-
-        if idx % cfg.print_freq == 0:
-            pbar.set_description(f"Train Epoch [{epoch}/{cfg.epochs}] "
-                                 f"Loss {loss_meter.val:.3f} Acc {cm.overall_accuray:.2f}")
-
-    macc, overallacc, accs = cm.all_acc()
-    # pdb.set_trace()
-    if compression_scheduler:
-        distiller.log_weights_sparsity(model,epoch,loggers=[tflogger,pylogger]) #FIXME
-    if compression_scheduler:
-        compression_scheduler.on_epoch_end(epoch,optimizer,metrics={'min':loss_meter.avg, 'max':overallacc})
-    return loss_meter.avg, macc, overallacc, accs, cm, compression_scheduler
-
-
-@torch.no_grad()
 def validate(model, val_loader, cfg):
     model.eval()  # set model to eval mode
+    # layer = model.encoder.encoder[1][0].act.fake_q
+    # layer_name = 'encoder_encoder_1_0_act_fake_q'
+
+    layer0  =   model.encoder.encoder[0][0].convs[0][0]
+    layer1  =   model.encoder.encoder[1][0].skipconv[0]
+    layer2  =   model.encoder.encoder[1][0].act.fake_q
+    layer3  =   model.encoder.encoder[1][0].convs[0][0]
+    layer4  =   model.encoder.encoder[1][0].convs[0][1]
+    layer5  =   model.encoder.encoder[1][0].convs[0][2].fake_q
+    layer6  =   model.encoder.encoder[1][0].convs[1][0]
+    layer7  =   model.encoder.encoder[1][0].convs[1][1]
+    layer8  =   model.encoder.encoder[2][0].skipconv[0]
+    layer9  =   model.encoder.encoder[2][0].act.fake_q
+    layer10 =   model.encoder.encoder[2][0].convs[0][0]
+    layer11 =   model.encoder.encoder[2][0].convs[0][1]
+    layer12 =   model.encoder.encoder[2][0].convs[0][2].fake_q
+    layer13 =   model.encoder.encoder[2][0].convs[1][0]
+    layer14 =   model.encoder.encoder[2][0].convs[1][1]
+    layer15 =   model.encoder.encoder[3][0].skipconv[0]
+    layer16 =   model.encoder.encoder[3][0].act.fake_q
+    layer17 =   model.encoder.encoder[3][0].convs[0][0]
+    layer18 =   model.encoder.encoder[3][0].convs[0][1]
+    layer19 =   model.encoder.encoder[3][0].convs[0][2].fake_q
+    layer20 =   model.encoder.encoder[3][0].convs[1][0]
+    layer21 =   model.encoder.encoder[3][0].convs[1][1]
+    layer22 =   model.encoder.encoder[4][0].skipconv[0]
+    layer23 =   model.encoder.encoder[4][0].act.fake_q
+    layer24 =   model.encoder.encoder[4][0].convs[0][0]
+    layer25 =   model.encoder.encoder[4][0].convs[0][1]
+    layer26 =   model.encoder.encoder[4][0].convs[0][2].fake_q
+    layer27 =   model.encoder.encoder[4][0].convs[1][0]
+    layer28 =   model.encoder.encoder[4][0].convs[1][1]
+    layer29 =   model.encoder.encoder[5][0].convs[0][0]
+    layer30 =   model.encoder.encoder[5][0].convs[0][1]
+    layer31 =   model.encoder.encoder[5][0].convs[0][2].fake_q
+    layer32 =   model.encoder.encoder[5][0].convs[1][0]
+    layer33 =   model.encoder.encoder[5][0].convs[1][1]
+    layer34 =   model.encoder.encoder[5][0].convs[1][2].fake_q
+    layer35 =   model.prediction.head[0][0]
+    layer36 =   model.prediction.head[0][1]
+    layer37 =   model.prediction.head[0][2].fake_q
+    layer38 =   model.prediction.head[2][0]
+    layer39 =   model.prediction.head[2][1]
+    layer40 =   model.prediction.head[2][2].fake_q
+    layer41 =   model.prediction.head[4][0]
+
+
+    list=[\
+        {'layer': layer0,   'layer_name': 'model_encoder_encoder_0_0_convs_0_0',          'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer1,   'layer_name': 'model_encoder_encoder_1_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer2,   'layer_name': 'model_encoder_encoder_1_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer3,   'layer_name': 'model_encoder_encoder_1_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer4,   'layer_name': 'model_encoder_encoder_1_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer5,   'layer_name': 'model_encoder_encoder_1_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer6,   'layer_name': 'model_encoder_encoder_1_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer7,   'layer_name': 'model_encoder_encoder_1_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, 
+        {'layer': layer8,   'layer_name': 'model_encoder_encoder_2_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer9,   'layer_name': 'model_encoder_encoder_2_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer10,  'layer_name': 'model_encoder_encoder_2_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer11,  'layer_name': 'model_encoder_encoder_2_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer12,  'layer_name': 'model_encoder_encoder_2_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer13,  'layer_name': 'model_encoder_encoder_2_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer14,  'layer_name': 'model_encoder_encoder_2_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer15,  'layer_name': 'model_encoder_encoder_3_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer16,  'layer_name': 'model_encoder_encoder_3_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer17,  'layer_name': 'model_encoder_encoder_3_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer18,  'layer_name': 'model_encoder_encoder_3_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True }, \
+        {'layer': layer19,  'layer_name': 'model_encoder_encoder_3_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer20,  'layer_name': 'model_encoder_encoder_3_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer21,  'layer_name': 'model_encoder_encoder_3_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer22,  'layer_name': 'model_encoder_encoder_4_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer23,  'layer_name': 'model_encoder_encoder_4_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer24,  'layer_name': 'model_encoder_encoder_4_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer25,  'layer_name': 'model_encoder_encoder_4_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer26,  'layer_name': 'model_encoder_encoder_4_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer27,  'layer_name': 'model_encoder_encoder_4_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer28,  'layer_name': 'model_encoder_encoder_4_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer29,  'layer_name': 'model_encoder_encoder_5_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer30,  'layer_name': 'model_encoder_encoder_5_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer31,  'layer_name': 'model_encoder_encoder_5_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer32,  'layer_name': 'model_encoder_encoder_5_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer33,  'layer_name': 'model_encoder_encoder_5_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer34,  'layer_name': 'model_encoder_encoder_5_0_convs_1_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer35,  'layer_name': 'model_prediction_head_0_0',                    'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer36,  'layer_name': 'model_prediction_head_0_1',                    'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer37,  'layer_name': 'model_prediction_head_0_2_fake_q',             'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer38,  'layer_name': 'model_prediction_head_2_0',                    'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+        {'layer': layer39,  'layer_name': 'model_prediction_head_2_1',                    'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+        {'layer': layer40,  'layer_name': 'model_prediction_head_2_2_fake_q',             'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+        {'layer': layer41,  'layer_name': 'model_prediction_head_4_0',                    'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}]
+
+
+    for dic in list:
+        dic['layer'].register_forward_hook(get_activation(dic['layer_name']))
+
     cm = ConfusionMatrix(num_classes=cfg.num_classes)
     npoints = cfg.num_points
-    pbar = tqdm(enumerate(val_loader), total=val_loader.__len__())
+    # pbar = tqdm(enumerate(val_loader), total=val_loader.__len__())
+    pbar = tqdm(enumerate(val_loader), total=1)
     for idx, data in pbar:
-        for key in data.keys():
-            data[key] = data[key].cuda(non_blocking=True)
-        target = data['y']
-        points = data['x']
-        points = points[:, :npoints]
-        data['pos'] = points[:, :, :3].contiguous()
-        data['x'] = points[:, :, :cfg.model.in_channels].transpose(1, 2).contiguous()
+        if idx==0:
+            for key in data.keys():
+                data[key] = data[key].cuda(non_blocking=True)
+            target = data['y']
+            points = data['x']
+            points = points[:, :npoints]
+            data['pos'] = points[:, :, :3].contiguous()
+            data['x'] = points[:, :, :cfg.model.in_channels].transpose(1, 2).contiguous()
+            data = torch.cat((data['pos'], data['x'].transpose(1, 2).contiguous()),2) # (batch, 1024, 6)
+            logits = model(data)
+            cm.update(logits.argmax(dim=1), target)
+        else:
+            print('finish one batch test')
+            break
+        
+    # save the hooked tesnsor value
+    for dic in list:
+        save_Tensor(dic['layer'], dic['layer_name'], dic['isWeight'], dic['isBias'], dic['isFakeQ'], dic['isBN'])
 
-        data = torch.cat((data['pos'], data['x'].transpose(1, 2).contiguous()),2) # (batch, 1024, 6)
+    # tp, count = cm.tp, cm.count
+    # if cfg.distributed:
+    #     dist.all_reduce(tp), dist.all_reduce(count)
+    # macc, overallacc, accs = cm.cal_acc(tp, count)
+    # return macc, overallacc, accs, cm
+    return None, None, None, None
 
-        logits = model(data)
-        cm.update(logits.argmax(dim=1), target)
 
-    tp, count = cm.tp, cm.count
-    if cfg.distributed:
-        dist.all_reduce(tp), dist.all_reduce(count)
-    macc, overallacc, accs = cm.cal_acc(tp, count)
-    return macc, overallacc, accs, cm
-
+def save_Tensor(layer, layer_name, isWeight, isBias, isFakeQ, isBN):
+    path=r'./data/TensorData/'+layer_name
+    if not os.path.exists(path):
+        os.mkdir(path)
+    
+    torch.save(input_data[layer_name], path+'/input.pt')
+    torch.save(output_data[layer_name],path+'/output.pt')
+    
+    if isWeight is True:
+        torch.save(layer.weight, path+'/weight.pt')
+        torch.save(layer.weight_scale, path+'/weight_scale.pt')
+        torch.save(layer.weight_zero_point, path+'/weight_zero_point.pt')
+    if isBias is True:
+        torch.save(layer.bias, path+'/bias.pt')
+        torch.save(layer.bias_scale, path+'/bias_scale.pt')
+        torch.save(layer.bias_zero_point, path+'/bias_zero_point.pt')
+    if isFakeQ is True:
+        torch.save(layer.scale, path+'/scale.pt')
+        torch.save(layer.zero_point, path+'/zero_point.pt')
+    if isBN is True:
+        torch.save(layer.weight, path+'/weight.pt')
+        torch.save(layer.bias, path+'/bias.pt')
+    print('successfully saved the '+ layer_name + ' data')

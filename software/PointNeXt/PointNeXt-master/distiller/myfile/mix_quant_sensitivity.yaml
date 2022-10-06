@@ -1,0 +1,123 @@
+version: 1
+# pruners:
+#     conv1_pruner:
+#         class: AutomatedGradualPruner
+#         initial_sparsity: 0.05
+#         final_sparsity: 0.9
+#         weights: encoder.encoder[0][0].convs[0][0].weight
+
+    # conv1_pruner:
+        # class: AutomatedGradualPruner
+        # initial_sparsity: 0.05
+        # final_sparsity: 0.9
+        # weights: [encoder.encoder.0.0.convs.0.0.float_weight,
+        #         encoder.encoder.1.0.skipconv.0.float_weight, 
+        #         encoder.encoder.1.0.convs.0.0.float_weight]
+
+# encoder.encoder[0][0].convs[0][0].float_weight
+    
+
+
+
+#######################################################
+quantizers:
+    linear_quantizer:
+        class: QuantAwareTrainRangeLinearQuantizer
+        bits_activations: 8
+        bits_weights: 1
+        bits_bias: 8
+        #bits_accum: 28
+        #bits_sca
+        mode: 'SYMMETRIC'
+        ema_decay: 0.999
+        per_channel_wts: True
+        quantize_inputs: True
+        num_bits_inputs: 8
+        overrides:
+            encoder.encoder.0.0.convs.0.0:
+                bits_weights: 8
+                bits_activations: 8
+                bits_bias: 8
+                bits_accum: null
+            encoder.encoder.1.0.skipconv.0:
+                bits_weights: 8
+                bits_activations: 8
+                bits_bias: 8
+                bits_accum: null
+            encoder.encoder.1.0.convs.0.0:
+                bits_weights: 8
+                bits_activations: 8
+                bits_bias: 8
+                bits_accum: null
+            encoder.encoder.1.0.convs.1.0:
+                bits_weights: 8
+                bits_activations: 8
+                bits_bias: 8
+                bits_accum: null
+            prediction.head.0.0:
+                bits_weights: 8
+                bits_activations: 8
+                bits_bias: 8
+                bits_accum: null
+            prediction.head.2.0:
+                bits_weights: 8
+                bits_activations: 8
+                bits_bias: 8
+                bits_accum: null
+            prediction.head.4.0:
+                bits_weights: 8
+                bits_activations: 8
+                bits_bias: 8
+                bits_accum: null                        
+
+policies:
+    # - pruner:
+    #       instance_name: conv1_pruner
+    #   starting_epoch: 0
+    #   ending_epoch: 50
+    #   frequency: 1
+
+
+
+###################################################
+    - quantizer:
+          instance_name: linear_quantizer
+      starting_epoch: 0
+      ending_epoch: 700
+      frequency: 1
+
+
+
+
+
+
+
+# 'encoder.encoder.0.0.convs.0.0.weight' w
+# 'encoder.encoder.0.0.convs.0.0.bias' wil
+# 'encoder.encoder.1.0.skipconv.0.weight' 
+# 'encoder.encoder.1.0.skipconv.0.bias' wi
+# 'encoder.encoder.1.0.convs.0.0.weight' w
+# 'encoder.encoder.1.0.convs.1.0.weight' w
+# 'encoder.encoder.2.0.skipconv.0.weight' 
+# 'encoder.encoder.2.0.skipconv.0.bias' wi
+# 'encoder.encoder.2.0.convs.0.0.weight' w
+# 'encoder.encoder.2.0.convs.1.0.weight' w
+# 'encoder.encoder.3.0.skipconv.0.weight' 
+# 'encoder.encoder.3.0.skipconv.0.bias' wi
+# 'encoder.encoder.3.0.convs.0.0.weight' w
+# 'encoder.encoder.3.0.convs.1.0.weight' w
+# 'encoder.encoder.4.0.skipconv.0.weight' 
+# 'encoder.encoder.4.0.skipconv.0.bias' wi
+# 'encoder.encoder.4.0.convs.0.0.weight' w
+# 'encoder.encoder.4.0.convs.1.0.weight' w
+# 'encoder.encoder.5.0.convs.0.0.weight' w
+# 'encoder.encoder.5.0.convs.1.0.weight' w
+# 'prediction.head.0.0.weight' will be qua
+# 'prediction.head.2.0.weight' will be qua
+# 'prediction.head.4.0.weight' will be qua
+# 'prediction.head.4.0.bias' will be quant
+
+
+
+
+

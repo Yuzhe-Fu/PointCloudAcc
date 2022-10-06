@@ -162,8 +162,7 @@ class TensorBoardLogger(DataLogger):
 
         for name, param in model.state_dict().items():
 
-            # logging.info(f"the name and size in model is {name} and {param.size()}")
-            #  and name == "encoder.encoder.0.0.convs.0.0.weight"
+            # logging.info(f"{name} and {param.size()}")
 
             if param.dim() in [3,4]:
                 _density = density(param)
@@ -174,7 +173,7 @@ class TensorBoardLogger(DataLogger):
                                              sparsity(param)*100, epoch)
                 self.tblogger.scalar_summary('sparsity-2D/weights/' + name,
                                              sparsity_2D(param)*100, epoch)
-        
+        pdb.set_trace()
         self.tblogger.scalar_summary("sparsity/weights/total", 100*(1 - sparse_params_size/params_size), epoch)
         self.tblogger.sync_to_file()
 
