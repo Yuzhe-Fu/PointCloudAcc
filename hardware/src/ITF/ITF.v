@@ -41,10 +41,12 @@ module ITF #(
 
     input  [SRAM_WIDTH*NUM_RDPORT               -1 : 0] GLBITF_Dat     ,
     input  [NUM_RDPORT                          -1 : 0] GLBITF_DatVld  ,
+    input  [NUM_RDPORT                          -1 : 0] GLBITF_DatLast  ,
     output [NUM_RDPORT                          -1 : 0] ITFGLB_DatRdy  ,
 
     output [SRAM_WIDTH*NUM_WRPORT               -1 : 0] ITFGLB_Dat    , 
     output [NUM_WRPORT                          -1 : 0] ITFGLB_DatVld , 
+    output [NUM_WRPORT                          -1 : 0] ITFGLB_DatLast , 
     input  [NUM_WRPORT                          -1 : 0] GLBITF_DatRdy   
 
 );
@@ -77,6 +79,7 @@ wire                        DatInVld;
 wire                        DatInRdy;
 wire [PORT_WIDTH    -1 : 0] DatOut;
 wire                        DatOutVld;
+wire                        DatOutLast;
 wire                        DatOutRdy;
 
 wire [NUMPORT_WIDTH -1 : 0] WrPort;
@@ -101,11 +104,11 @@ always @(*) begin
                         next_state <= IN;
                 end else
                     next_state <= CMD;
-        IN:   if( PADITF_DatLast & ITFPAD_DatRdy)
+        IN:   if( DatInVld & DatInLast & DatInRdy )
                     next_state <= FNH;
                 else
                     next_state <= IN;
-        OUT:   if(ITFPAD_DatLast & PADITF_DatRdy )
+        OUT:   if(ITFPAD_DatVld & ITFPAD_DatLast & PADITF_DatRdy )
                     next_state <= FNH;
                 else
                     next_state <= OUT;
@@ -159,6 +162,7 @@ generate
     for(i=0; i<NUM_WRPORT; i=i+1) begin
         assign ITFGLB_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = DatIn;
         assign ITFGLB_DatVld[i] = DatInVld;
+        assign ITFGLB_DatLast[i] = DatInLast;
     end
 endgenerate
 
@@ -170,6 +174,7 @@ assign WrPort   = state == OUT? 0 : Port;
 //=====================================================================================================================
 assign ITFPAD_Dat       = state==CMD? Cmd : DatOut;
 assign ITFPAD_DatVld    = state==CMD? CmdVld : DatOutVld;
+assign ITFPAD_DatLast   = state==CMD? CmdVld : DatOutLast;
 assign DatOutRdy        = PADITF_DatRdy;
 assign CmdRdy           = PADITF_DatRdy;
 assign ITFGLB_DatRdy    = PISO_OUTRdy & state == OUT;
@@ -186,14 +191,16 @@ SIPO#(
     .DATA_IN_WIDTH ( PORT_WIDTH ),
     .DATA_OUT_WIDTH ( SRAM_WIDTH )
 )u_SIPO_IN(
-    .CLK           ( clk            ),
-    .RST_N         ( rst_n          ),
-    .ENABLE        ( PADITF_DatVld  ),
-    .DATA_IN       ( PADITF_Dat     ),
-    .IN_READY      ( ITFPAD_DatRdy  ),
-    .DATA_OUT      ( DatIn          ), // Off-chip input to on-chip
-    .OUT_VALID     ( DatInVld       ),
-    .OUT_READY     ( DatInRdy       )
+    .CLK          ( clk            ),
+    .RST_N        ( rst_n          ),
+    .IN_VLD       ( PADITF_DatVld  ),
+    .IN_LAST      ( PADITF_DatLast ),
+    .IN_DAT       ( PADITF_Dat     ),
+    .IN_RDY       ( ITFPAD_DatRdy  ),
+    .OUT_DAT      ( DatIn          ), // Off-chip input to on-chip
+    .OUT_VLD      ( DatInVld       ),
+    .OUT_LAST     ( DatInLast      ),
+    .OUT_RDY      ( DatInRdy       )
 );
 
 
@@ -211,14 +218,16 @@ PISO#(
     .DATA_IN_WIDTH ( SRAM_WIDTH ),
     .DATA_OUT_WIDTH ( PORT_WIDTH )
 )u_PISO_OUT(
-    .CLK           ( clk                        ),
-    .RESET_N       ( rst_n                      ),
-    .ENABLE        ( GLBITF_DatVld & state == OUT),
-    .DATA_IN       ( GLBITF_Dat                 ),
-    .READY         ( PISO_OUTRdy                ),
-    .DATA_OUT      ( DatOut                     ), // On-chip output to Off-chip 
-    .OUT_VALID     ( DatOutVld                  ),
-    .OUT_READY     ( DatOutRdy                  )
+    .CLK          ( clk                        ),
+    .RST_N        ( rst_n                      ),
+    .IN_VLD       ( GLBITF_DatVld & state == OUT),
+    .IN_LAST      ( GLBITF_DatLast& state == OUT),
+    .IN_DAT       ( GLBITF_Dat                 ),
+    .IN_RDY       ( PISO_OUTRdy                ),
+    .OUT_DAT      ( DatOut                     ), // On-chip output to Off-chip 
+    .OUT_VLD      ( DatOutVld                  ),
+    .OUT_LAST     ( DatOutLast                   ),
+    .OUT_RDY      ( DatOutRdy                  )
 );
 
 
