@@ -212,13 +212,12 @@ GLB#(
     .WrPortAddr              ( WrPortAddr              ),
     .RdPortDat               ( RdPortDat               ),
     .RdPortDatVld            ( RdPortDatVld            ),
-    .RdPortDatLast           ( RdPortDatLast            ),
+    .RdPortDatLast           ( RdPortDatLast           ),
     .RdPortDatRdy            ( RdPortDatRdy            ),
     .RdPortFull              ( RdPortFull              ),
     .RdPortReqNum            ( RdPortReqNum            ),
     .RdPortAddr              ( RdPortAddr              )
 );
-
 
 
 CTR#(
@@ -239,7 +238,7 @@ CTR#(
     .CCUCTR_CfgNip      ( CCUCTR_CfgNip      ),
     .CCUCTR_CfgNop      ( CCUCTR_CfgNop      ),
     .CCUCTR_CfgK        ( CCUCTR_CfgK        ),
-    .CTRGLB_CrdAddr     ( CTRGLB_CrdAddr     ),
+    .CTRGLB_CrdAddr     ( CTRGLB_CrdAddr     ), ?????????????????????????
     .CTRGLB_CrdAddrVld  ( CTRGLB_CrdAddrVld  ),
     .GLBCTR_CrdAddrRdy  ( GLBCTR_CrdAddrRdy  ),
     .GLBCTR_Crd         ( GLBCTR_Crd         ),
@@ -255,6 +254,19 @@ CTR#(
     .CTRGLB_IdxVld      ( CTRGLB_IdxVld      ),
     .CTRGLB_IdxRdy      ( CTRGLB_IdxRdy      )
 );
+
+assign GLBSYA_Act = RdPortDat[ (SRAM_WIDTH*MAXPAR)*2 +: (SRAM_WIDTH*MAXPAR)];
+assign GLBSYA_ActVld = RdPortDatVld[2];
+assign RdPortDatRdy[2] = SYAGLB_ActRdy;
+
+assign GLBSYA_Wgt = RdPortDat[c];
+assign GLBSYA_WgtVld = RdPortDatVld[3];
+assign RdPortDatRdy[3] = SYAGLB_WgtRdy;
+
+assign WrPortDat[ (SRAM_WIDTH*MAXPAR)*2 +: (SRAM_WIDTH*MAXPAR) ] = SYAGLB_Ofm;
+assign WrPortDatVld[2] = SYAGLB_OfmVld;
+assign GLBSYA_OfmRdy = WrPortDatRdy[2];
+
 
 SYA #(
     .ACT_WIDTH ( ACT_WIDTH), 
@@ -275,7 +287,7 @@ SYA #(
     .CCUSYA_CfgScale(CCUSYA_CfgScale),
     .CCUSYA_CfgShift(CCUSYA_CfgShift),
     .CCUSYA_CfgZp   (CCUSYA_CfgZp   ),
-    .GLBSYA_Act     (GLBSYA_Act     ), ?????????????????????????
+    .GLBSYA_Act     (GLBSYA_Act     ), 
     .GLBSYA_ActVld  (GLBSYA_ActVld  ),
     .SYAGLB_ActRdy  (SYAGLB_ActRdy  ),
     .GLBSYA_Wgt     (GLBSYA_Wgt     ),
@@ -285,6 +297,19 @@ SYA #(
     .SYAGLB_OfmVld  (SYAGLB_OfmVld  ),
     .GLBSYA_OfmRdy  (GLBSYA_OfmRdy  )
 )
+
+assign GLBPOL_Idx = RdPortDat[(SRAM_WIDTH*MAXPAR)*0 +: (SRAM_WIDTH*MAXPAR)];
+assign GLBPOL_IdxVld = RdPortDatVld[0];
+assign RdPortDatVld[0] = POLGLB_IdxRdy;
+
+assign GLBPOL_Fm = RdPortDat[(SRAM_WIDTH*MAXPAR)*4 +: (SRAM_WIDTH*MAXPAR)];
+assign GLBPOL_FmVld = RdPortDatVld[4];
+assign RdPortDatRdy[4] = POLGLB_FmRdy;
+
+assign WrPortDat[(SRAM_WIDTH*MAXPAR)*3 +: (SRAM_WIDTH*MAXPAR)] = POLGLB_Fm;
+assign WrPortDatVld[3] = POLGLB_Fm;
+assign GLBPOL_FmRdy = WrPortDatRdy[3];
+
 
 POL#(
     .IDX_WIDTH            ( IDX_WIDTH ),
@@ -305,7 +330,7 @@ POL#(
     .GLBPOL_Idx           ( GLBPOL_Idx           ),
     .POLGLB_IdxRdy        ( POLGLB_IdxRdy        ),
     .POLGLB_AddrVld       ( POLGLB_AddrVld       ),
-    .POLGLB_Addr          ( POLGLB_Addr          ),
+    .POLGLB_Addr          ( POLGLB_Addr          ),????????????????????????????
     .GLBPOL_AddrRdy       ( GLBPOL_AddrRdy       ),
     .GLBPOL_Fm            ( GLBPOL_Fm            ),
     .GLBPOL_FmVld         ( GLBPOL_FmVld         ),
