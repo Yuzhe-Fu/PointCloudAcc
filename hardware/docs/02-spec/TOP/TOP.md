@@ -1,3 +1,12 @@
+# 解决问题列表
+1. 创新点只有一个，不够
+2. 整体性能评估超过SOTA两倍
+3. 硬件设计
+    - :question: **POL CTR要按地址读GLB，GLB怎么改写?**
+    - CTR出来的MAP怎么存，好送到POL
+    - POL输出怎么规则存到GLB？先6个核顺序输出
+    - 
+
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
