@@ -44,15 +44,15 @@ module TOP #(
     parameter SYA_NUM_BANK   = 4
 
     )(
-input                           I_SysRst_n    , 
-input                           I_SysClk      , 
-input                           I_StartPulse  ,
-input                           I_BypAsysnFIFO, 
-inout   [PORT_WIDTH     -1 : 0] IO_Dat        , 
-inout                           IO_DatVld     , 
-inout                           IO_DatLast    , 
-inout                           OI_DatRdy     , 
-output                          O_DatOE         
+    input                           I_SysRst_n    , 
+    input                           I_SysClk      , 
+    input                           I_StartPulse  ,
+    input                           I_BypAsysnFIFO, 
+    inout   [PORT_WIDTH     -1 : 0] IO_Dat        , 
+    inout                           IO_DatVld     , 
+    inout                           IO_DatLast    , 
+    inout                           OI_DatRdy     , 
+    output                          O_DatOE         
 
 );
 //=====================================================================================================================
@@ -83,7 +83,8 @@ localparam GLBRDIDX_CTRDST = 7;
 // System
 wire                            clk;
 wire                            rst_n;
-
+wire                            StartPulse_Deb;
+wire                            StartPulse_Deb_d;
 // ITF
 wire [PORT_WIDTH        -1 : 0] ITFPAD_Dat;
 wire [PORT_WIDTH        -1 : 0] PADITF_Dat;
@@ -229,9 +230,10 @@ DEB#(
     .CLK   ( clk            ),
     .RST_N ( rst_n          ),
     .BTN   ( I_StartPulse   ),
-    .SIGNAL( TOPCCU_start   )
+    .SIGNAL( StartPulse_Deb   )
 );
 
+assign TOPCCU_start = !StartPulse_Deb & StartPulse_Deb_d; // negedge
 
 //=====================================================================================================================
 // Logic Design
@@ -554,5 +556,15 @@ POL#(
     .GLBPOL_FmRdy         ( GLBPOL_FmRdy         )
 );
 
+
+DELAY#(
+    .NUM_STAGES ( 1 ),
+    .DATA_WIDTH ( 1 )
+)u_DELAY_StartPulse_Deb(
+    .CLK        ( clk        ),
+    .RST_N      ( rst_n      ),
+    .DIN        ( StartPulse_Deb        ),
+    .DOUT       ( StartPulse_Deb_d       )
+);
 
 endmodule
