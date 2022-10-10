@@ -45,14 +45,22 @@ module GLB #(
     output reg  [NUM_WRPORT                     -1: 0] WrPortDatRdy,
     output reg  [NUM_WRPORT                     -1: 0] WrPortFull,
     output reg  [ADDR_WIDTH*NUM_WRPORT          -1: 0] WrPortReqNum,
-    output wire [ADDR_WIDTH*NUM_WRPORT          -1: 0] WrPortAddr,
+    output wire [ADDR_WIDTH*NUM_WRPORT          -1: 0] WrPortAddr_Out, // Detect
+
+    input  wire [NUM_WRPORT                     -1: 0] WrPortUseAddr, //  Mode1: Use Address
+    input  wire [ADDR_WIDTH*NUM_WRPORT          -1: 0] WrPortAddr,
 
     output wire [SRAM_WIDTH*MAXPAR*NUM_RDPORT   -1: 0] RdPortDat,
     output reg  [NUM_RDPORT                     -1: 0] RdPortDatVld,
     input  wire [NUM_RDPORT                     -1: 0] RdPortDatRdy,
     output reg  [NUM_RDPORT                     -1: 0] RdPortEmpty,
     output reg  [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortReqNum,
-    output wire [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortAddr
+    output wire [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortAddr_Out,
+
+    input  wire [NUM_WRPORT                     -1: 0] RdPortUseAddr,
+    input  wire [ADDR_WIDTH*NUM_RDPORT          -1: 0] RdPortAddr,
+    input  wire [NUM_WRPORT                     -1: 0] RdPortAddrVld,
+    output reg  [NUM_WRPORT                     -1: 0] RdPortAddrRdy    
 
 );
 
@@ -105,6 +113,9 @@ reg [(NUM_RDPORT + NUM_WRPORT)* NUM_BANK     -1 : 0] BankPort_s0;
 
 reg [NUM_RDPORT+NUM_WRPORT                  -1 : 0] CfgVld;
 wire [NUM_RDPORT+NUM_WRPORT                 -1 : 0] CfgRdy;
+
+wire [ADDR_WIDTH                            -1 : 0] Cnt_RdPortAddr;
+wire [ADDR_WIDTH                            -1 : 0] Cnt_WrPortAddr;
 
 genvar i;
 genvar j, k;
@@ -305,7 +316,7 @@ generate
         wire [ADDR_WIDTH    -1 : 0] RdReqNum;
         assign RdReqNum = WrPortAddr - RdPortAddr;
         assign Empty = (WrPortAddr==RdPortAddr);
-        assign PortRdEn = BankRdPortDatRdy & ! Empty;     
+        assign PortRdEn = ( RdPortUseAddr[BankRdPort[i]]? RdPortAddrVld[BankRdPort[i]]: BankRdPortDatRdy ) & ! Empty;     
         assign RdAloc = ( (RdPortAddr >> SRAM_DEPTH_WIDTH )*BankRdPortParBank == BankRdPortRelIdx[i]);
         assign arvalid  = PortRdEn & RdAloc;    
         assign araddr   = RdPortAddr - SRAM_WORD * BankRdPortRelIdx[i]; 
@@ -330,6 +341,7 @@ generate
             INC = 0;
             RdPortEmpty[j] = 1'b0;
             RdPortReqNum[j] = 1'b0;
+            RdPortAddrRdy[j] = 1'b0;
             for (bk=0; bk<NUM_BANK; bk=bk+1) begin
                 if (BankRdPort[bk]==j) begin
                     if (GEN_BANK[bk].rvalid) begin
@@ -339,6 +351,7 @@ generate
                     end
                     if (GEN_BANK[bk].arvalid & GEN_BANK[bk].arready) begin
                         INC = 1'b1;
+                        RdPortAddrRdy[j] = 1'b1;
                     end
                     RdPortEmpty[j] = GEN_BANK[bk].Empty;
                     RdPortReqNum[j] = GEN_BANK[bk].RdReqNum;
@@ -346,7 +359,8 @@ generate
             end
         end
         assign RdPortDat[SRAM_WIDTH*MAXPAR*j +: SRAM_WIDTH*MAXPAR] =  RdPortDat_Array[j];
-        assign RdPortAddr = RdPortAddr_Array[j];
+        assign RdPortAddr_Out[ADDR_WIDTH*j +: ADDR_WIDTH] = RdPortAddr_Array[j];
+
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter_RdPortAddr(
@@ -360,8 +374,9 @@ generate
             .MAX_COUNT ( CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*(NUM_WRPORT+j) +: ADDR_WIDTH]   ),
             .OVERFLOW  ( CfgRdy[NUM_WRPORT+j]                                  ),
             .UNDERFLOW (                                                                ),
-            .COUNT     ( RdPortAddr_Array[j]                                            )
+            .COUNT     ( Cnt_RdPortAddr                                            )
         );
+        assign RdPortAddr_Array[j] = RdPortUseAddr[j]? RdPortAddr[ADDR_WIDTH*j +: ADDR_WIDTH] : Cnt_RdPortAddr;
 
     end
 
@@ -392,7 +407,7 @@ generate
             end
         end
         assign WrPortDat_Array[m] = WrPortDat[SRAM_WIDTH*MAXPAR*m +: SRAM_WIDTH*MAXPAR];
-        assign WrPortAddr[m] = WrPortAddr_Array[m];
+        assign WrPortAddr_Out[ADDR_WIDTH*m +: ADDR_WIDTH] = WrPortAddr_Array[m];
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter(
@@ -406,8 +421,9 @@ generate
             .MAX_COUNT ( CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*m +: ADDR_WIDTH]),
             .OVERFLOW  ( CfgRdy[m]                             ),
             .UNDERFLOW (                                                ),
-            .COUNT     ( WrPortAddr_Array[m]                            )
+            .COUNT     ( Cnt_WrPortAddr                            )
         );
+        assign WrPortAddr_Array[m] = WrPortUseAddr[m? WrPortAddr[ADDR_WIDTH*m +: ADDR_WIDTH] : Cnt_WrPortAddr;
 
 endgenerate
 
