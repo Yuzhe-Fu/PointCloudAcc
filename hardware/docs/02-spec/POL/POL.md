@@ -52,6 +52,7 @@
 ## 模块陈述
 背景：需要做pooling的整块feature map，均匀分为6块，存于global buffer中。
 由于需要满足输出给下一层卷积计算的带宽的需求，pooling模块有6个pooling核(pool_core)，每个pool_core里面有64个取大值核(pool_comp_core), 因此整个pooling的算力为，每周期读取6个点（其中每个点64个通道）并与pool_comp_core的reg中的值比出最大值后更新pool_comp_core的reg最大值；
+:question:**用地址取的，需要GLB修改支持？？**
 
 ## PLC 端口列表
 | Ports | Input/Output | Width | Descriptions |
