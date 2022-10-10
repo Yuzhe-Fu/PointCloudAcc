@@ -26,7 +26,7 @@
 9. 探索数据压缩方法
     - 剪枝：
         - :white_check_mark:weight剪枝稀疏度到80% 
-        - sensitivity到平均95%稀疏度
+        - :question:sensitivity到平均95%稀疏度
         - 统计activation的稀疏度
 10. :question: 提取跑硬件每层的数据(hex格式, MSB-LSB，脚本存于HW/scripts，数据存到DRAM文件夹)
     - 坐标: 按照(x, y, z)各8位组一个word，到Crd.txt
