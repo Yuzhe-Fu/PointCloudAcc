@@ -173,7 +173,7 @@ class TensorBoardLogger(DataLogger):
                                              sparsity(param)*100, epoch)
                 self.tblogger.scalar_summary('sparsity-2D/weights/' + name,
                                              sparsity_2D(param)*100, epoch)
-        pdb.set_trace()
+        # pdb.set_trace()
         self.tblogger.scalar_summary("sparsity/weights/total", 100*(1 - sparse_params_size/params_size), epoch)
         self.tblogger.sync_to_file()
 
