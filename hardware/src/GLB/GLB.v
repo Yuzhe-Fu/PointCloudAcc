@@ -25,8 +25,8 @@ module GLB #(
     parameter CLOCK_PERIOD = 10
 
     )(
-    input                                               clk                     ,
-    input                                               rst_n                   ,
+    input                                               clk  ,
+    input                                               rst_n,
 
     // Configure
     input  [NUM_RDPORT+NUM_WRPORT               -1 : 0] CCUGLB_CfgVld,

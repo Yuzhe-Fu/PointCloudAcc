@@ -13,7 +13,7 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 
-module PLCC #(
+module PCC #(
     parameter NUM_MAX         = 64,
     parameter DATA_WIDTH      = 8
     )(

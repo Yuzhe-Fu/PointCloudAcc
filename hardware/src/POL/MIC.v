@@ -13,7 +13,7 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 // `include "../source/include/dw_params_presim.vh"
-module MIFC #(
+module MIC #(
     parameter POOL_CORE   = 6,
     parameter POOL_COMP_CORE = 64,
     parameter IDX_WIDTH = 10,

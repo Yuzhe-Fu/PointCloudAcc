@@ -36,20 +36,20 @@ module ITF #(
     input  [1                                   -1 : 0] PADITF_DatLast ,
     output [1                                   -1 : 0] ITFPAD_DatRdy  ,
 
-    input  [1*(NUM_RDPORT+NUM_WRPORT)           -1 : 0] GLBITF_EmptyFull, 
-    input  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] GLBITF_ReqNum  ,
-    input  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] GLBITF_Addr    ,
-    input  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] CCUITF_BaseAddr,
+    input  [1*(NUM_RDPORT+NUM_WRPORT)           -1 : 0] TOPITF_EmptyFull, 
+    input  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] TOPITF_ReqNum  ,
+    input  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] TOPITF_Addr    ,
+    input  [DRAM_ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] CCUITF_BaseAddr,
 
-    input  [SRAM_WIDTH*NUM_RDPORT               -1 : 0] GLBITF_Dat     ,
-    input  [NUM_RDPORT                          -1 : 0] GLBITF_DatVld  ,
-    input  [NUM_RDPORT                          -1 : 0] GLBITF_DatLast  ,
-    output [NUM_RDPORT                          -1 : 0] ITFGLB_DatRdy  ,
+    input  [SRAM_WIDTH*NUM_RDPORT               -1 : 0] TOPITF_Dat     ,
+    input  [NUM_RDPORT                          -1 : 0] TOPITF_DatVld  ,
+    input  [NUM_RDPORT                          -1 : 0] TOPITF_DatLast  ,
+    output [NUM_RDPORT                          -1 : 0] ITFTOP_DatRdy  ,
 
-    output [SRAM_WIDTH*NUM_WRPORT               -1 : 0] ITFGLB_Dat    , 
-    output [NUM_WRPORT                          -1 : 0] ITFGLB_DatVld , 
-    output [NUM_WRPORT                          -1 : 0] ITFGLB_DatLast , 
-    input  [NUM_WRPORT                          -1 : 0] GLBITF_DatRdy   
+    output [SRAM_WIDTH*NUM_WRPORT               -1 : 0] ITFTOP_Dat    , 
+    output [NUM_WRPORT                          -1 : 0] ITFTOP_DatVld , 
+    output [NUM_WRPORT                          -1 : 0] ITFTOP_DatLast , 
+    input  [NUM_WRPORT                          -1 : 0] TOPITF_DatRdy   
 
 );
 //=====================================================================================================================
@@ -69,7 +69,7 @@ reg                         Trans;
 wire [PORT_WIDTH    -1 : 0] Cmd;
 wire                        CmdRdy;
 wire                        CmdVld;
-reg                         RdGLB;
+reg                         RdTOP;
 reg [NUMPORT_WIDTH  -1 : 0] Port_wire;
 reg [NUMPORT_WIDTH  -1 : 0] Port;
 
@@ -100,7 +100,7 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CMD :   if( CmdRdy & CmdVld) begin
-                    if ( RdGLB)
+                    if ( RdTOP)
                         next_state <= OUT;
                     else
                         next_state <= IN;
@@ -135,16 +135,16 @@ end
 always @(*) begin
     Port_wire = 0;
     Trans = 1'b0;
-    RdGLB = 0; // 0: Write; 1: Read
+    RdTOP = 0; // 0: Write; 1: Read
     for(j=0; j<(NUM_WRPORT+NUM_RDPORT); j=j+1 ) begin
-        if (state == IDLE & (GLBITF_EmptyFull[j])) begin
+        if (state == IDLE & (TOPITF_EmptyFull[j])) begin
             Port_wire = j;
             Trans = 1'b1;
-            RdGLB = j >=  NUM_WRPORT -1; // 0: Write GLB; 1: Read GLB
+            RdTOP = j >=  NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
         end else if( state == IDLE & MaxNum != 0) begin
             Port_wire = MaxIdx;
             Trans = 1'b1;
-            RdGLB = MaxIdx >=  NUM_WRPORT -1; // 0: Write GLB; 1: Read GLB
+            RdTOP = MaxIdx >=  NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
         end
     end
 end
@@ -157,18 +157,18 @@ always @(posedge clk or rst_n) begin
 end
 
 //=====================================================================================================================
-// Logic Design 2: Input to GLB
+// Logic Design 2: Input to TOP
 //=====================================================================================================================
 genvar i;
 generate
     for(i=0; i<NUM_WRPORT; i=i+1) begin
-        assign ITFGLB_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = DatIn;
-        assign ITFGLB_DatVld[i] = DatInVld;
-        assign ITFGLB_DatLast[i] = DatInLast;
+        assign ITFTOP_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = DatIn;
+        assign ITFTOP_DatVld[i] = DatInVld;
+        assign ITFTOP_DatLast[i] = DatInLast;
     end
 endgenerate
 
-assign DatInRdy = GLBITF_DatRdy[WrPort];
+assign DatInRdy = TOPITF_DatRdy[WrPort];
 assign WrPort   = state == OUT? 0 : Port;
 
 //=====================================================================================================================
@@ -179,9 +179,9 @@ assign ITFPAD_DatVld    = state==CMD? CmdVld : DatOutVld;
 assign ITFPAD_DatLast   = state==CMD? CmdVld : DatOutLast;
 assign DatOutRdy        = PADITF_DatRdy;
 assign CmdRdy           = PADITF_DatRdy;
-assign ITFGLB_DatRdy    = PISO_OUTRdy & state == OUT;
+assign ITFTOP_DatRdy    = PISO_OUTRdy & state == OUT;
 
-assign Cmd = {GLBITF_ReqNum[ADDR_WIDTH*Port +: ADDR_WIDTH], CCUITF_BaseAddr[ADDR_WIDTH*Port +: ADDR_WIDTH] + GLBITF_Addr[ADDR_WIDTH*Port +: ADDR_WIDTH], RdGLB};
+assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*Port +: ADDR_WIDTH], CCUITF_BaseAddr[ADDR_WIDTH*Port +: ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*Port +: ADDR_WIDTH], RdTOP};
 assign CmdVld = state == CMD;
 
 
@@ -210,7 +210,7 @@ MAX # (
     .DATA_WIDTH (ADDR_WIDTH),
     .PORT(NUM_RDPORT+NUM_WRPORT)
 )U_MAX_REQNUM(
-    .IN (GLBITF_ReqNum),
+    .IN (TOPITF_ReqNum),
     .MAXIDX(MaxIdx),
     .MAXVALUE(MaxNum)
 )
@@ -222,9 +222,9 @@ PISO#(
 )u_PISO_OUT(
     .CLK          ( clk                        ),
     .RST_N        ( rst_n                      ),
-    .IN_VLD       ( GLBITF_DatVld & state == OUT),
-    .IN_LAST      ( GLBITF_DatLast& state == OUT),
-    .IN_DAT       ( GLBITF_Dat                 ),
+    .IN_VLD       ( TOPITF_DatVld & state == OUT),
+    .IN_LAST      ( TOPITF_DatLast& state == OUT),
+    .IN_DAT       ( TOPITF_Dat                 ),
     .IN_RDY       ( PISO_OUTRdy                ),
     .OUT_DAT      ( DatOut                     ), // On-chip output to Off-chip 
     .OUT_VLD      ( DatOutVld                  ),

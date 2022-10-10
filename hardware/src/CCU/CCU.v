@@ -17,6 +17,7 @@ module CCU #(
     parameter SRAM_WIDTH            = 256,
 
     parameter ADDR_WIDTH            = 16,
+    parameter DRAM_ADDR_WIDTH       = 32,
     parameter NUM_RDPORT            = 2,
     parameter NUM_WRPORT            = 3,
     parameter IDX_WIDTH             = 16,
@@ -30,14 +31,16 @@ module CCU #(
     )(
     input                               clk                     ,
     input                               rst_n                   ,
-    input                               TOPCCU_start,
-
+    input                                               TOPCCU_start,
+    output                                              CCUITF_Empty ,
+    output [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum,
+    output [ADDR_WIDTH                          -1 : 0] CCUITF_Addr  ,
         // Configure
-    input   [SRAM_WSITH                         -1 : 0] ITFCCU_Dat,             
+    input   [SRAM_WIDTH                         -1 : 0] ITFCCU_Dat,             
     input                                               ITFCCU_DatVld,          
     output                                              CCUITF_DatRdy,
 
-    output  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT) -1 : 0] CCUITF_BaseAddr,
+    output  [DRAM_ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT) -1 : 0] CCUITF_BaseAddr,
 
     output                                              CCUSYA_Rst,  //
     output                                              CCUSYA_CfgVld,
