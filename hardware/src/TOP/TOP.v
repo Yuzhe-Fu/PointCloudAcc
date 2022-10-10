@@ -17,9 +17,10 @@ module TOP #(
 
     parameter PORT_WIDTH     = 128,
     parameter SRAM_WIDTH     = 256,
-    parameter SRAM_BYTE_WIDTH = 8,
+    parameter SRAM_BYTE_WIDTH= 8,
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
+    parameter DRAM_ADDR_WIDTH= 32,
     parameter SRAM_WORD_ISA  = 64,
     parameter ITF_NUM_RDPORT = 2,
     parameter ITF_NUM_WRPORT = 3,
@@ -45,6 +46,7 @@ module TOP #(
     )(
 input                           I_SysRst_n    , 
 input                           I_SysClk      , 
+input                           I_StartPulse  ,
 input                           I_BypAsysnFIFO, 
 inout   [PORT_WIDTH     -1 : 0] IO_Dat        , 
 inout                           IO_DatVld     , 
@@ -78,7 +80,157 @@ localparam GLBRDIDX_CTRDST = 7;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
+// System
+wire                            clk;
+wire                            rst_n;
 
+// ITF
+wire [PORT_WIDTH        -1 : 0] ITFPAD_Dat;
+wire [PORT_WIDTH        -1 : 0] PADITF_Dat;
+
+wire                            ITFPAD_DatVld;
+wire                            ITFPAD_DatLast;
+wire                            PADITF_DatRdy;
+
+wire                            PADITF_DatVld;
+wire                            PADITF_DatLast;
+wire                            ITFPAD_DatRdy;
+
+// TOP-ITF
+wire [1*(NUM_RDPORT+NUM_WRPORT)           -1 : 0] TOPITF_EmptyFull;
+wire [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] TOPITF_ReqNum;  
+wire [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] TOPITF_Addr;    
+wire [DRAM_ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)-1 : 0] CCUITF_BaseAddr;
+
+wire [SRAM_WIDTH*NUM_RDPORT               -1 : 0] TOPITF_Dat;    
+wire [NUM_RDPORT                          -1 : 0] TOPITF_DatVld;
+wire [NUM_RDPORT                          -1 : 0] TOPITF_DatLast; 
+wire [NUM_RDPORT                          -1 : 0] ITFTOP_DatRdy; 
+
+wire [SRAM_WIDTH*NUM_WRPORT               -1 : 0] ITFTOP_Dat;    
+wire [NUM_WRPORT                          -1 : 0] ITFTOP_DatVld; 
+wire [NUM_WRPORT                          -1 : 0] ITFTOP_DatLast; 
+wire [NUM_WRPORT                          -1 : 0] TOPITF_DatRdy;
+
+
+// CCU
+wire                                              TOPCCU_start;
+wire                                              CCUITF_Empty ;
+wire [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum;
+wire [ADDR_WIDTH                          -1 : 0] CCUITF_Addr  ;
+wire  [SRAM_WIDTH                         -1 : 0] ITFCCU_Dat;          
+wire                                              ITFCCU_DatVld;          
+wire                                              CCUITF_DatRdy;
+wire  [DRAM_ADDR_WIDTH*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) -1 : 0] CCUITF_BaseAddr;
+wire                                              CCUSYA_Rst;  //
+wire                                              CCUSYA_CfgVld;
+wire                                              SYACCU_CfgRdy;
+wire  [2                                  -1 : 0] CCUSYA_CfgMod;
+wire  [IDX_WIDTH                          -1 : 0] CCUSYA_CfgNip; 
+wire  [CHN_WIDTH                          -1 : 0] CCUSYA_CfgChi;         
+wire  [20                                 -1 : 0] CCUSYA_CfgScale;        
+wire  [ACT_WIDTH                          -1 : 0] CCUSYA_CfgShift;        
+wire  [ACT_WIDTH                          -1 : 0] CCUSYA_CfgZp;
+wire                                              CCUPOL_Rst;
+wire                                              CCUPOL_CfgVld;
+wire                                              POLCCU_CfgRdy;
+wire  [MAP_WIDTH                          -1 : 0] CCUPOL_CfgK;
+wire  [IDX_WIDTH                          -1 : 0] CCUPOL_CfgNip;
+wire  [CHN_WIDTH                          -1 : 0] CCUPOL_CfgChi;
+wire                                              CCUCTR_Rst;
+wire                                              CCUCTR_CfgVld;
+wire                                              CTRCCU_CfgRdy;
+wire                                              CCUCTR_CfgMod;        
+wire  [IDX_WIDTH                          -1 : 0] CCUCTR_CfgNip;                   
+wire  [IDX_WIDTH                          -1 : 0] CCUCTR_CfgNop;         
+wire  [MAP_WIDTH                          -1 : 0] CCUCTR_CfgK;  
+wire                                              CCUGLB_Rst;
+wire                                              CCUGLB_CfgVld;         
+wire                                              GLBCCU_CfgRdy;         
+wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)* NUM_BANK -1 : 0] CCUGLB_CfgBankPort;
+wire [ADDR_WIDTH*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgPort_AddrMax; 
+wire [($clog2(MAXPAR) + 1)*GLB_NUM_RDPORT     -1 : 0] CCUGLB_CfgRdPortParBank;
+wire [($clog2(MAXPAR) + 1)*GLB_NUM_WRPORT     -1 : 0] CCUGLB_CfgWrPortParBank;
+
+
+// GLB
+wire [SRAM_WIDTH*MAXPAR*GLB_NUM_WRPORT   -1: 0] WrPortDat;
+wire [GLB_NUM_WRPORT                     -1: 0] WrPortDatVld;
+wire [GLB_NUM_WRPORT                     -1: 0] WrPortDatRdy;
+wire [GLB_NUM_WRPORT                     -1: 0] WrPortFull;
+wire [ADDR_WIDTH*GLB_NUM_WRPORT          -1: 0] WrPortReqNum;
+wire [ADDR_WIDTH*GLB_NUM_WRPORT          -1: 0] WrPortAddr_Out; // Detect
+wire [GLB_NUM_WRPORT                     -1: 0] WrPortUseAddr; //  Mode1: Use Address
+wire [ADDR_WIDTH*GLB_NUM_WRPORT          -1: 0] WrPortAddr;
+wire [SRAM_WIDTH*MAXPAR*GLB_NUM_RDPORT   -1: 0] RdPortDat;
+wire [GLB_NUM_RDPORT                     -1: 0] RdPortDatVld;
+wire [GLB_NUM_RDPORT                     -1: 0] RdPortDatRdy;
+wire [GLB_NUM_RDPORT                     -1: 0] RdPortEmpty;
+wire [ADDR_WIDTH*GLB_NUM_RDPORT          -1: 0] RdPortReqNum;
+wire [ADDR_WIDTH*GLB_NUM_RDPORT          -1: 0] RdPortAddr_Out;
+wire [GLB_NUM_WRPORT                     -1: 0] RdPortUseAddr;
+wire [ADDR_WIDTH*GLB_NUM_RDPORT          -1: 0] RdPortAddr;
+wire [GLB_NUM_WRPORT                     -1: 0] RdPortAddrVld;
+wire [GLB_NUM_WRPORT                     -1: 0] RdPortAddrRdy;  
+
+// CTR
+wire [IDX_WIDTH           -1 : 0] CTRGLB_CrdAddr;   
+wire                              CTRGLB_CrdAddrVld; 
+wire                              GLBCTR_CrdAddrRdy;
+wire [SRAM_WIDTH          -1 : 0 ]GLBCTR_Crd;        
+wire                              GLBCTR_CrdVld;     
+wire                              CTRGLB_CrdRdy;
+wire [IDX_WIDTH           -1 : 0] CTRGLB_DistRdAddr; 
+wire                              CTRGLB_DistRdAddrVld;
+wire                              GLBCTR_DistRdAddrRdy;
+wire [DISTSQR_WIDTH+IDX_WIDTH-1 : 0] GLBCTR_DistIdx;    
+wire                              GLBCTR_DistIdxVld;    
+wire                              CTRGLB_DistIdxRdy;    
+wire [IDX_WIDTH           -1 : 0] CTRGLB_DistWrAddr;
+wire [DISTSQR_WIDTH+IDX_WIDTH-1 : 0] CTRGLB_DistIdx;   
+wire                              CTRGLB_DistIdxVld;
+wire                              GLBCTR_DistIdxRdy;
+wire [SRAM_WIDTH          -1 : 0 ]CTRGLB_Map;   
+wire                              CTRGLB_MapVld;     
+wire                              GLBCTR_MapRdy; 
+
+
+// SYA
+wire [SRAM_BYTE_WIDTH*SYA_NUM_ROW*SYA_NUM_COL*SYA_NUM_BANK/16   -1 : 0] SYAGLB_Ofm;
+wire                                                                    SYAGLB_OfmVld;
+wire                                                                    GLBSYA_OfmRdy;
+wire [SRAM_BYTE_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK                  -1 : 0] GLBSYA_Act;
+wire                                                                    GLBSYA_ActVld;
+wire                                                                    SYAGLB_ActRdy ;
+wire [SRAM_BYTE_WIDTH*SYA_NUM_COL*SYA_NUM_BANK                  -1 : 0] GLBSYA_Wgt;
+wire                                                                    GLBSYA_WgtVld;
+wire                                                                    SYAGLB_WgtRdy ;
+
+// POOL
+wire                                                    GLBPOL_MapVld ;
+wire [SRAM_WIDTH                                -1 : 0] GLBPOL_Map    ;
+wire                                                    POLGLB_MapRdy ;
+wire                                                    POLGLB_AddrVld;
+wire [ADDR_WIDTH**POOL_CORE                     -1 : 0] POLGLB_Addr   ;
+wire                                                    GLBPOL_AddrRdy;
+wire [SRAM_BYTE_WIDTH*POOL_COMP_CORE*POOL_CORE  -1 : 0] GLBPOL_Fm     ;
+wire                                                    GLBPOL_FmVld  ;
+wire                                                    POLGLB_FmRdy  ;
+wire [SRAM_BYTE_WIDTH*POOL_COMP_CORE            -1 : 0] POLGLB_Fm     ;
+wire                                                    POLGLB_FmVld  ;
+wire                                                    GLBPOL_FmRdy  ;
+
+//=====================================================================================================================
+// Logic Design: Debounce
+//=====================================================================================================================
+DEB#(
+    .FREQ  ( 50    )
+)u_DEB(
+    .CLK   ( clk            ),
+    .RST_N ( rst_n          ),
+    .BTN   ( I_StartPulse   ),
+    .SIGNAL( TOPCCU_start   )
+);
 
 
 //=====================================================================================================================
@@ -99,11 +251,12 @@ assign rst_n= I_SysRst_n;
 //=====================================================================================================================
 
 ITF#(
-    .PORT_WIDTH       ( PORT_WIDTH ),
-    .SRAM_WIDTH       ( SRAM_WIDTH ),
-    .ADDR_WIDTH       ( ADDR_WIDTH ),
-    .NUM_RDPORT       ( ITF_NUM_RDPORT ),
-    .NUM_WRPORT       ( ITF_NUM_WRPORT )
+    .PORT_WIDTH       ( PORT_WIDTH      ),
+    .SRAM_WIDTH       ( SRAM_WIDTH      ),
+    .ADDR_WIDTH       ( ADDR_WIDTH      ),
+    .DRAM_ADDR_WIDTH  ( DRAM_ADDR_WIDTH ),
+    .NUM_RDPORT       ( ITF_NUM_RDPORT  ),
+    .NUM_WRPORT       ( ITF_NUM_WRPORT  )
 )u_ITF(
     .clk              ( clk              ),
     .rst_n            ( rst_n            ),
@@ -115,18 +268,18 @@ ITF#(
     .PADITF_DatVld    ( PADITF_DatVld    ),
     .PADITF_DatLast   ( PADITF_DatLast   ),
     .ITFPAD_DatRdy    ( ITFPAD_DatRdy    ),
-    .GLBITF_EmptyFull ( TOPITF_EmptyFull ),
-    .GLBITF_ReqNum    ( TOPITF_ReqNum    ),
-    .GLBITF_Addr      ( TOPITF_Addr      ),
+    .TOPITF_EmptyFull ( TOPITF_EmptyFull ),
+    .TOPITF_ReqNum    ( TOPITF_ReqNum    ),
+    .TOPITF_Addr      ( TOPITF_Addr      ),
     .CCUITF_BaseAddr  ( CCUITF_BaseAddr  ),
-    .GLBITF_Dat       ( TOPITF_Dat       ),
-    .GLBITF_DatVld    ( TOPITF_DatVld    ),
-    .GLBITF_DatVld    ( TOPITF_DatLast    ),
-    .ITFGLB_DatRdy    ( ITFTOP_DatRdy    ),
-    .ITFGLB_Dat       ( ITFTOP_Dat       ),
-    .ITFGLB_DatVld    ( ITFTOP_DatVld    ),
-    .ITFGLB_DatLast   ( ITFTOP_DatLast    ),
-    .GLBITF_DatRdy    ( TOPITF_DatRdy    )
+    .TOPITF_Dat       ( TOPITF_Dat       ),
+    .TOPITF_DatVld    ( TOPITF_DatVld    ),
+    .TOPITF_DatVld    ( TOPITF_DatLast   ),
+    .ITFTOP_DatRdy    ( ITFTOP_DatRdy    ),
+    .ITFTOP_Dat       ( ITFTOP_Dat       ),
+    .ITFTOP_DatVld    ( ITFTOP_DatVld    ),
+    .ITFTOP_DatLast   ( ITFTOP_DatLast   ),
+    .TOPITF_DatRdy    ( TOPITF_DatRdy    )
 );
 
 assign TOPITF_EmptyFull = {RdPortFull[0 +: 2], WrPortEmpty[0 +: 3], CCUITF_Empty};
@@ -144,17 +297,18 @@ assign {WrPortDatLast[0 +: 3], ITFCCU_DatLast}              = ITFTOP_DatLast;
 assign TOPITF_DatRdy                                        = {WrPortDatRdy[0 +: 3], CCUITF_DatRdy};
 
 CCU#(
-    .SRAM_WORD_ISA           ( SRAM_WORD_ISA ),
-    .SRAM_WIDTH              ( SRAM_WIDTH ),
-    .ADDR_WIDTH              ( ADDR_WIDTH ),
-    .NUM_RDPORT              ( GLB_NUM_RDPORT ),
-    .NUM_WRPORT              ( GLB_NUM_WRPORT ),
-    .IDX_WIDTH               ( IDX_WIDTH ),
-    .CHN_WIDTH               ( CHN_WIDTH ),
-    .ACT_WIDTH               ( ACT_WIDTH ),
-    .MAP_WIDTH               ( MAP_WIDTH ),
-    .MAXPAR                  ( MAXPAR    ),
-    .NUM_BANK                ( NUM_BANK  )
+    .SRAM_WORD_ISA           ( SRAM_WORD_ISA    ),
+    .SRAM_WIDTH              ( SRAM_WIDTH       ),
+    .ADDR_WIDTH              ( ADDR_WIDTH       ),
+    .DRAM_ADDR_WIDTH         ( DRAM_ADDR_WIDTH  ),
+    .NUM_RDPORT              ( GLB_NUM_RDPORT   ),
+    .NUM_WRPORT              ( GLB_NUM_WRPORT   ),
+    .IDX_WIDTH               ( IDX_WIDTH        ),
+    .CHN_WIDTH               ( CHN_WIDTH        ),
+    .ACT_WIDTH               ( ACT_WIDTH        ),
+    .MAP_WIDTH               ( MAP_WIDTH        ),
+    .MAXPAR                  ( MAXPAR           ),
+    .NUM_BANK                ( NUM_BANK         )
 )u_CCU(
     .clk                     ( clk                     ),
     .rst_n                   ( rst_n                   ),
@@ -194,18 +348,18 @@ CCU#(
     .CCUGLB_CfgBankPort      ( CCUGLB_CfgBankPort      ),
     .CCUGLB_CfgPort_AddrMax  ( CCUGLB_CfgPort_AddrMax  ),
     .CCUGLB_CfgRdPortParBank ( CCUGLB_CfgRdPortParBank ),
-    .CCUGLB_CfgWrPortParBank ( CCUGLB_CfgWrPortParBank  )
+    .CCUGLB_CfgWrPortParBank ( CCUGLB_CfgWrPortParBank ) 
 );
 
 GLB#(
-    .NUM_BANK                ( NUM_BANK ),
-    .SRAM_WIDTH              ( SRAM_WIDTH ),
-    .SRAM_WORD               ( SRAM_WORD ),
-    .ADDR_WIDTH              ( ADDR_WIDTH ),
-    .NUM_WRPORT              ( GLB_NUM_WRPORT ),
-    .NUM_RDPORT              ( GLB_NUM_RDPORT ),
-    .MAXPAR                  ( MAXPAR ),
-    .CLOCK_PERIOD            ( CLOCK_PERIOD )
+    .NUM_BANK                ( NUM_BANK         ),
+    .SRAM_WIDTH              ( SRAM_WIDTH       ),
+    .SRAM_WORD               ( SRAM_WORD        ),
+    .ADDR_WIDTH              ( ADDR_WIDTH       ),
+    .NUM_WRPORT              ( GLB_NUM_WRPORT   ),
+    .NUM_RDPORT              ( GLB_NUM_RDPORT   ),
+    .MAXPAR                  ( MAXPAR           ),
+    .CLOCK_PERIOD            ( CLOCK_PERIOD     ) 
 )u_GLB(
     .clk                     ( clk                     ),
     .rst_n                   ( rst_n                   ),
@@ -230,15 +384,12 @@ GLB#(
     .RdPortFull              ( RdPortFull              ),
     .RdPortReqNum            ( RdPortReqNum            ),
     .RdPortAddr_Out          ( RdPortAddr_Out          ).
-    .RdPortUseAddr           ( RdPortUseAddr            ),
-    .RdPortAddr              ( RdPortAddr               ),
-    .RdPortAddrVld           ( RdPortAddrVld            ),
-    .RdPortAddrRdy           ( RdPortAddrRdy            )
+    .RdPortUseAddr           ( RdPortUseAddr           ),
+    .RdPortAddr              ( RdPortAddr              ),
+    .RdPortAddrVld           ( RdPortAddrVld           ),
+    .RdPortAddrRdy           ( RdPortAddrRdy           ) 
 );
-wire [SRAM_WIDTH                                -1 : 0] GLBCTR_Crd;
-wire [SRAM_WIDTH                                -1 : 0] GLBCTR_DistIdx;
-wire [SRAM_WIDTH                                -1 : 0] CTRGLB_Map;
-wire [SRAM_WIDTH                                -1 : 0] CTRGLB_DistIdx;
+
 
 // Read Crd
 assign RdPortUseAddr[GLBRDIDX_CTRCRD] = 1'b1;
@@ -313,9 +464,6 @@ CTR#(
     .GLBCTR_MapRdy      ( GLBCTR_MapRdy      )
 );
 
-wire [SRAM_BYTE_WIDTH*SYA_NUM_ROW*SYA_NUM_COL*SYA_NUM_BANK/16   -1 : 0] SYAGLB_Ofm;
-wire [SRAM_BYTE_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK                  -1 : 0] GLBSYA_Act;
-wire [SRAM_BYTE_WIDTH*SYA_NUM_COL*SYA_NUM_BANK                  -1 : 0] GLBSYA_Wgt;
 
 assign GLBSYA_Act = RdPortDat[ (SRAM_WIDTH*MAXPAR)*GLBRDIDX_SYAACT +: (SRAM_WIDTH*MAXPAR)];
 assign GLBSYA_ActVld = RdPortDatVld[GLBRDIDX_SYAACT];
@@ -359,10 +507,6 @@ SYA #(
     .GLBSYA_OfmRdy  (GLBSYA_OfmRdy  )
 );
 
-wire [SRAM_BYTE_WIDTH*POOL_COMP_CORE            -1 : 0] POLGLB_Fm;
-wire [SRAM_BYTE_WIDTH*POOL_COMP_CORE*POOL_CORE  -1 : 0] GLBPOL_Fm;
-wire [SRAM_WIDTH                                -1 : 0] GLBPOL_Map;
-
 assign GLBPOL_Map                                     = RdPortDat[(SRAM_WIDTH*MAXPAR)*GLBRDIDX_POLMAP +: (SRAM_WIDTH*MAXPAR)];
 assign GLBPOL_MapVld                                  = RdPortDatVld[GLBRDIDX_POLMAP];
 assign RdPortDatVld[GLBRDIDX_POLMAP]                  = POLGLB_MapRdy;
@@ -382,11 +526,11 @@ assign GLBPOL_FmRdy                                   = WrPortDatRdy[GLBWRIDX_PO
 
 
 POL#(
-    .IDX_WIDTH            ( IDX_WIDTH ),
-    .ACT_WIDTH            ( ACT_WIDTH ),
-    .POOL_COMP_CORE       ( POOL_COMP_CORE ),
-    .POOL_MAP_DEPTH_WIDTH ( MAP_WIDTH ),
-    .POOL_CORE            ( POOL_CORE )
+    .IDX_WIDTH            ( IDX_WIDTH       ),
+    .ACT_WIDTH            ( ACT_WIDTH       ),
+    .POOL_COMP_CORE       ( POOL_COMP_CORE  ),
+    .POOL_MAP_DEPTH_WIDTH ( MAP_WIDTH       ),
+    .POOL_CORE            ( POOL_CORE       ) 
 )u_POL(
     .clk                  ( clk                  ),
     .rst_n                ( rst_n                ),
