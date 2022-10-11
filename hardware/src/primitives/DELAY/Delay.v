@@ -1,10 +1,10 @@
 `timescale 1ns/1ps
-module Delay #(
+module DELAY #(
     parameter NUM_STAGES = 1,
     parameter DATA_WIDTH = 1
 )(
     input  wire                  CLK,
-    input  wire                  RESET_N,
+    input  wire                  RST_N,
     input  wire [DATA_WIDTH-1:0] DIN,
     output wire [DATA_WIDTH-1:0] DOUT
 );
@@ -18,9 +18,9 @@ end
 else if (NUM_STAGES > 0)
 begin
     reg [NUM_STAGES*DATA_WIDTH-1:0] din_delay;
-    always @(posedge CLK or negedge RESET_N)
+    always @(posedge CLK or negedge RST_N)
     begin
-        if(!RESET_N)
+        if(!RST_N)
         begin
             din_delay[DATA_WIDTH-1:0] <= 0;
         end else
@@ -30,9 +30,9 @@ begin
     end
     for (i=1; i<NUM_STAGES; i=i+1)
 	 begin : REGISTER_STAGES
-        always @(posedge CLK or negedge RESET_N )
+        always @(posedge CLK or negedge RST_N )
         begin
-            if(!RESET_N)
+            if(!RST_N)
             begin
                 din_delay[i*DATA_WIDTH+:DATA_WIDTH] <= 0;
             end else

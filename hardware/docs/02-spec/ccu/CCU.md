@@ -62,6 +62,7 @@
 | ---- | ---- | ---- | ---- |
 | NUM_LAYER_WIDTH | 20 |  |  |
 | ADDR_WIDTH | 16 |  |  |
+| DRAM_ADDR_WIDTH | 32 |  |  |
 | OPCODE_WIDTH | 3 | |  |
 | IDX_WIDTH | 16 |   |  |
 | CHN_WIDTH | 12 |   |  |

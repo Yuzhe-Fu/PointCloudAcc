@@ -62,7 +62,7 @@ assign clear_addr = PLCPOL_FmVld  & POLPLC_FmRdy ;
 // Sub-Module :
 //=====================================================================================================================
 
-PLCC#(s
+PCC#(s
     .NUM_MAX    ( POOL_COMP_CORE),
     .DATA_WIDTH ( ACT_WIDTH     )
 )U1_PLCC(

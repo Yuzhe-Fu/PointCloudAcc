@@ -42,17 +42,22 @@ module CTR #(
     output                              CTRGLB_CrdRdy,
 
     // Fetch Dist and Idx of FPS
-    output [IDX_WIDTH           -1 : 0] CTRGLB_DistAddr, 
-    output                              CTRGLB_DistAddrVld,
-    input                               GLBCTR_DistAddrRdy,
+    output [IDX_WIDTH           -1 : 0] CTRGLB_DistRdAddr, 
+    output                              CTRGLB_DistRdAddrVld,
+    input                               GLBCTR_DistRdAddrRdy,// ?????Add back pressure???????? ???????????
     input  [DISTSQR_WIDTH+IDX_WIDTH-1 : 0] GLBCTR_DistIdx,    
     input                               GLBCTR_DistIdxVld,    
     output                              CTRGLB_DistIdxRdy,    
 
+    output [IDX_WIDTH           -1 : 0] CTRGLB_DistWrAddr,
+    output [DISTSQR_WIDTH+IDX_WIDTH-1 : 0] CTRGLB_DistIdx,   
+    output reg                          CTRGLB_DistIdxVld,
+    input                               GLBCTR_DistIdxRdy,
+    
     // Output Map of KNN
-    output [SRAM_WIDTH          -1 : 0 ]CTRGLB_Idx,   
-    output                              CTRGLB_IdxVld,     
-    input                               CTRGLB_IdxRdy     
+    output [SRAM_WIDTH          -1 : 0 ]CTRGLB_Map,   
+    output                              CTRGLB_MapVld,     
+    input                               GLBCTR_MapRdy     
 
 );
 //=====================================================================================================================
@@ -186,16 +191,28 @@ end
 
 assign {FPS_PsDist, FPS_PsIdx} = FPS_LastPsDist_s2 > LopDist_s2 ? {LopDist_s2, LopIdx_s2} : {FPS_LastPsDist_s2, FPS_LastPsIdx_s2};
 
-assign CTRGLB_DistAddr = CTRGLB_CrdAddr;
-assign CTRGLB_DistAddrVld = !CCUCTR_CfgMod & CTRGLB_CrdAddrVld;
+assign CTRGLB_DistRdAddr = CTRGLB_CrdAddr;
+assign CTRGLB_DistRdAddrVld = !CCUCTR_CfgMod & CTRGLB_CrdAddrVld;
 
 assign CTRGLB_DistIdxRdy = !CCUCTR_CfgMod & GLBCTR_CrdRdy;
+
+// Write back (Update)
+assign CTRGLB_DistWrAddr = FPS_PsIdx;
+assign CTRGLB_DistIdx = {FPS_PsDist, FPS_PsIdx};
+always @(posedge clk or rst_n) begin: Pipe2
+    if(!rst_n) begin
+        CTRGLB_DistIdxVld <= 0;
+    end else if (GLBCTR_DistIdxVld & CTRGLB_DistIdxRdy) begin
+        CTRGLB_DistIdxVld <= 1'b1;
+    end else if (CTRGLB_DistIdxVld & GLBCTR_DistIdxRdy) begin
+        CTRGLB_DistIdxVld <= 1'b0;
+    end
+end
 
 //=====================================================================================================================
 // Logic Design 2: KNN
 //=====================================================================================================================
 
-s
 always @(posedge clk or rst_n) begin
     if(!rst_n) begin
         KNN_CpCrd_s2 <= 0;
@@ -255,9 +272,9 @@ PSS#(
     .CTRPSS_Lop      ( {LopDist_s2, LopIdx_s2 }),// {idx, dist} 
     .CTRPSS_LopVld   ( CTRPSS_LopVld   ),
     .PSSCTR_LopRdy   ( PSSCTR_LopRdy   ),
-    .PSSCTR_Idx      ( CTRGLB_Idx      ),
-    .PSSCTR_IdxVld   ( CTRGLB_IdxVld   ),
-    .PSSCTR_IdxRdy   ( CTRGLB_IdxRdy   )
+    .PSSCTR_Idx      ( CTRGLB_Map      ),
+    .PSSCTR_IdxVld   ( CTRGLB_MapVld   ),
+    .PSSCTR_IdxRdy   ( CTRGLB_MapRdy   )
 );
 wire INC_CpIdx;
 counter#(

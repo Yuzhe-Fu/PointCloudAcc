@@ -61,7 +61,7 @@ genvar i;
 generate
     for(i=0; i<POOL_CORE; i=i+1) begin
         wire [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0] MIFCMIF_Fm;
-        MIFC#(
+        MIC#(
             .POOL_CORE      ( POOL_CORE ),
             .POOL_COMP_CORE ( POOL_COMP_CORE ),
             .IDX_WIDTH      ( IDX_WIDTH ),

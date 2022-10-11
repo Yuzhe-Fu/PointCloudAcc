@@ -59,9 +59,9 @@
 | GLBCTR_DistIdx       | input | SRAM_WIDTH | 输入的距离 |
 | GLBCTR_DistIdxVld    | input | 1 | 握手协议的valid信号 |
 | CTRGLB_DistIdxRdy    | output | 1 | 握手协议的ready信号 |
-| CTRGLB_Idx        | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
-| CTRGLB_IdxVld     | output | 1 | 握手协议的valid信号 |
-| CTRGLB_IdxRdy     | input | 1 | 握手协议的ready信号 |
+| CTRGLB_Map        | output | SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
+| CTRGLB_MapVld     | output | 1 | 握手协议的valid信号 |
+| CTRGLB_MapRdy     | input | 1 | 握手协议的ready信号 |
 
 
 ## 模块陈述s
@@ -84,7 +84,7 @@
         - 取决于有多大？ModelNet40有1024,那最大的S3DIS呢？有15, 000个点，96KB，ScanNetPart也有2K个点，需要放到GLB，而且可以给SA让位灵活测试
         - 取决于能否用GLB? 
             -（Crd_buffer是单口读，Dist_Buffer是双口？无所谓，可以用PingPong buffer），
-            - 而且是:question:**用地址取的，需要GLB修改支持？？**先不管先这样
+            - 而且是:question:**用地址取的，需要GLB修改支持？？**POL也是
     - K最大多少？32，即使是S3DIS的最大nsample也是32
     - FPS层最大？S3DIS XL也才5个
     - KNN层最大？
