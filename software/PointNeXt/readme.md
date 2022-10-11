@@ -28,11 +28,13 @@
         - :white_check_mark:weight剪枝稀疏度到80% 
         - :question:sensitivity到平均95%稀疏度
         - 统计activation的稀疏度
-10. :question: 提取跑硬件每层的数据(hex格式, MSB-LSB，脚本存于HW/scripts，数据存到DRAM文件夹)
-    - 坐标: 按照(x, y, z)各8位组一个word，到Crd.txt
-    - activation: 先按点数排阵列个，再按通道排列，存到Act.txt
-        - 设变量点数Nip，通道数Chi，阵列行数Row，参考[SYA.excalidraw](hardware/docs/02-spec/SYA\SYA.excalidraw)
-    - weight：设变量filter个数Cho，通道数Chi，阵列列数Col，操作同act，存到Wgt.txt 
+10. :question: 提取跑硬件每层的数据(hex格式, MSB-LSB，一行128bit，脚本存于HW/scripts，数据存到DRAM/Dram.txt)
+    - func(WordBit, ByteBit, BaseAddr, Nip, Chi, Cho, Row, Col)
+    - 坐标: 按照(x, y, z)各8位组一个word，BaseAddr = 0
+    - activation: 先按点数排阵列个，再按通道排列，BaseAddr = 2048
+        - 设变量点数Nip，通道数Chi，阵列行数Row，参考[SYA.excalidraw](hardware/docs/02-spec/SYA/SYA.excalidraw)
+    - weight：设变量filter个数Cho，通道数Chi，阵列列数Col，操作同act，BaseAddr = 4096
+    - OFM: BaseAddr = 6204;
     - 步骤：
         - 1. 用hook，存每层的tensor(坐标，act, weight output): <torch.save(tensor, tensor.pth.tar)>
         - 2. tensor.pth.tar送入到脚本(torch.load(tensor, tensor.pth.tar))
