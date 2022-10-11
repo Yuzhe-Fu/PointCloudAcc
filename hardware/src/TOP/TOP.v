@@ -479,35 +479,35 @@ assign WrPortDat[ (SRAM_WIDTH*MAXPAR)*GLBWRIDX_SYAOFM +: (SRAM_WIDTH*MAXPAR) ] =
 assign WrPortDatVld[GLBWRIDX_SYAOFM] = SYAGLB_OfmVld;
 assign GLBSYA_OfmRdy = WrPortDatRdy[GLBWRIDX_SYAOFM];
 
-SYA #(
-    .ACT_WIDTH ( ACT_WIDTH), 
-    .WGT_WIDTH ( ACT_WIDTH), 
-    .NUM_ROW   ( SYA_NUM_ROW  ), 
-    .NUM_COL   ( SYA_NUM_COL  ), 
-    .NUM_BANK  ( SYA_NUM_BANK ), 
-    .SRAM_WIDTH( SRAM_WIDTH) 
-)(
-    .clk            (clk            ),
-    .rst_n          (rst_n          ),
-    .CCUSYA_Rst     (CCUSYA_Rst     ),
-    .CCUSYA_CfgVld  (CCUSYA_CfgVld  ),
-    .SYACCU_CfgRdy  (SYACCU_CfgRdy  ),
-    .CCUSYA_CfgMod  (CCUSYA_CfgMod  ),
-    .CCUSYA_CfgNip  (CCUSYA_CfgNip  ),
-    .CCUSYA_CfgChi  (CCUSYA_CfgChi  ),
-    .CCUSYA_CfgScale(CCUSYA_CfgScale),
-    .CCUSYA_CfgShift(CCUSYA_CfgShift),
-    .CCUSYA_CfgZp   (CCUSYA_CfgZp   ),
-    .GLBSYA_Act     (GLBSYA_Act     ), 
-    .GLBSYA_ActVld  (GLBSYA_ActVld  ),
-    .SYAGLB_ActRdy  (SYAGLB_ActRdy  ),
-    .GLBSYA_Wgt     (GLBSYA_Wgt     ),
-    .GLBSYA_WgtVld  (GLBSYA_WgtVld  ),
-    .SYAGLB_WgtRdy  (SYAGLB_WgtRdy  ),
-    .SYAGLB_Ofm     (SYAGLB_Ofm     ),
-    .SYAGLB_OfmVld  (SYAGLB_OfmVld  ),
-    .GLBSYA_OfmRdy  (GLBSYA_OfmRdy  )
-);
+// SYA #(
+//     .ACT_WIDTH ( ACT_WIDTH), 
+//     .WGT_WIDTH ( ACT_WIDTH), 
+//     .NUM_ROW   ( SYA_NUM_ROW  ), 
+//     .NUM_COL   ( SYA_NUM_COL  ), 
+//     .NUM_BANK  ( SYA_NUM_BANK ), 
+//     .SRAM_WIDTH( SRAM_WIDTH) 
+// )(
+//     .clk            (clk            ),
+//     .rst_n          (rst_n          ),
+//     .CCUSYA_Rst     (CCUSYA_Rst     ),
+//     .CCUSYA_CfgVld  (CCUSYA_CfgVld  ),
+//     .SYACCU_CfgRdy  (SYACCU_CfgRdy  ),
+//     .CCUSYA_CfgMod  (CCUSYA_CfgMod  ),
+//     .CCUSYA_CfgNip  (CCUSYA_CfgNip  ),
+//     .CCUSYA_CfgChi  (CCUSYA_CfgChi  ),
+//     .CCUSYA_CfgScale(CCUSYA_CfgScale),
+//     .CCUSYA_CfgShift(CCUSYA_CfgShift),
+//     .CCUSYA_CfgZp   (CCUSYA_CfgZp   ),
+//     .GLBSYA_Act     (GLBSYA_Act     ), 
+//     .GLBSYA_ActVld  (GLBSYA_ActVld  ),
+//     .SYAGLB_ActRdy  (SYAGLB_ActRdy  ),
+//     .GLBSYA_Wgt     (GLBSYA_Wgt     ),
+//     .GLBSYA_WgtVld  (GLBSYA_WgtVld  ),
+//     .SYAGLB_WgtRdy  (SYAGLB_WgtRdy  ),
+//     .SYAGLB_Ofm     (SYAGLB_Ofm     ),
+//     .SYAGLB_OfmVld  (SYAGLB_OfmVld  ),
+//     .GLBSYA_OfmRdy  (GLBSYA_OfmRdy  )
+// );
 
 assign GLBPOL_Map                                     = RdPortDat[(SRAM_WIDTH*MAXPAR)*GLBRDIDX_POLMAP +: (SRAM_WIDTH*MAXPAR)];
 assign GLBPOL_MapVld                                  = RdPortDatVld[GLBRDIDX_POLMAP];

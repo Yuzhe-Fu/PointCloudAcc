@@ -3,7 +3,8 @@
 2. :white_check_mark:整体性能评估超过SOTA两倍
 3. 硬件设计
     - :question:先系统整出来综合一下，面积很重要决定功耗
-        - 系统仿真建立起来
+        - 系统仿真建立起来跑起来
+        - 综合
     - :white_check_mark:GLB每个接口位宽问题
     - CTR出来的MAP怎么存，好送到POL，暂时一个SRAM_WIDTH的word存cp_idx和lp_idx，但是同一点不同层同时出来的？
     - POL输出怎么规则存到GLB？先6个核顺序输出
