@@ -1,13 +1,20 @@
 `timescale  1 ns / 100 ps
 
 module TOP_tb();
-parameter PORT_WIDTH       = 128                                                     ;
+//=====================================================================================================================
+// Constant Definition :
+//=====================================================================================================================
+parameter CLOCK_PERIOD   = 10;
+parameter PORT_WIDTH      = 128;
+parameter ADDR_WIDTH      = 16;
+parameter DRAM_ADDR_WIDTH = 32;
 
+//=====================================================================================================================
+// Variable Definition :
+//=====================================================================================================================
 // TOP Inputs
-reg   I_SysRst_n                           = 0 ;
-reg   I_SysClk                             = 0 ;
-reg   I_StartPulse                         = 0 ;
-reg   I_BypAsysnFIFO                       = 0 ;
+reg   I_StartPulse     = 0 ;
+reg   I_BypAsysnFIFO   = 0 ;
 
 // TOP Outputs
 wire  O_DatOE                              ;
@@ -18,39 +25,135 @@ wire  IO_DatVld                            ;
 wire  IO_DatLast                           ;
 wire  OI_DatRdy                            ;
 
+reg   rst_n            = 0 ;
+reg   clk              = 0 ;
+reg [PORT_WIDTH    -1 : 0] Dram[0 +: DRAM_ADDR_WIDTH-1];
 
-initial
-begin
-    //$shm_open ("db_name", is_sequence_time, db_size, is_compression, incsize,incfiles);
-    $shm_open ("dump.shm");
-    $shm_probe( "AC");
-end
-
+//=====================================================================================================================
+// Logic Design: Debounce
+//=====================================================================================================================
 initial
 begin
     clk= 1;
-    forever #10  clk=~clk;
+    forever #(`CLOCK_PERIOD/2)  clk=~clk;
 end
 
 initial
 begin
-    reset_b  =  1;
-    #25  reset_b  =  0;
-    #100 reset_b  =  1;
+    rst_n  =  1;
+    I_StartPulse = 0;
+    I_BypAsysnFIFO = 1;
+    #(`CLOCK_PERIOD*2)  rst_n  =  0;
+    #(`CLOCK_PERIOD*10) rst_n  =  1;
+    #(`CLOCK_PERIOD*2)  I_StartPulse = 1;
+    #(`CLOCK_PERIOD*10) I_StartPulse = 0;
+
+
 end
 
-TOP u_TOP (
-    .I_SysRst_n              ( I_SysRst_n                              ),
-    .I_SysClk                ( I_SysClk                                ),
-    .I_StartPulse            ( I_StartPulse                            ),
-    .I_BypAsysnFIFO          ( I_BypAsysnFIFO                          ),
+initial begin
+    $readmemh("Dram.txt", Dram);
+end
+//=====================================================================================================================
+// Logic Design 1: FSM=ITF
+//=====================================================================================================================
+localparam IDLE = 3'b000;
+localparam CMD  = 3'b001;
+localparam IN   = 3'b010;
+localparam OUT  = 3'b011;
+localparam FNH  = 3'b100;
 
-    .O_DatOE                 ( O_DatOE                                 ),
+reg [ 3     -1 : 0] state       ;
+reg [ 3     -1 : 0] next_state  ;
+always @(*) begin
+    case ( state )
+        IDLE:   if( 1'b1 )
+                    next_state <= CMD;
+                else
+                    next_state <= IDLE;
+        CMD :   if( IO_DatVld & OI_DatRdy) begin
+                    if ( RdTOP)
+                        next_state <= OUT;
+                    else
+                        next_state <= IN;
+                end else
+                    next_state <= CMD;
+        IN:   if( IO_DatVld & IO_DatLast & OI_DatRdy )
+                    next_state <= FNH;
+                else
+                    next_state <= IN;
+        OUT:   if(IO_DatVld & IO_DatLast & OI_DatRdy )
+                    next_state <= FNH;
+                else
+                    next_state <= OUT;
+        FNH:   if( 1'b1 )
+                    next_state <= IDLE;
+                else
+                    next_state <= FNH;
+        default:    next_state <= IDLE;
+    endcase
+end
+always @ ( posedge clk or negedge rst_n ) begin
+    if ( !rst_n ) begin
+        state <= IDLE;
+    end else begin
+        state <= next_state;
+    end
+end
 
-    .IO_Dat                  ( IO_Dat           ),
-    .IO_DatVld               ( IO_DatVld                               ),
-    .IO_DatLast              ( IO_DatLast                              ),
-    .OI_DatRdy               ( OI_DatRdy                               )
+//=====================================================================================================================
+// Logic Design 
+//=====================================================================================================================
+
+always @(posedge clk or rst_n) begin
+    if (!rst_n) begin
+        addr <= 0;
+    end else if(state == FNH) begin
+        addr <= 0;
+    end else if(state==CMD && IO_DatVld & OI_DatRdy) begin
+        addr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
+        BaseAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
+        ReqNum <= IO_Dat[1+DRAM_ADDR_WIDTH +: ADDR_WIDTH];
+    end else if(state== IN | state == OUT) begin
+        if(IO_DatVld & OI_DatRdy)
+            addr <= addr + 1;
+    end
+end
+assign RdTOP = IO_Dat[0];
+
+// DRAM READ
+assign IO_DatLast = O_DatOE? 1'bz : (addr == BaseAddr + ReqNum -1) && IO_DatVld;
+assign IO_DatVld  = O_DatOE? 1'bz : state== IN;
+assign IO_Dat = O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr];
+
+// DRAM WRITE
+assign OI_DatRdy = O_DatOE? state==CMD | state==OUT: 1'bz;
+
+always @(posedge clk or rst_n) begin
+    if(state == OUT) begin
+        if(IO_DatVld & OI_DatRdy)
+            Dram[addr] <= IO_Dat;
+    end
+end
+
+//=====================================================================================================================
+// Sub-Module :
+//=====================================================================================================================
+
+TOP #(
+    .CLOCK_PERIOD(CLOCK_PERIOD),
+    .PORT_WIDTH  (PORT_WIDTH)
+)
+    u_TOP (
+    .I_SysRst_n              ( rst_n     ),
+    .I_SysClk                ( clk       ),
+    .I_StartPulse            ( I_StartPulse   ),
+    .I_BypAsysnFIFO          ( I_BypAsysnFIFO ),
+    .O_DatOE                 ( O_DatOE        ),
+    .IO_Dat                  ( IO_Dat         ),
+    .IO_DatVld               ( IO_DatVld      ),
+    .IO_DatLast              ( IO_DatLast     ),
+    .OI_DatRdy               ( OI_DatRdy      )
 );
 
 

@@ -181,7 +181,7 @@ assign DatOutRdy        = PADITF_DatRdy;
 assign CmdRdy           = PADITF_DatRdy;
 assign ITFTOP_DatRdy    = PISO_OUTRdy & state == OUT;
 
-assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*Port +: ADDR_WIDTH], CCUITF_BaseAddr[ADDR_WIDTH*Port +: ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*Port +: ADDR_WIDTH], RdTOP};
+assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*Port +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*Port +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*Port +: ADDR_WIDTH], RdTOP};
 assign CmdVld = state == CMD;
 
 
