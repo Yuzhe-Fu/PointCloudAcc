@@ -7,7 +7,6 @@
 ../../src/CTR/INS.v
 ../../src/CTR/PSS.v
 ../../src/CTR/EDC.v
-../../src/SYA/SYA.v
 ../../src/POL/POL.v
 ../../src/POL/PLC.v
 ../../src/POL/PCC.v
