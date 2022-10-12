@@ -7,7 +7,6 @@
 ../../src/CTR/INS.v
 ../../src/CTR/PSS.v
 ../../src/CTR/EDC.v
-../../src/SYA/SYA.v
 ../../src/POL/POL.v
 ../../src/POL/PLC.v
 ../../src/POL/PCC.v
@@ -20,7 +19,7 @@
 ../../src/primitives/Memory/RAM_HS.v
 ../../src/primitives/Memory/RAM.v
 ../../src/primitives/SIPO/SIPO.v
-../../src/primitives/POSI/POSI.v
+../../src/primitives/PISO/PISO.v
 ../../src/primitives/FIFO/FIFO.v
 ../../src/primitives/FIFO/FIFO_FWFT.v
 ../../src/primitives/COUNTER/counter.v
