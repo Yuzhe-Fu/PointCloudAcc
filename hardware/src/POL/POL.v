@@ -18,7 +18,9 @@ module POL #(
     parameter ACT_WIDTH             = 8,
     parameter POOL_COMP_CORE        = 64,
     parameter POOL_MAP_DEPTH_WIDTH  = 5,
-    parameter POOL_CORE             = 6
+    parameter POOL_CORE             = 6,
+    parameter CHN_WIDTH             = 12,
+    parameter SRAM_WIDTH            = 256
     )(
     input                               clk                     ,
     input                               rst_n                   ,
@@ -30,9 +32,9 @@ module POL #(
     input  [POOL_MAP_DEPTH_WIDTH                    -1 : 0] CCUPOL_CfgK  , // 24
     input  [IDX_WIDTH                               -1 : 0] CCUPOL_CfgNip, // 1024
     input  [CHN_WIDTH                               -1 : 0] CCUPOL_CfgChi, // 64
-    input                                                   GLBPOL_IdxVld ,
-    input  [SRAM_WIDTH                              -1 : 0] GLBPOL_Idx    ,
-    output                                                  POLGLB_IdxRdy ,
+    input                                                   GLBPOL_MapVld ,
+    input  [SRAM_WIDTH                              -1 : 0] GLBPOL_Map    ,
+    output                                                  POLGLB_MapRdy ,
     output                                                  POLGLB_AddrVld,
     output [IDX_WIDTH                               -1 : 0] POLGLB_Addr  ,
     input                                                   GLBPOL_AddrRdy,
@@ -99,11 +101,12 @@ generate
             .PLCPOL_FmVld   ( PLCPOL_FmVld[i]   ),
             .POLPLC_FmRdy   ( POLPLC_FmRdy[i]   ) 
         );
-        assign POLPLC_Idx = GLBPOL_Idx[IDX_WIDTH*i +: IDX_WIDTH];
-        assign POLPLC_IdxVld = GLBPOL_IdxVld;
+        assign POLPLC_Idx = GLBPOL_Map[IDX_WIDTH*i +: IDX_WIDTH];
+        assign POLPLC_IdxVld = GLBPOL_MapVld;
     end
+endgenerate
 
-assign POLGLB_IdxRdy = &PLCPOL_IdxRdy;
+assign POLGLB_MapRdy = &PLCPOL_IdxRdy;
 
 integer  j;
 always @(*) begin
@@ -112,7 +115,7 @@ always @(*) begin
     POLPLC_FmRdy = 0;
     for(j=0; j<POOL_CORE; j=j+1) begin
         if(PLCPOL_FmVld[j]) begin
-            POLGLB_Fm = PLCPOL_Fm[(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE];
+            POLGLB_Fm = PLCPOL_Fm[(ACT_WIDTH*POOL_COMP_CORE)*j +: ACT_WIDTH*POOL_COMP_CORE];
             POLGLB_FmVld = 1'b1;
             POLPLC_FmRdy[j] = GLBPOL_FmRdy;
         end

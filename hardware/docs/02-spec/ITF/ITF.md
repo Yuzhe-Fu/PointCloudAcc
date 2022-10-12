@@ -58,14 +58,14 @@ PAD的协议是：借鉴AHB协议，先传首地址（决定是取哪种数据�
         - GLB输出：
             - 输出的是不是负责口的id因为万一负责的也是要多个口的，而是bank，用来区分数据的类型，而CCU是通过片外配置的bankport知道bank对应的数据类型的，从而知道负责多口的每个口对应数据类型的，从而给出指令里面的基址，
             - 那么个数呢？怎么控制这个通用的glb： GLB的外部需要接收响应，和准备好响应的数据, 不能以bank为单位，因为有时写不满一个bank，可以需要传出去个数，附带还传出去写的基础地址，避免CCU再计数
-            - 用ITFGLB_Last作为传输完成，让GLB内ITF口重新置位
+            <!-- - 用ITFGLB_Last作为传输完成，让GLB内ITF口重新置位 -->
             - 没有没有一对多，需要一个使能信号EnMul, 控制源头empty_bankRd
     - 方案2：GLB通用只配置成一口读对应一口写，在外部仲裁
         - 不搞一口多用，一口只按配置一用。
         - 需要做的：
             - ITF模块仲裁多个口的请求后，响应其中一个进入CMD状态，后进入IN或OUT把数传给它后，进入CMD再仲裁，
                 - 优先级高的是
-                    - 先是紧迫性：读空写满；
+                    - 先是紧迫性：读满写空；
                     - 然后是个数多的，
                     - 最后是固定优先级的：在前面两级都满足情况下，读的空了，写的也满了，先把要写到片外的拿出来，不要堵住，即SYA_Ofm>POL_Ofm>POL_Ifm>SYA_Act>SYA_Wgt
             - （还是需要GLB输出之前写的地址和差的个数），
@@ -77,7 +77,7 @@ PAD的协议是：借鉴AHB协议，先传首地址（决定是取哪种数据�
         - 什么时候请求ITF？还要考虑是单口SRAM，因此至少有一个ParBank就请求：判断信号类似于PortWrEn:question:读写地址怎么来？，
             - 请求什么？基址和多少个（多少个ParBank）用最高1bit位表示：0表指令，1表数据,由于保持传输的一致性，指令和数据一样的传输路径
             - ITF有FSM：IDLE->CMD->IN或OUT->IDLE，但问题是有空闲周期：传出去CMD到进数据，暂时管了
-        - ITF读片外写到Bank：Bank发出读片外数据请求，经仲裁，生成一个CMD经GLBITF_Dat传到ITF，ITF判断高位0，确认是CMD后，FSM到CMD状态，不再接收GLBITF_Dat，当CMD被片外取走后，进入RESE状态，等待接收，接收到了拉高ITFGLB_DatVld。什么时候完成转到IDLE?: 片外应该给个RdLast信号(Last信号与Vld信号方向一致，注意Last信号与个数指令相**自洽**)
+        - ITF读片外写到Bank：Bank发出读片外数据请求，经仲裁，生成一个CMD经GLBITF_Dat传到ITF，ITF判断高位0，确认是CMD后，FSM到CMD状态，不再接收GLBITF_Dat，当CMD被片外取走后，进入RESE状态，等待接收，接收到了拉高ITFGLB_DatVld。什么时候完成转到IDLE?: 片外应该给个PADITF_DatLast信号(Last信号与Vld信号方向一致，注意Last信号与个数指令相**自洽**)
         - ITF读Bank写到片外：Bank发出写到片外数据请求，经仲裁，生成一个CMD经GLBITF_Dat传到ITF，ITF判断高位0，确认是CMD后，FSM到CMD状态，不再接收GLBITF_Dat，当CMD被片外取走后（片外准备好接收数据），进入IN状态，拉高ITFGLB_DatRdy，接收Bank的数据。
         - 什么时候释放ITF？没有一个完整的ParBank就释放
 

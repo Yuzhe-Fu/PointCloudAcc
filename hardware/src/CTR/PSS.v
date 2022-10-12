@@ -12,7 +12,6 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
 module PSS #(
     parameter SORT_LEN_WIDTH  = 5                 ,
     parameter IDX_WIDTH       = 10                ,
@@ -21,6 +20,8 @@ module PSS #(
     parameter SRAM_WIDTH      = 256                 
 
     )(
+    input                                   clk,
+    input                                   rst_n,
     input                                   CTRPSS_LopLast  ,
     input                                   CTRPSS_Rst      ,
     input   [2**IDX_WIDTH           -1 : 0] CTRPSS_Mask     ,
@@ -45,7 +46,7 @@ module PSS #(
 //=====================================================================================================================
 wire [NUM_SORT_CORE         -1 : 0] INS_LopRdy;
 reg  [$clog2(NUM_SORT_CORE)    : 0] addr;
-reg  [2**IDX_WIDTH          -1 : 0] Mask_Array;
+reg  [2**IDX_WIDTH          -1 : 0] Mask_Array[0 : NUM_SORT_CORE-1];
 //=====================================================================================================================
 // Logic Design 2: HandShake
 //=====================================================================================================================
@@ -108,14 +109,16 @@ PISO#(
     .DATA_IN_WIDTH   ( 384 ), // (32+1)*10 /96 = 330 /96 <= 4
     .DATA_OUT_WIDTH  ( 96  )
 )U_PISO(
-    .CLK       ( clk       ),
-    .RESET_N   ( rst_n      ),
-    .ENABLE    ( INSSSC_IdxVld    ),
-    .DATA_IN   ( {54'd0 ,{CTRPSS_CpIdx, INSSSC_Idx}}   ),
-    .READY     ( INSSSC_IdxRdy     ),
-    .DATA_OUT  ( PSSCTR_Idx  ),
-    .OUT_VALID ( PSSCTR_IdxVld ),
-    .OUT_READY ( PSSCTR_IdxRdy  )
+    .CLK       ( clk            ),
+    .RST_N     ( rst_n          ),
+    .IN_VLD    ( INSSSC_IdxVld  ),
+    .IN_LAST   ( 1'b0           ),
+    .IN_DAT    ( {54'd0 ,{CTRPSS_CpIdx, INSSSC_Idx}}   ),
+    .IN_RDY    ( INSSSC_IdxRdy  ),
+    .OUT_DAT   ( PSSCTR_Idx     ),
+    .OUT_VLD   ( PSSCTR_IdxVld  ),
+    .OUT_LAST  (                ),
+    .OUT_RDY   ( PSSCTR_IdxRdy  )
 );
 
 endmodule

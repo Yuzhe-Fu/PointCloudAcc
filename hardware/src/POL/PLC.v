@@ -62,7 +62,7 @@ assign clear_addr = PLCPOL_FmVld  & POLPLC_FmRdy ;
 // Sub-Module :
 //=====================================================================================================================
 
-PCC#(s
+PCC#(
     .NUM_MAX    ( POOL_COMP_CORE),
     .DATA_WIDTH ( ACT_WIDTH     )
 )U1_PLCC(
@@ -95,7 +95,7 @@ counter#(
 
 FIFO_FWFT#(
     .INIT       ( "init.mif" ),
-    .DATA_WIDTH ( IDX_WIDTHS ),
+    .DATA_WIDTH ( IDX_WIDTH ),
     .ADDR_WIDTH ( POOL_MAP_DEPTH_WIDTH ),
     .INITIALIZE_FIFO ( "no" )
 )U_FIFO_FWFT(

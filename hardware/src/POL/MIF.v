@@ -47,8 +47,8 @@ module MIF #(
 
 wire [$clog2(POOL_CORE)         -1 : 0] PolCoreIdx  [0 : POOL_CORE-1];
 wire [ACT_WIDTH*POOL_COMP_CORE  -1 : 0] Ofm         [0 : POOL_CORE-1];
-reg [POOL_CORE     -1 : 0] MIFMIFC_FmRdy
-wire [POOL_CORE     -1 : 0] MIFCMIF_FmVld;
+reg [POOL_CORE     -1 : 0] MIFMIC_FmRdy;
+wire [POOL_CORE     -1 : 0] MICMIF_FmVld;
 
 integer j;
 
@@ -60,7 +60,7 @@ genvar i;
 
 generate
     for(i=0; i<POOL_CORE; i=i+1) begin
-        wire [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0] MIFCMIF_Fm;
+        wire [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0] MICMIF_Fm;
         MIC#(
             .POOL_CORE      ( POOL_CORE ),
             .POOL_COMP_CORE ( POOL_COMP_CORE ),
@@ -78,21 +78,21 @@ generate
             .GLBMIF_Fm      ( GLBMIF_Fm[(ACT_WIDTH*POOL_COMP_CORE)*i +: (ACT_WIDTH*POOL_COMP_CORE)]      ),
             .GLBMIF_FmVld   ( GLBMIF_FmVld[i]   ),
             .MIFGLB_FmRdy   ( MIFGLB_FmRdy[i]   ),
-            .MIFCMIF_Fm      ( MIFCMIF_Fm      ),
-            .MIFCMIF_FmVld   ( MIFCMIF_FmVld[j]   ),
-            .MIFMIFC_FmRdy   ( MIFMIFC_FmRdy[j]   )
+            .MICMIF_Fm      ( MICMIF_Fm      ),
+            .MICMIF_FmVld   ( MICMIF_FmVld[i]   ),
+            .MIFMIC_FmRdy   ( MIFMIC_FmRdy[i]   )
         );
-        assign {PolCoreIdx[i], Ofm[i]} = MIFCMIF_Fm;
+        assign {PolCoreIdx[i], Ofm[i]} = MICMIF_Fm;
 
         //  ==========================
         always @(*) begin
             MIFPOL_Fm[(ACT_WIDTH*POOL_COMP_CORE)*i +: (ACT_WIDTH*POOL_COMP_CORE)] = 0;
             MIFPOL_FmVld[i] = 0;
             for(j=0; j<POOL_CORE; j=j+1) begin // Loop MIFC
-                if(PolCoreIdx[j]=i & MIFCMIF_FmVld[j]) begin
+                if(PolCoreIdx[j]==i & MICMIF_FmVld[j]) begin
                     MIFPOL_Fm[i] = Ofm[j];
                     MIFPOL_FmVld[i] = 1'b1;
-                    MIFMIFC_FmRdy[j] = MIFPOL_FmRdy[i]; // ?????????????????????????????????????????????????????
+                    MIFMIC_FmRdy[j] = MIFPOL_FmRdy[i]; // ?????????????????????????????????????????????????????
                 end
             end
         end

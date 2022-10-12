@@ -44,12 +44,12 @@ wire [ SRAM_WIDTH              -1 : 0] DO;
 wire                                   read_en_d;
 reg  [ SRAM_WIDTH              -1 : 0] DO_d;
 assign data_out = read_en_d? DO : DO_d;
-Delay #(
+DELAY #(
     .NUM_STAGES(1),
     .DATA_WIDTH(1)
 ) Delay_read_en_d (
     .CLK     (clk       ),
-    .RESET_N (rst_n     ),
+    .RST_N   (rst_n     ),
     .DIN     (read_en   ),
     .DOUT    (read_en_d )
 );

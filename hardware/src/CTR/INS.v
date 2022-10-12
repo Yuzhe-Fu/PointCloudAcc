@@ -26,7 +26,7 @@ module INS #(
     input                                       SSCINS_LopVld   ,
     output                                      SSCINS_LopRdy   ,
     output       [IDX_WIDTH*SORT_LEN    -1 : 0] INSSSC_Idx      ,   
-    output                                      INSSSC_IdxVld   ,
+    output reg                                  INSSSC_IdxVld   ,
     input                                       INSSSC_IdxRdy
 );
 //=====================================================================================================================
@@ -42,7 +42,9 @@ reg [IDX_WIDTH      -1 : 0] IdxArray[0: SORT_LEN-1];
 
 wire [IDX_WIDTH     -1 : 0] Idx;
 wire [DIST_WIDTH    -1 : 0] Dist;
-
+wire                        Out_HandShake;
+wire                        In_HandShake;
+wire [SORT_LEN      -1 : 0] cur_insert;
 //=====================================================================================================================
 // Logic Design 2: HandShake
 //=====================================================================================================================
@@ -55,9 +57,9 @@ always @(posedge clk or negedge rst_n) begin
         INSSSC_IdxVld <= 1'b1;
     end
 end
-wire Out_HandShake = INSSSC_IdxRdy & INSSSC_IdxVld;
 
-wire SSCINS_LopRdy = !INSSSC_IdxVld;
+assign Out_HandShake = INSSSC_IdxRdy & INSSSC_IdxVld;
+assign SSCINS_LopRdy = !INSSSC_IdxVld;
 
 //=====================================================================================================================
 // Logic Design 1: INSSSC_Idx
@@ -65,7 +67,7 @@ wire SSCINS_LopRdy = !INSSSC_IdxVld;
 
 
 assign {Idx, Dist} = SSCINS_Lop;
-wire In_HandShake = SSCINS_LopVld & SSCINS_LopRdy;
+assign In_HandShake = SSCINS_LopVld & SSCINS_LopRdy;
 
 genvar i;
 generate 

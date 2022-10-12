@@ -1,7 +1,7 @@
 module MAX 
 #( // INPUT PARAMETERS
     parameter DATA_WIDTH  = 16,
-    parameter PORT = 4
+    parameter PORT        = 4
 )( // PORTS
     input [DATA_WIDTH*PORT  -1 : 0] IN,
     output reg [$clog2(PORT)     -1 : 0] MAXIDX,
@@ -19,3 +19,5 @@ always @(*) begin
         end
     end
 end
+
+endmodule

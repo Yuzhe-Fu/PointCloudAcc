@@ -1,7 +1,6 @@
 ./TOP_tb.v
 ../../src/TOP/TOP.v
 ../../src/ITF/ITF.v
-../../src/CCU/CCU.v
 ../../src/GLB/GLB.v
 ../../src/CTR/CTR.v
 ../../src/CTR/INS.v
@@ -15,7 +14,6 @@
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DEB/DEB.v
 ../../src/primitives/MAX/MAX.v
-../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/Memory/RAM_HS.v
 ../../src/primitives/Memory/RAM.v
 ../../src/primitives/SIPO/SIPO.v

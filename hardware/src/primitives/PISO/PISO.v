@@ -25,9 +25,9 @@ module PISO
 // ******************************************************************
 // WIRES and REGS
 // ******************************************************************
-  reg [NUM_SHIFTS -1    : 0]  shift_count;
-  reg [DATA_IN_WIDTH -1 : 0]  serial;
-  reg                         last;
+  reg [NUM_SHIFTS   -1 : 0] shift_count;
+  reg [DATA_IN_WIDTH-1 : 0] serial;
+  reg                       last;
 // ******************************************************************
 
   assign OUT_VLD = |shift_count;
@@ -36,27 +36,25 @@ module PISO
 
   assign OUT_DAT = serial [DATA_OUT_WIDTH-1:0];
 
-  always @(posedge CLK or negedge RST_N)
-  begin: SHIFTER_COUNT
+  always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
     if (!RST_N)
-      shift_count <= 0;
+        shift_count <= 0;
     else if (IN_VLD & IN_RDY)
-      shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
+        shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
     else if (OUT_VLD & OUT_RDY) 
-      shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b0};
+        shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b0};
   end
 
 
-always @(posedge CLK or negedge RST_N)
-begin: DATA_SHIFT
-    if (!RST_N)
+always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
+    if (!RST_N) begin
         serial <= 0;
         last        <= 0;
-    else begin
-        if (IN_VLD & IN_RDY)
+    end else begin
+        if (IN_VLD & IN_RDY) begin
             serial <= IN_DAT;
             last   <= IN_LAST;
-        else if (OUT_VLD & OUT_RDY)
+        end else if (OUT_VLD & OUT_RDY)
             serial <= {{DATA_OUT_WIDTH{1'b0}}, serial[DATA_IN_WIDTH-1:DATA_OUT_WIDTH]};
     end
 end

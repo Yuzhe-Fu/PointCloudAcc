@@ -34,9 +34,9 @@ module MIC #(
     input       [ACT_WIDTH*POOL_COMP_CORE                   -1 : 0] GLBMIF_Fm     ,
     input                                                           GLBMIF_FmVld  ,
     output                                                          MIFGLB_FmRdy  ,
-    output      [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0]MIFPOL_Fm     ,
-    output                                                          MIFPOL_FmVld  ,
-    input                                                           MIFPOL_FmRdy  
+    output      [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0]MICMIF_Fm     ,
+    output                                                          MICMIF_FmVld  ,
+    input                                                           MIFMIC_FmRdy  
 
 );
 //=====================================================================================================================
@@ -78,13 +78,13 @@ FIFO_FWFT#(
     .push       ( POLPLC_IdxVld &  PLCPOL_IdxRdy    ),
     .pop        ( PLCPOL_AddrVld & POLPLC_AddrRdy   ),
     .data_in    ( {rd_port_d, GLBMIF_Fm}            ),
-    .data_out   ( MIFPOL_Fm                         ),
+    .data_out   ( MICMIF_Fm                         ),
     .empty      ( out_empty                         ),
     .full       ( out_full                          ),
     .fifo_count (                                   )
 );
 
-assign MIFPOL_FmVld = !out_empty;
+assign MICMIF_FmVld = !out_empty;
 assign MIFGLB_FmRdy = !out_full;
 
 FIFO_FWFT#(
@@ -96,8 +96,8 @@ FIFO_FWFT#(
     .clk        ( clk                                                       ),
     .Reset      ( 1'b0                                                      ),
     .rst_n      ( rst_n                                                     ),
-    .push       ( MIFGLB_AddrVld[arb_port]                                  ),
-    .pop        ( MIFGLB_AddrVld & MIFGLB_AddrRdy                           ),
+    .push       ( POLMIF_AddrVld[arb_port] & MIFPOL_Rdy[arb_port]           ), 
+    .pop        ( MIFGLB_AddrVld & GLBMIF_AddrRdy                           ),
     .data_in    ( {arb_port, POLMIF_Addr[IDX_WIDTH*arb_port +: IDX_WIDTH]}  ),
     .data_out   ( {rd_port, MIFGLB_Addr}                                    ),
     .empty      ( cmd_empty                                                 ),
@@ -117,9 +117,9 @@ prior_arb#(
 );
 
 int i;
-always @() begin
+always @(*) begin
     arb_port = 0;
-    for(i=0; i<NUM_PORT; i=i+1) begin
+    for(i=0; i<POOL_CORE; i=i+1) begin
         if(gnt[i]) begin
             arb_port |= i;
         end
@@ -129,7 +129,7 @@ end
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         rd_port_d <= 0;
-    end else if (MIFGLB_AddrVld & MIFGLB_AddrRdy) begin
+    end else if (MIFGLB_AddrVld & GLBMIF_AddrRdy) begin
         rd_port_d <= rd_port;
     end
 end

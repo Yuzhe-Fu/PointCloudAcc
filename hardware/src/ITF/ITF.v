@@ -15,6 +15,7 @@
 module ITF #(
     parameter PORT_WIDTH = 128,
     parameter SRAM_WIDTH = 256,
+    parameter DRAM_ADDR_WIDTH = 32,
     parameter ADDR_WIDTH = 16,
 
     parameter NUM_RDPORT = 2,
@@ -43,7 +44,6 @@ module ITF #(
 
     input  [SRAM_WIDTH*NUM_RDPORT               -1 : 0] TOPITF_Dat     ,
     input  [NUM_RDPORT                          -1 : 0] TOPITF_DatVld  ,
-    input  [NUM_RDPORT                          -1 : 0] TOPITF_DatLast  ,
     output [NUM_RDPORT                          -1 : 0] ITFTOP_DatRdy  ,
 
     output [SRAM_WIDTH*NUM_WRPORT               -1 : 0] ITFTOP_Dat    , 
@@ -78,6 +78,7 @@ wire [ADDR_WIDTH    -1 : 0] MaxNum;
 
 wire [SRAM_WIDTH    -1 : 0] DatIn;
 wire                        DatInVld;
+wire                        DatInLast;
 wire                        DatInRdy;
 wire [PORT_WIDTH    -1 : 0] DatOut;
 wire                        DatOutVld;
@@ -87,6 +88,10 @@ wire                        DatOutRdy;
 wire [NUMPORT_WIDTH -1 : 0] WrPort;
 
 wire                        PISO_OUTRdy;
+
+wire                        TOPITF_DatLast;
+wire                        CntOverflow;
+wire                        CntInc;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -132,6 +137,7 @@ end
 //=====================================================================================================================
 // Logic Design 2: ARB Request
 //=====================================================================================================================
+integer  j;
 always @(*) begin
     Port_wire = 0;
     Trans = 1'b0;
@@ -151,7 +157,7 @@ end
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
         Port <= 0;
-    else if(state==IDLE && next_state == CMD) begin
+    end else if(state==IDLE && next_state == CMD) begin
         Port <= Port_wire; // Update
     end
 end
@@ -213,8 +219,7 @@ MAX # (
     .IN (TOPITF_ReqNum),
     .MAXIDX(MaxIdx),
     .MAXVALUE(MaxNum)
-)
-
+);
 
 PISO#(
     .DATA_IN_WIDTH ( SRAM_WIDTH ),
@@ -232,5 +237,31 @@ PISO#(
     .OUT_RDY      ( DatOutRdy                  )
 );
 
+reg [ADDR_WIDTH     -1 : 0] RdReqNum;
+counter#(
+    .COUNT_WIDTH ( ADDR_WIDTH )
+)u_counter_RdPortCnt(
+    .CLK       ( clk            ),
+    .RESET_N   ( rst_n          ),
+    .CLEAR     ( state == CMD   ),
+    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+    .INC       ( CntInc         ),
+    .DEC       ( 1'b0           ),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+    .MAX_COUNT ( RdReqNum -1    ),
+    .OVERFLOW  ( CntOverflow    ),
+    .UNDERFLOW (                ),
+    .COUNT     (                )
+);
+always @(posedge clk or rst_n) begin
+    if(!rst_n) begin
+        RdReqNum <= 0;
+    end else if(state == CMD && next_state == OUT) begin
+        RdReqNum <= TOPITF_ReqNum[ADDR_WIDTH*Port +: ADDR_WIDTH];
+    end
+end
+
+assign TOPITF_DatLast = CntOverflow & TOPITF_DatVld & state == OUT;
+assign CntInc = TOPITF_DatVld & ITFTOP_DatRdy & state == OUT;
 
 endmodule
