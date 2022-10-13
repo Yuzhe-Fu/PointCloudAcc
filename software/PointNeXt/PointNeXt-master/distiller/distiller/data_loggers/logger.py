@@ -162,7 +162,7 @@ class TensorBoardLogger(DataLogger):
 
         for name, param in model.state_dict().items():
 
-            # logging.info(f"{name} and {param.size()}")
+            logging.info(f"{name} and {param.dim()}")
 
             if param.dim() in [3,4]:
                 _density = density(param)

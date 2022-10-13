@@ -214,16 +214,11 @@ def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
                 sparsities = np.arange(0,1,0.05)
                 test_func(model, validate_fn, test_loader, criterion, cfg)
                 which_params = [param_name for param_name, _ in model.named_parameters()]
-                sensitivity = distiller.perform_sensitivity_analysis(model_ori = model_cpy,
-                                                                    model_pretrain=model,
+                sensitivity = distiller.perform_sensitivity_analysis(model = model_cpy,
                                                                     net_params=which_params,
                                                                     sparsities=sparsities,
                                                                     test_func=test_func,
-                                                                    group='element', 
-                                                                    validate_fn=validate_fn,
-                                                                    test_loader=test_loader,
-                                                                    criterion=criterion, 
-                                                                    cfg=cfg)
+                                                                    group='element')
                 print("sensitivity: {}".format(sensitivity))
                 print('Finish test, see sensitivity above')
                 return True
@@ -279,4 +274,6 @@ def test_func(model, validate_fn, test_loader,criterion, cfg):
         epoch_acc, epoch_acc, epoch_loss = validate_fn(model, test_loader, cfg, criterion)
         print("############  test_func loss:", epoch_loss, "acc :", epoch_acc)
         return epoch_acc, epoch_acc, epoch_loss
+
+
 
