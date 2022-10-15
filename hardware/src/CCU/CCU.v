@@ -14,7 +14,8 @@
 // -----------------------------------------------------------------------------
 module CCU #(
     parameter SRAM_WORD_ISA         = 64,
-    parameter SRAM_WIDTH            = 256,
+    parameter PORT_WIDTH            = 256,
+    parameter CLOCK_PERIOD          = 10,
 
     parameter ADDR_WIDTH            = 16,
     parameter DRAM_ADDR_WIDTH       = 32,
@@ -25,6 +26,7 @@ module CCU #(
     parameter ACT_WIDTH             = 8,
     parameter MAP_WIDTH             = 6,
     parameter NUM_LAYER_WIDTH       = 20,
+    parameter ISARDWORD_WIDTH       = 4,
     parameter OPNUM                 = 6,
 
     parameter MAXPAR                = 32,
@@ -39,7 +41,7 @@ module CCU #(
     output [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum,
     output [ADDR_WIDTH                          -1 : 0] CCUITF_Addr  ,
         // Configure
-    input   [SRAM_WIDTH                         -1 : 0] ITFCCU_Dat,             
+    input   [PORT_WIDTH                         -1 : 0] ITFCCU_Dat,             
     input                                               ITFCCU_DatVld,          
     output                                              CCUITF_DatRdy,
 
@@ -48,32 +50,32 @@ module CCU #(
     output                                              CCUSYA_Rst,  //
     output                                              CCUSYA_CfgVld,
     input                                               SYACCU_CfgRdy,
-    output  [2                                  -1 : 0] CCUSYA_CfgMod,
-    output  [IDX_WIDTH                          -1 : 0] CCUSYA_CfgNip, 
-    output  [CHN_WIDTH                          -1 : 0] CCUSYA_CfgChi,         
-    output  [20                                 -1 : 0] CCUSYA_CfgScale,        
-    output  [ACT_WIDTH                          -1 : 0] CCUSYA_CfgShift,        
-    output  [ACT_WIDTH                          -1 : 0] CCUSYA_CfgZp,
+    output  reg[2                               -1 : 0] CCUSYA_CfgMod,
+    output  reg[IDX_WIDTH                       -1 : 0] CCUSYA_CfgNip, 
+    output  reg[CHN_WIDTH                       -1 : 0] CCUSYA_CfgChi,         
+    output  reg[20                              -1 : 0] CCUSYA_CfgScale,        
+    output  reg[ACT_WIDTH                       -1 : 0] CCUSYA_CfgShift,        
+    output  reg[ACT_WIDTH                       -1 : 0] CCUSYA_CfgZp,
 
     output                                              CCUPOL_Rst,
     output                                              CCUPOL_CfgVld,
     input                                               POLCCU_CfgRdy,
-    output  [MAP_WIDTH                          -1 : 0] CCUPOL_CfgK,
-    output  [IDX_WIDTH                          -1 : 0] CCUPOL_CfgNip,
-    output  [CHN_WIDTH                          -1 : 0] CCUPOL_CfgChi,
+    output  reg [MAP_WIDTH                      -1 : 0] CCUPOL_CfgK,
+    output  reg [IDX_WIDTH                      -1 : 0] CCUPOL_CfgNip,
+    output  reg [CHN_WIDTH                      -1 : 0] CCUPOL_CfgChi,
 
     output                                              CCUCTR_Rst,
     output                                              CCUCTR_CfgVld,
     input                                               CTRCCU_CfgRdy,
-    output                                              CCUCTR_CfgMod,         
-    output  [IDX_WIDTH                          -1 : 0] CCUCTR_CfgNip,                    
-    output  [IDX_WIDTH                          -1 : 0] CCUCTR_CfgNop,          
-    output  [MAP_WIDTH                          -1 : 0] CCUCTR_CfgK,  
+    output  reg                                         CCUCTR_CfgMod,         
+    output  reg [IDX_WIDTH                      -1 : 0] CCUCTR_CfgNip,                    
+    output  reg [IDX_WIDTH                      -1 : 0] CCUCTR_CfgNop,          
+    output  reg [MAP_WIDTH                      -1 : 0] CCUCTR_CfgK,  
 
     output                                              CCUGLB_Rst,
     output [NUM_RDPORT+NUM_WRPORT               -1 : 0] CCUGLB_CfgVld ,         
     input  [NUM_RDPORT+NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy ,         
-    output [(NUM_RDPORT + NUM_WRPORT)* NUM_BANK -1 : 0] CCUGLB_CfgBankPort ,
+    output [NUM_BANK*(NUM_RDPORT + NUM_WRPORT)  -1 : 0] CCUGLB_CfgBankPort ,
     output [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] CCUGLB_CfgPort_AddrMax, 
     output [($clog2(MAXPAR) + 1)*NUM_RDPORT     -1 : 0] CCUGLB_CfgRdPortParBank,
     output [($clog2(MAXPAR) + 1)*NUM_WRPORT     -1 : 0] CCUGLB_CfgWrPortParBank      
@@ -84,30 +86,110 @@ module CCU #(
 //=====================================================================================================================
 localparam OPCODE_WIDTH = $clog2(OPNUM);
 
-localparam IDLE     = 3'd0000;
-localparam RD_CFG   = 3'd0001;
-localparam IDLE_CFG = 3'd0010;
-localparam FNH      = 3'd0011;
-localparam ARRAY_CFG= 3'd1000; // 0
-localparam CONV_CFG = 3'd1001; // 1
-localparam FC_CFG   = 3'd1010; // 2
-localparam POL_CFG  = 3'd1011; // 3
-localparam CTR_CFG  = 3'd1100; // 4
-
-
+localparam IDLE     = 4'b0000;
+localparam RD_ISA   = 4'b0001;
+localparam IDLE_CFG = 4'b0010;
+localparam FNH      = 4'b0011;
+localparam ARRAY_CFG= 4'b1000; // 0
+localparam CONV_CFG = 4'b1001; // 1
+localparam POL_CFG  = 4'b1010; // 2ISA_WrAddr
+localparam CTR_CFG  = 4'b1011; // 3
 
 
 localparam OpCode_Array = 3'd0;
 localparam OpCode_Conv  = 3'd1;
-localparam OpCode_FC    = 3'd2;
-localparam OpCode_Pool  = 3'd3;
-localparam OpCode_CTR   = 3'd4;
-localparam OpCode_KNN   = 3'd5;
+localparam OpCode_Pool  = 3'd2;
+localparam OpCode_CTR   = 3'd3;
 
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
+wire                                        ISA_Full;
+wire                                        ISA_Empty;
+reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_WrAddr;
+reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddr;
+reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddr_Array [0 : OPNUM -1];
+wire [(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)*OPNUM-1 : 0] ISA_RdAddr1D;
+reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddrMin;
+wire                                        ISA_WrEn;
+reg                                         ISA_RdEn;
+reg [ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord;
+wire[ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord_d;
+
+wire [PORT_WIDTH                    -1 : 0] ISA_DatOut;
+
+reg [NUM_LAYER_WIDTH                -1 : 0] CfgNumLy;
+wire                                        ISA_RdEn_d;
+wire [OPCODE_WIDTH                  -1 : 0] OpCode;
+reg                                         OpCodeMatch;
+reg [5                              -1 : 0] OpNumWord[0 : OPNUM -1];
+
+reg [NUM_LAYER_WIDTH                -1 : 0] NumLy;
+reg                                         Mode;
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramDatAddr; 
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramWgtAddr; 
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramCrdAddr; 
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramWrMapAddr;
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramRdMapAddr;
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramOfmAddr; 
+reg [ NUM_BANK                      -1 : 0] ITF_WrPortActBank;
+reg [ NUM_BANK                      -1 : 0] ITF_WrPortWgtBank;
+reg [ NUM_BANK                      -1 : 0] ITF_WrPortCrdBank;
+reg [ NUM_BANK                      -1 : 0] ITF_WrPortMapBank;
+reg [ NUM_BANK                      -1 : 0] SYA_WrPortOfmBank;
+reg [ NUM_BANK                      -1 : 0] POL_WrPortOfmBank;
+reg [ NUM_BANK                      -1 : 0] CTR_WrPortDstBank;
+reg [ NUM_BANK                      -1 : 0] CTR_WrPortMapBank;
+reg [ NUM_BANK                      -1 : 0] ITF_RdPortMapBank;
+reg [ NUM_BANK                      -1 : 0] ITF_RdPortOfmBank;
+reg [ NUM_BANK                      -1 : 0] SYA_RdPortActBank;
+reg [ NUM_BANK                      -1 : 0] SYA_RdPortWgtBank;
+reg [ NUM_BANK                      -1 : 0] POL_RdPortOfmBank;
+reg [ NUM_BANK                      -1 : 0] POL_RdPortMapBank;
+reg [ NUM_BANK                      -1 : 0] CTR_RdPortCrdBank;
+reg [ NUM_BANK                      -1 : 0] CTR_RdPortDstBank;
+reg [ ADDR_WIDTH                    -1 : 0] ITF_WrPortAct_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] ITF_WrPortWgt_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] ITF_WrPortCrd_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] ITF_WrPortMap_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] SYA_WrPortOfm_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] POL_WrPortOfm_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] CTR_WrPortDst_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] CTR_WrPortMap_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] ITF_RdPortMap_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] ITF_RdPortOfm_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] SYA_RdPortAct_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] SYA_RdPortWgt_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] POL_RdPortOfm_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] POL_RdPortMap_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] CTR_RdPortCrd_AddrMax;
+reg [ ADDR_WIDTH                    -1 : 0] CTR_RdPortDst_AddrMax;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] ITF_WrPortActParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] ITF_WrPortWgtParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] ITF_WrPortCrdParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] ITF_WrPortMapParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] SYA_WrPortOfmParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] POL_WrPortOfmParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] CTR_WrPortDstParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] CTR_WrPortMapParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] ITF_RdPortMapParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] ITF_RdPortOfmParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] SYA_RdPortActParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] SYA_RdPortWgtParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] POL_RdPortOfmParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] POL_RdPortMapParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] CTR_RdPortCrdParBank;
+reg [ ($clog2(MAXPAR) + 1)          -1 : 0] CTR_RdPortDstParBank;
+
+wire                                        Conv_CfgRdy;
+wire                                        Pool_CfgRdy;
+wire                                        Ctr_CfgRdy;
+reg                                         Conv_CfgVld;
+reg                                         Pool_CfgVld;
+reg                                         Ctr_CfgVld;
+
+reg [CHN_WIDTH                      -1 : 0] Cho;
 
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -118,20 +200,20 @@ reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE    :   if( TOPCCU_start)
-                        next_state <= RD_CFG; //
+                        next_state <= RD_ISA; //
                     else
                         next_state <= IDLE;
 
-        RD_CFG  :   if( full ) // 
+        RD_ISA  :   if( ISA_Full ) // 
                         next_state <= IDLE_CFG;
                     else
-                        next_state <= RD_CFG;
+                        next_state <= RD_ISA;
 
-        IDLE_CFG:   if (num_layer == Ly_Num)
+        IDLE_CFG:   if (NumLy == CfgNumLy)
                         next_state <= FNH;
-                    else if ( empty )
-                        next_state <= RD_CFG;
-                    else if (num_layer==0)
+                    else if ( ISA_Empty )
+                        next_state <= RD_ISA;
+                    else if (NumLy==0)
                         next_state <= ARRAY_CFG;
                     else if (SYACCU_CfgRdy)
                         next_state <= CONV_CFG;
@@ -142,7 +224,7 @@ always @(*) begin
                     else 
                         next_state <= IDLE_CFG;
 
-        ARRAY_CFG:  if ( read_en_d & OpCode == OpCode_Array)
+        ARRAY_CFG:  if ( ISA_RdEn_d & OpCode == OpCode_Array)
                         next_state <= IDLE_CFG;
                     else 
                         next_state <= ARRAY_CFG;
@@ -176,11 +258,11 @@ end
 assign CCUTOP_NetFnh = state == FNH;
 always @(posedge clk or rst_n) begin
     if(!rst_n) begin
-        num_layer <= 0;
+        NumLy <= 0;
     end else if(state ==IDLE) begin
-        num_layer <= 0;
+        NumLy <= 0;
     end else if(state==IDLE_CFG & next_state[3]) begin // transfer to layer config
-        num_layer <= num_layer + 1;
+        NumLy <= NumLy + 1;
     end
 end
 
@@ -188,73 +270,70 @@ end
 // Logic Design 3: ISA RAM Write
 //=====================================================================================================================
 // Write Path
-assign CCUITF_Empty = empty;
-assign CCUITF_ReqNum = SRAM_WORD_ISA - (addr_w - AddrRdMin); // empty number
+assign CCUITF_Empty = ISA_Empty;
+assign CCUITF_ReqNum = SRAM_WORD_ISA - (ISA_WrAddr - ISA_RdAddrMin); // ISA_Empty number
 assign CCUITF_Addr = 0;
 
-assign write_en = ITFCCU_DatVld & CCUITF_DatRdy;
-assign CCUITF_DatRdy = state == RD_CFG;
+assign ISA_WrEn = ITFCCU_DatVld & CCUITF_DatRdy;
+assign CCUITF_DatRdy = state == RD_ISA;
 
 
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
-        addr_w <= 0;
+        ISA_WrAddr <= 0;
     end else if (state == IDLE ) begin
-        addr_w <= 0;
-    end else if (write_en ) begin
-        addr_w <= addr_w + 1;
+        ISA_WrAddr <= 0;
+    end else if (ISA_WrEn ) begin
+        ISA_WrAddr <= ISA_WrAddr + 1;
     end
 end
 
-assign full = addr_w - AddrRdMin == SRAM_WORD_ISA;
-assign empty = addr_w == AddrRdMin;
+assign ISA_Full = ISA_WrAddr - ISA_RdAddrMin == SRAM_WORD_ISA;
+assign ISA_Empty = ISA_WrAddr == ISA_RdAddrMin;
 
 
 //=====================================================================================================================
 // Logic Design 3: Address of ISA RAM: input ReqCfg, output AckCfg
 //=====================================================================================================================
 
+always @(posedge clk or rst_n) begin
+    if (!rst_n)
+        OpNumWord[0] = 1;// localparam Word_Array = 1;
+        OpNumWord[1] = 6;// localparam Word_Conv  = 2;
+        OpNumWord[2] = 3;// localparam Word_Pool  = 2;
+        OpNumWord[3] = 5;// localparam Word_CTR   = 1;
+end
+
 genvar i;
 generate
-    for(i=0; i<NUM_TYPE_LAYER; i=i+1) begin
-
-        always @(posedge clk or rst_n) begin
-            if (!rst_n)
-                Word[0] = 1;// localparam Word_Array = 1;
-                Word[1] = 6;// localparam Word_Conv  = 2;
-                Word[2] = 0;// localparam Word_FC    = 1;
-                Word[3] = 3;// localparam Word_Pool  = 2;
-                Word[4] = 5;// localparam Word_FPS   = 1;
-                Word[5] = 0;// localparam Word_KNN   = 1;
-        end
+    for(i=0; i<OPNUM; i=i+1) begin
         always @(posedge clk or negedge rst_n)  begin
             if (!rst_n) begin
-                addr_array[i] <= 0;
+                ISA_RdAddr_Array[i] <= 0;
             end else if ( state == IDLE ) begin
-                addr_array[i] <= 0;
-            end else if ( read_en & state[0 +: 3] == i) begin
-                addr_array[i] <= addr_array[i] + 1;
+                ISA_RdAddr_Array[i] <= 0;
+            end else if ( ISA_RdEn & state[0 +: 3] == i) begin
+                ISA_RdAddr_Array[i] <= ISA_RdAddr_Array[i] + 1;
             end
         end
-
+        assign ISA_RdAddr1D[(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)*i +: (NUM_LAYER_WIDTH+ISARDWORD_WIDTH)] = ISA_RdAddr_Array[i];
+    end
 endgenerate
 
-
+integer j;
 always @(*) begin
-    match = 0;
-    addr_r = 0;
-    read_en = 0;
-    AddrRd1D = 0;
-    cnt_word = cnt_word_d;
-    for (j=0; j<NUM_TYPE_LAYER; j=j+1) begin
+    OpCodeMatch = 0;
+    ISA_RdAddr = 0;
+    ISA_RdEn = 0;
+    ISA_CntRdWord = ISA_CntRdWord_d;
+    for (j=0; j<OPNUM; j=j+1) begin
         if ( state[0 +: 3] == j) begin
-            cnt_word = (read_en_d & match) ? cnt_word + 1 : cnt_word;
-            match = OpCode == j;
-            read_en = !(cnt_word[i] == Word[i] & match);
+            ISA_CntRdWord = (ISA_RdEn_d & OpCodeMatch) ? ISA_CntRdWord + 1 : ISA_CntRdWord;
+            OpCodeMatch = OpCode == j;
+            ISA_RdEn = !(ISA_CntRdWord[j] == OpNumWord[j] & OpCodeMatch);
 
-            addr_r = addr_array[j]
+            ISA_RdAddr = ISA_RdAddr_Array[j];
         end
-        assign AddrRd1D[ADDR_WIDTH*j +: ADDR_WIDTH] = addr_array[j];
     end
 end
 
@@ -262,119 +341,172 @@ end
 //=====================================================================================================================
 // Logic Design 3: ISA Decoder
 //=====================================================================================================================
-assign OpCode == data_out[0 +: 3];
+assign OpCode = ISA_DatOut[0 +: 3];
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        CCUSYA_CfgVld <= 1'b0;
-        CCUPOL_CfgVld <= 1'b0;
-    end else if ( read_en_d ) begin
+        CfgNumLy                <= 0;
+        Mode                    <= 0;
+        DramDatAddr             <= 0; 
+        DramWgtAddr             <= 0; 
+        DramCrdAddr             <= 0; 
+        DramWrMapAddr           <= 0;
+        DramRdMapAddr           <= 0;
+        DramOfmAddr             <= 0; 
+        ITF_WrPortActBank       <= 0;
+        ITF_WrPortWgtBank       <= 0;
+        ITF_WrPortCrdBank       <= 0;
+        ITF_WrPortMapBank       <= 0;
+        SYA_WrPortOfmBank       <= 0;
+        POL_WrPortOfmBank       <= 0;
+        CTR_WrPortDstBank       <= 0;
+        CTR_WrPortMapBank       <= 0;
+        ITF_RdPortMapBank       <= 0;
+        ITF_RdPortOfmBank       <= 0;
+        SYA_RdPortActBank       <= 0;
+        SYA_RdPortWgtBank       <= 0;
+        POL_RdPortOfmBank       <= 0;
+        POL_RdPortMapBank       <= 0;
+        CTR_RdPortCrdBank       <= 0;
+        CTR_RdPortDstBank       <= 0;
+        ITF_WrPortAct_AddrMax   <= 0;
+        ITF_WrPortWgt_AddrMax   <= 0;
+        ITF_WrPortCrd_AddrMax   <= 0;
+        ITF_WrPortMap_AddrMax   <= 0;
+        SYA_WrPortOfm_AddrMax   <= 0;
+        POL_WrPortOfm_AddrMax   <= 0;
+        CTR_WrPortDst_AddrMax   <= 0;
+        CTR_WrPortMap_AddrMax   <= 0;
+        ITF_RdPortMap_AddrMax   <= 0;
+        ITF_RdPortOfm_AddrMax   <= 0;
+        SYA_RdPortAct_AddrMax   <= 0;
+        SYA_RdPortWgt_AddrMax   <= 0;
+        POL_RdPortOfm_AddrMax   <= 0;
+        POL_RdPortMap_AddrMax   <= 0;
+        CTR_RdPortCrd_AddrMax   <= 0;
+        CTR_RdPortDst_AddrMax   <= 0;
+        ITF_WrPortActParBank    <= 0;
+        ITF_WrPortWgtParBank    <= 0;
+        ITF_WrPortCrdParBank    <= 0;
+        ITF_WrPortMapParBank    <= 0;
+        SYA_WrPortOfmParBank    <= 0;
+        POL_WrPortOfmParBank    <= 0;
+        CTR_WrPortDstParBank    <= 0;
+        CTR_WrPortMapParBank    <= 0;
+        ITF_RdPortMapParBank    <= 0;
+        ITF_RdPortOfmParBank    <= 0;
+        SYA_RdPortActParBank    <= 0;
+        SYA_RdPortWgtParBank    <= 0;
+        POL_RdPortOfmParBank    <= 0;
+        POL_RdPortMapParBank    <= 0;
+        CTR_RdPortCrdParBank    <= 0;
+        CTR_RdPortDstParBank    <= 0;
+        Conv_CfgVld             <= 0;
+        Pool_CfgVld             <= 0;
+        Ctr_CfgVld              <= 0;
+    end else if ( ISA_RdEn_d ) begin
         if ( OpCode == OpCode_Array) begin
-            {Base_Addr0, Ly_Num, Mode} <= data_out[3 : PORT_WIDTH -1];
+            {CfgNumLy, Mode} <= ISA_DatOut[PORT_WIDTH -1 : 3];
 
         end else if ( OpCode == OpCode_Conv) begin
-            if (cnt_word == 1) begin
-                DramDatAddr         <= data_out[3  : 34];
-                DramWgtAddr         <= data_out[35 : 66];
-                CCUSYA_CfgNip   <= data_out[67 : 82];
-                CCUSYA_CfgChi   <= data_out[83 : 94];
-                DramOfmAddr         <= data_out[95 +: 32];
-            end else if (cnt_word == 2) begin
-                Cho <= data_out[0 : 11];       
-                CCUSYA_CfgScale <= data_out[12 : 31];       
-                CCUSYA_CfgShift <= data_out[32 : 39];
-                CCUSYA_CfgZp    <= data_out[40 : 47];
-                CCUSYA_CfgMod   <= data_out[48 : 49];
-                WgtAddrRange    <= data_out[50 : 65];
-                DatAddrRange    <= data_out[66 : 81];
-                OfmAddrRange    <= data_out[82 : 95]; // ?? =97
-            end else if (cnt_word == 3) begin
+            if (ISA_CntRdWord == 1) begin
+                DramDatAddr     <= ISA_DatOut[3  +: 32];
+                DramWgtAddr     <= ISA_DatOut[35 +: 32];
+                DramOfmAddr     <= ISA_DatOut[67 +: 32];
+                CCUSYA_CfgNip   <= ISA_DatOut[99 +: 16];
+                CCUSYA_CfgChi   <= ISA_DatOut[115+: 13];
+            end else if (ISA_CntRdWord == 2) begin
+                Cho             <= ISA_DatOut[0  +: 12];       
+                CCUSYA_CfgScale <= ISA_DatOut[12 +: 20];       
+                CCUSYA_CfgShift <= ISA_DatOut[32 +:  8];
+                CCUSYA_CfgZp    <= ISA_DatOut[40 +:  8];
+                CCUSYA_CfgMod   <= ISA_DatOut[48 +:  1];
+            end else if (ISA_CntRdWord == 3) begin
                 // GLB Ports
-                SYA_RdPortActBank <= data_out[0 +: 32];
-                SYA_RdPortWgtBank <= data_out[32 +: 32];
-                SYA_WrPortOfmBank <= data_out[64 +: 32];
-            end else if (cnt_word == 4) begin
-                ITF_WrPortActBank <= data_out[0 +: 32];
-                ITF_WrPortWgtBank <= data_out[32 +: 32];
-                ITF_RdPortOfmBank <= data_out[64 +: 32];
-            end else if (cnt_word == 5) begin
-                SYA_RdPortAct_AddrMax <= data_out[0 +: 16];
-                SYA_RdPortWgt_AddrMax <= data_out[16 +: 16];
-                SYA_WrPortOFm_AddrMax <= data_out[32 +: 16];
-                SYA_RdPortActParBank  <= data_out[48 +: 6];
-                SYA_RdPortWgtParBank  <= data_out[54 +: 6];
-                SYA_WrPortOFmParBank  <= data_out[60 +: 6];
-            end else if (cnt_word == 6) begin
-                ITF_WrPortAct_AddrMax <= data_out[0 +: 16];
-                ITF_WrPortWgt_AddrMax <= data_out[16 +: 16];
-                ITF_RdPortOFm_AddrMax <= data_out[32 +: 16];
-                ITF_WrPortActParBank  <= data_out[48 +: 6];
-                ITF_WrPortWgtParBank  <= data_out[54 +: 6];
-                ITF_RdPortOFmParBank  <= data_out[60 +: 6];
+                SYA_RdPortActBank <= ISA_DatOut[0  +: 32];
+                SYA_RdPortWgtBank <= ISA_DatOut[32 +: 32];
+                SYA_WrPortOfmBank <= ISA_DatOut[64 +: 32];
+            end else if (ISA_CntRdWord == 4) begin
+                ITF_WrPortActBank <= ISA_DatOut[0 +: 32];
+                ITF_WrPortWgtBank <= ISA_DatOut[32 +: 32];
+                ITF_RdPortOfmBank <= ISA_DatOut[64 +: 32];
+            end else if (ISA_CntRdWord == 5) begin
+                SYA_RdPortAct_AddrMax <= ISA_DatOut[0 +: 16];
+                SYA_RdPortWgt_AddrMax <= ISA_DatOut[16 +: 16];
+                SYA_WrPortOfm_AddrMax <= ISA_DatOut[32 +: 16];
+                SYA_RdPortActParBank  <= ISA_DatOut[48 +: 6];
+                SYA_RdPortWgtParBank  <= ISA_DatOut[54 +: 6];
+                SYA_WrPortOfmParBank  <= ISA_DatOut[60 +: 6];
+            end else if (ISA_CntRdWord == 6) begin
+                ITF_WrPortAct_AddrMax <= ISA_DatOut[0 +: 16];
+                ITF_WrPortWgt_AddrMax <= ISA_DatOut[16 +: 16];
+                ITF_RdPortOfm_AddrMax <= ISA_DatOut[32 +: 16];
+                ITF_WrPortActParBank  <= ISA_DatOut[48 +: 6];
+                ITF_WrPortWgtParBank  <= ISA_DatOut[54 +: 6];
+                ITF_RdPortOfmParBank  <= ISA_DatOut[60 +: 6];
             end
             if ( Conv_CfgVld & Conv_CfgRdy)
                 Conv_CfgVld <= 1'b0;
-            else if(cnt_word == 4 )
+            else if(ISA_CntRdWord == 4 )
                 Conv_CfgVld <= 1'b1;
 
         end else if (OpCode == OpCode_Pool) begin
-            if (cnt_word == 1) begin
-                DramDatAddr         <= data_out[3  +: 32];
+            if (ISA_CntRdWord == 1) begin
+                DramWrMapAddr   <= ISA_DatOut[3  +: 32];
+                CCUPOL_CfgNip   <= ISA_DatOut[35 +: 16];
+                CCUPOL_CfgChi   <= ISA_DatOut[51 +: 12];// 
+                CCUPOL_CfgK     <= ISA_DatOut[63 +: 16];// 
                 
-                CCUPOL_CfgNip   <= data_out[35 +: 16];
-                CCUPOL_CfgChi   <= data_out[51 +: 12];// 
-                CCUPOL_CfgK     <= data_out[63 +: 16];// 
-                DramWrMapAddr         <= data_out[79 +: 32];
-            end else if(cnt_word == 2) begin
-                POL_RdPortOfmBank <= data_out[0  +: 32];
-                POL_WrPortOfmBank <= data_out[32 +: 32];
-                POL_RdPortMapBank <= data_out[64 +: 32];
-                ITF_WrPortMapBank <= data_out[96 +: 32];
-            end else if(cnt_word == 3) begin
-                POL_RdPortOfm_AddrMax <= data_out[0  +: 16];
-                POL_WrPortOfm_AddrMax <= data_out[16 +: 16];
-                POL_RdPortMap_AddrMax <= data_out[32 +: 16];
-                ITF_WrPortMap_AddrMax <= data_out[48 +: 16];
-                POL_RdPortOfmParBank  <= data_out[64 +:  6];
-                POL_WrPortOfmParBank  <= data_out[70 +:  6];
-                POL_RdPortMapParBank  <= data_out[76 +:  6];
-                ITF_WrPortMapParBank  <= data_out[82  +: 6];
+            end else if(ISA_CntRdWord == 2) begin
+                POL_RdPortOfmBank <= ISA_DatOut[0  +: 32];
+                POL_WrPortOfmBank <= ISA_DatOut[32 +: 32];
+                POL_RdPortMapBank <= ISA_DatOut[64 +: 32];
+                ITF_WrPortMapBank <= ISA_DatOut[96 +: 32];
+            end else if(ISA_CntRdWord == 3) begin
+                POL_RdPortOfm_AddrMax <= ISA_DatOut[0  +: 16];
+                POL_WrPortOfm_AddrMax <= ISA_DatOut[16 +: 16];
+                POL_RdPortMap_AddrMax <= ISA_DatOut[32 +: 16];
+                ITF_WrPortMap_AddrMax <= ISA_DatOut[48 +: 16];
+                POL_RdPortOfmParBank  <= ISA_DatOut[64 +:  6];
+                POL_WrPortOfmParBank  <= ISA_DatOut[70 +:  6];
+                POL_RdPortMapParBank  <= ISA_DatOut[76 +:  6];
+                ITF_WrPortMapParBank  <= ISA_DatOut[82 +:  6];
             end
             if (Pool_CfgVld & Pool_CfgRdy) begin
                 Pool_CfgVld <= 1'b0;
-            end else if(cnt_word == 3) 
+            end else if(ISA_CntRdWord == 3) 
                 Pool_CfgVld <= 1'b1;
 
         end else if (OpCode == OpCode_CTR) begin
-                if(cnt_word == 1) begin
-                    CCUCTR_CfgMod   <= data_out[3];
-                    DramCrdAddr        <= data_out[4  +: 32];
-                    CCUCTR_CfgNip   <= data_out[36 +: 16];
-                    CCUCTR_CfgNop   <= data_out[52 +: 16];
-                    CCUCTR_CfgK     <= data_out[68 +: 6];
-                    DramRdMapAddr   <= data_out[74 +: 32];
-                end else if(cnt_word == 2) begin
-                    ITF_WrPortCrdBank <= data_out[0 +: 32];
-                    ITF_RdPortMapBank <= data_out[32+: 32];
-                    CTR_WrPortDstBank <= data_out[64+: 32];
-                end else if(cnt_word == 3) begin
-                    CTR_WrPortMapBank <= data_out[0 +: 32];
-                    CTR_RdPortCrdBank <= data_out[32+: 32];
-                    CTR_RdPortDstBank <= data_out[64+: 32];
-                end else if( cnt_word == 4) begin
-                    ITF_WrPortCrd_AddrMax <= data_out[0  +: 16];
-                    ITF_RdPortMap_AddrMax <= data_out[16 +: 16];
-                    CTR_WrPortDst_AddrMax <= data_out[32 +: 16];
-                    CTR_WrPortMap_AddrMax <= data_out[48 +: 16];
-                    CTR_RdPortCrd_AddrMax <= data_out[64 +: 16];
-                    CTR_RdPortDst_AddrMax <= data_out[80 +: 16];
-                end else if ( cnt_word == 5) begin 
-                    ITF_WrPortCrdParBank <= data_out[0  +: 6];
-                    ITF_RdPortMapParBank <= data_out[6  +: 6];
-                    CTR_WrPortDstParBank <= data_out[12 +: 6];
-                    CTR_WrPortMapParBank <= data_out[18 +: 6];
-                    CTR_RdPortCrdParBank <= data_out[24 +: 6];
-                    CTR_RdPortDstParBank <= data_out[30 +: 6];            
+                if(ISA_CntRdWord == 1) begin
+                    CCUCTR_CfgMod   <= ISA_DatOut[3];
+                    DramCrdAddr        <= ISA_DatOut[4  +: 32];
+                    CCUCTR_CfgNip   <= ISA_DatOut[36 +: 16];
+                    CCUCTR_CfgNop   <= ISA_DatOut[52 +: 16];
+                    CCUCTR_CfgK     <= ISA_DatOut[68 +: 6];
+                    DramRdMapAddr   <= ISA_DatOut[74 +: 32];
+                end else if(ISA_CntRdWord == 2) begin
+                    ITF_WrPortCrdBank <= ISA_DatOut[0 +: 32];
+                    ITF_RdPortMapBank <= ISA_DatOut[32+: 32];
+                    CTR_WrPortDstBank <= ISA_DatOut[64+: 32];
+                end else if(ISA_CntRdWord == 3) begin
+                    CTR_WrPortMapBank <= ISA_DatOut[0 +: 32];
+                    CTR_RdPortCrdBank <= ISA_DatOut[32+: 32];
+                    CTR_RdPortDstBank <= ISA_DatOut[64+: 32];
+                end else if( ISA_CntRdWord == 4) begin
+                    ITF_WrPortCrd_AddrMax <= ISA_DatOut[0  +: 16];
+                    ITF_RdPortMap_AddrMax <= ISA_DatOut[16 +: 16];
+                    CTR_WrPortDst_AddrMax <= ISA_DatOut[32 +: 16];
+                    CTR_WrPortMap_AddrMax <= ISA_DatOut[48 +: 16];
+                    CTR_RdPortCrd_AddrMax <= ISA_DatOut[64 +: 16];
+                    CTR_RdPortDst_AddrMax <= ISA_DatOut[80 +: 16];
+                end else if ( ISA_CntRdWord == 5) begin 
+                    ITF_WrPortCrdParBank <= ISA_DatOut[0  +: 6];
+                    ITF_RdPortMapParBank <= ISA_DatOut[6  +: 6];
+                    CTR_WrPortDstParBank <= ISA_DatOut[12 +: 6];
+                    CTR_WrPortMapParBank <= ISA_DatOut[18 +: 6];
+                    CTR_RdPortCrdParBank <= ISA_DatOut[24 +: 6];
+                    CTR_RdPortDstParBank <= ISA_DatOut[30 +: 6];            
                 end
                 if(Ctr_CfgVld & Ctr_CfgRdy) 
                     Ctr_CfgVld <= 1'b0;
@@ -398,30 +530,25 @@ assign CCUGLB_Rst = state == IDLE;
 //=====================================================================================================================
 // Logic Design 4: GLB Control
 //=====================================================================================================================
-assign SYA_RdPortActRst  = (read_en_d & OpCode == OpCode_Conv & cnt_word == 2)_d; // Paulse, same with SYA_RdPortActBank;
-assign SYA_RdPortWgtRst  = SYA_RdPortActRst;
-assign SYA_WrPortOFmRst  = SYA_RdPortActRst;
 
-
-genvar i;
 generate
     for (i=0; i<NUM_BANK; i=i+1) begin 
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 0] = ITF_WrPortActBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 1] = ITF_WrPortWgtBank[i];  
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 2] = ITF_WrPortCrdBank[i];  
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 3] = ITF_WrPortMapBank[i];  
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 4] = SYA_WrPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 5] = POL_WrPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 6] = CTR_WrPortDstBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 7] = CTR_WrPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 0] = ITF_RdPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 1] = ITF_RdPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 2] = SYA_RdPortActBank[i];// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 3] = SYA_RdPortWgtBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 4] = POL_RdPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 5] = POL_RdPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 6] = CTR_RdPortCrdBank[i];
-        assign CCUGLB_CfgBankPort[i*NUM_PORT + 7] = CTR_RdPortDstBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 0] = ITF_WrPortActBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 1] = ITF_WrPortWgtBank[i];  
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 2] = ITF_WrPortCrdBank[i];  
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 3] = ITF_WrPortMapBank[i];  
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 4] = SYA_WrPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 5] = POL_WrPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 6] = CTR_WrPortDstBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 7] = CTR_WrPortMapBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 0] = ITF_RdPortMapBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 1] = ITF_RdPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 2] = SYA_RdPortActBank[i];// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 3] = SYA_RdPortWgtBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 4] = POL_RdPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 5] = POL_RdPortMapBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 6] = CTR_RdPortCrdBank[i];
+        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 7] = CTR_RdPortDstBank[i];
     end
 endgenerate
 
@@ -459,23 +586,6 @@ assign CCUGLB_CfgRdPortParBank[($clog2(MAXPAR) + 1)*5 +: ($clog2(MAXPAR) + 1)] =
 assign CCUGLB_CfgRdPortParBank[($clog2(MAXPAR) + 1)*6 +: ($clog2(MAXPAR) + 1)] = CTR_RdPortCrdParBank;
 assign CCUGLB_CfgRdPortParBank[($clog2(MAXPAR) + 1)*7 +: ($clog2(MAXPAR) + 1)] = CTR_RdPortDstParBank;
 
-assign CCUGLB_CfgVld[0    ] = ITF_WrPortAct_AddrMax;
-assign CCUGLB_CfgVld[1    ] = ITF_WrPortWgt_AddrMax;  
-assign CCUGLB_CfgVld[2    ] = ITF_WrPortCrd_AddrMax;  
-assign CCUGLB_CfgVld[3    ] = ITF_WrPortMap_AddrMax;  
-assign CCUGLB_CfgVld[4    ] = SYA_WrPortOfm_AddrMax;
-assign CCUGLB_CfgVld[5    ] = POL_WrPortOfm_AddrMax;
-assign CCUGLB_CfgVld[6    ] = CTR_WrPortDst_AddrMax;
-assign CCUGLB_CfgVld[7    ] = CTR_WrPortMap_AddrMax;
-assign CCUGLB_CfgVld[(0+8)] = ITF_RdPortMap_AddrMax;
-assign CCUGLB_CfgVld[(1+8)] = ITF_RdPortOfm_AddrMax;
-assign CCUGLB_CfgVld[(2+8)] = SYA_RdPortAct_AddrMax;// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
-assign CCUGLB_CfgVld[(3+8)] = SYA_RdPortWgt_AddrMax;
-assign CCUGLB_CfgVld[(4+8)] = POL_RdPortOfm_AddrMax;
-assign CCUGLB_CfgVld[(5+8)] = POL_RdPortMap_AddrMax;
-assign CCUGLB_CfgVld[(6+8)] = CTR_RdPortCrd_AddrMax;
-assign CCUGLB_CfgVld[(7+8)] = CTR_RdPortDst_AddrMax;
-
 
 assign Conv_CfgRdy = SYACCU_CfgRdy & GLBCCU_CfgRdy[0] & GLBCCU_CfgRdy[1] & GLBCCU_CfgRdy[4] &  GLBCCU_CfgRdy[9] &  GLBCCU_CfgRdy[10] &  GLBCCU_CfgRdy[11];
 assign CCUSYA_CfgVld = Conv_CfgVld & SYACCU_CfgRdy;
@@ -487,20 +597,20 @@ assign CCUGLB_CfgVld[10] = Conv_CfgVld & GLBCCU_CfgRdy[10];
 assign CCUGLB_CfgVld[11] = Conv_CfgVld & GLBCCU_CfgRdy[11];
 
 assign Pool_CfgRdy = POLCCU_CfgRdy & GLBCCU_CfgRdy[3] & GLBCCU_CfgRdy[5] & GLBCCU_CfgRdy[12] & GLBCCU_CfgRdy[13];
-assign CCUPOL_CfgVld = Pol_CfgVld & POLCCU_CfgRdy; 
-assign CCUGLB_CfgRdy[ 3] = Pool_CfgVld & GLBCCU_CfgRdy[ 3];
-assign CCUGLB_CfgRdy[ 5] = Pool_CfgVld & GLBCCU_CfgRdy[ 5];
-assign CCUGLB_CfgRdy[12] = Pool_CfgVld & GLBCCU_CfgRdy[12];
-assign CCUGLB_CfgRdy[13] = Pool_CfgVld & GLBCCU_CfgRdy[13];
+assign CCUPOL_CfgVld = Pool_CfgVld & POLCCU_CfgRdy; 
+assign GLBCCU_CfgRdy[ 3] = Pool_CfgVld & GLBCCU_CfgRdy[ 3];
+assign GLBCCU_CfgRdy[ 5] = Pool_CfgVld & GLBCCU_CfgRdy[ 5];
+assign GLBCCU_CfgRdy[12] = Pool_CfgVld & GLBCCU_CfgRdy[12];
+assign GLBCCU_CfgRdy[13] = Pool_CfgVld & GLBCCU_CfgRdy[13];
 
 assign Ctr_CfgRdy = CTRCCU_CfgRdy & GLBCCU_CfgRdy[2] & GLBCCU_CfgRdy[6] & GLBCCU_CfgRdy[7] & GLBCCU_CfgRdy[8] & GLBCCU_CfgRdy[14] & GLBCCU_CfgRdy[15];
 assign CCUCTR_CfgVld = Ctr_CfgVld & CTRCCU_CfgRdy;
-assign CCUGLB_CfgRdy[ 2] = Ctr_CfgVld & GLBCCU_CfgRdy[ 2];
-assign CCUGLB_CfgRdy[ 6] = Ctr_CfgVld & GLBCCU_CfgRdy[ 6];
-assign CCUGLB_CfgRdy[ 7] = Ctr_CfgVld & GLBCCU_CfgRdy[ 7];
-assign CCUGLB_CfgRdy[ 8] = Ctr_CfgVld & GLBCCU_CfgRdy[ 8];
-assign CCUGLB_CfgRdy[14] = Ctr_CfgVld & GLBCCU_CfgRdy[14];
-assign CCUGLB_CfgRdy[15] = Ctr_CfgVld & GLBCCU_CfgRdy[15];
+assign GLBCCU_CfgRdy[ 2] = Ctr_CfgVld & GLBCCU_CfgRdy[ 2];
+assign GLBCCU_CfgRdy[ 6] = Ctr_CfgVld & GLBCCU_CfgRdy[ 6];
+assign GLBCCU_CfgRdy[ 7] = Ctr_CfgVld & GLBCCU_CfgRdy[ 7];
+assign GLBCCU_CfgRdy[ 8] = Ctr_CfgVld & GLBCCU_CfgRdy[ 8];
+assign GLBCCU_CfgRdy[14] = Ctr_CfgVld & GLBCCU_CfgRdy[14];
+assign GLBCCU_CfgRdy[15] = Ctr_CfgVld & GLBCCU_CfgRdy[15];
 
 
 assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*0     +: DRAM_ADDR_WIDTH] = DramDatAddr; // 
@@ -532,22 +642,22 @@ RAM#(
 )u_RAM_ISA(
     .clk          ( clk          ),
     .rst_n        ( rst_n        ),
-    .addr_r       ( addr_r       ),
-    .addr_w       ( addr_w       ),
-    .read_en      ( read_en      ),
-    .write_en     ( write_en     ),
+    .addr_r       ( ISA_RdAddr   ),
+    .addr_w       ( ISA_WrAddr   ),
+    .read_en      ( ISA_RdEn     ),
+    .write_en     ( ISA_WrEn     ),
     .data_in      ( ITFCCU_Dat   ),
-    .data_out     ( data_out     )
+    .data_out     ( ISA_DatOut     )
 );
 
 MINMAX#(
-    .DATA_WIDTH ( ADDR_WIDTH ),
+    .DATA_WIDTH ( (NUM_LAYER_WIDTH+ISARDWORD_WIDTH) ),
     .PORT       ( OPNUM ),
     .MINMAX     ( 0 )
 )u_MINMAX(
-    .IN         ( AddrRd1D         ),
+    .IN         ( ISA_RdAddr1D         ),
     .IDX        ( AddrRdMinIdx        ),
-    .VALUE      ( AddrRdMin      )
+    .VALUE      ( ISA_RdAddrMin      )
 );
 
 
@@ -557,18 +667,18 @@ DELAY#(
 )u_DELAY_read_en_d(
     .CLK        ( clk        ),
     .RST_N      ( rst_n      ),
-    .DIN        ( read_en        ),
-    .DOUT       ( read_en_d       )
+    .DIN        ( ISA_RdEn        ),
+    .DOUT       ( ISA_RdEn_d       )
 );
 
 DELAY#(
     .NUM_STAGES ( 1 ),
-    .DATA_WIDTH ( 3 )
+    .DATA_WIDTH ( ISARDWORD_WIDTH )
 )u_DELAY_cnt_word_d(
     .CLK        ( clk        ),
     .RST_N      ( rst_n      ),
-    .DIN        ( cnt_word        ),
-    .DOUT       ( cnt_word_d       )
+    .DIN        ( ISA_CntRdWord        ),
+    .DOUT       ( ISA_CntRdWord_d       )
 );
 
 
