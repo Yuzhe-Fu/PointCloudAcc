@@ -31,12 +31,12 @@ module MIC #(
     output      [IDX_WIDTH                                  -1 : 0] MIFGLB_Addr   ,
     input                                                           GLBMIF_AddrRdy,
 
-    input       [ACT_WIDTH*POOL_COMP_CORE                   -1 : 0] GLBMIF_Fm     ,
-    input                                                           GLBMIF_FmVld  ,
-    output                                                          MIFGLB_FmRdy  ,
-    output      [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0]MICMIF_Fm     ,
-    output                                                          MICMIF_FmVld  ,
-    input                                                           MIFMIC_FmRdy  
+    input       [ACT_WIDTH*POOL_COMP_CORE                   -1 : 0] GLBMIF_Ofm     ,
+    input                                                           GLBMIF_OfmVld  ,
+    output                                                          MIFGLB_OfmRdy  ,
+    output      [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0]MICMIF_Ofm     ,
+    output                                                          MICMIF_OfmVld  ,
+    input                                                           MIFMIC_OfmRdy  
 
 );
 //=====================================================================================================================
@@ -68,24 +68,24 @@ wire                                out_full;
 
 FIFO_FWFT#(
     .INIT       ( "init.mif"                    ),
-    .DATA_WIDTH ( $clog2(POOL_CORE) + ACT_WIDTH ),
+    .DATA_WIDTH ( $clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE ),
     .ADDR_WIDTH ( 2                             ),
     .INITIALIZE_FIFO ( "no"                     )
 )U0_FIFO_FWFT_OUT(
     .clk        ( clk                               ),
     .Reset      ( 1'b0                              ),
     .rst_n      ( rst_n                             ),
-    .push       ( POLPLC_IdxVld &  PLCPOL_IdxRdy    ),
-    .pop        ( PLCPOL_AddrVld & POLPLC_AddrRdy   ),
-    .data_in    ( {rd_port_d, GLBMIF_Fm}            ),
-    .data_out   ( MICMIF_Fm                         ),
+    .push       ( GLBMIF_OfmVld &  MIFGLB_OfmRdy    ),
+    .pop        ( MICMIF_OfmVld & MIFMIC_OfmRdy   ),
+    .data_in    ( {rd_port_d, GLBMIF_Ofm}            ),
+    .data_out   ( MICMIF_Ofm                         ),
     .empty      ( out_empty                         ),
     .full       ( out_full                          ),
     .fifo_count (                                   )
 );
 
-assign MICMIF_FmVld = !out_empty;
-assign MIFGLB_FmRdy = !out_full;
+assign MICMIF_OfmVld = !out_empty;
+assign MIFGLB_OfmRdy = !out_full;
 
 FIFO_FWFT#(
     .INIT       ( "init.mif"                    ),

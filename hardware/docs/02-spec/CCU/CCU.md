@@ -102,9 +102,15 @@
 # 模块描述
 - CCU是中央控制器，负责配置模块和模块的**最顶层控制**（模块内部只要配置能控制的都不要用CCU控制，多少层由CCU控制，CfgVld相当于控制了层的开始，CfgRdy相当于模块反馈结束，再加上整个网络的Rst）
     - 与片外通信：先直接通过统一接口ITF（ITF相当于挂载了CCU和GLB），从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
-    - FSM控制片内：用FSM，t每层输出一次配置，IDLE(芯片启动空状态）->RD_CFG(读取整个网络的参数配置）->->FNH（整个网络计算完成）
-        - 转到配置子FSM: IDLE_CFG ->接收到Triggerif (ReqCfg)...ARRAY_CFG, CONV_CFG（配置网络一层）， FC....-> 
-    根据模块请求FPS、KNN、CONV、POL、FC等层的配置，各自取各自下一层的配置
+    - FSM控制片内：用FSM，每层输出一次配置，根据子模块请求FPS、KNN、CONV、POL等层的配置，各自取各自下一层的配置
+        - IDLE(芯片启动空状态）->RD_CFG(读取整个网络的参数配置）
+        - 转到配置子FSM: IDLE_CFG ->接收到CfgRdy(可否直接将其当成ReqCfg?)
+            - ARRAY_CFG, localparam OpCode_Array = 3'd0;
+            - CONV_CFG（配置网络一层）, localparam OpCode_Conv  = 3'd1; == FC
+            - POL_CFG: OpCode_Pool  = 3'd3;
+            - FPS_CFG OpCode_FPS   = 3'd4;
+            - KNN_CFG OpCode_KNN   = 3'd5;
+        - 到FNH（整个网络计算完成）
     - RAM_ISA：
         - 写：每次请求的就是一整个RAM深度的，addr_w是所有层数，是深度的倍数，满深度后，仍然加1，相当于重新写RAM
         - 读：每种层单独配置，Cfg不同信息归属不同种的层，所有种层的信息连续存到RAM，RAM的宽度就是PORT_WIDTH=96，每个种层有多个PROT_WIDTH的word，深度为64（PointMLP-lite就有43层）
@@ -122,13 +128,9 @@
                 - SYA_WrPortFm
                 - POL_RdPortFm
                 - POL_WrPortFm
-                - ITF_RdPort
-                - ITF_WrPort
-            - 先一步步回溯：
-                - CCUGLB_CfgBankPort：每个口单独配置：
-                    - 对SYA：SYA的mode决定RdPortParBank和WrPortParBank即基数，在知道整个filter数量和ifm的情况下，假设只有loop ifm和loop filter两种情况（由片外配置），固定的项的总量可得到，Loop项的可以是1或多个，RdPortLoop的次数用总数除以Bank量，CCUGLB_CfgPort_AddrMax为Bank数，
-                    - 对IF口：哪里没有了就去哪里，灵活配置
-                    - 对POOL：根据片外配置的Nip和Chi，分配Bank
+                - ITF_RdPortAct
+                - ITF_WrPortWgt
+                - ITF_WrPort...
         - 与GLB的Bank通过CfgInfo
             - 输出到Bank的地址是相对地址
     - Debug: 暂未考虑

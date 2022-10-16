@@ -18,6 +18,7 @@ reg                             I_BypAsysnFIFO;
 
 // TOP Outputs
 wire                            O_DatOE;
+wire                            O_NetFnh;
 
 // TOP Bidirs
 wire  [PORT_WIDTH       -1 : 0] IO_Dat;
@@ -157,7 +158,8 @@ TOP #(
     .IO_Dat                  ( IO_Dat         ),
     .IO_DatVld               ( IO_DatVld      ),
     .IO_DatLast              ( IO_DatLast     ),
-    .OI_DatRdy               ( OI_DatRdy      )
+    .OI_DatRdy               ( OI_DatRdy      ),
+    .O_NetFnh                ( O_NetFnh       )
 );
 
 

@@ -286,7 +286,7 @@ PSS#(
     .PSSCTR_LopRdy   ( PSSCTR_LopRdy   ),
     .PSSCTR_Idx      ( CTRGLB_Map      ),
     .PSSCTR_IdxVld   ( CTRGLB_MapVld   ),
-    .PSSCTR_IdxRdy   ( CTRGLB_MapRdy   )
+    .PSSCTR_IdxRdy   ( GLBCTR_MapRdy   )
 );
 wire INC_CpIdx;
 counter#(

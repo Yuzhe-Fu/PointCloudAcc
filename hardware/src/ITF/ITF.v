@@ -13,20 +13,17 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module ITF #(
-    parameter PORT_WIDTH = 128,
-    parameter SRAM_WIDTH = 256,
-    parameter DRAM_ADDR_WIDTH = 32,
-    parameter ADDR_WIDTH = 16,
+    parameter PORT_WIDTH        = 128,
+    parameter SRAM_WIDTH        = 256,
+    parameter DRAM_ADDR_WIDTH   = 32,
+    parameter ADDR_WIDTH        = 16,
 
-    parameter NUM_RDPORT = 2,
-    parameter NUM_WRPORT = 3
+    parameter ITF_NUM_RDPORT = 2,
+    parameter ITF_NUM_WRPORT = 4
 
     )(
     input                                               clk  ,
     input                                               rst_n,
-    output                                              CCUITF_Empty, 
-    output [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum,
-    output [ADDR_WIDTH                          -1 : 0] CCUITF_Addr,  
     output [PORT_WIDTH                          -1 : 0] ITFPAD_Dat     ,
     output [1                                   -1 : 0] ITFPAD_DatVld  ,
     output [1                                   -1 : 0] ITFPAD_DatLast ,
@@ -37,19 +34,19 @@ module ITF #(
     input  [1                                   -1 : 0] PADITF_DatLast ,
     output [1                                   -1 : 0] ITFPAD_DatRdy  ,
 
-    input  [1*(NUM_RDPORT+NUM_WRPORT)           -1 : 0] TOPITF_EmptyFull, 
-    input  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] TOPITF_ReqNum  ,
-    input  [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] TOPITF_Addr    ,
-    input  [DRAM_ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] CCUITF_BaseAddr,
+    input  [1*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)           -1 : 0] TOPITF_EmptyFull, 
+    input  [ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)  -1 : 0] TOPITF_ReqNum  ,
+    input  [ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)  -1 : 0] TOPITF_Addr    ,
+    input  [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)  -1 : 0] CCUITF_BaseAddr,
 
-    input  [SRAM_WIDTH*NUM_RDPORT               -1 : 0] TOPITF_Dat     ,
-    input  [NUM_RDPORT                          -1 : 0] TOPITF_DatVld  ,
-    output [NUM_RDPORT                          -1 : 0] ITFTOP_DatRdy  ,
+    input  [SRAM_WIDTH*ITF_NUM_RDPORT               -1 : 0] TOPITF_Dat     ,
+    input  [ITF_NUM_RDPORT                          -1 : 0] TOPITF_DatVld  ,
+    output [ITF_NUM_RDPORT                          -1 : 0] ITFTOP_DatRdy  ,
 
-    output [SRAM_WIDTH*NUM_WRPORT               -1 : 0] ITFTOP_Dat    , 
-    output [NUM_WRPORT                          -1 : 0] ITFTOP_DatVld , 
-    output [NUM_WRPORT                          -1 : 0] ITFTOP_DatLast , 
-    input  [NUM_WRPORT                          -1 : 0] TOPITF_DatRdy   
+    output [SRAM_WIDTH*ITF_NUM_WRPORT               -1 : 0] ITFTOP_Dat    , 
+    output [ITF_NUM_WRPORT                          -1 : 0] ITFTOP_DatVld , 
+    output [ITF_NUM_WRPORT                          -1 : 0] ITFTOP_DatLast , 
+    input  [ITF_NUM_WRPORT                          -1 : 0] TOPITF_DatRdy   
 
 );
 //=====================================================================================================================
@@ -61,7 +58,7 @@ localparam IN   = 3'b010;
 localparam OUT  = 3'b011;
 localparam FNH  = 3'b100;
 
-localparam NUMPORT_WIDTH = $clog2(NUM_WRPORT + NUM_RDPORT);
+localparam NUMPORT_WIDTH = $clog2(ITF_NUM_WRPORT + ITF_NUM_RDPORT);
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
@@ -71,7 +68,7 @@ wire                        CmdRdy;
 wire                        CmdVld;
 reg                         RdTOP;
 reg [NUMPORT_WIDTH  -1 : 0] Port_wire;
-reg [NUMPORT_WIDTH  -1 : 0] Port;
+reg [NUMPORT_WIDTH  -1 : 0] PortIdx;
 
 wire [NUMPORT_WIDTH -1 : 0] MaxIdx;
 wire [ADDR_WIDTH    -1 : 0] MaxNum;
@@ -89,7 +86,7 @@ wire [NUMPORT_WIDTH -1 : 0] WrPort;
 
 wire                        PISO_OUTRdy;
 
-wire                        TOPITF_DatLast;
+wire                        IntraTOPITF_DatLast;
 wire                        CntOverflow;
 wire                        CntInc;
 //=====================================================================================================================
@@ -142,23 +139,23 @@ always @(*) begin
     Port_wire = 0;
     Trans = 1'b0;
     RdTOP = 0; // 0: Write; 1: Read
-    for(j=0; j<(NUM_WRPORT+NUM_RDPORT); j=j+1 ) begin
+    for(j=0; j<(ITF_NUM_WRPORT+ITF_NUM_RDPORT); j=j+1 ) begin
         if (state == IDLE & (TOPITF_EmptyFull[j])) begin
             Port_wire = j;
             Trans = 1'b1;
-            RdTOP = j >=  NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
+            RdTOP = j >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
         end else if( state == IDLE & MaxNum != 0) begin
             Port_wire = MaxIdx;
             Trans = 1'b1;
-            RdTOP = MaxIdx >=  NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
+            RdTOP = MaxIdx >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
         end
     end
 end
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
-        Port <= 0;
+        PortIdx <= 0;
     end else if(state==IDLE && next_state == CMD) begin
-        Port <= Port_wire; // Update
+        PortIdx <= Port_wire; // Update
     end
 end
 
@@ -167,7 +164,7 @@ end
 //=====================================================================================================================
 genvar i;
 generate
-    for(i=0; i<NUM_WRPORT; i=i+1) begin
+    for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin
         assign ITFTOP_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = DatIn;
         assign ITFTOP_DatVld[i] = DatInVld;
         assign ITFTOP_DatLast[i] = DatInLast;
@@ -175,7 +172,7 @@ generate
 endgenerate
 
 assign DatInRdy = TOPITF_DatRdy[WrPort];
-assign WrPort   = state == OUT? 0 : Port;
+assign WrPort   = state == OUT? 0 : PortIdx;
 
 //=====================================================================================================================
 // Logic Design 2: Out to off-chip
@@ -185,9 +182,9 @@ assign ITFPAD_DatVld    = state==CMD? CmdVld : DatOutVld;
 assign ITFPAD_DatLast   = state==CMD? CmdVld : DatOutLast;
 assign DatOutRdy        = PADITF_DatRdy;
 assign CmdRdy           = PADITF_DatRdy;
-assign ITFTOP_DatRdy    = PISO_OUTRdy & state == OUT;
+assign ITFTOP_DatRdy    = {ITF_NUM_RDPORT{PISO_OUTRdy & state == OUT}};
 
-assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*Port +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*Port +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*Port +: ADDR_WIDTH], RdTOP};
+assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*PortIdx +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], RdTOP};
 assign CmdVld = state == CMD;
 
 
@@ -212,13 +209,14 @@ SIPO#(
 );
 
 
-MAX # (
+MINMAX # (
     .DATA_WIDTH (ADDR_WIDTH),
-    .PORT(NUM_RDPORT+NUM_WRPORT)
+    .PORT(ITF_NUM_RDPORT+ITF_NUM_WRPORT),
+    .MINMAX(1)
 )U_MAX_REQNUM(
     .IN (TOPITF_ReqNum),
-    .MAXIDX(MaxIdx),
-    .MAXVALUE(MaxNum)
+    .IDX(MaxIdx),
+    .VALUE(MaxNum)
 );
 
 PISO#(
@@ -227,9 +225,9 @@ PISO#(
 )u_PISO_OUT(
     .CLK          ( clk                        ),
     .RST_N        ( rst_n                      ),
-    .IN_VLD       ( TOPITF_DatVld & state == OUT),
-    .IN_LAST      ( TOPITF_DatLast& state == OUT),
-    .IN_DAT       ( TOPITF_Dat                 ),
+    .IN_VLD       ( state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] : 1'b0 ),
+    .IN_LAST      ( IntraTOPITF_DatLast),
+    .IN_DAT       ( state == OUT? TOPITF_Dat[SRAM_WIDTH*(PortIdx-ITF_NUM_WRPORT) +: SRAM_WIDTH] : {SRAM_WIDTH{1'b0}} ),
     .IN_RDY       ( PISO_OUTRdy                ),
     .OUT_DAT      ( DatOut                     ), // On-chip output to Off-chip 
     .OUT_VLD      ( DatOutVld                  ),
@@ -238,6 +236,9 @@ PISO#(
 );
 
 reg [ADDR_WIDTH     -1 : 0] RdReqNum;
+wire [ADDR_WIDTH     -1 : 0] MAX_COUNT;
+assign MAX_COUNT = RdReqNum -1;
+
 counter#(
     .COUNT_WIDTH ( ADDR_WIDTH )
 )u_counter_RdPortCnt(
@@ -248,7 +249,7 @@ counter#(
     .INC       ( CntInc         ),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
-    .MAX_COUNT ( RdReqNum -1    ),
+    .MAX_COUNT ( MAX_COUNT    ),
     .OVERFLOW  ( CntOverflow    ),
     .UNDERFLOW (                ),
     .COUNT     (                )
@@ -257,11 +258,11 @@ always @(posedge clk or rst_n) begin
     if(!rst_n) begin
         RdReqNum <= 0;
     end else if(state == CMD && next_state == OUT) begin
-        RdReqNum <= TOPITF_ReqNum[ADDR_WIDTH*Port +: ADDR_WIDTH];
+        RdReqNum <= TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH];
     end
 end
 
-assign TOPITF_DatLast = CntOverflow & TOPITF_DatVld & state == OUT;
-assign CntInc = TOPITF_DatVld & ITFTOP_DatRdy & state == OUT;
+assign IntraTOPITF_DatLast = CntOverflow & (state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] : 1'b0);
+assign CntInc = state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] & ITFTOP_DatRdy[PortIdx-ITF_NUM_WRPORT] : 1'b0;
 
 endmodule

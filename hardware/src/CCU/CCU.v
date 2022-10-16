@@ -13,14 +13,14 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module CCU #(
-    parameter SRAM_WORD_ISA         = 64,
-    parameter PORT_WIDTH            = 256,
+    parameter ISA_SRAM_WORD         = 64,
+    parameter SRAM_WIDTH            = 256,
     parameter CLOCK_PERIOD          = 10,
 
     parameter ADDR_WIDTH            = 16,
     parameter DRAM_ADDR_WIDTH       = 32,
-    parameter NUM_RDPORT            = 2,
-    parameter NUM_WRPORT            = 3,
+    parameter GLB_NUM_RDPORT        = 2,
+    parameter GLB_NUM_WRPORT        = 3,
     parameter IDX_WIDTH             = 16,
     parameter CHN_WIDTH             = 12,
     parameter ACT_WIDTH             = 8,
@@ -30,7 +30,9 @@ module CCU #(
     parameter OPNUM                 = 6,
 
     parameter MAXPAR                = 32,
-    parameter NUM_BANK              = 32
+    parameter NUM_BANK              = 32,
+    parameter ITF_NUM_RDPORT        = 2,
+    parameter ITF_NUM_WRPORT        = 4
 
     )(
     input                               clk                     ,
@@ -41,11 +43,11 @@ module CCU #(
     output [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum,
     output [ADDR_WIDTH                          -1 : 0] CCUITF_Addr  ,
         // Configure
-    input   [PORT_WIDTH                         -1 : 0] ITFCCU_Dat,             
+    input   [SRAM_WIDTH                         -1 : 0] ITFCCU_Dat,             
     input                                               ITFCCU_DatVld,          
     output                                              CCUITF_DatRdy,
 
-    output  [DRAM_ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT) -1 : 0] CCUITF_BaseAddr,
+    output  [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_BaseAddr,
 
     output                                              CCUSYA_Rst,  //
     output                                              CCUSYA_CfgVld,
@@ -73,18 +75,19 @@ module CCU #(
     output  reg [MAP_WIDTH                      -1 : 0] CCUCTR_CfgK,  
 
     output                                              CCUGLB_Rst,
-    output [NUM_RDPORT+NUM_WRPORT               -1 : 0] CCUGLB_CfgVld ,         
-    input  [NUM_RDPORT+NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy ,         
-    output [NUM_BANK*(NUM_RDPORT + NUM_WRPORT)  -1 : 0] CCUGLB_CfgBankPort ,
-    output [ADDR_WIDTH*(NUM_RDPORT+NUM_WRPORT)  -1 : 0] CCUGLB_CfgPort_AddrMax, 
-    output [($clog2(MAXPAR) + 1)*NUM_RDPORT     -1 : 0] CCUGLB_CfgRdPortParBank,
-    output [($clog2(MAXPAR) + 1)*NUM_WRPORT     -1 : 0] CCUGLB_CfgWrPortParBank      
+    output [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] CCUGLB_CfgVld ,         
+    input  [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy ,         
+    output [NUM_BANK*(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgBankPort ,
+    output [ADDR_WIDTH*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgPort_AddrMax, 
+    output [($clog2(MAXPAR) + 1)*GLB_NUM_RDPORT     -1 : 0] CCUGLB_CfgRdPortParBank,
+    output [($clog2(MAXPAR) + 1)*GLB_NUM_WRPORT     -1 : 0] CCUGLB_CfgWrPortParBank      
 
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
 localparam OPCODE_WIDTH = $clog2(OPNUM);
+localparam ISA_SRAM_DEPTH_WIDTH = $clog2(ISA_SRAM_WORD);
 
 localparam IDLE     = 4'b0000;
 localparam RD_ISA   = 4'b0001;
@@ -117,7 +120,7 @@ reg                                         ISA_RdEn;
 reg [ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord;
 wire[ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord_d;
 
-wire [PORT_WIDTH                    -1 : 0] ISA_DatOut;
+wire [SRAM_WIDTH                    -1 : 0] ISA_DatOut;
 
 reg [NUM_LAYER_WIDTH                -1 : 0] CfgNumLy;
 wire                                        ISA_RdEn_d;
@@ -190,13 +193,13 @@ reg                                         Pool_CfgVld;
 reg                                         Ctr_CfgVld;
 
 reg [CHN_WIDTH                      -1 : 0] Cho;
-
+wire [OPCODE_WIDTH                  -1 : 0] AddrRdMinIdx;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
 
-reg [ 3     -1 : 0] state       ;
-reg [ 3     -1 : 0] next_state  ;
+reg [4      -1 : 0] state       ;
+reg [4      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE    :   if( TOPCCU_start)
@@ -271,7 +274,7 @@ end
 //=====================================================================================================================
 // Write Path
 assign CCUITF_Empty = ISA_Empty;
-assign CCUITF_ReqNum = SRAM_WORD_ISA - (ISA_WrAddr - ISA_RdAddrMin); // ISA_Empty number
+assign CCUITF_ReqNum = ISA_SRAM_WORD - (ISA_WrAddr - ISA_RdAddrMin); // ISA_Empty number
 assign CCUITF_Addr = 0;
 
 assign ISA_WrEn = ITFCCU_DatVld & CCUITF_DatRdy;
@@ -288,7 +291,7 @@ always @(posedge clk or rst_n) begin
     end
 end
 
-assign ISA_Full = ISA_WrAddr - ISA_RdAddrMin == SRAM_WORD_ISA;
+assign ISA_Full = ISA_WrAddr - ISA_RdAddrMin == ISA_SRAM_WORD;
 assign ISA_Empty = ISA_WrAddr == ISA_RdAddrMin;
 
 
@@ -406,7 +409,7 @@ always @(posedge clk or negedge rst_n) begin
         Ctr_CfgVld              <= 0;
     end else if ( ISA_RdEn_d ) begin
         if ( OpCode == OpCode_Array) begin
-            {CfgNumLy, Mode} <= ISA_DatOut[PORT_WIDTH -1 : 3];
+            {CfgNumLy, Mode} <= ISA_DatOut[SRAM_WIDTH -1 : 3];
 
         end else if ( OpCode == OpCode_Conv) begin
             if (ISA_CntRdWord == 1) begin
@@ -533,22 +536,22 @@ assign CCUGLB_Rst = state == IDLE;
 
 generate
     for (i=0; i<NUM_BANK; i=i+1) begin 
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 0] = ITF_WrPortActBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 1] = ITF_WrPortWgtBank[i];  
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 2] = ITF_WrPortCrdBank[i];  
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 3] = ITF_WrPortMapBank[i];  
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 4] = SYA_WrPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 5] = POL_WrPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 6] = CTR_WrPortDstBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 7] = CTR_WrPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 0] = ITF_RdPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 1] = ITF_RdPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 2] = SYA_RdPortActBank[i];// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 3] = SYA_RdPortWgtBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 4] = POL_RdPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 5] = POL_RdPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 6] = CTR_RdPortCrdBank[i];
-        assign CCUGLB_CfgBankPort[i*(NUM_RDPORT+NUM_WRPORT) + 7] = CTR_RdPortDstBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 0] = ITF_WrPortActBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 1] = ITF_WrPortWgtBank[i];  
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 2] = ITF_WrPortCrdBank[i];  
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 3] = ITF_WrPortMapBank[i];  
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 4] = SYA_WrPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 5] = POL_WrPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 6] = CTR_WrPortDstBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 7] = CTR_WrPortMapBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 0] = ITF_RdPortMapBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 1] = ITF_RdPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 2] = SYA_RdPortActBank[i];// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 3] = SYA_RdPortWgtBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 4] = POL_RdPortOfmBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 5] = POL_RdPortMapBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 6] = CTR_RdPortCrdBank[i];
+        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 7] = CTR_RdPortDstBank[i];
     end
 endgenerate
 
@@ -613,37 +616,27 @@ assign GLBCCU_CfgRdy[14] = Ctr_CfgVld & GLBCCU_CfgRdy[14];
 assign GLBCCU_CfgRdy[15] = Ctr_CfgVld & GLBCCU_CfgRdy[15];
 
 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*0     +: DRAM_ADDR_WIDTH] = DramDatAddr; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*1     +: DRAM_ADDR_WIDTH] = DramWgtAddr; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*2     +: DRAM_ADDR_WIDTH] = DramCrdAddr; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*3     +: DRAM_ADDR_WIDTH] = DramWrMapAddr;//
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*4     +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*5     +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*6     +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*7     +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(0+8) +: DRAM_ADDR_WIDTH] = DramRdMapAddr; // Read
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(1+8) +: DRAM_ADDR_WIDTH] = DramOfmAddr; // Read
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(2+8) +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(3+8) +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(4+8) +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(5+8) +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(6+8) +: DRAM_ADDR_WIDTH] = 0; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*(7+8) +: DRAM_ADDR_WIDTH] = 0; // 
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*0 +: DRAM_ADDR_WIDTH] = DramDatAddr; // 
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*1 +: DRAM_ADDR_WIDTH] = DramWgtAddr; // 
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*2 +: DRAM_ADDR_WIDTH] = DramCrdAddr; // 
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*3 +: DRAM_ADDR_WIDTH] = DramWrMapAddr;//
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*4 +: DRAM_ADDR_WIDTH] = DramRdMapAddr; // Read
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*5 +: DRAM_ADDR_WIDTH] = DramOfmAddr; // Read
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 
 RAM#(
-    .SRAM_BIT     ( PORT_WIDTH   ),
+    .SRAM_BIT     ( SRAM_WIDTH   ),
     .SRAM_BYTE    ( 1            ),
-    .SRAM_WORD    ( SRAM_WORD_ISA),
+    .SRAM_WORD    ( ISA_SRAM_WORD),
     .CLOCK_PERIOD ( CLOCK_PERIOD )
 )u_RAM_ISA(
     .clk          ( clk          ),
     .rst_n        ( rst_n        ),
-    .addr_r       ( ISA_RdAddr   ),
-    .addr_w       ( ISA_WrAddr   ),
+    .addr_r       ( ISA_RdAddr[0 +: ISA_SRAM_DEPTH_WIDTH]   ),
+    .addr_w       ( ISA_WrAddr[0 +: ISA_SRAM_DEPTH_WIDTH]   ),
     .read_en      ( ISA_RdEn     ),
     .write_en     ( ISA_WrEn     ),
     .data_in      ( ITFCCU_Dat   ),

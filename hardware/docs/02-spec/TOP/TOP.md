@@ -2,10 +2,9 @@
 1. 创新点只有一个，不够
 2. :white_check_mark:整体性能评估超过SOTA两倍
 3. 硬件设计
-    - :question: GLB的Last信号, GEN_BANK[bk].rvalid (integer bk)
     - :question: CCU最先搞定
     - :question:先系统整出来综合一下，面积很重要决定功耗
-        - 系统仿真建立起来跑起来
+        - 系统仿真建立起来跑起来，先解决完语法问题
         - 综合
     - :white_check_mark:GLB每个接口位宽问题
     - CTR出来的MAP怎么存，好送到POL，暂时一个SRAM_WIDTH的word存cp_idx和lp_idx，但是同一点不同层同时出来的？

@@ -297,8 +297,8 @@ generate
         //=====================================================================================================================
         // Logic Design 4: Read Port
         //=====================================================================================================================
-        assign WithWrPort = |BankPort_s0[NUM_BANK*i +: NUM_WRPORT];
-        assign WithRdPort = |BankPort_s0[NUM_BANK*i + NUM_WRPORT +: NUM_RDPORT];
+        assign WithWrPort = |BankPort_s0[(NUM_RDPORT+NUM_WRPORT)*i +: NUM_WRPORT];
+        assign WithRdPort = |BankPort_s0[(NUM_RDPORT+NUM_WRPORT)*i + NUM_WRPORT +: NUM_RDPORT];
         always @(posedge clk or rst_n) begin
             if (!rst_n) begin
                 WrPortAddr_Mnt <= 0;
@@ -403,10 +403,10 @@ generate
             .CLK       ( clk                                                            ),
             .RESET_N   ( rst_n                                                          ),
             .CLEAR     ( CfgVld[NUM_WRPORT+j]                                           ),
-            .DEFAULT   ( 0                                                              ),
+            .DEFAULT   ( {ADDR_WIDTH{1'b0}}                                                              ),
             .INC       ( INC                                                            ),
             .DEC       ( 1'b0                                                           ),
-            .MIN_COUNT ( 0                                                              ),
+            .MIN_COUNT ( {ADDR_WIDTH{1'b0}}                                                              ),
             .MAX_COUNT ( CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*(NUM_WRPORT+j) +: ADDR_WIDTH]   ),
             .OVERFLOW  ( CfgRdy[NUM_WRPORT+j]                                  ),
             .UNDERFLOW (                                                                ),
@@ -450,10 +450,10 @@ generate
             .CLK       ( clk        ),
             .RESET_N   ( rst_n      ),
             .CLEAR     ( CfgVld[m]  ),
-            .DEFAULT   ( 0          ),
+            .DEFAULT   ( {ADDR_WIDTH{1'b0}}          ),
             .INC       ( INC        ),
             .DEC       ( 1'b0       ),
-            .MIN_COUNT ( 0          ),
+            .MIN_COUNT ( {ADDR_WIDTH{1'b0}}          ),
             .MAX_COUNT ( CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*m +: ADDR_WIDTH]),
             .OVERFLOW  ( CfgRdy[m]  ),
             .UNDERFLOW (            ),

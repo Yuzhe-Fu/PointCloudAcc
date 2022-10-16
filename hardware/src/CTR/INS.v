@@ -21,13 +21,13 @@ module INS #(
     )(
     input                                       clk             ,
     input                                       rst_n           ,
-    input                                       SSCINS_LopLast  ,
-    input        [IDX_WIDTH+DIST_WIDTH  -1 : 0] SSCINS_Lop      ,
-    input                                       SSCINS_LopVld   ,
-    output                                      SSCINS_LopRdy   ,
-    output       [IDX_WIDTH*SORT_LEN    -1 : 0] INSSSC_Idx      ,   
-    output reg                                  INSSSC_IdxVld   ,
-    input                                       INSSSC_IdxRdy
+    input                                       PSSINS_LopLast  ,
+    input        [IDX_WIDTH+DIST_WIDTH  -1 : 0] PSSINS_Lop      ,
+    input                                       PSSINS_LopVld   ,
+    output                                      PSSINS_LopRdy   ,
+    output       [IDX_WIDTH*SORT_LEN    -1 : 0] INSPSS_Idx      ,   
+    output reg                                  INSPSS_IdxVld   ,
+    input                                       PSSINS_IdxRdy
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -50,24 +50,24 @@ wire [SORT_LEN      -1 : 0] cur_insert;
 //=====================================================================================================================
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        INSSSC_IdxVld <= 0;
+        INSPSS_IdxVld <= 0;
     end else if(Out_HandShake)begin
-        INSSSC_IdxVld <= 1'b0;
-    end else if(In_HandShake & SSCINS_LopLast) begin
-        INSSSC_IdxVld <= 1'b1;
+        INSPSS_IdxVld <= 1'b0;
+    end else if(In_HandShake & PSSINS_LopLast) begin
+        INSPSS_IdxVld <= 1'b1;
     end
 end
 
-assign Out_HandShake = INSSSC_IdxRdy & INSSSC_IdxVld;
-assign SSCINS_LopRdy = !INSSSC_IdxVld;
+assign Out_HandShake = PSSINS_IdxRdy & INSPSS_IdxVld;
+assign PSSINS_LopRdy = !INSPSS_IdxVld;
 
 //=====================================================================================================================
-// Logic Design 1: INSSSC_Idx
+// Logic Design 1: INSPSS_Idx
 //=====================================================================================================================
 
 
-assign {Idx, Dist} = SSCINS_Lop;
-assign In_HandShake = SSCINS_LopVld & SSCINS_LopRdy;
+assign {Idx, Dist} = PSSINS_Lop;
+assign In_HandShake = PSSINS_LopVld & PSSINS_LopRdy;
 
 genvar i;
 generate 
@@ -80,8 +80,13 @@ generate
                 IdxArray[i] <= 0;
                 DistArray[i] <= -1;                
             end else if (last_shift[i] & In_HandShake) begin
-                IdxArray[i] <= IdxArray[i-1];
-                DistArray[i] <= DistArray[i-1];
+                if(i!=0) begin
+                    IdxArray[i] <= IdxArray[i-1];
+                    DistArray[i] <= DistArray[i-1];
+                end else if(i==0) begin
+                    IdxArray[i] <= 0; // Not exist
+                    DistArray[i] <= 0;
+                end
             end else if (cur_insert[i] & In_HandShake) begin
                 IdxArray[i] <= Idx;
                 DistArray[i] <= Dist;
@@ -92,7 +97,7 @@ generate
             assign last_shift[i] = 1'b0;
         else
             assign last_shift[i+1] = last_shift[i] | cur_insert[i];
-        assign INSSSC_Idx[IDX_WIDTH*i +: IDX_WIDTH] = IdxArray[i];
+        assign INSPSS_Idx[IDX_WIDTH*i +: IDX_WIDTH] = IdxArray[i];
     end
 
 endgenerate
