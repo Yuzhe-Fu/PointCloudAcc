@@ -141,7 +141,7 @@ def weiToSYA (Wei, Col):
         weiMemHex.append(hex_temp)
     return weiMemHex
 
-def loadLayerToFile(cur_layer, last_layer, SYA_Row, SYA_Col, file_addr, BaseAddr_xyz, BaseAddr_wei, BaseAddr_act, mem_limit):
+def loadLayerToFile(cur_layer, last_layer, SYA_Row, SYA_Col, file_addr, BaseAddr_xyz, BaseAddr_act, BaseAddr_wei, mem_limit):
     in_scale       = torch.load('../Data/'+last_layer+'/scale.pt')
     in_zero_point  = torch.load('../Data/'+last_layer+'/zero_point.pt')
 
@@ -181,7 +181,7 @@ def loadLayerToFile(cur_layer, last_layer, SYA_Row, SYA_Col, file_addr, BaseAddr
         if counter<BaseAddr_xyz:
             F.write(dec2width_hex(0,32)+'\n')
             counter += 1
-        elif counter >=  BaseAddr_xyz and counter < BaseAddr_wei:
+        elif counter >=  BaseAddr_xyz and counter < BaseAddr_act:
             if xyz_done ==0:
                 for i in xyz_hex:
                     F.write(str(i)+'\n')
@@ -190,22 +190,21 @@ def loadLayerToFile(cur_layer, last_layer, SYA_Row, SYA_Col, file_addr, BaseAddr
             else:
                 F.write(dec2width_hex(0,32)+'\n')
                 counter += 1
-        elif counter >=  BaseAddr_wei and counter < BaseAddr_act:
+        elif counter >=  BaseAddr_act and counter < BaseAddr_wei:
+            if act_done ==0:
+                for i in act_hex:
+                    F.write(str(i)+'\n')
+                    counter += 1
+                act_done = 1
+            else:
+                F.write(dec2width_hex(0,32)+'\n')
+                counter += 1
+        elif counter >=  BaseAddr_wei and counter < mem_limit:
             if wei_done ==0:
                 for i in wei_hex:
                     F.write(str(i)+'\n')
                     counter += 1
                 wei_done = 1
-            else:
-                F.write(dec2width_hex(0,32)+'\n')
-                counter += 1
-        elif counter >=  BaseAddr_act and counter < mem_limit:
-            if act_done ==0:
-                # pdb.set_trace()
-                for i in act_hex:
-                    F.write(str(i)+'\n')
-                    counter += 1
-                act_done = 1
                 F.close()
                 break
             else:
@@ -224,15 +223,15 @@ layer_name1 = 'model_encoder_encoder_2_0_convs_1_0'
 
 mem_limit = 2**16
 BaseAddr_xyz = 2**10 #1024
-BaseAddr_wei = BaseAddr_xyz+128
-BaseAddr_act = BaseAddr_wei+1024
+BaseAddr_act = BaseAddr_xyz+128
+BaseAddr_wei = BaseAddr_act+1152
 
 
 path=r'../MemFile/'+layer_name1
 if not os.path.exists(path):
     os.mkdir(path)
 
-loadLayerToFile(layer_name1,layer_name0,Row,Col,path,BaseAddr_xyz,BaseAddr_wei,BaseAddr_act, mem_limit)
+loadLayerToFile(layer_name1,layer_name0,Row,Col,path,BaseAddr_xyz,BaseAddr_act,BaseAddr_wei, mem_limit)
 
 # layer_name = []
 # layer_name0 = '../Data/model_encoder_encoder_2_0_convs_0_2_fake_q'
