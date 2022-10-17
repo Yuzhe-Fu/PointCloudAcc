@@ -35,6 +35,10 @@ software/PointNeXt/PointNeXt-master/openpoints/cpp
 software/PointNeXt/PointNeXt-master/runs
 software/PointNeXt/PointNeXt-master/wandb
 
+software/PointNeXt/HW/Data/
+*.pt
+
+
 *.checkpoint
 *.log
 #######################################################

@@ -35,10 +35,12 @@ import csv
 import distiller
 from .scheduler import CompressionScheduler
 
+import pdb
+
 msglogger = logging.getLogger()
 
 
-def perform_sensitivity_analysis(model, net_params, sparsities, test_func, group):
+def perform_sensitivity_analysis(model_ori,model_pretrain, net_params, sparsities, test_func, group, validate_fn, test_loader, criterion, cfg):
     """Perform a sensitivity test for a model's weights parameters.
 
     The model should be trained to maximum accuracy, because we aim to understand
@@ -71,12 +73,14 @@ def perform_sensitivity_analysis(model, net_params, sparsities, test_func, group
     sensitivities = OrderedDict()
 
     for param_name in net_params:
-        if model.state_dict()[param_name].dim() not in [2,4]:
+        # pdb.set_trace()
+        if model_pretrain.state_dict()[param_name].dim() not in [1,2,3,4]: # used be [2,4]
             continue
 
         # Make a copy of the model, because when we apply the zeros mask (i.e.
         # perform pruning), the model's weights are altered
-        model_cpy = deepcopy(model)
+        model_pretrain.cpu()
+        model_cpy = deepcopy(model_pretrain)
 
         sensitivity = OrderedDict()
         for sparsity_level in sparsities:
@@ -90,7 +94,7 @@ def perform_sensitivity_analysis(model, net_params, sparsities, test_func, group
                 pruner = distiller.pruning.SparsityLevelParameterPruner(name="sensitivity", levels=sparsity_levels)
             elif group == 'filter':
                 # Filter ranking
-                if model.state_dict()[param_name].dim() != 4:
+                if model_ori.state_dict()[param_name].dim() != 4:
                     continue
                 pruner = distiller.pruning.L1RankedStructureParameterPruner("sensitivity",
                                                                             group_type="Filters",
@@ -98,7 +102,7 @@ def perform_sensitivity_analysis(model, net_params, sparsities, test_func, group
                                                                             weights=param_name)
             elif group == 'channel':
                 # Filter ranking
-                if model.state_dict()[param_name].dim() != 4:
+                if model_ori.state_dict()[param_name].dim() != 4:
                     continue
                 pruner = distiller.pruning.L1RankedStructureParameterPruner("sensitivity",
                                                                             group_type="Channels",
@@ -114,7 +118,8 @@ def perform_sensitivity_analysis(model, net_params, sparsities, test_func, group
             scheduler.mask_all_weights()
 
             # Test and record the performance of the pruned model
-            prec1, prec5, loss = test_func(model=model_cpy)
+            # prec1, prec5, loss = test_func(model=model_cpy)
+            prec1, prec5, loss = test_func(model_cpy, validate_fn, test_loader, criterion, cfg)
             sensitivity[sparsity_level] = (prec1, prec5, loss)
             sensitivities[param_name] = sensitivity
     return sensitivities
