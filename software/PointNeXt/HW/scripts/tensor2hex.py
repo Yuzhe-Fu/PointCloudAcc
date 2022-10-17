@@ -206,6 +206,8 @@ def loadLayerToFile(cur_layer, last_layer, SYA_Row, SYA_Col, file_addr, BaseAddr
                     F.write(str(i)+'\n')
                     counter += 1
                 act_done = 1
+                F.close()
+                break
             else:
                 F.write(dec2width_hex(0,32)+'\n')
                 counter += 1
@@ -221,9 +223,9 @@ layer_name0 = 'model_encoder_encoder_2_0_convs_0_2_fake_q'
 layer_name1 = 'model_encoder_encoder_2_0_convs_1_0'
 
 mem_limit = 2**16
-BaseAddr_xyz = 3
-BaseAddr_wei = 2**7
-BaseAddr_act = 2**10
+BaseAddr_xyz = 2**10 #1024
+BaseAddr_wei = BaseAddr_xyz+128
+BaseAddr_act = BaseAddr_wei+1024
 
 
 path=r'../MemFile/'+layer_name1
