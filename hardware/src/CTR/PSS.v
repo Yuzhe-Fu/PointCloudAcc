@@ -12,7 +12,6 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-`include "../source/include/dw_params_presim.vh"
 module PSS #(
     parameter SORT_LEN_WIDTH  = 5                 ,
     parameter IDX_WIDTH       = 10                ,
@@ -21,9 +20,11 @@ module PSS #(
     parameter SRAM_WIDTH      = 256                 
 
     )(
+    input                                   clk,
+    input                                   rst_n,
     input                                   CTRPSS_LopLast  ,
     input                                   CTRPSS_Rst      ,
-    input   [2**IDX_WIDTH           -1 : 0] CTRPSS_Mask     ,
+    input   [IDX_WIDTH              -1 : 0] CTRPSS_Mask     ,
     input                                   CTRPSS_MaskVld  ,
     output                                  PSSCTR_MaskRdy  ,
     input   [IDX_WIDTH              -1 : 0] CTRPSS_CpIdx    ,
@@ -39,20 +40,28 @@ module PSS #(
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-
+localparam SORT_LEN        = 2**SORT_LEN_WIDTH;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
 wire [NUM_SORT_CORE         -1 : 0] INS_LopRdy;
 reg  [$clog2(NUM_SORT_CORE)    : 0] addr;
-reg  [2**IDX_WIDTH          -1 : 0] Mask_Array;
+reg  [2**IDX_WIDTH          -1 : 0] Mask_Array[0 : NUM_SORT_CORE-1];
+
+
+
+wire [SRAM_WIDTH*NUM_SORT_CORE-1 : 0] PSSMap;
+wire [NUM_SORT_CORE           -1 : 0] INSPSS_IdxVld;
+wire [NUM_SORT_CORE           -1 : 0] PSSINS_IdxRdy;
+wire [(IDX_WIDTH*SORT_LEN)*NUM_SORT_CORE-1 : 0] INSPSS_Idx;
+wire                                  PISO_IN_RDY;
 //=====================================================================================================================
 // Logic Design 2: HandShake
 //=====================================================================================================================
 
 
 //=====================================================================================================================
-// Logic Design 1: INSSSC_Idx
+// Logic Design 1: INSPSS_Idx
 //=====================================================================================================================
 always @(posedge clk or negedge rst_n) begin
     if (CTRPSS_MaskVld & PSSCTR_MaskRdy) begin
@@ -81,6 +90,7 @@ assign PSSCTR_MaskRdy = !addr[$clog2(NUM_SORT_CORE)];
 genvar i;
 generate
     for(i=0; i<NUM_SORT_CORE; i=i+1) begin
+        wire                    PSSINS_LopVld;
         INS#(
             .SORT_LEN_WIDTH   ( SORT_LEN_WIDTH ),
             .IDX_WIDTH       ( IDX_WIDTH ),
@@ -88,34 +98,39 @@ generate
         )u_INS(
             .clk                 ( clk                 ),
             .rst_n               ( rst_n               ),
-            .SSCINS_LopLast      ( CTRPSS_LopLast      ),
-            .SSCINS_Lop          ( CTRPSS_Lop          ),
-            .SSCINS_LopVld       ( SSCINS_LopVld       ),
-            .SSCINS_LopRdy       ( INS_LopRdy[i]       ),
-            .INSSSC_Idx          ( INSSSC_Idx          ),
-            .INSSSC_IdxVld       ( INSSSC_IdxVld       ),
-            .INSSSC_IdxRdy       ( INSSSC_IdxRdy       )
+            .PSSINS_LopLast      ( CTRPSS_LopLast      ),
+            .PSSINS_Lop          ( CTRPSS_Lop          ),
+            .PSSINS_LopVld       ( PSSINS_LopVld       ),
+            .PSSINS_LopRdy       ( INS_LopRdy[i]       ),
+            .INSPSS_Idx          ( INSPSS_Idx[(IDX_WIDTH*SORT_LEN)*i +: (IDX_WIDTH*SORT_LEN)]),
+            .INSPSS_IdxVld       ( INSPSS_IdxVld[i]       ),
+            .PSSINS_IdxRdy       ( PSSINS_IdxRdy[i]       )
         );
 
-        assign SSCINS_LopVld = Mask_Array[i][CTRPSS_Lop[IDX_WIDTH+DIST_WIDTH -1 -: IDX_WIDTH]];
+        assign PSSINS_LopVld = Mask_Array[i][CTRPSS_Lop[IDX_WIDTH+DIST_WIDTH -1 -: IDX_WIDTH]];
+        assign PSSMap[SRAM_WIDTH*i +: SRAM_WIDTH] = {54'd0, {CTRPSS_CpIdx, INSPSS_Idx[(IDX_WIDTH*SORT_LEN)*i +: (IDX_WIDTH*SORT_LEN)]}};
         
     end
 endgenerate
 
 assign PSSCTR_LopRdy = & INS_LopRdy;
 
+assign PSSINS_IdxRdy = {NUM_SORT_CORE{PISO_IN_RDY}};
+
 PISO#(
-    .DATA_IN_WIDTH   ( 384 ), // (32+1)*10 /96 = 330 /96 <= 4
-    .DATA_OUT_WIDTH  ( 96  )
+    .DATA_IN_WIDTH   ( SRAM_WIDTH*NUM_SORT_CORE  ), // (32+1)*10 /96 = 330 /96 <= 4
+    .DATA_OUT_WIDTH  ( SRAM_WIDTH  )
 )U_PISO(
-    .CLK       ( clk       ),
-    .RESET_N   ( rst_n      ),
-    .ENABLE    ( INSSSC_IdxVld    ),
-    .DATA_IN   ( {54'd0 ,{CTRPSS_CpIdx, INSSSC_Idx}}   ),
-    .READY     ( INSSSC_IdxRdy     ),
-    .DATA_OUT  ( PSSCTR_Idx  ),
-    .OUT_VALID ( PSSCTR_IdxVld ),
-    .OUT_READY ( PSSCTR_IdxRdy  )
+    .CLK       ( clk            ),
+    .RST_N     ( rst_n          ),
+    .IN_VLD    ( &INSPSS_IdxVld ),
+    .IN_LAST   ( 1'b0           ),
+    .IN_DAT    ( PSSMap         ),
+    .IN_RDY    ( PISO_IN_RDY  ),
+    .OUT_DAT   ( PSSCTR_Idx     ),
+    .OUT_VLD   ( PSSCTR_IdxVld  ),
+    .OUT_LAST  (                ),
+    .OUT_RDY   ( PSSCTR_IdxRdy  )
 );
 
 endmodule

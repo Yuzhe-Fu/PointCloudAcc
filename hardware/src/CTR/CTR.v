@@ -18,7 +18,7 @@ module CTR #(
     parameter SORT_LEN_WIDTH    = 5,
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3, 
-    parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog(CRD_DIM) ),
+    parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) ),
     parameter NUM_SORT_CORE     = 8
     )(
     input                               clk  ,
@@ -94,11 +94,21 @@ wire[DISTSQR_WIDTH      -1 : 0] LopDist_s2;
 
 reg                             LopLast_s2;
 reg                             LopLast_s1;
+reg                             CTRGLB_CrdAddr_s1;
 reg [IDX_WIDTH          -1 : 0] LopIdx_s2;
 reg [IDX_WIDTH          -1 : 0] LopIdx_s1;
 
 wire                            CpLast;
-reg [CRD_WIDTH*CRD_DIM  -1 : 0] KNN_CpCrd_s2
+reg [CRD_WIDTH*CRD_DIM  -1 : 0] KNN_CpCrd_s2;
+
+wire                            LopLast;
+wire                            PSSCTR_MaskRdy;
+wire                            GLBCTR_CrdRdy;
+
+reg                             CTRPSS_LopVld;
+wire                            PSSCTR_LopRdy;
+wire [IDX_WIDTH         -1 : 0] LopIdx;
+
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -123,7 +133,7 @@ always @(*) begin
                 end
                 else
                     next_state <= LP;
-        FNH:    next_state <= IDLE
+        FNH:    next_state <= IDLE;
         default: next_state <= IDLE;
     endcase
 end
@@ -181,7 +191,7 @@ assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
 // Logic Design 1: FPS
 //=====================================================================================================================
 
-always @(posedge clk or rst_n) begin: Pipe2
+always @(posedge clk or rst_n) begin: Pipe2_FPS_LastPsDist_s2
     if(!rst_n) begin
         {FPS_LastPsDist_s2, FPS_LastPsIdx_s2} <= 0;
     end else if (GLBCTR_DistIdxVld & CTRGLB_DistIdxRdy) begin
@@ -221,7 +231,7 @@ always @(posedge clk or rst_n) begin
     end
 end
 
-always @(posedge clk or rst_n) begin: Pipe2
+always @(posedge clk or rst_n) begin: Pipe2_LopCrd_s2
     if(!rst_n) begin
         {LopCrd_s2, LopIdx_s2, LopLast_s2} <= 0;
     end else if (GLBCTR_CrdVld & GLBCTR_CrdRdy) begin
@@ -240,7 +250,7 @@ always @(posedge clk or rst_n) begin
     if(!rst_n) begin
         CTRPSS_LopVld <= 1'b0;
     end else if (GLBCTR_CrdVld & GLBCTR_CrdRdy) begin
-        CTRPSS_LopVld <= 1''b1;
+        CTRPSS_LopVld <= 1'b1;
     end else if (CTRPSS_LopVld & PSSCTR_LopRdy) begin
         CTRPSS_LopVld <= 1'b0;
     end
@@ -255,7 +265,7 @@ assign GLBCTR_CrdRdy = PSSCTR_LopRdy | !CTRPSS_LopVld; // pipe1 of HS: last_read
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-wire                    PSSCTR_MaskRdy;
+
 PSS#(
     .SORT_LEN_WIDTH  ( SORT_LEN_WIDTH   ),
     .IDX_WIDTH       ( IDX_WIDTH        ),
@@ -263,18 +273,20 @@ PSS#(
     .NUM_SORT_CORE   ( NUM_SORT_CORE    ),
     .SRAM_WIDTH      ( SRAM_WIDTH       )
 )u_PSS(
-    .CTRPSS_LopLast  ( CTRPSS_LopLast_s2  ),
+    .clk             ( clk              ),
+    .rst_n           ( rst_n            ),
+    .CTRPSS_LopLast  ( CTRPSS_LopLast_s2),
     .CTRPSS_Rst      ( CCUCTR_Rst      ),
     .CTRPSS_Mask     ( CTRPSS_Mask     ),
     .CTRPSS_MaskVld  ( CTRPSS_MaskVld  ),
     .PSSCTR_MaskRdy  ( PSSCTR_MaskRdy  ),
-    .CpIdx    ( CpIdx    ),
+    .CTRPSS_CpIdx    ( CpIdx           ),
     .CTRPSS_Lop      ( {LopDist_s2, LopIdx_s2 }),// {idx, dist} 
     .CTRPSS_LopVld   ( CTRPSS_LopVld   ),
     .PSSCTR_LopRdy   ( PSSCTR_LopRdy   ),
     .PSSCTR_Idx      ( CTRGLB_Map      ),
     .PSSCTR_IdxVld   ( CTRGLB_MapVld   ),
-    .PSSCTR_IdxRdy   ( CTRGLB_MapRdy   )
+    .PSSCTR_IdxRdy   ( GLBCTR_MapRdy   )
 );
 wire INC_CpIdx;
 counter#(
@@ -292,7 +304,7 @@ counter#(
     .UNDERFLOW (                ),
     .COUNT     ( CpIdx   )
 );
-wire                    LopLast;
+
 assign INC_CpIdx    =  CCUCTR_CfgMod ? LopLast_s2 & (CTRPSS_LopVld & PSSCTR_LopRdy) : LopLast_s2;
 assign CTRPSS_LopLast_s2 = LopLast_s2 & CTRPSS_LopVld;
 

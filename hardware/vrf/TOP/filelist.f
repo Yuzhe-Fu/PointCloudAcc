@@ -14,14 +14,13 @@
 ../../src/POL/MIC.v
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DEB/DEB.v
-../../src/primitives/MAX/MAX.v
-../../src/primitives/SIPO/SIPO.v
+../../src/primitives/MINMAX/MINMAX.v
 ../../src/primitives/Memory/RAM_HS.v
 ../../src/primitives/Memory/RAM.v
+../../src/primitives/Memory/SPSRAM.v
 ../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/PISO/PISO.v
 ../../src/primitives/FIFO/FIFO.v
 ../../src/primitives/FIFO/FIFO_FWFT.v
 ../../src/primitives/COUNTER/counter.v
 ../../src/primitives/ARB/prior_arb.v
-../../src/primitives/AsyncFIFO/fifo_async.v

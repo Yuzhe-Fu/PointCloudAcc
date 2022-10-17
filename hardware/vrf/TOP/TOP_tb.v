@@ -1,5 +1,6 @@
 `timescale  1 ns / 100 ps
-
+`define SIM
+`define FUNC_SIM
 module TOP_tb();
 //=====================================================================================================================
 // Constant Definition :
@@ -13,21 +14,25 @@ parameter DRAM_ADDR_WIDTH = 32;
 // Variable Definition :
 //=====================================================================================================================
 // TOP Inputs
-reg   I_StartPulse     = 0 ;
-reg   I_BypAsysnFIFO   = 0 ;
+reg                             I_StartPulse  ;
+reg                             I_BypAsysnFIFO;
 
 // TOP Outputs
-wire  O_DatOE                              ;
+wire                            O_DatOE;
+wire                            O_NetFnh;
 
 // TOP Bidirs
-wire  [PORT_WIDTH     -1 : 0]  IO_Dat      ;
-wire  IO_DatVld                            ;
-wire  IO_DatLast                           ;
-wire  OI_DatRdy                            ;
+wire  [PORT_WIDTH       -1 : 0] IO_Dat;
+wire                            IO_DatVld ;
+wire                            IO_DatLast;
+wire                            OI_DatRdy ;
 
-reg   rst_n            = 0 ;
-reg   clk              = 0 ;
-reg [PORT_WIDTH    -1 : 0] Dram[0 +: DRAM_ADDR_WIDTH-1];
+reg                             rst_n ;
+reg                             clk   ;
+reg [PORT_WIDTH         -1 : 0] Dram[0 : 2**18-1];
+reg [DRAM_ADDR_WIDTH    -1 : 0] addr;
+reg [DRAM_ADDR_WIDTH    -1 : 0] BaseAddr;
+reg [ADDR_WIDTH         -1 : 0] ReqNum;
 
 //=====================================================================================================================
 // Logic Design: Debounce
@@ -35,7 +40,7 @@ reg [PORT_WIDTH    -1 : 0] Dram[0 +: DRAM_ADDR_WIDTH-1];
 initial
 begin
     clk= 1;
-    forever #(`CLOCK_PERIOD/2)  clk=~clk;
+    forever #(CLOCK_PERIOD/2)  clk=~clk;
 end
 
 initial
@@ -43,10 +48,10 @@ begin
     rst_n  =  1;
     I_StartPulse = 0;
     I_BypAsysnFIFO = 1;
-    #(`CLOCK_PERIOD*2)  rst_n  =  0;
-    #(`CLOCK_PERIOD*10) rst_n  =  1;
-    #(`CLOCK_PERIOD*2)  I_StartPulse = 1;
-    #(`CLOCK_PERIOD*10) I_StartPulse = 0;
+    #(CLOCK_PERIOD*2)  rst_n  =  0;
+    #(CLOCK_PERIOD*10) rst_n  =  1;
+    #(CLOCK_PERIOD*2)  I_StartPulse = 1;
+    #(CLOCK_PERIOD*10) I_StartPulse = 0;
 
 
 end
@@ -72,7 +77,7 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CMD :   if( IO_DatVld & OI_DatRdy) begin
-                    if ( RdTOP)
+                    if ( IO_Dat[0] )
                         next_state <= OUT;
                     else
                         next_state <= IN;
@@ -119,7 +124,6 @@ always @(posedge clk or rst_n) begin
             addr <= addr + 1;
     end
 end
-assign RdTOP = IO_Dat[0];
 
 // DRAM READ
 assign IO_DatLast = O_DatOE? 1'bz : (addr == BaseAddr + ReqNum -1) && IO_DatVld;
@@ -153,7 +157,8 @@ TOP #(
     .IO_Dat                  ( IO_Dat         ),
     .IO_DatVld               ( IO_DatVld      ),
     .IO_DatLast              ( IO_DatLast     ),
-    .OI_DatRdy               ( OI_DatRdy      )
+    .OI_DatRdy               ( OI_DatRdy      ),
+    .O_NetFnh                ( O_NetFnh       )
 );
 
 

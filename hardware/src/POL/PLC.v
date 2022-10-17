@@ -31,12 +31,12 @@ module PLC #(
     output      [IDX_WIDTH              -1 : 0] PLCPOL_Addr   ,
     input                                       POLPLC_AddrRdy,
 
-    input       [ACT_WIDTH*POOL_COMP_CORE-1 : 0]POLPLC_Fm     ,
-    input                                       POLPLC_FmVld  ,
-    output                                      PLCPOL_FmRdy  ,
-    output      [ACT_WIDTH*POOL_COMP_CORE-1 : 0]PLCPOL_Fm   ,
-    output                                      PLCPOL_FmVld,
-    input                                       POLPLC_FmRdy
+    input       [ACT_WIDTH*POOL_COMP_CORE-1 : 0]POLPLC_Ofm     ,
+    input                                       POLPLC_OfmVld  ,
+    output                                      PLCPOL_OfmRdy  ,
+    output      [ACT_WIDTH*POOL_COMP_CORE-1 : 0]PLCPOL_Ofm   ,
+    output                                      PLCPOL_OfmVld,
+    input                                       POLPLC_OfmRdy
 
 );
 //=====================================================================================================================
@@ -56,26 +56,28 @@ wire empty, full;
 
 assign DatInLast  = overflow; // & &
 assign inc_addr   = POLPLC_AddrRdy & PLCPOL_AddrVld;
-assign clear_addr = PLCPOL_FmVld  & POLPLC_FmRdy ;
+assign clear_addr = PLCPOL_OfmVld  & POLPLC_OfmRdy ;
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 
-PCC#(s
+PCC#(
     .NUM_MAX    ( POOL_COMP_CORE),
     .DATA_WIDTH ( ACT_WIDTH     )
 )U1_PLCC(
     .clk       ( clk            ),
     .rst_n     ( rst_n          ),
-    .DatInVld  ( POLPLC_FmVld   ),
+    .DatInVld  ( POLPLC_OfmVld   ),
     .DatInLast ( DatInLast      ),
-    .DatIn     ( POLPLC_Fm      ),
-    .DatInRdy  ( PLCPOL_FmRdy   ),
-    .DatOutVld ( PLCPOL_FmVld   ),
-    .DatOut    ( PLCPOL_Fm      ),
-    .DatOutRdy (POLPLC_FmRdy    )
+    .DatIn     ( POLPLC_Ofm      ),
+    .DatInRdy  ( PLCPOL_OfmRdy   ),
+    .DatOutVld ( PLCPOL_OfmVld   ),
+    .DatOut    ( PLCPOL_Ofm      ),
+    .DatOutRdy (POLPLC_OfmRdy    )
 );
+wire [POOL_MAP_DEPTH_WIDTH  -1 : 0] MAX_COUNT;
+assign MAX_COUNT = POLPLC_CfgK-1;
 
 counter#(
     .COUNT_WIDTH ( POOL_MAP_DEPTH_WIDTH )
@@ -83,11 +85,11 @@ counter#(
     .CLK       ( clk        ),
     .RESET_N   ( rst_n      ),
     .CLEAR     ( clear_addr ),
-    .DEFAULT   ( 0          ),
+    .DEFAULT   ( {POOL_MAP_DEPTH_WIDTH{1'b0}}          ),
     .INC       ( inc_addr   ),
     .DEC       ( 1'b0       ),
-    .MIN_COUNT ( 0          ),
-    .MAX_COUNT ( POLPLC_CfgK-1        ),
+    .MIN_COUNT ( {POOL_MAP_DEPTH_WIDTH{1'b0}}          ),
+    .MAX_COUNT ( MAX_COUNT        ),
     .OVERFLOW  ( overflow   ),
     .UNDERFLOW (            ),
     .COUNT     (            )
@@ -95,7 +97,7 @@ counter#(
 
 FIFO_FWFT#(
     .INIT       ( "init.mif" ),
-    .DATA_WIDTH ( IDX_WIDTHS ),
+    .DATA_WIDTH ( IDX_WIDTH ),
     .ADDR_WIDTH ( POOL_MAP_DEPTH_WIDTH ),
     .INITIALIZE_FIFO ( "no" )
 )U_FIFO_FWFT(

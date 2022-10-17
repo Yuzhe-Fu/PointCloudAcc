@@ -40,26 +40,7 @@ localparam OUTPUT   = 3'b011;
 
 reg [DATA_WIDTH     -1 : 0] MaxArray[0 : NUM_MAX    -1];
 
-//=====================================================================================================================
-// Logic Design 1: FSM
-//=====================================================================================================================
-genvar i;
-generate 
-    for(i=0; i<NUM_MAX; i=i+1) begin
-        always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-                MaxArray[i] <= 0;
-            end else if ( state == OUTPUT & (next_state == COMP | next_state == IDLE) ) begin
-                MaxArray[i] <= 0;                
-            end else if ( state == COMP & (DatInVld & DatInRdy) ) begin
-                MaxArray[i] <= (DatIn > MaxArray[i] )? DatIn : MaxArray[i];
-            end
-        end
-        assign DatOut[DATA_WIDTH*i +: DATA_WIDTH] =  MaxArray[i];
-    end
-endgenerate
-assign DatOutVld = state == OUTPUT;
-assign DatInRdy = state == COMP;
+
 
 //=====================================================================================================================
 // Logic Design 2: Addr Gen.
@@ -91,6 +72,26 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
+//=====================================================================================================================
+// Logic Design 1: FSM
+//=====================================================================================================================
+genvar i;
+generate 
+    for(i=0; i<NUM_MAX; i=i+1) begin
+        always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+                MaxArray[i] <= 0;
+            end else if ( state == OUTPUT & (next_state == COMP | next_state == IDLE) ) begin
+                MaxArray[i] <= 0;                
+            end else if ( state == COMP & (DatInVld & DatInRdy) ) begin
+                MaxArray[i] <= (DatIn > MaxArray[i] )? DatIn : MaxArray[i];
+            end
+        end
+        assign DatOut[DATA_WIDTH*i +: DATA_WIDTH] =  MaxArray[i];
+    end
+endgenerate
+assign DatOutVld = state == OUTPUT;
+assign DatInRdy = state == COMP;
 
 //=====================================================================================================================
 // Sub-Module :

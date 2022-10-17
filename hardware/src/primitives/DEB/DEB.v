@@ -30,8 +30,11 @@ module DEB #(
 );
 
 // parameter T_20MS = 2000000; // 100MHz
-
-parameter T_20MS = 20*FREQ;
+`ifdef SIM
+    parameter T_20MS = 2;
+`else
+    parameter T_20MS = 20*FREQ;
+`endif
 
 
 reg [20 : 0]time_cnt;

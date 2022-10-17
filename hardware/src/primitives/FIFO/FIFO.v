@@ -1,4 +1,4 @@
-`timescale 1ns/1ps
+
 module FIFO
 #(  // Parameters
     parameter   DATA_WIDTH          = 64,
