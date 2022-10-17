@@ -55,10 +55,11 @@ FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于a
     - 1: IF读ofm：IF读都是1个SRAM_WIDTH
     - 2: SA读sa_fm(act/ofm) GLBSYA_Act：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时1，2时4
     - 3: SA读weight GLBSYA_Wgt：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时4，2时1
-    - 4: POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个Bank位宽
-    - 5: POL读MAP GLBPOL_Map：固定最少的一个Bank
-    - 6: CTR读Crd GLBCTR_Crd：固定最少的一个Bank
-    - 7: CTR读Dist GLBCTR_DistIdx：固定最少的一个Bank
+    - 4: CTR读Crd GLBCTR_Crd：固定最少的一个Bank
+    - 5: CTR读Dist GLBCTR_DistIdx：固定最少的一个Bank
+    - 6: POL读MAP GLBPOL_Map：固定最少的一个Bank
+    - 7-12: POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个Bank位宽
+
 localparam GLBWRIDX_ITFACT = 0;
 localparam GLBWRIDX_ITFWGT = 1;
 localparam GLBWRIDX_ITFCRD = 2;

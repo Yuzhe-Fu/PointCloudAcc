@@ -24,7 +24,7 @@ module TOP #(
     parameter ISA_SRAM_WORD  = 64,
     parameter ITF_NUM_RDPORT = 2,  
     parameter ITF_NUM_WRPORT = 5, // + CCU
-    parameter GLB_NUM_RDPORT = 8,    
+    parameter GLB_NUM_RDPORT = 13,    
     parameter GLB_NUM_WRPORT = 8, 
     parameter MAXPAR         = 32,
     parameter NUM_BANK       = 32,
@@ -35,7 +35,7 @@ module TOP #(
     parameter IDX_WIDTH      = 16,
     parameter CHN_WIDTH      = 12,
     parameter ACT_WIDTH      = 8,
-    parameter MAP_WIDTH      = 5,
+    parameter MAP_WIDTH      = 6,
 
     parameter CRD_WIDTH      = 16,   
     parameter CRD_DIM        = 3,   
@@ -74,10 +74,11 @@ localparam GLBRDIDX_ITFMAP = 0;
 localparam GLBRDIDX_ITFOFM = 1;
 localparam GLBRDIDX_SYAACT = 2;
 localparam GLBRDIDX_SYAWGT = 3;
-localparam GLBRDIDX_POLOFM = 4;
-localparam GLBRDIDX_POLMAP = 5;
-localparam GLBRDIDX_CTRCRD = 6;
-localparam GLBRDIDX_CTRDST = 7;
+localparam GLBRDIDX_CTRCRD = 4;
+localparam GLBRDIDX_CTRDST = 5;
+localparam GLBRDIDX_POLMAP = 6;
+localparam GLBRDIDX_POLOFM = 7;
+
 
 localparam DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) );
 //=====================================================================================================================
@@ -176,8 +177,8 @@ wire [ADDR_WIDTH*GLB_NUM_RDPORT          -1: 0] RdPortReqNum;
 wire [ADDR_WIDTH*GLB_NUM_RDPORT          -1: 0] RdPortAddr_Out;
 wire [GLB_NUM_RDPORT                     -1: 0] RdPortUseAddr;
 wire [ADDR_WIDTH*GLB_NUM_RDPORT          -1: 0] RdPortAddr;
-wire [GLB_NUM_WRPORT                     -1: 0] RdPortAddrVld;
-wire [GLB_NUM_WRPORT                     -1: 0] RdPortAddrRdy;  
+wire [GLB_NUM_RDPORT                     -1: 0] RdPortAddrVld;
+wire [GLB_NUM_RDPORT                     -1: 0] RdPortAddrRdy;  
 
 // CTR
 wire [IDX_WIDTH           -1 : 0] CTRGLB_CrdAddr;   
@@ -310,6 +311,7 @@ CCU#(
     .ISA_SRAM_WORD           ( ISA_SRAM_WORD    ),
     .SRAM_WIDTH              ( SRAM_WIDTH       ),
     .PORT_WIDTH              ( PORT_WIDTH       ),
+    .POOL_CORE               ( POOL_CORE        ),
     .ADDR_WIDTH              ( ADDR_WIDTH       ),
     .DRAM_ADDR_WIDTH         ( DRAM_ADDR_WIDTH  ),
     .GLB_NUM_RDPORT          ( GLB_NUM_RDPORT   ),
@@ -521,22 +523,22 @@ assign GLBSYA_OfmRdy = WrPortDatRdy[GLBWRIDX_SYAOFM];
 //     .GLBSYA_OfmRdy  (GLBSYA_OfmRdy  )
 // );
 
-assign GLBPOL_Map                                     = RdPortDat[(SRAM_WIDTH*MAXPAR)*GLBRDIDX_POLMAP +: (SRAM_WIDTH*MAXPAR)];
-assign GLBPOL_MapVld                                  = RdPortDatVld[GLBRDIDX_POLMAP];
-assign RdPortDatVld[GLBRDIDX_POLMAP]                  = POLGLB_MapRdy;
+assign GLBPOL_Map                                   = RdPortDat[(SRAM_WIDTH*MAXPAR)*GLBRDIDX_POLMAP +: (SRAM_WIDTH*MAXPAR)];
+assign GLBPOL_MapVld                                = RdPortDatVld[GLBRDIDX_POLMAP];
+assign RdPortDatVld[GLBRDIDX_POLMAP]                = POLGLB_MapRdy;
 
-assign RdPortUseAddr[GLBRDIDX_POLOFM]                 = 1'b1;
-assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_POLOFM +: ADDR_WIDTH]= POLGLB_Addr;
-assign RdPortAddrVld[GLBRDIDX_POLOFM]                 = POLGLB_AddrVld;
-assign GLBPOL_AddrRdy                                 = RdPortAddrRdy[GLBRDIDX_POLOFM];
+assign RdPortUseAddr[GLBRDIDX_POLOFM +: POOL_CORE]  = {POOL_CORE{1'b1}};
+assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_POLOFM +: ADDR_WIDTH*POOL_CORE]= POLGLB_Addr;
+assign RdPortAddrVld[GLBRDIDX_POLOFM +: POOL_CORE]  = POLGLB_AddrVld;
+assign GLBPOL_AddrRdy                               = RdPortAddrRdy[GLBRDIDX_POLOFM +: POOL_CORE];
 
-assign GLBPOL_Ofm                                      = RdPortDat[(SRAM_WIDTH*MAXPAR)*GLBRDIDX_POLOFM +: (SRAM_WIDTH*MAXPAR)];
-assign GLBPOL_OfmVld                                   = RdPortDatVld[GLBRDIDX_POLOFM];
-assign RdPortDatRdy[GLBRDIDX_POLOFM]                  = POLGLB_OfmRdy;
+assign GLBPOL_Ofm                                   = RdPortDat[(SRAM_WIDTH*MAXPAR)*GLBRDIDX_POLOFM +: (SRAM_WIDTH*MAXPAR)*POOL_CORE];
+assign GLBPOL_OfmVld                                = RdPortDatVld[GLBRDIDX_POLOFM +: POOL_CORE];
+assign RdPortDatRdy[GLBRDIDX_POLOFM +: POOL_CORE]   = POLGLB_OfmRdy;
 
 assign WrPortDat[(SRAM_WIDTH*MAXPAR)*GLBWRIDX_POLOFM +: (SRAM_WIDTH*MAXPAR)]= POLGLB_Ofm;
-assign WrPortDatVld[GLBWRIDX_POLOFM]                  = POLGLB_Ofm;
-assign GLBPOL_OfmRdy                                   = WrPortDatRdy[GLBWRIDX_POLOFM];
+assign WrPortDatVld[GLBWRIDX_POLOFM]                = POLGLB_Ofm;
+assign GLBPOL_OfmRdy                                = WrPortDatRdy[GLBWRIDX_POLOFM];
 
 
 POL#(
@@ -562,12 +564,12 @@ POL#(
     .POLGLB_AddrVld       ( POLGLB_AddrVld       ),
     .POLGLB_Addr          ( POLGLB_Addr          ),
     .GLBPOL_AddrRdy       ( GLBPOL_AddrRdy       ),
-    .GLBPOL_Ofm            ( GLBPOL_Ofm            ),
-    .GLBPOL_OfmVld         ( GLBPOL_OfmVld         ),
-    .POLGLB_OfmRdy         ( POLGLB_OfmRdy         ),
-    .POLGLB_Ofm            ( POLGLB_Ofm            ),
-    .POLGLB_OfmVld         ( POLGLB_OfmVld         ),
-    .GLBPOL_OfmRdy         ( GLBPOL_OfmRdy         )
+    .GLBPOL_Ofm           ( GLBPOL_Ofm           ),
+    .GLBPOL_OfmVld        ( GLBPOL_OfmVld        ),
+    .POLGLB_OfmRdy        ( POLGLB_OfmRdy        ),
+    .POLGLB_Ofm           ( POLGLB_Ofm           ),
+    .POLGLB_OfmVld        ( POLGLB_OfmVld        ),
+    .GLBPOL_OfmRdy        ( GLBPOL_OfmRdy        )
 );
 
 
