@@ -6,9 +6,9 @@
     - :white_check_mark:PointNet++中，MSG方法是使用相对于中心的坐标，SSG是不中心化
       - :question:DGCNN不中心化，是否也能支持？
     - :white_check_mark:PointMLP直接不使用坐标作为feature一部分
-    - PointNeXt 在Conv2d（输入35维，输出32维的这种）中结合的坐标（多出来的三个维度）是经过变换的坐标，其保存的为基于中心点的相对位置信息
+    - PointNeXt 在Conv2d（输入35维，输出32维的这种）中结合的坐标（多出来的三个维度）是经过变换的坐标，其保存的为基于中心点的相对位置信息  
       - :white_check_mark:改不要中心化试试,relative_xyz=False时，全精度训练得到最后精度为91.73% (epoch=40), 8b量化下降0.3% (epoch=113), 
-3. 量化：relative=False, C=32；记录train, val, test的acc和loss，并与全精度比较
+3. 量化：relative=False, C=32；记录train, val, test的acc和loss，并与全精度比较 
     - :white_check_mark:weight 8b, activation 8b
     - :white_check_mark:weight 4b, activation 8b
     - :white_check_mark:weight 1b, activation 8b
@@ -17,7 +17,7 @@
 ===================
 已跑成功，结果在表中，精度较差，稳定性较差
 ===================
-4. :white_check_mark:使用pretrained模型
+4. :white_check_mark:使用pretrained模型 
     - 原汁原味
     - relative=false
 6. :white_check_mark:去掉Batch Normoralization：（relative=False, C=32）
