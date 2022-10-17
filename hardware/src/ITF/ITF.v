@@ -24,15 +24,16 @@ module ITF #(
     )(
     input                                               clk  ,
     input                                               rst_n,
+    output reg                                          ITFPAD_DatOE,
     output [PORT_WIDTH                          -1 : 0] ITFPAD_Dat     ,
-    output [1                                   -1 : 0] ITFPAD_DatVld  ,
-    output [1                                   -1 : 0] ITFPAD_DatLast ,
-    input  [1                                   -1 : 0] PADITF_DatRdy  ,
+    output                                              ITFPAD_DatVld  ,
+    output                                              ITFPAD_DatLast ,
+    input                                               PADITF_DatRdy  ,
 
     input  [PORT_WIDTH                          -1 : 0] PADITF_Dat     ,
-    input  [1                                   -1 : 0] PADITF_DatVld  ,
-    input  [1                                   -1 : 0] PADITF_DatLast ,
-    output [1                                   -1 : 0] ITFPAD_DatRdy  ,
+    input                                               PADITF_DatVld  ,
+    input                                               PADITF_DatLast ,
+    output                                              ITFPAD_DatRdy  ,
 
     input  [1*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)           -1 : 0] TOPITF_EmptyFull, 
     input  [ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)  -1 : 0] TOPITF_ReqNum  ,
@@ -139,18 +140,27 @@ always @(*) begin
     Port_wire = 0;
     Trans = 1'b0;
     RdTOP = 0; // 0: Write; 1: Read
-    for(j=0; j<(ITF_NUM_WRPORT+ITF_NUM_RDPORT); j=j+1 ) begin
-        if (state == IDLE & (TOPITF_EmptyFull[j])) begin
-            Port_wire = j;
+    if (state == IDLE) begin 
+        if (TOPITF_EmptyFull[0] | TOPITF_ReqNum[0 +: ADDR_WIDTH] !=0) begin // CCU
+            Port_wire = 0;
             Trans = 1'b1;
-            RdTOP = j >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
-        end else if( state == IDLE & MaxNum != 0) begin
-            Port_wire = MaxIdx;
-            Trans = 1'b1;
-            RdTOP = MaxIdx >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
+            RdTOP = 0;
+        end else begin
+            for(j=0; j<(ITF_NUM_WRPORT+ITF_NUM_RDPORT); j=j+1 ) begin
+                if (TOPITF_EmptyFull[j]) begin
+                    Port_wire = j;
+                    Trans = 1'b1;
+                    RdTOP = j >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
+                end else if( MaxNum != 0) begin
+                    Port_wire = MaxIdx;
+                    Trans = 1'b1;
+                    RdTOP = MaxIdx >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
+                end
+            end
         end
     end
 end
+
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
         PortIdx <= 0;
@@ -187,6 +197,12 @@ assign ITFTOP_DatRdy    = {ITF_NUM_RDPORT{PISO_OUTRdy & state == OUT}};
 assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*PortIdx +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], RdTOP};
 assign CmdVld = state == CMD;
 
+always @(posedge clk or rst_n) begin
+    if(!rst_n)
+        ITFPAD_DatOE <= 0;
+    else
+        ITFPAD_DatOE <= next_state == CMD | next_state == OUT;
+end
 
 //=====================================================================================================================
 // Sub-Module :
@@ -198,7 +214,7 @@ SIPO#(
 )u_SIPO_IN(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
-    .IN_VLD       ( PADITF_DatVld  ),
+    .IN_VLD       ( PADITF_DatVld & state == IN  ),
     .IN_LAST      ( PADITF_DatLast ),
     .IN_DAT       ( PADITF_Dat     ),
     .IN_RDY       ( ITFPAD_DatRdy  ),

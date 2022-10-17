@@ -376,7 +376,7 @@ generate
             RdPortDatVld[j]     = 0;
             INC                 = 0;
             RdPortFull[j]       = 1'b0;
-            RdPortReqNum[j]     = 1'b0;
+            RdPortReqNum[j]     = 0;
             RdPortAddrRdy[j]    = 1'b0;
             for (bk=0; bk<NUM_BANK; bk=bk+1) begin
                 if (BankRdPort[bk]==j) begin

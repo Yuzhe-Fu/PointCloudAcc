@@ -23,7 +23,7 @@ module TOP #(
     parameter DRAM_ADDR_WIDTH= 32,
     parameter ISA_SRAM_WORD  = 64,
     parameter ITF_NUM_RDPORT = 2,
-    parameter ITF_NUM_WRPORT = 4,
+    parameter ITF_NUM_WRPORT = 5, // + CCU
     parameter GLB_NUM_RDPORT = 8,
     parameter GLB_NUM_WRPORT = 8,
     parameter MAXPAR         = 32,
@@ -92,6 +92,7 @@ wire                            StartPulse_Deb_d;
 wire [PORT_WIDTH        -1 : 0] ITFPAD_Dat;
 wire [PORT_WIDTH        -1 : 0] PADITF_Dat;
 
+wire                            ITFPAD_DatOE;
 wire                            ITFPAD_DatVld;
 wire                            ITFPAD_DatLast;
 wire                            PADITF_DatRdy;
@@ -266,6 +267,7 @@ ITF#(
 )u_ITF(
     .clk              ( clk              ),
     .rst_n            ( rst_n            ),
+    .ITFPAD_DatOE     ( ITFPAD_DatOE     ),
     .ITFPAD_Dat       ( ITFPAD_Dat       ),
     .ITFPAD_DatVld    ( ITFPAD_DatVld    ),
     .ITFPAD_DatLast   ( ITFPAD_DatLast   ),
@@ -288,23 +290,26 @@ ITF#(
     .TOPITF_DatRdy    ( TOPITF_DatRdy    )
 );
 
-assign TOPITF_EmptyFull = {RdPortFull[0 +: 2], WrPortEmpty[0 +: 3], CCUITF_Empty};
-assign TOPITF_ReqNum    = {RdPortReqNum[ADDR_WIDTH*0 +: ADDR_WIDTH*2], WrPortReqNum[0 +: ADDR_WIDTH*3], CCUITF_ReqNum};
-assign TOPITF_Addr      = {RdPortAddr_Out[ADDR_WIDTH*0 +: ADDR_WIDTH*2], WrPortAddr_Out[0 +: ADDR_WIDTH*3], CCUITF_Addr};
+assign TOPITF_EmptyFull = {RdPortFull[0 +: 2], WrPortEmpty[0 +: 4], CCUITF_Empty};
+assign TOPITF_ReqNum    = {RdPortReqNum[ADDR_WIDTH*0 +: ADDR_WIDTH*2], WrPortReqNum[0 +: ADDR_WIDTH*4], CCUITF_ReqNum};
+assign TOPITF_Addr      = {RdPortAddr_Out[ADDR_WIDTH*0 +: ADDR_WIDTH*2], WrPortAddr_Out[0 +: ADDR_WIDTH*4], CCUITF_Addr};
 
 assign TOPITF_Dat       = RdPortDat[SRAM_WIDTH*0 +: SRAM_WIDTH*2];
 assign TOPITF_DatVld    = RdPortDatVld[0 +: 2];
 // assign TOPITF_DatLast   = RdPortDatLast[0 +: 2];
 assign RdPortDatRdy[0 +: 2] = ITFTOP_DatRdy;
 
-assign {WrPortDat[SRAM_WIDTH*0 +: SRAM_WIDTH*3], ITFCCU_Dat}= ITFTOP_Dat;
-assign {WrPortDatVld[0 +: 3], ITFCCU_DatVld}                = ITFTOP_DatVld;
-assign {WrPortDatLast[0 +: 3], ITFCCU_DatLast}              = ITFTOP_DatLast;
-assign TOPITF_DatRdy                                        = {WrPortDatRdy[0 +: 3], CCUITF_DatRdy};
+assign {WrPortDat[SRAM_WIDTH*0 +: SRAM_WIDTH*4], ITFCCU_Dat}= ITFTOP_Dat;
+assign {WrPortDatVld[0 +: 4], ITFCCU_DatVld}                = ITFTOP_DatVld;
+assign {WrPortDatLast[0 +: 4], ITFCCU_DatLast}              = ITFTOP_DatLast;
+assign TOPITF_DatRdy                                        = {WrPortDatRdy[0 +: 4], CCUITF_DatRdy};
+
+assign O_DatOE = ITFPAD_DatOE;
 
 CCU#(
     .ISA_SRAM_WORD           ( ISA_SRAM_WORD    ),
     .SRAM_WIDTH              ( SRAM_WIDTH       ),
+    .PORT_WIDTH              ( PORT_WIDTH       ),
     .ADDR_WIDTH              ( ADDR_WIDTH       ),
     .DRAM_ADDR_WIDTH         ( DRAM_ADDR_WIDTH  ),
     .GLB_NUM_RDPORT          ( GLB_NUM_RDPORT   ),

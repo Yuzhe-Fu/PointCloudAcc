@@ -1,5 +1,6 @@
 `timescale  1 ns / 100 ps
-
+`define SIM
+`define FUNC_SIM
 module TOP_tb();
 //=====================================================================================================================
 // Constant Definition :
@@ -28,8 +29,7 @@ wire                            OI_DatRdy ;
 
 reg                             rst_n ;
 reg                             clk   ;
-reg [PORT_WIDTH         -1 : 0] Dram[0 : DRAM_ADDR_WIDTH-1];
-wire                            RdTOP;
+reg [PORT_WIDTH         -1 : 0] Dram[0 : 2**18-1];
 reg [DRAM_ADDR_WIDTH    -1 : 0] addr;
 reg [DRAM_ADDR_WIDTH    -1 : 0] BaseAddr;
 reg [ADDR_WIDTH         -1 : 0] ReqNum;
@@ -77,7 +77,7 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CMD :   if( IO_DatVld & OI_DatRdy) begin
-                    if ( RdTOP)
+                    if ( IO_Dat[0] )
                         next_state <= OUT;
                     else
                         next_state <= IN;
@@ -124,7 +124,6 @@ always @(posedge clk or rst_n) begin
             addr <= addr + 1;
     end
 end
-assign RdTOP = IO_Dat[0];
 
 // DRAM READ
 assign IO_DatLast = O_DatOE? 1'bz : (addr == BaseAddr + ReqNum -1) && IO_DatVld;

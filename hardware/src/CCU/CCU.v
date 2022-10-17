@@ -15,6 +15,7 @@
 module CCU #(
     parameter ISA_SRAM_WORD         = 64,
     parameter SRAM_WIDTH            = 256,
+    parameter PORT_WIDTH            = 128,
     parameter CLOCK_PERIOD          = 10,
 
     parameter ADDR_WIDTH            = 16,
@@ -120,7 +121,7 @@ reg                                         ISA_RdEn;
 reg [ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord;
 wire[ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord_d;
 
-wire [SRAM_WIDTH                    -1 : 0] ISA_DatOut;
+wire [PORT_WIDTH                    -1 : 0] ISA_DatOut;
 
 reg [NUM_LAYER_WIDTH                -1 : 0] CfgNumLy;
 wire                                        ISA_RdEn_d;
@@ -129,8 +130,8 @@ reg                                         OpCodeMatch;
 reg [5                              -1 : 0] OpNumWord[0 : OPNUM -1];
 
 reg [NUM_LAYER_WIDTH                -1 : 0] NumLy;
-reg                                         Mode;
-reg [DRAM_ADDR_WIDTH                -1 : 0] DramDatAddr; 
+reg [8                              -1 : 0] Mode;
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramActAddr; 
 reg [DRAM_ADDR_WIDTH                -1 : 0] DramWgtAddr; 
 reg [DRAM_ADDR_WIDTH                -1 : 0] DramCrdAddr; 
 reg [DRAM_ADDR_WIDTH                -1 : 0] DramWrMapAddr;
@@ -194,6 +195,11 @@ reg                                         Ctr_CfgVld;
 
 reg [CHN_WIDTH                      -1 : 0] Cho;
 wire [OPCODE_WIDTH                  -1 : 0] AddrRdMinIdx;
+
+wire                                        PISO_ISAInRdy;
+wire [PORT_WIDTH                    -1 : 0] PISO_ISAOut;
+wire                                        PISO_ISAOutVld;
+wire                                        PISO_ISAOutRdy;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -212,7 +218,7 @@ always @(*) begin
                     else
                         next_state <= RD_ISA;
 
-        IDLE_CFG:   if (NumLy == CfgNumLy)
+        IDLE_CFG:   if (NumLy == CfgNumLy & CfgNumLy != 0)
                         next_state <= FNH;
                     else if ( ISA_Empty )
                         next_state <= RD_ISA;
@@ -277,9 +283,10 @@ assign CCUITF_Empty = ISA_Empty;
 assign CCUITF_ReqNum = ISA_SRAM_WORD - (ISA_WrAddr - ISA_RdAddrMin); // ISA_Empty number
 assign CCUITF_Addr = 0;
 
-assign ISA_WrEn = ITFCCU_DatVld & CCUITF_DatRdy;
-assign CCUITF_DatRdy = state == RD_ISA;
+assign CCUITF_DatRdy = state == RD_ISA & PISO_ISAInRdy;
 
+assign ISA_WrEn = PISO_ISAOutVld & PISO_ISAOutRdy;
+assign PISO_ISAOutRdy = !ISA_Full;
 
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
@@ -303,7 +310,7 @@ always @(posedge clk or rst_n) begin
     if (!rst_n)
         OpNumWord[0] = 1;// localparam Word_Array = 1;
         OpNumWord[1] = 6;// localparam Word_Conv  = 2;
-        OpNumWord[2] = 3;// localparam Word_Pool  = 2;
+        OpNumWord[2] = 4;// localparam Word_Pool  = 2;
         OpNumWord[3] = 5;// localparam Word_CTR   = 1;
 end
 
@@ -330,7 +337,7 @@ always @(*) begin
     ISA_RdEn = 0;
     ISA_CntRdWord = ISA_CntRdWord_d;
     for (j=0; j<OPNUM; j=j+1) begin
-        if ( state[0 +: 3] == j) begin
+        if ( state[3] & state[0 +: 3] == j) begin
             ISA_CntRdWord = (ISA_RdEn_d & OpCodeMatch) ? ISA_CntRdWord + 1 : ISA_CntRdWord;
             OpCodeMatch = OpCode == j;
             ISA_RdEn = !(ISA_CntRdWord[j] == OpNumWord[j] & OpCodeMatch);
@@ -344,13 +351,13 @@ end
 //=====================================================================================================================
 // Logic Design 3: ISA Decoder
 //=====================================================================================================================
-assign OpCode = ISA_DatOut[0 +: 3];
+assign OpCode = ISA_DatOut[0 +: 8];
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         CfgNumLy                <= 0;
         Mode                    <= 0;
-        DramDatAddr             <= 0; 
+        DramActAddr             <= 0; 
         DramWgtAddr             <= 0; 
         DramCrdAddr             <= 0; 
         DramWrMapAddr           <= 0;
@@ -409,44 +416,44 @@ always @(posedge clk or negedge rst_n) begin
         Ctr_CfgVld              <= 0;
     end else if ( ISA_RdEn_d ) begin
         if ( OpCode == OpCode_Array) begin
-            {CfgNumLy, Mode} <= ISA_DatOut[SRAM_WIDTH -1 : 3];
+            {CfgNumLy, Mode} <= ISA_DatOut[PORT_WIDTH -1 : 8];
 
         end else if ( OpCode == OpCode_Conv) begin
             if (ISA_CntRdWord == 1) begin
-                DramDatAddr     <= ISA_DatOut[3  +: 32];
-                DramWgtAddr     <= ISA_DatOut[35 +: 32];
-                DramOfmAddr     <= ISA_DatOut[67 +: 32];
-                CCUSYA_CfgNip   <= ISA_DatOut[99 +: 16];
-                CCUSYA_CfgChi   <= ISA_DatOut[115+: 13];
+                DramActAddr     <= ISA_DatOut[8   +: 32];
+                DramWgtAddr     <= ISA_DatOut[40  +: 32];
+                DramOfmAddr     <= ISA_DatOut[72  +: 32];
             end else if (ISA_CntRdWord == 2) begin
-                Cho             <= ISA_DatOut[0  +: 12];       
-                CCUSYA_CfgScale <= ISA_DatOut[12 +: 20];       
-                CCUSYA_CfgShift <= ISA_DatOut[32 +:  8];
-                CCUSYA_CfgZp    <= ISA_DatOut[40 +:  8];
-                CCUSYA_CfgMod   <= ISA_DatOut[48 +:  1];
+                CCUSYA_CfgNip   <= ISA_DatOut[8  +: 16];
+                CCUSYA_CfgChi   <= ISA_DatOut[24 +: 16];
+                Cho             <= ISA_DatOut[40 +: 16];       
+                CCUSYA_CfgScale <= ISA_DatOut[56 +: 32];       
+                CCUSYA_CfgShift <= ISA_DatOut[88 +:  8];
+                CCUSYA_CfgZp    <= ISA_DatOut[96 +:  8];
+                CCUSYA_CfgMod   <= ISA_DatOut[104+:  8];
             end else if (ISA_CntRdWord == 3) begin
                 // GLB Ports
-                SYA_RdPortActBank <= ISA_DatOut[0  +: 32];
-                SYA_RdPortWgtBank <= ISA_DatOut[32 +: 32];
-                SYA_WrPortOfmBank <= ISA_DatOut[64 +: 32];
+                SYA_RdPortActBank <= ISA_DatOut[8  +: 32];
+                SYA_RdPortWgtBank <= ISA_DatOut[40 +: 32];
+                SYA_WrPortOfmBank <= ISA_DatOut[72 +: 32];
             end else if (ISA_CntRdWord == 4) begin
-                ITF_WrPortActBank <= ISA_DatOut[0 +: 32];
-                ITF_WrPortWgtBank <= ISA_DatOut[32 +: 32];
-                ITF_RdPortOfmBank <= ISA_DatOut[64 +: 32];
+                ITF_WrPortActBank <= ISA_DatOut[8  +: 32];
+                ITF_WrPortWgtBank <= ISA_DatOut[40 +: 32];
+                ITF_RdPortOfmBank <= ISA_DatOut[72 +: 32];
             end else if (ISA_CntRdWord == 5) begin
-                SYA_RdPortAct_AddrMax <= ISA_DatOut[0 +: 16];
-                SYA_RdPortWgt_AddrMax <= ISA_DatOut[16 +: 16];
-                SYA_WrPortOfm_AddrMax <= ISA_DatOut[32 +: 16];
-                SYA_RdPortActParBank  <= ISA_DatOut[48 +: 6];
-                SYA_RdPortWgtParBank  <= ISA_DatOut[54 +: 6];
-                SYA_WrPortOfmParBank  <= ISA_DatOut[60 +: 6];
+                SYA_RdPortAct_AddrMax <= ISA_DatOut[ 8 +: 16];
+                SYA_RdPortWgt_AddrMax <= ISA_DatOut[24 +: 16];
+                SYA_WrPortOfm_AddrMax <= ISA_DatOut[40 +: 16];
+                SYA_RdPortActParBank  <= ISA_DatOut[56 +:  8];
+                SYA_RdPortWgtParBank  <= ISA_DatOut[64 +:  8];
+                SYA_WrPortOfmParBank  <= ISA_DatOut[72 +:  8];
             end else if (ISA_CntRdWord == 6) begin
-                ITF_WrPortAct_AddrMax <= ISA_DatOut[0 +: 16];
-                ITF_WrPortWgt_AddrMax <= ISA_DatOut[16 +: 16];
-                ITF_RdPortOfm_AddrMax <= ISA_DatOut[32 +: 16];
-                ITF_WrPortActParBank  <= ISA_DatOut[48 +: 6];
-                ITF_WrPortWgtParBank  <= ISA_DatOut[54 +: 6];
-                ITF_RdPortOfmParBank  <= ISA_DatOut[60 +: 6];
+                ITF_WrPortAct_AddrMax <= ISA_DatOut[ 8 +: 16];
+                ITF_WrPortWgt_AddrMax <= ISA_DatOut[24 +: 16];
+                ITF_RdPortOfm_AddrMax <= ISA_DatOut[40 +: 16];
+                ITF_WrPortActParBank  <= ISA_DatOut[56 +:  8];
+                ITF_WrPortWgtParBank  <= ISA_DatOut[64 +:  8];
+                ITF_RdPortOfmParBank  <= ISA_DatOut[72 +:  8];
             end
             if ( Conv_CfgVld & Conv_CfgRdy)
                 Conv_CfgVld <= 1'b0;
@@ -455,25 +462,26 @@ always @(posedge clk or negedge rst_n) begin
 
         end else if (OpCode == OpCode_Pool) begin
             if (ISA_CntRdWord == 1) begin
-                DramWrMapAddr   <= ISA_DatOut[3  +: 32];
-                CCUPOL_CfgNip   <= ISA_DatOut[35 +: 16];
-                CCUPOL_CfgChi   <= ISA_DatOut[51 +: 12];// 
-                CCUPOL_CfgK     <= ISA_DatOut[63 +: 16];// 
+                DramWrMapAddr   <= ISA_DatOut[8  +: 32];
+                CCUPOL_CfgNip   <= ISA_DatOut[40 +: 16];
+                CCUPOL_CfgChi   <= ISA_DatOut[56 +: 16];// 
+                CCUPOL_CfgK     <= ISA_DatOut[72 +: 16];// 
                 
             end else if(ISA_CntRdWord == 2) begin
-                POL_RdPortOfmBank <= ISA_DatOut[0  +: 32];
-                POL_WrPortOfmBank <= ISA_DatOut[32 +: 32];
-                POL_RdPortMapBank <= ISA_DatOut[64 +: 32];
-                ITF_WrPortMapBank <= ISA_DatOut[96 +: 32];
-            end else if(ISA_CntRdWord == 3) begin
-                POL_RdPortOfm_AddrMax <= ISA_DatOut[0  +: 16];
-                POL_WrPortOfm_AddrMax <= ISA_DatOut[16 +: 16];
-                POL_RdPortMap_AddrMax <= ISA_DatOut[32 +: 16];
-                ITF_WrPortMap_AddrMax <= ISA_DatOut[48 +: 16];
-                POL_RdPortOfmParBank  <= ISA_DatOut[64 +:  6];
-                POL_WrPortOfmParBank  <= ISA_DatOut[70 +:  6];
-                POL_RdPortMapParBank  <= ISA_DatOut[76 +:  6];
-                ITF_WrPortMapParBank  <= ISA_DatOut[82 +:  6];
+                POL_RdPortOfmBank <= ISA_DatOut[8  +: 32];
+                POL_WrPortOfmBank <= ISA_DatOut[40 +: 32];
+                POL_RdPortMapBank <= ISA_DatOut[72 +: 32];
+            end else if (ISA_CntRdWord == 3) begin
+                ITF_WrPortMapBank <= ISA_DatOut[8  +: 32];
+            end else if(ISA_CntRdWord == 4) begin
+                POL_RdPortOfm_AddrMax <= ISA_DatOut[8  +: 16];
+                POL_WrPortOfm_AddrMax <= ISA_DatOut[24 +: 16];
+                POL_RdPortMap_AddrMax <= ISA_DatOut[40 +: 16];
+                ITF_WrPortMap_AddrMax <= ISA_DatOut[56 +: 16];
+                POL_RdPortOfmParBank  <= ISA_DatOut[72 +:  8];
+                POL_WrPortOfmParBank  <= ISA_DatOut[80 +:  8];
+                POL_RdPortMapParBank  <= ISA_DatOut[88 +:  8];
+                ITF_WrPortMapParBank  <= ISA_DatOut[96 +:  8];
             end
             if (Pool_CfgVld & Pool_CfgRdy) begin
                 Pool_CfgVld <= 1'b0;
@@ -482,34 +490,34 @@ always @(posedge clk or negedge rst_n) begin
 
         end else if (OpCode == OpCode_CTR) begin
                 if(ISA_CntRdWord == 1) begin
-                    CCUCTR_CfgMod   <= ISA_DatOut[3];
-                    DramCrdAddr        <= ISA_DatOut[4  +: 32];
-                    CCUCTR_CfgNip   <= ISA_DatOut[36 +: 16];
-                    CCUCTR_CfgNop   <= ISA_DatOut[52 +: 16];
-                    CCUCTR_CfgK     <= ISA_DatOut[68 +: 6];
-                    DramRdMapAddr   <= ISA_DatOut[74 +: 32];
+                    CCUCTR_CfgMod   <= ISA_DatOut[8  +   8];
+                    DramCrdAddr     <= ISA_DatOut[16 +: 32];
+                    CCUCTR_CfgNip   <= ISA_DatOut[48 +: 16];
+                    CCUCTR_CfgNop   <= ISA_DatOut[64 +: 16];
+                    CCUCTR_CfgK     <= ISA_DatOut[80 +:  8];
+                    DramRdMapAddr   <= ISA_DatOut[88 +: 32];
                 end else if(ISA_CntRdWord == 2) begin
-                    ITF_WrPortCrdBank <= ISA_DatOut[0 +: 32];
-                    ITF_RdPortMapBank <= ISA_DatOut[32+: 32];
-                    CTR_WrPortDstBank <= ISA_DatOut[64+: 32];
+                    ITF_WrPortCrdBank <= ISA_DatOut[8  +: 32];
+                    CTR_RdPortCrdBank <= ISA_DatOut[40 +: 32];
+                    ITF_RdPortMapBank <= ISA_DatOut[72 +: 32];
                 end else if(ISA_CntRdWord == 3) begin
-                    CTR_WrPortMapBank <= ISA_DatOut[0 +: 32];
-                    CTR_RdPortCrdBank <= ISA_DatOut[32+: 32];
-                    CTR_RdPortDstBank <= ISA_DatOut[64+: 32];
+                    CTR_WrPortMapBank <= ISA_DatOut[8  +: 32];
+                    CTR_WrPortDstBank <= ISA_DatOut[40 +: 32];
+                    CTR_RdPortDstBank <= ISA_DatOut[72 +: 32];
                 end else if( ISA_CntRdWord == 4) begin
-                    ITF_WrPortCrd_AddrMax <= ISA_DatOut[0  +: 16];
-                    ITF_RdPortMap_AddrMax <= ISA_DatOut[16 +: 16];
-                    CTR_WrPortDst_AddrMax <= ISA_DatOut[32 +: 16];
-                    CTR_WrPortMap_AddrMax <= ISA_DatOut[48 +: 16];
-                    CTR_RdPortCrd_AddrMax <= ISA_DatOut[64 +: 16];
-                    CTR_RdPortDst_AddrMax <= ISA_DatOut[80 +: 16];
+                    ITF_WrPortCrd_AddrMax <= ISA_DatOut[8  +: 16];
+                    CTR_RdPortCrd_AddrMax <= ISA_DatOut[24 +: 16];
+                    CTR_WrPortMap_AddrMax <= ISA_DatOut[40 +: 16];
+                    ITF_RdPortMap_AddrMax <= ISA_DatOut[56 +: 16];
+                    CTR_WrPortDst_AddrMax <= ISA_DatOut[72 +: 16];
+                    CTR_RdPortDst_AddrMax <= ISA_DatOut[88 +: 16];
                 end else if ( ISA_CntRdWord == 5) begin 
-                    ITF_WrPortCrdParBank <= ISA_DatOut[0  +: 6];
-                    ITF_RdPortMapParBank <= ISA_DatOut[6  +: 6];
-                    CTR_WrPortDstParBank <= ISA_DatOut[12 +: 6];
-                    CTR_WrPortMapParBank <= ISA_DatOut[18 +: 6];
-                    CTR_RdPortCrdParBank <= ISA_DatOut[24 +: 6];
-                    CTR_RdPortDstParBank <= ISA_DatOut[30 +: 6];            
+                    ITF_WrPortCrdParBank <= ISA_DatOut[8  +: 8];
+                    CTR_RdPortCrdParBank <= ISA_DatOut[16 +: 8];
+                    ITF_RdPortMapParBank <= ISA_DatOut[24 +: 8];
+                    CTR_WrPortMapParBank <= ISA_DatOut[32 +: 8];
+                    CTR_WrPortDstParBank <= ISA_DatOut[40 +: 8];
+                    CTR_RdPortDstParBank <= ISA_DatOut[48 +: 8];            
                 end
                 if(Ctr_CfgVld & Ctr_CfgRdy) 
                     Ctr_CfgVld <= 1'b0;
@@ -616,19 +624,38 @@ assign GLBCCU_CfgRdy[14] = Ctr_CfgVld & GLBCCU_CfgRdy[14];
 assign GLBCCU_CfgRdy[15] = Ctr_CfgVld & GLBCCU_CfgRdy[15];
 
 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*0 +: DRAM_ADDR_WIDTH] = DramDatAddr; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*1 +: DRAM_ADDR_WIDTH] = DramWgtAddr; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*2 +: DRAM_ADDR_WIDTH] = DramCrdAddr; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*3 +: DRAM_ADDR_WIDTH] = DramWrMapAddr;//
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*4 +: DRAM_ADDR_WIDTH] = DramRdMapAddr; // Read
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*5 +: DRAM_ADDR_WIDTH] = DramOfmAddr; // Read
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*0 +: DRAM_ADDR_WIDTH] = 0  ; // ISA
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*1 +: DRAM_ADDR_WIDTH] = DramActAddr  ; // 
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*2 +: DRAM_ADDR_WIDTH] = DramWgtAddr  ; // 
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*3 +: DRAM_ADDR_WIDTH] = DramCrdAddr  ;//
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*4 +: DRAM_ADDR_WIDTH] = DramWrMapAddr; // 
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*5 +: DRAM_ADDR_WIDTH] = DramRdMapAddr; // Read
+assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*6 +: DRAM_ADDR_WIDTH] = DramOfmAddr  ; // Read
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 
+
+PISO#(
+    .DATA_IN_WIDTH ( SRAM_WIDTH ),
+    .DATA_OUT_WIDTH ( PORT_WIDTH )
+)u_PISO_ISAIN(
+    .CLK          ( clk                        ),
+    .RST_N        ( rst_n                      ),
+    .IN_VLD       ( ITFCCU_DatVld & CCUITF_DatRdy ),
+    .IN_LAST      ( 1'b0 ),
+    .IN_DAT       ( ITFCCU_Dat ),
+    .IN_RDY       ( PISO_ISAInRdy                ),
+    .OUT_DAT      ( PISO_ISAOut                     ), // On-chip output to Off-chip 
+    .OUT_VLD      ( PISO_ISAOutVld                  ),
+    .OUT_LAST     (                    ),
+    .OUT_RDY      ( PISO_ISAOutRdy                  )
+);
+
+
 RAM#(
-    .SRAM_BIT     ( SRAM_WIDTH   ),
+    .SRAM_BIT     ( PORT_WIDTH   ),
     .SRAM_BYTE    ( 1            ),
     .SRAM_WORD    ( ISA_SRAM_WORD),
     .CLOCK_PERIOD ( CLOCK_PERIOD )
@@ -639,7 +666,7 @@ RAM#(
     .addr_w       ( ISA_WrAddr[0 +: ISA_SRAM_DEPTH_WIDTH]   ),
     .read_en      ( ISA_RdEn     ),
     .write_en     ( ISA_WrEn     ),
-    .data_in      ( ITFCCU_Dat   ),
+    .data_in      ( PISO_ISAOut   ),
     .data_out     ( ISA_DatOut     )
 );
 
