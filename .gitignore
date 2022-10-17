@@ -36,7 +36,6 @@ software/PointNeXt/PointNeXt-master/runs
 software/PointNeXt/PointNeXt-master/wandb
 
 software/PointNeXt/HW/Data/
-software/PointNeXt/HW/MemFile/
 *.pt
 
 
