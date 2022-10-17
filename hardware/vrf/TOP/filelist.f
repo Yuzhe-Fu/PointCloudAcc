@@ -17,6 +17,7 @@
 ../../src/primitives/MINMAX/MINMAX.v
 ../../src/primitives/Memory/RAM_HS.v
 ../../src/primitives/Memory/RAM.v
+../../src/primitives/Memory/SPSRAM.v
 ../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/PISO/PISO.v
 ../../src/primitives/FIFO/FIFO.v

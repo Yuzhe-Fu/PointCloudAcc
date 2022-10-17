@@ -2,7 +2,8 @@
 1. 创新点只有一个，不够
 2. :white_check_mark:整体性能评估超过SOTA两倍
 3. 硬件设计
-    - :question: CCU最先搞定
+    - :question: ISA文件生成
+    - :question: 直接RAM生成
     - :question:先系统整出来综合一下，面积很重要决定功耗
         - 系统仿真建立起来跑起来，先解决完语法问题
         - 综合
