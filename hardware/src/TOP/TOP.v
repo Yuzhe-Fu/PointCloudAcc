@@ -20,16 +20,16 @@ module TOP #(
     parameter SRAM_BYTE_WIDTH= 8,
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
-    parameter DRAM_ADDR_WIDTH= 32,
+    parameter DRAM_ADDR_WIDTH= 32,  
     parameter ISA_SRAM_WORD  = 64,
-    parameter ITF_NUM_RDPORT = 2,
+    parameter ITF_NUM_RDPORT = 2,  
     parameter ITF_NUM_WRPORT = 5, // + CCU
-    parameter GLB_NUM_RDPORT = 8,
-    parameter GLB_NUM_WRPORT = 8,
+    parameter GLB_NUM_RDPORT = 8,    
+    parameter GLB_NUM_WRPORT = 8, 
     parameter MAXPAR         = 32,
     parameter NUM_BANK       = 32,
     parameter POOL_CORE      = 6,
-    parameter POOL_COMP_CORE = 64,
+    parameter POOL_COMP_CORE = 64, 
 
     // NetWork Parameters
     parameter IDX_WIDTH      = 16,

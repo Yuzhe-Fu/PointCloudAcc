@@ -335,12 +335,12 @@ always @(*) begin
     OpCodeMatch = 0;
     ISA_RdAddr = 0;
     ISA_RdEn = 0;
-    ISA_CntRdWord = ISA_CntRdWord_d;
+    ISA_CntRdWord = 0;
     for (j=0; j<OPNUM; j=j+1) begin
         if ( state[3] & state[0 +: 3] == j) begin
-            ISA_CntRdWord = (ISA_RdEn_d & OpCodeMatch) ? ISA_CntRdWord + 1 : ISA_CntRdWord;
+            ISA_CntRdWord = (ISA_RdEn_d & OpCodeMatch) ? ISA_CntRdWord_d + 1 : ISA_CntRdWord_d;
             OpCodeMatch = OpCode == j;
-            ISA_RdEn = !(ISA_CntRdWord[j] == OpNumWord[j] & OpCodeMatch);
+            ISA_RdEn = !(ISA_CntRdWord == OpNumWord[j] & OpCodeMatch);
 
             ISA_RdAddr = ISA_RdAddr_Array[j];
         end
