@@ -31,9 +31,9 @@
 10. :question: 提取跑硬件每层的数据(hex格式, MSB-LSB，一行128bit，脚本存于HW/scripts，数据存到DRAM/Dram.txt)
     - func(WordBit, ByteBit, BaseAddr, Nip, Chi, Cho, Row, Col)
     - 坐标: 按照(x, y, z)各8位组一个word，BaseAddr = 1024 # 1024*3/16 = 192
-    - activation: 先按点数排阵列个，再按通道排列，BaseAddr = 32768 # 1024*512/16=32K+1024
+    - activation: 先按点数排阵列个，再按通道排列，BaseAddr = 1152 (1024+128) # 原来是32768 # 1024*512/16=32K+1024
         - 设变量点数Nip，通道数Chi，阵列行数Row，参考[SYA.excalidraw](hardware/docs/02-spec/SYA/SYA.excalidraw)
-    - weight：设变量filter个数Cho，通道数Chi，阵列列数Col，操作同act，BaseAddr = 65536 # 512*512/16=16K < 32K
+    - weight：设变量filter个数Cho，通道数Chi，阵列列数Col，操作同act，BaseAddr = 2304 (1152+1152) # 原来是65536 # 512*512/16=16K < 32K
     - OFM: BaseAddr = 98304; # <32K
     - MAP: # 128K
     - 步骤：
