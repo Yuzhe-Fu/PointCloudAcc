@@ -113,10 +113,11 @@ prior_arb#(
     .REQ_WIDTH ( POOL_CORE )
 )u_prior_arb(
     .req ( POLMIF_AddrVld   ),
-    .gnt ( gnt              ) // 010000
+    .gnt ( gnt              ), // 010000
+    .arb_port(              )
 );
 
-int i;
+integer i;
 always @(*) begin
     arb_port = 0;
     for(i=0; i<POOL_CORE; i=i+1) begin

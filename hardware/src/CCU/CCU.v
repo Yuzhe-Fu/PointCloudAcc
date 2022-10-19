@@ -79,7 +79,7 @@ module CCU #(
     output                                              CCUGLB_Rst,
     output [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] CCUGLB_CfgVld ,         
     input  [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy ,         
-    output [NUM_BANK*(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgBankPort ,
+    output [NUM_BANK*(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgPortBankFlag ,
     output [ADDR_WIDTH*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgPort_AddrMax, 
     output [($clog2(MAXPAR) + 1)*GLB_NUM_RDPORT     -1 : 0] CCUGLB_CfgRdPortParBank,
     output [($clog2(MAXPAR) + 1)*GLB_NUM_WRPORT     -1 : 0] CCUGLB_CfgWrPortParBank      
@@ -607,27 +607,27 @@ assign CCUGLB_Rst = state == IDLE;
 
 generate
     for (i=0; i<NUM_BANK; i=i+1) begin 
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 0] = ITF_WrPortActBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 1] = ITF_WrPortWgtBank[i];  
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 2] = ITF_WrPortCrdBank[i];  
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 3] = ITF_WrPortMapBank[i];  
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 4] = SYA_WrPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 5] = POL_WrPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 6] = CTR_WrPortDstBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 7] = CTR_WrPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 0] = ITF_RdPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 1] = ITF_RdPortOfmBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 2] = SYA_RdPortActBank[i];// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  3] = SYA_RdPortWgtBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  4] = CTR_RdPortCrdBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  5] = CTR_RdPortDstBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  6] = POL_RdPortMapBank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  7] = POL_RdPortOfm0Bank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  8] = POL_RdPortOfm1Bank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  9] = POL_RdPortOfm2Bank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 10] = POL_RdPortOfm3Bank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 11] = POL_RdPortOfm4Bank[i];
-        assign CCUGLB_CfgBankPort[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 12] = POL_RdPortOfm5Bank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 0] = ITF_WrPortActBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 1] = ITF_WrPortWgtBank[i];  
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 2] = ITF_WrPortCrdBank[i];  
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 3] = ITF_WrPortMapBank[i];  
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 4] = SYA_WrPortOfmBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 5] = POL_WrPortOfmBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 6] = CTR_WrPortDstBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 7] = CTR_WrPortMapBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 0] = ITF_RdPortMapBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 1] = ITF_RdPortOfmBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 2] = SYA_RdPortActBank[i];// SYA_RdPortActBank is 4th Column of SYA_RdPortActBank 
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  3] = SYA_RdPortWgtBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  4] = CTR_RdPortCrdBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  5] = CTR_RdPortDstBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  6] = POL_RdPortMapBank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  7] = POL_RdPortOfm0Bank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  8] = POL_RdPortOfm1Bank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) +  9] = POL_RdPortOfm2Bank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 10] = POL_RdPortOfm3Bank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 11] = POL_RdPortOfm4Bank[i];
+        assign CCUGLB_CfgPortBankFlag[i*(GLB_NUM_RDPORT+GLB_NUM_WRPORT) + 12] = POL_RdPortOfm5Bank[i];
     end
 endgenerate
 
