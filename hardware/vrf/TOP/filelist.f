@@ -4,6 +4,8 @@
 ../../src/CCU/CCU.v
 ../../src/GLB/GLB.v
 ../../src/CTR/CTR.v
+../../src/CTR/FPS.v
+../../src/CTR/KNN.v
 ../../src/CTR/INS.v
 ../../src/CTR/PSS.v
 ../../src/CTR/EDC.v
