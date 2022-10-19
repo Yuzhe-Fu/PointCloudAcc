@@ -72,67 +72,36 @@ end
     );
 `else
     generate
-        if( SRAM_WORD == 32 && SRAM_BIT == 128 && SRAM_BYTE == 1)begin
-            SYLA55_32X128X1CM2 RAM_DELTA0_SYLA55_32X128X1CM2(
-            .A                   (  A       ),
-            .DO                  (  DO      ),
-            .DI                  (  DI      ),
-            .DVSE                (  1'b0    ),
-            .DVS                 (  4'b0    ),
-            .WEB                 (  WEB     ),
-            .CK                  (  clk     ),
-            .CSB                 (  CSB     )
-            );
-        end
-        else if( SRAM_WORD == 64 && SRAM_BIT == 32 && SRAM_BYTE == 1) begin
-            SYLA55_64X32X1CM2 RAM_DELTA0_SYLA55_64X32X1CM2(
-            .A                   (  A       ),
-            .DO                  (  DO      ),
-            .DI                  (  DI      ),
-            .DVSE                (  1'b0    ),
-            .DVS                 (  4'b0    ),
-            .WEB                 (  WEB     ),
-            .CK                  (  clk     ),
-            .CSB                 (  CSB     )
-            );
-        end
-        else if ( SRAM_WORD == 108 && SRAM_BIT == 128 && SRAM_BYTE == 1) begin
-            SYLA55_108X128X1CM2 RAM_DELTA0_SYLA55_108X128X1CM2(
-            .A                   (  A       ),
-            .DO                  (  DO      ),
-            .DI                  (  DI      ),
-            .DVSE                (  1'b0    ),
-            .DVS                 (  4'b0    ),
-            .WEB                 (  WEB     ),
-            .CK                  (  clk     ),
-            .CSB                 (  CSB     )
-            );
-        end
-        else if ( SRAM_WORD == 49 && SRAM_BIT == 8 && SRAM_BYTE == 16) begin
-            SYLA55_49X8X16CM2 RAM_FRMPOOL0(
-                .A               (  A         ),
-                .DO              (  DO        ),
-                .DI              (  DI        ),
-                .DVSE            (  1'b0      ),
-                .DVS             (  4'b0      ),
-                .WEB             (  WEB       ),
-                .CK              (  clk       ),
-                .CSB             (  CSB       )
-                );
-        end
-        else if ( SRAM_WORD == 196 && SRAM_BIT == 8 && SRAM_BYTE == 16) begin
-            SYLA55_196X8X16CM2 RAM_DELTA0(
-            .A                   (  A         ),
-            .DO                  (  DO        ),
-            .DI                  (  DI        ),
-            .DVSE                (  1'b0      ),
-            .DVS                 (  4'b0      ),
-            .WEB                 (  WEB       ),
-            .CK                  (  clk       ),
-            .CSB                 (  CSB       )
+        if( SRAM_WORD == 128 && SRAM_BIT == 256 && SRAM_BYTE == 1)begin
+            TS1N28HPCPUHDHVTB128X256M1SSO GLB_BANK(
+            .SLP    ( 1'b0  ),
+            .SD     ( 1'b0  ),
+            .CLK    ( clk   ),
+            .CEB    ( CSB   ),
+            .WEB    ( WEB   ),
+            .A      ( A     ),
+            .D      ( DI    ),
+            .RTSEL  ( 2'd0  ),
+            .WTSEL  ( 2'd0  ),
+            .Q      ( DO    )
             );
         end
 
+        else if( SRAM_WORD == 64 && SRAM_BIT == 128 && SRAM_BYTE == 1)begin
+            TS1N28HPCPUHDHVTB64X128M4SSO CCU_ISARAM(
+            .SLP    ( 1'b0  ),
+            .SD     ( 1'b0  ),
+            .CLK    ( clk   ),
+            .CEB    ( CSB   ),
+            .WEB    ( WEB   ),
+            .A      ( A     ),
+            .D      ( DI    ),
+            .RTSEL  ( 2'd0  ),
+            .WTSEL  ( 2'd0  ),
+            .Q      ( DO    )
+            );
+        end
+        
         else if ( SRAM_WORD == 512 && SRAM_BIT == 32 && SRAM_BYTE == 4) begin
             SYLA55_512X32X4CM2 RAM_GB(
             .A                   (  A         ),
