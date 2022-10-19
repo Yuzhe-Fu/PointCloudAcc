@@ -31,8 +31,8 @@ module MIF #(
     input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBMIF_Ofm     ,
     input  [POOL_CORE                               -1 : 0] GLBMIF_OfmVld  ,
     output [POOL_CORE                               -1 : 0] MIFGLB_OfmRdy  ,
-    output reg [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE-1 : 0] MIFPOL_Ofm     ,
-    output reg [POOL_CORE                           -1 : 0] MIFPOL_OfmVld  ,
+    output [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] MIFPOL_Ofm     ,
+    output [POOL_CORE                               -1 : 0] MIFPOL_OfmVld  ,
     input  [POOL_CORE                               -1 : 0] MIFPOL_OfmRdy   
 
 );
@@ -47,20 +47,21 @@ module MIF #(
 
 wire [$clog2(POOL_CORE)         -1 : 0] PolCoreIdx  [0 : POOL_CORE-1];
 wire [ACT_WIDTH*POOL_COMP_CORE  -1 : 0] Ofm         [0 : POOL_CORE-1];
-reg [POOL_CORE     -1 : 0] MIFMIC_OfmRdy;
+wire [POOL_CORE     -1 : 0] MIFMIC_OfmRdy;
 wire [POOL_CORE     -1 : 0] MICMIF_OfmVld;
 
-integer j;
 
-genvar i;
-
+genvar gv_i;
+genvar gv_j;
 //=====================================================================================================================
 // Logic Design : 
 //=====================================================================================================================
 
 generate
-    for(i=0; i<POOL_CORE; i=i+1) begin
+    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin
         wire [$clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE-1 : 0] MICMIF_Ofm;
+        wire [$clog2(POOL_CORE)                           -1 : 0] ArbIdx_MICMIF_OfmVld;
+
         MIC#(
             .POOL_CORE      ( POOL_CORE ),
             .POOL_COMP_CORE ( POOL_COMP_CORE ),
@@ -72,30 +73,34 @@ generate
             .POLMIF_AddrVld ( POLMIF_AddrVld ),
             .POLMIF_Addr    ( POLMIF_Addr    ),
             .MIFPOL_Rdy     ( MIFPOL_Rdy     ),
-            .MIFGLB_AddrVld ( MIFGLB_AddrVld[i] ),
-            .MIFGLB_Addr    ( MIFGLB_Addr[IDX_WIDTH*i +: IDX_WIDTH]    ),
-            .GLBMIF_AddrRdy ( GLBMIF_AddrRdy[i] ),
-            .GLBMIF_Ofm      ( GLBMIF_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*i +: (ACT_WIDTH*POOL_COMP_CORE)]      ),
-            .GLBMIF_OfmVld   ( GLBMIF_OfmVld[i]   ),
-            .MIFGLB_OfmRdy   ( MIFGLB_OfmRdy[i]   ),
+            .MIFGLB_AddrVld ( MIFGLB_AddrVld[gv_i] ),
+            .MIFGLB_Addr    ( MIFGLB_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH]    ),
+            .GLBMIF_AddrRdy ( GLBMIF_AddrRdy[gv_i] ),
+            .GLBMIF_Ofm      ( GLBMIF_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*gv_i +: (ACT_WIDTH*POOL_COMP_CORE)]      ),
+            .GLBMIF_OfmVld   ( GLBMIF_OfmVld[gv_i]   ),
+            .MIFGLB_OfmRdy   ( MIFGLB_OfmRdy[gv_i]   ),
             .MICMIF_Ofm      ( MICMIF_Ofm      ),
-            .MICMIF_OfmVld   ( MICMIF_OfmVld[i]   ),
-            .MIFMIC_OfmRdy   ( MIFMIC_OfmRdy[i]   )
+            .MICMIF_OfmVld   ( MICMIF_OfmVld[gv_i]   ),
+            .MIFMIC_OfmRdy   ( MIFMIC_OfmRdy[gv_i]   )
         );
-        assign {PolCoreIdx[i], Ofm[i]} = MICMIF_Ofm;
+        assign {PolCoreIdx[gv_i], Ofm[gv_i]} = MICMIF_Ofm;
 
         //  ==========================
-        always @(*) begin
-            MIFPOL_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*i +: (ACT_WIDTH*POOL_COMP_CORE)] = 0;
-            MIFPOL_OfmVld[i] = 0;
-            for(j=0; j<POOL_CORE; j=j+1) begin // Loop MIFC
-                if(PolCoreIdx[j]==i & MICMIF_OfmVld[j]) begin
-                    MIFPOL_Ofm[i] = Ofm[j];
-                    MIFPOL_OfmVld[i] = 1'b1;
-                    MIFMIC_OfmRdy[j] = MIFPOL_OfmRdy[i]; // ?????????????????????????????????????????????????????
-                end
-            end
-        end
+        assign MIFPOL_OfmVld[gv_i] = |MICMIF_OfmVld & ArbIdx_MICMIF_OfmVld ==gv_i;
+        assign MIFPOL_Ofm = Ofm[ArbIdx_MICMIF_OfmVld];
+
+        for(gv_j=0; gv_j<POOL_CORE; gv_j=gv_j+1) begin
+            assign MIFMIC_OfmRdy[gv_j] = gv_j==ArbIdx_MICMIF_OfmVld ? MIFPOL_OfmRdy[gv_i] : 0;
+        end 
+        
+        prior_arb#(
+            .REQ_WIDTH ( POOL_CORE )
+        )u_prior_arb_ArbIdx_MICMIF_OfmVld(
+            .req ( MICMIF_OfmVld ),
+            .gnt (  ),
+            .arb_port  ( ArbIdx_MICMIF_OfmVld  )
+        );
+
 
     end 
 endgenerate

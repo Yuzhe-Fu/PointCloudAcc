@@ -46,7 +46,7 @@ module MIC #(
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-reg [$clog2(POOL_CORE)      -1 : 0] arb_port;
+wire [$clog2(POOL_CORE)      -1 : 0] arb_port;
 wire[$clog2(POOL_CORE)      -1 : 0] rd_port;
 reg [$clog2(POOL_CORE)      -1 : 0] rd_port_d;
 wire[POOL_CORE              -1 : 0] gnt;
@@ -114,18 +114,8 @@ prior_arb#(
 )u_prior_arb(
     .req ( POLMIF_AddrVld   ),
     .gnt ( gnt              ), // 010000
-    .arb_port(              )
+    .arb_port( arb_port             )
 );
-
-integer i;
-always @(*) begin
-    arb_port = 0;
-    for(i=0; i<POOL_CORE; i=i+1) begin
-        if(gnt[i]) begin
-            arb_port |= i;
-        end
-    end
-end 
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin

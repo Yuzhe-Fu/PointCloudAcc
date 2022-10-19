@@ -63,12 +63,12 @@ localparam NUMPORT_WIDTH = $clog2(ITF_NUM_WRPORT + ITF_NUM_RDPORT);
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-reg                         Trans;
+wire                        Trans;
 wire [PORT_WIDTH    -1 : 0] Cmd;
 wire                        CmdRdy;
 wire                        CmdVld;
-reg                         RdTOP;
-reg [NUMPORT_WIDTH  -1 : 0] Port_wire;
+wire                        RdTOP;
+wire [$clog2(ITF_NUM_WRPORT + ITF_NUM_RDPORT)   -1 : 0] ArbEmptyFullIdx;
 reg [NUMPORT_WIDTH  -1 : 0] PortIdx;
 
 wire [NUMPORT_WIDTH -1 : 0] MaxIdx;
@@ -90,6 +90,7 @@ wire                        PISO_OUTRdy;
 wire                        IntraTOPITF_DatLast;
 wire                        CntOverflow;
 wire                        CntInc;
+
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -135,39 +136,31 @@ end
 //=====================================================================================================================
 // Logic Design 2: ARB Request
 //=====================================================================================================================
-integer  j;
-always @(*) begin
-    Port_wire = 0;
-    Trans = 1'b0;
-    RdTOP = 0; // 0: Write; 1: Read
-    if (state == IDLE) begin 
-        if (TOPITF_EmptyFull[0] | TOPITF_ReqNum[0 +: ADDR_WIDTH] !=0) begin // CCU
-            Port_wire = 0;
-            Trans = 1'b1;
-            RdTOP = 0;
-        end else begin
-            for(j=0; j<(ITF_NUM_WRPORT+ITF_NUM_RDPORT); j=j+1 ) begin
-                if (TOPITF_EmptyFull[j]) begin
-                    Port_wire = j;
-                    Trans = 1'b1;
-                    RdTOP = j >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
-                end else if( MaxNum != 0) begin
-                    Port_wire = MaxIdx;
-                    Trans = 1'b1;
-                    RdTOP = MaxIdx >=  ITF_NUM_WRPORT -1; // 0: Write TOP; 1: Read TOP
-                end
-            end
-        end
-    end
-end
+assign Trans = state == IDLE & ( |TOPITF_EmptyFull | MaxNum != 0);
 
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
         PortIdx <= 0;
     end else if(state==IDLE && next_state == CMD) begin
-        PortIdx <= Port_wire; // Update
+        if (TOPITF_EmptyFull[0] | TOPITF_ReqNum[0 +: ADDR_WIDTH] !=0) begin// CCU
+            PortIdx <= 0; // Update
+        end else if( |TOPITF_EmptyFull ) begin
+            PortIdx <= ArbEmptyFullIdx;
+        end else if( MaxNum != 0 ) begin
+            PortIdx <= MaxIdx;
+        end
     end
 end
+
+assign RdTOP = PortIdx >= ITF_NUM_WRPORT -1;
+
+prior_arb#(
+    .REQ_WIDTH ( ITF_NUM_WRPORT + ITF_NUM_RDPORT )
+)u_prior_arb_BankWrPortIdx(
+    .req ( TOPITF_EmptyFull ),
+    .gnt (  ),
+    .arb_port  ( ArbEmptyFullIdx  )
+);
 
 //=====================================================================================================================
 // Logic Design 2: Input to TOP
@@ -280,5 +273,8 @@ end
 
 assign IntraTOPITF_DatLast = CntOverflow & (state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] : 1'b0);
 assign CntInc = state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] & ITFTOP_DatRdy[PortIdx-ITF_NUM_WRPORT] : 1'b0;
+
+
+
 
 endmodule

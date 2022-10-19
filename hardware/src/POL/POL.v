@@ -64,7 +64,8 @@ wire [POOL_CORE                             -1 : 0] POLPLC_OfmVld;
 wire [POOL_CORE                             -1 : 0] PLCPOL_OfmRdy;
 
 wire [POOL_CORE                             -1 : 0] PLCPOL_OfmVld;
-reg [POOL_CORE                              -1 : 0] POLPLC_OfmRdy;
+wire [POOL_CORE                             -1 : 0] POLPLC_OfmRdy;
+wire [$clog2(POOL_CORE)                     -1 : 0] ARBIdx_PLCPOL_OfmVld;
 
 
 //=====================================================================================================================
@@ -108,20 +109,23 @@ endgenerate
 
 assign POLGLB_MapRdy = &PLCPOL_IdxRdy;
 
-integer  j;
-always @(*) begin
-    POLGLB_Ofm = 0;
-    POLGLB_OfmVld = 0;
-    POLPLC_OfmRdy = 0;
-    for(j=0; j<POOL_CORE; j=j+1) begin
-        if(PLCPOL_OfmVld[j]) begin
-            POLGLB_Ofm = PLCPOL_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*j +: ACT_WIDTH*POOL_COMP_CORE];
-            POLGLB_OfmVld = 1'b1;
-            POLPLC_OfmRdy[j] = GLBPOL_OfmRdy;
-        end
-    end
-end
 
+assign POLGLB_OfmVld = |PLCPOL_OfmVld ;
+assign POLGLB_Ofm    = PLCPOL_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*ARBIdx_PLCPOL_OfmVld +: ACT_WIDTH*POOL_COMP_CORE];
+genvar gv_i;
+generate
+    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin
+        assign POLPLC_OfmRdy[gv_i] = gv_i == ARBIdx_PLCPOL_OfmVld? GLBPOL_OfmRdy : 0;
+    end
+endgenerate
+
+prior_arb#(
+    .REQ_WIDTH ( POOL_CORE )
+)u_prior_arb_ARBIdx_PLCPOL_OfmVld(
+    .req ( PLCPOL_OfmVld ),
+    .gnt (  ),
+    .arb_port  ( ARBIdx_PLCPOL_OfmVld  )
+);
 
 //=====================================================================================================================
 // Sub-Module :
