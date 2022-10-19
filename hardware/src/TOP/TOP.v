@@ -154,8 +154,7 @@ wire [GLB_NUM_RDPORT + GLB_NUM_WRPORT     -1 : 0] CCUGLB_CfgVld;
 wire [GLB_NUM_RDPORT + GLB_NUM_WRPORT     -1 : 0] GLBCCU_CfgRdy;         
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)* NUM_BANK -1 : 0] CCUGLB_CfgPortBankFlag;
 wire [ADDR_WIDTH*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgPort_AddrMax; 
-wire [($clog2(MAXPAR) + 1)*GLB_NUM_RDPORT     -1 : 0] CCUGLB_CfgRdPortParBank;
-wire [($clog2(MAXPAR) + 1)*GLB_NUM_WRPORT     -1 : 0] CCUGLB_CfgWrPortParBank;
+wire [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)-1 : 0] CCUGLB_CfgPortParBank;
 
 
 // GLB
@@ -363,8 +362,7 @@ CCU#(
     .GLBCCU_CfgRdy           ( GLBCCU_CfgRdy           ),
     .CCUGLB_CfgPortBankFlag  ( CCUGLB_CfgPortBankFlag  ),
     .CCUGLB_CfgPort_AddrMax  ( CCUGLB_CfgPort_AddrMax  ),
-    .CCUGLB_CfgRdPortParBank ( CCUGLB_CfgRdPortParBank ),
-    .CCUGLB_CfgWrPortParBank ( CCUGLB_CfgWrPortParBank ) 
+    .CCUGLB_CfgPortParBank   ( CCUGLB_CfgPortParBank )
 );
 
 GLB#(
@@ -383,8 +381,7 @@ GLB#(
     .GLBCCU_CfgRdy           ( GLBCCU_CfgRdy           ),
     .CCUGLB_CfgPortBankFlag  ( CCUGLB_CfgPortBankFlag  ),
     .CCUGLB_CfgPort_AddrMax  ( CCUGLB_CfgPort_AddrMax  ),
-    .CCUGLB_CfgRdPortParBank ( CCUGLB_CfgRdPortParBank ),
-    .CCUGLB_CfgWrPortParBank ( CCUGLB_CfgWrPortParBank ),
+    .CCUGLB_CfgPortParBank   ( CCUGLB_CfgPortParBank ),
     .WrPortDat               ( WrPortDat               ),
     .WrPortDatVld            ( WrPortDatVld            ),
     .WrPortDatLast           ( WrPortDatLast           ),
