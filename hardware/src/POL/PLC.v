@@ -23,7 +23,8 @@ module PLC #(
     input                                       clk           ,
     input                                       rst_n         ,
 
-    input       [POOL_MAP_DEPTH_WIDTH   -1 : 0] POLPLC_CfgK             ,
+    input                                       POLPLC_Rst    ,
+    input       [POOL_MAP_DEPTH_WIDTH   -1 : 0] POLPLC_CfgK   ,
     input                                       POLPLC_IdxVld ,
     input       [IDX_WIDTH              -1 : 0] POLPLC_Idx    ,
     output                                      PLCPOL_IdxRdy ,
@@ -46,17 +47,20 @@ module PLC #(
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire DatInLast;
-wire overflow, inc_addr, clear_addr;
-wire empty, full;
+wire                                CpOfmInLast;
+wire                                overflow;
+wire                                inc_addr;
+wire                                clear_addr;
+wire                                empty;
+wire                                full;
+wire [POOL_MAP_DEPTH_WIDTH  -1 : 0] MAX_COUNT;
 
 //=====================================================================================================================
 // Logic Design 2: Addr Gen.
 //=====================================================================================================================
 
-assign DatInLast  = overflow; // & &
-assign inc_addr   = POLPLC_AddrRdy & PLCPOL_AddrVld;
-assign clear_addr = PLCPOL_OfmVld  & POLPLC_OfmRdy ;
+assign CpOfmInLast  = overflow; //
+assign inc_addr   = POLPLC_OfmVld & POLPLC_OfmRdy;
 
 //=====================================================================================================================
 // Sub-Module :
@@ -68,15 +72,16 @@ PCC#(
 )U1_PLCC(
     .clk       ( clk            ),
     .rst_n     ( rst_n          ),
-    .DatInVld  ( POLPLC_OfmVld   ),
-    .DatInLast ( DatInLast      ),
+    .Rst       ( POLPLC_Rst            ),
+    .DatInVld  ( POLPLC_OfmVld  ),
+    .DatInLast ( CpOfmInLast    ),
     .DatIn     ( POLPLC_Ofm      ),
     .DatInRdy  ( PLCPOL_OfmRdy   ),
     .DatOutVld ( PLCPOL_OfmVld   ),
     .DatOut    ( PLCPOL_Ofm      ),
-    .DatOutRdy (POLPLC_OfmRdy    )
+    .DatOutRdy ( POLPLC_OfmRdy   )
 );
-wire [POOL_MAP_DEPTH_WIDTH  -1 : 0] MAX_COUNT;
+
 assign MAX_COUNT = POLPLC_CfgK-1;
 
 counter#(
@@ -84,12 +89,12 @@ counter#(
 )u_counter(
     .CLK       ( clk        ),
     .RESET_N   ( rst_n      ),
-    .CLEAR     ( clear_addr ),
-    .DEFAULT   ( {POOL_MAP_DEPTH_WIDTH{1'b0}}          ),
+    .CLEAR     ( POLPLC_Rst ),
+    .DEFAULT   ( {POOL_MAP_DEPTH_WIDTH{1'b0}} ),
     .INC       ( inc_addr   ),
     .DEC       ( 1'b0       ),
-    .MIN_COUNT ( {POOL_MAP_DEPTH_WIDTH{1'b0}}          ),
-    .MAX_COUNT ( MAX_COUNT        ),
+    .MIN_COUNT ( {POOL_MAP_DEPTH_WIDTH{1'b0}} ),
+    .MAX_COUNT ( MAX_COUNT  ),
     .OVERFLOW  ( overflow   ),
     .UNDERFLOW (            ),
     .COUNT     (            )
@@ -102,7 +107,7 @@ FIFO_FWFT#(
     .INITIALIZE_FIFO ( "no" )
 )U_FIFO_FWFT(
     .clk        ( clk                           ),
-    .Reset      ( 1'b0                          ),
+    .Reset      ( POLPLC_Rst                    ),
     .rst_n      ( rst_n                         ),
     .push       ( POLPLC_IdxVld &  PLCPOL_IdxRdy),
     .pop        ( PLCPOL_AddrVld & POLPLC_AddrRdy),

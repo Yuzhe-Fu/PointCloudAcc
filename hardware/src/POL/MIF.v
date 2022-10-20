@@ -20,7 +20,7 @@ module MIF #(
     )(
     input                               clk                     ,
     input                               rst_n                   ,
-
+    input                               POLMIF_Rst,
     // Configure
     input  [POOL_CORE                               -1 : 0] POLMIF_AddrVld,
     input  [IDX_WIDTH*POOL_CORE                     -1 : 0] POLMIF_Addr   ,
@@ -70,6 +70,7 @@ generate
         )u_MIFC(
             .clk            ( clk            ),
             .rst_n          ( rst_n          ),
+            .MIFMIC_Rst     ( POLMIF_Rst     ),
             .POLMIF_AddrVld ( POLMIF_AddrVld ),
             .POLMIF_Addr    ( POLMIF_Addr    ),
             .MIFPOL_Rdy     ( MIFPOL_Rdy     ),

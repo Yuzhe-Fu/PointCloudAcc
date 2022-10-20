@@ -18,7 +18,8 @@ module PCC #(
     parameter DATA_WIDTH      = 8
     )(
     input                                   clk                     ,
-    input                                   rst_n                   ,   
+    input                                   rst_n                   ,
+    input                                   Rst      ,   
     input                                   DatInVld ,
     input                                   DatInLast,
     input       [DATA_WIDTH*NUM_MAX -1 : 0] DatIn    ,
@@ -54,7 +55,7 @@ always @(*) begin
         COMP: if ( DatInLast & (DatInVld & DatInRdy))
                     next_state <= OUTPUT;
                 else
-                    next_state <= COMP;
+                    next_state <= OUTPUT;
         OUTPUT: if( DatOutVld & DatOutRdy) /// 
                     next_state <= COMP;
                 else
@@ -66,6 +67,8 @@ end
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
+        state <= IDLE;
+    end else if(Rst) begin
         state <= IDLE;
     end else begin
         state <= next_state;
@@ -81,6 +84,8 @@ generate
         always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
                 MaxArray[i] <= 0;
+            end else if(Rst) begin
+                MaxArray[i] <= 0;
             end else if ( state == OUTPUT & (next_state == COMP | next_state == IDLE) ) begin
                 MaxArray[i] <= 0;                
             end else if ( state == COMP & (DatInVld & DatInRdy) ) begin
@@ -92,6 +97,7 @@ generate
 endgenerate
 assign DatOutVld = state == OUTPUT;
 assign DatInRdy = state == COMP;
+
 
 //=====================================================================================================================
 // Sub-Module :

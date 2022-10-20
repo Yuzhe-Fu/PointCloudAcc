@@ -6,7 +6,6 @@
 | POL.v | 顶层模块 |
 | POL_MIF.v | multiple interface module多个pooling核读global buffer的接口模块 |
 | PLC.v | pool_core做pooling的核 |
-| // pool_out.v | 输出转换模块，多个pooling核写output buffer |
 | PLCC.v | pool_compute_core, pooling里面具体做计算的核，比如做max, average |
 | PAN.v | pool_arb_net仲裁多个请求，选出一个请求信息输出，并响应请求 |
 | FIFO.v | 通用模块，直接调用 |
@@ -52,7 +51,9 @@
 ## 模块陈述
 背景：需要做pooling的整块feature map，均匀分为6块，存于global buffer中。
 由于需要满足输出给下一层卷积计算的带宽的需求，pooling模块有6个pooling核(pool_core)，每个pool_core里面有64个取大值核(pool_comp_core), 因此整个pooling的算力为，每周期读取6个点（其中每个点64个通道）并与pool_comp_core的reg中的值比出最大值后更新pool_comp_core的reg最大值；
-:question:**用地址取的，需要GLB修改支持？？**
+运行过程：
+    - stage0: 启动阶段：FSM的state处于IDLE，等待CfgVld使其进入工作模式，
+    - stage1: 工作模式下，6个PLC核同时取Map中相同位置的Idx，存于各自FIFO，当每个核map的idx都算完，输出ofm，后计算下一个map，（因为各个PLC独立工作，自己才知道算了多少个，因此不能在POL顶层统一控制）
 
 ## PLC 端口列表
 | Ports | Input/Output | Width | Descriptions |
@@ -75,6 +76,11 @@
 
 ## 模块陈述
 每个pool_core根据index序列（可以简单理解为取读取用来pooling的feature map中点的地址，序列长度为2^POOL_MAP_DEPTH_WIDTH），依次取index序列中的index，作为地址向multi_if模块请求读取数据，将读取的64个通道数据并行同时送入64个pool_comp_core，计算出64个最大值，当比较完index序列中指向的所有点后，输出到pool_out_fm，拉高pool_out_fm_vld等待被取走后，再比较下一轮index序列中的数；
+    -stage0: 输入Map的Idx到FIFO，并同步计数个数
+    -stage1: FIFO输出Addr
+    -stage2: GLB输入ofm到PCC比较
+    -stage3: 当计算到K个时，将Last与GLB输入的ofm同步，给PCC
+    -stage4: 
 
 ## PLCC 端口列表
 | Ports | Input/Output | Width | Descriptions |

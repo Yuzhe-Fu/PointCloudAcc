@@ -21,6 +21,7 @@ module MIC #(
     )(
     input                                                           clk                     ,
     input                                                           rst_n                   ,
+    input                                                           MIFMIC_Rst,
 
     // Configure
     input       [POOL_CORE                                  -1 : 0] POLMIF_AddrVld,
@@ -73,7 +74,7 @@ FIFO_FWFT#(
     .INITIALIZE_FIFO ( "no"                     )
 )U0_FIFO_FWFT_OUT(
     .clk        ( clk                               ),
-    .Reset      ( 1'b0                              ),
+    .Reset      ( MIFMIC_Rst                              ),
     .rst_n      ( rst_n                             ),
     .push       ( GLBMIF_OfmVld &  MIFGLB_OfmRdy    ),
     .pop        ( MICMIF_OfmVld & MIFMIC_OfmRdy   ),
@@ -94,7 +95,7 @@ FIFO_FWFT#(
     .INITIALIZE_FIFO ( "no"                     )
 )U0_FIFO_FWFT_CMD(
     .clk        ( clk                                                       ),
-    .Reset      ( 1'b0                                                      ),
+    .Reset      ( MIFMIC_Rst                                                      ),
     .rst_n      ( rst_n                                                     ),
     .push       ( POLMIF_AddrVld[arb_port] & MIFPOL_Rdy[arb_port]           ), 
     .pop        ( MIFGLB_AddrVld & GLBMIF_AddrRdy                           ),
@@ -119,6 +120,8 @@ prior_arb#(
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
+        rd_port_d <= 0;
+    end else if(MIFMIC_Rst) begin
         rd_port_d <= 0;
     end else if (MIFGLB_AddrVld & GLBMIF_AddrRdy) begin
         rd_port_d <= rd_port;

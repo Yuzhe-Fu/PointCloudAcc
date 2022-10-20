@@ -38,8 +38,8 @@ module POL #(
     output [POOL_CORE                               -1 : 0] POLGLB_AddrVld,
     output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_Addr  ,
     input  [POOL_CORE                               -1 : 0] GLBPOL_AddrRdy,
-    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_Ofm     ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmVld   ,
+    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_Ofm    ,
+    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmVld ,
     output [POOL_CORE                               -1 : 0] POLGLB_OfmRdy  ,
     output reg[(ACT_WIDTH*POOL_COMP_CORE)           -1 : 0] POLGLB_Ofm     ,
     output reg                                              POLGLB_OfmVld  ,
@@ -48,7 +48,9 @@ module POL #(
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-
+localparam IDLE     = 3'b000;
+localparam MAPIN    = 3'b001;
+localparam WAITFNH  = 3'b011;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -67,6 +69,78 @@ wire [POOL_CORE                             -1 : 0] PLCPOL_OfmVld;
 wire [POOL_CORE                             -1 : 0] POLPLC_OfmRdy;
 wire [$clog2(POOL_CORE)                     -1 : 0] ARBIdx_PLCPOL_OfmVld;
 
+wire                                                MapInLast;
+wire                                                OfmOutLast;
+
+reg  [IDX_WIDTH                             -1 : 0] CntMapIn;
+reg  [IDX_WIDTH                             -1 : 0] CntOfmOut;
+
+wire [POOL_CORE                             -1 : 0] PLCPOL_Empty;
+
+//=====================================================================================================================
+// Logic Design 
+//=====================================================================================================================
+
+reg [ 3     -1 : 0] state       ;
+reg [ 3     -1 : 0] next_state  ;
+always @(*) begin
+    case ( state )
+        IDLE :  if ( CCUPOL_CfgVld & POLCCU_CfgRdy )
+                    next_state <= MAPIN;
+                else
+                    next_state <= IDLE;
+        MAPIN:  if ( MapInLast )
+                    next_state <= WAITFNH;
+                else 
+                    next_state <= MAPIN;
+        WAITFNH:if ( OfmOutLast )
+                    next_state <= IDLE;
+                else
+                    next_state <= WAITFNH;
+
+        default: next_state <= IDLE;
+    endcase
+end
+
+always @ ( posedge clk or negedge rst_n ) begin
+    if ( !rst_n ) begin
+        state <= IDLE;
+    end else if(CCUPOL_Rst) begin
+        state <= IDLE;
+    end else begin
+        state <= next_state;
+    end
+end
+
+
+//=====================================================================================================================
+// Logic Design 
+//=====================================================================================================================
+assign POLCCU_CfgRdy = state == IDLE;
+
+always @(posedge clk or rst_n) begin
+    if (!rst_n) begin
+        CntMapIn <= 0;
+    end else if(state == IDLE) begin
+        CntMapIn <= 0;
+    end else if(GLBPOL_MapVld & POLGLB_MapRdy) begin
+        CntMapIn <= CntMapIn + 1;
+    end
+end
+
+assign MapInLast = CntMapIn*POOL_CORE >= CCUPOL_CfgK*CCUPOL_CfgNip;
+
+
+always @(posedge clk or rst_n) begin
+    if (!rst_n) begin
+        CntOfmOut <= 0;
+    end else if(state == IDLE) begin
+        CntOfmOut <= 0;
+    end else if(POLGLB_OfmVld & GLBPOL_OfmRdy) begin
+        CntOfmOut <= CntOfmOut + 1;
+    end
+end
+assign OfmOutLast = CntOfmOut >= CCUPOL_CfgNip;
 
 //=====================================================================================================================
 // Logic Design 
@@ -76,9 +150,8 @@ wire [$clog2(POOL_CORE)                     -1 : 0] ARBIdx_PLCPOL_OfmVld;
 genvar i;
 generate
     for(i=0; i<POOL_CORE; i=i+1) begin
-        wire POLPLC_IdxVld;
+        wire                        POLPLC_IdxVld;
         wire [IDX_WIDTH     -1 : 0] POLPLC_Idx;
-
 
         PLC#(
             .IDX_WIDTH      ( IDX_WIDTH ),
@@ -88,6 +161,7 @@ generate
         )u_PLC(
             .clk            ( clk            ),
             .rst_n          ( rst_n          ),
+            .POLPLC_Rst     ( state == IDLE  ),
             .POLPLC_CfgK    ( CCUPOL_CfgK    ),
             .POLPLC_IdxVld  ( POLPLC_IdxVld  ),
             .POLPLC_Idx     ( POLPLC_Idx     ),
@@ -95,20 +169,20 @@ generate
             .PLCPOL_AddrVld ( PLCPOL_AddrVld[i] ),
             .PLCPOL_Addr    ( PLCPOL_Addr[IDX_WIDTH*i +: IDX_WIDTH]    ),
             .POLPLC_AddrRdy ( POLPLC_AddrRdy[i] ),
-            .POLPLC_Ofm      ( POLPLC_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]      ),
-            .POLPLC_OfmVld   ( POLPLC_OfmVld[i]   ),
-            .PLCPOL_OfmRdy   ( PLCPOL_OfmRdy[i]   ),
-            .PLCPOL_Ofm      ( PLCPOL_Ofm [(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]     ),
-            .PLCPOL_OfmVld   ( PLCPOL_OfmVld[i]   ),
-            .POLPLC_OfmRdy   ( POLPLC_OfmRdy[i]   ) 
+            .POLPLC_Ofm     ( POLPLC_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]      ),
+            .POLPLC_OfmVld  ( POLPLC_OfmVld[i]   ),
+            .PLCPOL_OfmRdy  ( PLCPOL_OfmRdy[i]   ),
+            .PLCPOL_Ofm     ( PLCPOL_Ofm [(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]     ),
+            .PLCPOL_OfmVld  ( PLCPOL_OfmVld[i]   ),
+            .POLPLC_OfmRdy  ( POLPLC_OfmRdy[i]   )
         );
         assign POLPLC_Idx = GLBPOL_Map[IDX_WIDTH*i +: IDX_WIDTH];
-        assign POLPLC_IdxVld = GLBPOL_MapVld;
+        assign POLPLC_IdxVld = state == MAPIN & GLBPOL_MapVld;
+
     end
 endgenerate
 
-assign POLGLB_MapRdy = &PLCPOL_IdxRdy;
-
+assign POLGLB_MapRdy = state == MAPIN  & (&PLCPOL_IdxRdy);
 
 assign POLGLB_OfmVld = |PLCPOL_OfmVld ;
 assign POLGLB_Ofm    = PLCPOL_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*ARBIdx_PLCPOL_OfmVld +: ACT_WIDTH*POOL_COMP_CORE];
@@ -138,6 +212,7 @@ MIF#(
 )u_MIF(
     .clk            ( clk            ),
     .rst_n          ( rst_n          ),
+    .POLMIF_Rst     ( state== IDLE  ),
     .POLMIF_AddrVld ( PLCPOL_AddrVld ),
     .POLMIF_Addr    ( PLCPOL_Addr    ),
     .MIFPOL_Rdy     ( POLPLC_AddrRdy ),
