@@ -1,1 +1,1 @@
-# 工作目录：综合、STA、TMAX和Formality
+# 生成目录：综合、STA、TMAX和Formality

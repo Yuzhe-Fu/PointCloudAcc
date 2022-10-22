@@ -1,0 +1,169 @@
+####### Modified by Changchun Zhou   ########
+
+##########################################################################
+#                           Global Settings                              #
+##########################################################################
+source -verbose ./config_temp.tcl
+
+set DESIGN      $DESIGN_NAME
+set TOP_MODULE  ${DESIGN}
+set clk         I_SysClk
+
+set_attribute hdl_search_path "./"
+set_attribute script_search_path ./script
+set_attribute information_level  9
+set_attribute hdl_error_on_blackbox true
+set_attribute hdl_max_loop_limit 8192
+set_attribute hdl_track_filename_row_col true /
+
+set_attribute max_cpus_per_server 64
+set_attribute super_thread_servers [string repeat "localhost " 64];
+##########################################################################
+#                     Libraries and technology files                     #
+##########################################################################
+source ./script/${TECH_SETTING}
+set_attribute lef_library  ${tech_lef}
+
+##########################################################################
+#                          Enable clock gating                           #
+##########################################################################
+set_attribute lp_insert_clock_gating true /
+set_attribute lp_clock_gating_exceptions_aware true /
+set_attribute lp_clock_gating_prefix "PREFIX_lp_clock_gating"  /
+
+##########################################################################
+#                      Enable operand isolation                          #
+##########################################################################
+set_attribute lp_insert_operand_isolation true /
+set_attribute lp_operand_isolation_prefix "PREFIX_lp_operand_isolation"  
+
+
+##########################################################################
+#                            Read HDL files                              #
+##########################################################################
+include ./script/read_hdl.scr
+foreach VERILOG_FILE ${VERILOG_FILES} {
+  read_hdl -sv ${VERILOG_FILE}
+}
+
+##########################################################################
+#                               Read Netlist                             #
+##########################################################################
+
+
+##########################################################################
+#                          Don't touch cells                             #
+##########################################################################
+set_attribute avoid true [find / -libcell SDF*]
+set_attribute avoid true [find / -libcell DFE*]
+
+##########################################################################
+#                     Setup for power analysis                           #
+##########################################################################
+
+
+##########################################################################
+#                    Setup for timing optimization                       #
+##########################################################################
+set_attribute tns_opto true /
+
+
+##########################################################################
+#                            Elaborate design                            #
+##########################################################################
+set_attribute hdl_vhdl_assign_width_mismatch true
+set_attribute hdl_vhdl_lrm_compliance true
+set_attribute interconnect_mode ple
+set_attribute remove_assigns true
+
+set_attribute hdl_undriven_signal_value 0
+set_attribute hdl_undriven_output_port_value 0
+set_attribute hdl_unconnected_input_port_value 0
+set_attribute auto_ungroup $UNGROUP
+
+elaborate $DESIGN
+
+##########################################################################
+#                              load sdf                                  #
+##########################################################################
+read_sdc ${SDC_FILE}
+check_design -unresolved
+##########################################################################
+#                          Setting constraints                           #
+##########################################################################
+
+
+##########################################################################
+#                              Cost groups                               #
+##########################################################################
+#input to register
+define_cost_group -name I2C_clk -design $DESIGN
+path_group -from [all_inputs] -to $clk -group I2C_clk
+report timing -encounter -full_pin_names -num_paths 100 -cost_group I2C_clk  > ${SYNTH_PROJDIR}/rpt/I2C_clk.rpt
+
+#register to output
+define_cost_group -name C2O_clk -design $DESIGN
+path_group -from  $clk -to [all_outputs] -group C2O_clk
+report timing -encounter -full_pin_names -num_paths 100 -cost_group C2O_clk  > ${SYNTH_PROJDIR}/rpt/C2O_clk.rpt
+
+#register to register
+define_cost_group -name C2C_clk -design $DESIGN
+path_group -from  $clk -to  $clk -group C2C_clk
+report timing -encounter -full_pin_names -num_paths 100 -cost_group C2C_clk  > ${SYNTH_PROJDIR}/rpt/C2C_clk.rpt
+
+##########################################################################
+#                         Clock gating constraint                        #
+##########################################################################
+set_attribute lp_clock_gating_max_flops 16 /designs/*
+
+##########################################################################
+#                         Power optimization                             #
+##########################################################################
+set_attribute lp_power_optimization_weight 0.1 /des*/*
+set_attribute max_dynamic_power 0 $DESIGN
+
+
+##########################################################################
+#                            check design                                #
+##########################################################################
+check_design -all > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_check_pre_synth.rpt
+check_library                  > ./${SYN_Frequency}/rpt/checkLibrary.rpt
+report timing -verbose -lint > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_pre_synth.rpt
+
+##########################################################################
+#                             Synthesis                                  #
+##########################################################################
+synthesize -to_generic -effort medium
+synthesize -to_mapped -eff high -no_incr
+synthesize -incr
+
+
+##########################################################################
+#                        Write files for Encounter                       #
+##########################################################################
+write_encounter design -basename ${SYNTH_PROJDIR}/p+r_enc/${DESIGN}_synth
+write_sdf -edge check_edge -setuphold split > ${SYNTH_PROJDIR}/gate/${DESIGN}.sdf
+write -m ${DESIGN} > ${SYNTH_PROJDIR}/gate/${DESIGN}.v
+
+##########################################################################
+#                    Report and analyze power and timing                 # 
+##########################################################################
+report power        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power.rpt
+report area         > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area.rpt
+report gates        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.gates.rpt
+report design_rules > ${SYNTH_PROJDIR}/rpt/${DESIGN}.rules.rpt
+report clock_gating > ${SYNTH_PROJDIR}/rpt/${DESIGN}.clkgating.rpt
+report summary      > ${SYNTH_PROJDIR}/rpt/${DESIGN}.summary.rpt
+report timing -num_paths 100     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing.rpt
+
+#### check design after synth
+check_design -all > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_post_synth.rpt
+report timing -verbose -lint > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_post_synth.rpt
+
+report area -depth 2       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth2.rpt
+report area -depth 3       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth3.rpt
+report area -depth 4       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth4.rpt
+report area -depth 5       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth5.rpt
+report area -depth 6       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth6.rpt
+
+puts "The RUNTIME is [get_attr runtime /] seconds"
