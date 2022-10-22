@@ -281,7 +281,7 @@ end
 // Logic Design TOP
 //=====================================================================================================================
 assign CCUTOP_NetFnh = state == FNH;
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         NumLy <= 0;
     end else if(state ==IDLE) begin
@@ -304,7 +304,7 @@ assign CCUITF_DatRdy = state == RD_ISA & PISO_ISAInRdy;
 assign ISA_WrEn = PISO_ISAOutVld & PISO_ISAOutRdy;
 assign PISO_ISAOutRdy = !ISA_Full;
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         ISA_WrAddr <= 0;
     end else if (state == IDLE ) begin
@@ -322,12 +322,13 @@ assign ISA_Empty = ISA_WrAddr == ISA_RdAddrMin;
 // Logic Design 3: Address of ISA RAM: input ReqCfg, output AckCfg
 //=====================================================================================================================
 
-always @(posedge clk or rst_n) begin
-    if (!rst_n)
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
         OpNumWord[0] = 1;// localparam Word_Array = 1;
         OpNumWord[1] = 6;// localparam Word_Conv  = 2;
         OpNumWord[2] = 7;// localparam Word_Pool  = 2;
         OpNumWord[3] = 5;// localparam Word_CTR   = 1;
+    end
 end
 
 genvar i;
@@ -351,7 +352,7 @@ assign OpCodeMatch = state[3] & OpCode == state[0 +: 3];
 assign ISA_RdEn = state[3] & !(ISA_CntRdWord == OpNumWord[state[0 +: 3]] & OpCodeMatch);
 assign ISA_RdAddr = ISA_RdAddr_Array[state[0 +: 3]];
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         ISA_DatOutVld <= 0;
     end else if ( !next_state[3] ) begin // finish CFG
@@ -683,19 +684,19 @@ assign CCUGLB_CfgVld[11] = Conv_CfgVld & GLBCCU_CfgRdy[11];
 
 assign Pool_CfgRdy = POLCCU_CfgRdy & GLBCCU_CfgRdy[3] & GLBCCU_CfgRdy[5] & GLBCCU_CfgRdy[14] & GLBCCU_CfgRdy[15 +: POOL_CORE];
 assign CCUPOL_CfgVld = Pool_CfgVld & POLCCU_CfgRdy; 
-assign GLBCCU_CfgRdy[ 3] = Pool_CfgVld & GLBCCU_CfgRdy[ 3];
-assign GLBCCU_CfgRdy[ 5] = Pool_CfgVld & GLBCCU_CfgRdy[ 5];
-assign GLBCCU_CfgRdy[14] = Pool_CfgVld & GLBCCU_CfgRdy[14];
-assign GLBCCU_CfgRdy[15 +: POOL_CORE] = Pool_CfgVld & GLBCCU_CfgRdy[15 +: POOL_CORE];
+assign CCUGLB_CfgVld[ 3] = Pool_CfgVld & GLBCCU_CfgRdy[ 3];
+assign CCUGLB_CfgVld[ 5] = Pool_CfgVld & GLBCCU_CfgRdy[ 5];
+assign CCUGLB_CfgVld[14] = Pool_CfgVld & GLBCCU_CfgRdy[14];
+assign CCUGLB_CfgVld[15 +: POOL_CORE] = Pool_CfgVld & GLBCCU_CfgRdy[15 +: POOL_CORE];
 
 assign Ctr_CfgRdy = CTRCCU_CfgRdy & GLBCCU_CfgRdy[2] & GLBCCU_CfgRdy[6] & GLBCCU_CfgRdy[7] & GLBCCU_CfgRdy[8] & GLBCCU_CfgRdy[12] & GLBCCU_CfgRdy[13];
 assign CCUCTR_CfgVld = Ctr_CfgVld & CTRCCU_CfgRdy;
-assign GLBCCU_CfgRdy[ 2] = Ctr_CfgVld & GLBCCU_CfgRdy[ 2];
-assign GLBCCU_CfgRdy[ 6] = Ctr_CfgVld & GLBCCU_CfgRdy[ 6];
-assign GLBCCU_CfgRdy[ 7] = Ctr_CfgVld & GLBCCU_CfgRdy[ 7];
-assign GLBCCU_CfgRdy[ 8] = Ctr_CfgVld & GLBCCU_CfgRdy[ 8];
-assign GLBCCU_CfgRdy[12] = Ctr_CfgVld & GLBCCU_CfgRdy[12];
-assign GLBCCU_CfgRdy[13] = Ctr_CfgVld & GLBCCU_CfgRdy[13];
+assign CCUGLB_CfgVld[ 2] = Ctr_CfgVld & GLBCCU_CfgRdy[ 2];
+assign CCUGLB_CfgVld[ 6] = Ctr_CfgVld & GLBCCU_CfgRdy[ 6];
+assign CCUGLB_CfgVld[ 7] = Ctr_CfgVld & GLBCCU_CfgRdy[ 7];
+assign CCUGLB_CfgVld[ 8] = Ctr_CfgVld & GLBCCU_CfgRdy[ 8];
+assign CCUGLB_CfgVld[12] = Ctr_CfgVld & GLBCCU_CfgRdy[12];
+assign CCUGLB_CfgVld[13] = Ctr_CfgVld & GLBCCU_CfgRdy[13];
 
 
 assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*0 +: DRAM_ADDR_WIDTH] = 0  ; // ISA

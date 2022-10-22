@@ -255,7 +255,6 @@ generate
             .UNDERFLOW (                                                                ),
             .COUNT     ( Cnt_RdPortAddr                                            )
         );
-        assign RdPortAddr_Array[gv_j] = RdPortUseAddr[gv_j]? RdPortAddr[ADDR_WIDTH*gv_j +: ADDR_WIDTH] : Cnt_RdPortAddr;
 
     end
 

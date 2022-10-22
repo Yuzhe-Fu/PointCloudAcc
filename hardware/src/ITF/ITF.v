@@ -138,7 +138,7 @@ end
 //=====================================================================================================================
 assign Trans = state == IDLE & ( |TOPITF_EmptyFull | MaxNum != 0);
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         PortIdx <= 0;
     end else if(state==IDLE && next_state == CMD) begin
@@ -190,7 +190,7 @@ assign ITFTOP_DatRdy    = {ITF_NUM_RDPORT{PISO_OUTRdy & state == OUT}};
 assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*PortIdx +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], RdTOP};
 assign CmdVld = state == CMD;
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n)
         ITFPAD_DatOE <= 0;
     else
@@ -263,7 +263,7 @@ counter#(
     .UNDERFLOW (                ),
     .COUNT     (                )
 );
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         RdReqNum <= 0;
     end else if(state == CMD && next_state == OUT) begin

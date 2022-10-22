@@ -169,7 +169,7 @@ assign KNNGLB_CrdAddrVld = state == CP | state == LP;
 //=====================================================================================================================
 // Logic Design: PIPE1
 //=====================================================================================================================
-always @(posedge clk or rst_n) begin: Pipe1
+always @(posedge clk or negedge rst_n) begin: Pipe1
     if(!rst_n) begin
         {KNNGLB_CrdAddr_s1, LopLast_s1} <= 0;
     end else if (KNNGLB_CrdAddrVld & GLBKNN_CrdAddrRdy) begin
@@ -182,7 +182,7 @@ assign KNNGLB_CrdRdy = PSSKNN_LopRdy | !KNNPSS_LopVld; // pipe1 of HS: last_read
 // Logic Design: PIPE2
 //=====================================================================================================================
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         KNN_CpCrd_s2 <= 0;
     end else if (GLBKNN_CrdVld & KNNGLB_CrdRdy) begin
@@ -190,7 +190,7 @@ always @(posedge clk or rst_n) begin
     end
 end
 
-always @(posedge clk or rst_n) begin: Pipe2_LopCrd_s2
+always @(posedge clk or negedge rst_n) begin: Pipe2_LopCrd_s2
     if(!rst_n) begin
         {LopCrd_s2, LopIdx_s2, LopLast_s2} <= 0;
     end else if (GLBKNN_CrdVld & KNNGLB_CrdRdy) begin
@@ -199,7 +199,7 @@ always @(posedge clk or rst_n) begin: Pipe2_LopCrd_s2
 end
 
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         KNNPSS_LopVld <= 1'b0;
     end else if (GLBKNN_CrdVld & KNNGLB_CrdRdy) begin

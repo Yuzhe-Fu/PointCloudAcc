@@ -41,8 +41,8 @@ module POL #(
     input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_Ofm    ,
     input  [POOL_CORE                               -1 : 0] GLBPOL_OfmVld ,
     output [POOL_CORE                               -1 : 0] POLGLB_OfmRdy  ,
-    output reg[(ACT_WIDTH*POOL_COMP_CORE)           -1 : 0] POLGLB_Ofm     ,
-    output reg                                              POLGLB_OfmVld  ,
+    output [(ACT_WIDTH*POOL_COMP_CORE)              -1 : 0] POLGLB_Ofm     ,
+    output                                                  POLGLB_OfmVld  ,
     input                                                   GLBPOL_OfmRdy   
 );
 //=====================================================================================================================
@@ -118,7 +118,7 @@ end
 //=====================================================================================================================
 assign POLCCU_CfgRdy = state == IDLE;
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         CntMapIn <= 0;
     end else if(state == IDLE) begin
@@ -131,7 +131,7 @@ end
 assign MapInLast = CntMapIn*POOL_CORE >= CCUPOL_CfgK*CCUPOL_CfgNip;
 
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         CntOfmOut <= 0;
     end else if(state == IDLE) begin

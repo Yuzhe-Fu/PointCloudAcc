@@ -23,21 +23,26 @@ module RAM #(
 wire                        [SRAM_DEPTH_BIT - 1 : 0] Addr;
 assign Addr = write_en ? addr_w : addr_r;
 
-wire [ SRAM_DEPTH_BIT          -1 : 0] A;
-wire [ SRAM_WIDTH              -1 : 0] DI;
-wire [ SRAM_BYTE               -1 : 0] WEB;
-wire                                   CSB;
+wire [ SRAM_DEPTH_BIT           -1 : 0] A;
+wire [ SRAM_WIDTH               -1 : 0] DI;
+wire [ SRAM_BYTE                -1 : 0] WEB;
+wire                                    CSB;
+wire [2                         -1 : 0] RTSEL;
 // delay 1/2 clock period
 `ifdef SIM // Delay for sim
     assign #(CLOCK_PERIOD/2) A   = Addr;
     assign #(CLOCK_PERIOD/2) DI  = data_in[SRAM_WIDTH -1 : 0];
     assign #(CLOCK_PERIOD/2) WEB = ~write_en ? {SRAM_BYTE{1'b1}}: {SRAM_BYTE{1'b0}};
     assign #(CLOCK_PERIOD/2) CSB = (~write_en)&(~read_en);
+
+    assign RTSEL = 2'b10;
 `else
     assign  A   = Addr;
     assign  DI  = data_in[SRAM_WIDTH -1 : 0];
     assign  WEB = ~write_en ? {SRAM_BYTE{1'b1}}: {SRAM_BYTE{1'b0}};
     assign  CSB = (~write_en)&(~read_en);
+
+    assign RTSEL = 2'b00;
 `endif
 
 wire [ SRAM_WIDTH              -1 : 0] DO;
@@ -57,6 +62,8 @@ always @ ( posedge clk) begin
     if( read_en_d)
         DO_d <= DO;
 end
+
+
 // ******************************************************************************
 `ifdef FUNC_SIM
     SPSRAM#(
@@ -81,7 +88,7 @@ end
             .WEB    ( WEB   ),
             .A      ( A     ),
             .D      ( DI    ),
-            .RTSEL  ( 2'd0  ),
+            .RTSEL  ( RTSEL  ),
             .WTSEL  ( 2'd0  ),
             .Q      ( DO    )
             );
@@ -96,22 +103,23 @@ end
             .WEB    ( WEB   ),
             .A      ( A     ),
             .D      ( DI    ),
-            .RTSEL  ( 2'd0  ),
+            .RTSEL  ( RTSEL  ),
             .WTSEL  ( 2'd0  ),
             .Q      ( DO    )
             );
-        end
-        
-        else if ( SRAM_WORD == 512 && SRAM_BIT == 32 && SRAM_BYTE == 4) begin
-            SYLA55_512X32X4CM2 RAM_GB(
-            .A                   (  A         ),
-            .DO                  (  DO        ),
-            .DI                  (  DI        ),
-            .DVSE                (  1'b0      ),
-            .DVS                 (  4'b0      ),
-            .WEB                 (  WEB       ),
-            .CK                  (  clk       ),
-            .CSB                 (  CSB       )
+        end 
+        else if( SRAM_WORD == 16 && SRAM_BIT == 8 && SRAM_BYTE == 1)begin
+            TS1N28HPCPUHDHVTB16X8M2SSO SYA_RAM(
+            .SLP    ( 1'b0  ),
+            .SD     ( 1'b0  ),
+            .CLK    ( clk   ),
+            .CEB    ( CSB   ),
+            .WEB    ( WEB   ),
+            .A      ( A     ),
+            .D      ( DI    ),
+            .RTSEL  ( RTSEL  ),
+            .WTSEL  ( 2'd0  ),
+            .Q      ( DO    )
             );
         end
     endgenerate

@@ -73,7 +73,7 @@ reg [CRD_WIDTH*CRD_DIM  -1 : 0] FPS_CpCrd;
 wire                            FPS_UpdMax;
 wire[IDX_WIDTH          -1 : 0] FPS_PsIdx;
 reg [DISTSQR_WIDTH      -1 : 0] FPS_MaxDist;
-reg [DISTSQR_WIDTH      -1 : 0] FPS_PsDist;
+wire[DISTSQR_WIDTH      -1 : 0] FPS_PsDist;
 
 reg [DISTSQR_WIDTH      -1 : 0] FPS_LastPsDist_s2; 
 reg [IDX_WIDTH          -1 : 0] FPS_LastPsIdx_s2;
@@ -188,7 +188,7 @@ assign Mask_Loop = Mask_LastLy & !FPSPSS_Mask;
 // Logic Design: PIPE1: DatIn
 //=====================================================================================================================
 
-always @(posedge clk or rst_n) begin: Pipe1
+always @(posedge clk or negedge rst_n) begin: Pipe1
     if(!rst_n) begin
         {FPSGLB_CrdAddr_s1, LopLast_s1} <= 0;
     end else if (FPSGLB_CrdAddrVld & GLBFPS_CrdAddrRdy) begin
@@ -198,7 +198,7 @@ end
 //=====================================================================================================================
 // Logic Design: PIPE2: DatUse
 //=====================================================================================================================
-always @(posedge clk or rst_n) begin: Pipe2_LopCrd_s2
+always @(posedge clk or negedge rst_n) begin: Pipe2_LopCrd_s2
     if(!rst_n) begin
         {LopCrd_s2, LopIdx_s2, LopLast_s2} <= 0;
     end else if (GLBFPS_CrdVld & FPSGLB_CrdRdy) begin
@@ -206,7 +206,7 @@ always @(posedge clk or rst_n) begin: Pipe2_LopCrd_s2
     end
 end
 
-always @(posedge clk or rst_n) begin: Pipe2_FPS_LastPsDist_s2
+always @(posedge clk or negedge rst_n) begin: Pipe2_FPS_LastPsDist_s2
     if(!rst_n) begin
         {FPS_LastPsDist_s2, FPS_LastPsIdx_s2} <= 0;
     end else if (GLBCTR_DistIdxVld & CTRGLB_DistIdxRdy) begin
@@ -225,7 +225,7 @@ assign FPSGLB_CrdRdy = !CTRGLB_DistIdxVld | GLBCTR_DistIdxRdy; // PIPE2's Dist i
 // Write back (Update)
 assign CTRGLB_DistWrAddr = FPS_PsIdx;
 assign CTRGLB_DistIdx = {FPS_PsDist, FPS_PsIdx};
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         CTRGLB_DistIdxVld <= 0;
     end else if (GLBCTR_DistIdxVld & CTRGLB_DistIdxRdy) begin
@@ -246,7 +246,7 @@ EDC#(
 //=====================================================================================================================
 // Logic Design: PIPE3: Update
 //=====================================================================================================================
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         FPSPSS_Mask <= 0;
     end else if (LopLast_s2 ) begin
@@ -254,7 +254,7 @@ always @(posedge clk or rst_n) begin
     end
 end
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         FPSPSS_MaskVld <= 0;
     end else if (LopLast_s2 ) begin
@@ -264,7 +264,7 @@ always @(posedge clk or rst_n) begin
     end
 end
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         FPS_CpCrd <= 0;
     end else if (LopLast_s2 ) begin
@@ -273,7 +273,7 @@ always @(posedge clk or rst_n) begin
 end
 
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx} <= 0;
     end else if (FPS_UpdMax ) begin
@@ -287,9 +287,9 @@ assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
 //=====================================================================================================================
 // Logic Design: PIPE4: 
 //=====================================================================================================================
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        Mask_LastLy <= {IDX_WIDTH{1'b1}};
+        Mask_LastLy <= {(2**IDX_WIDTH){1'b1}};
     end else if ( state==FNH ) begin
         Mask_LastLy <= FPSPSS_Mask;
     end

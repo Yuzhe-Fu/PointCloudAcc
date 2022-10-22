@@ -49,12 +49,13 @@ reg  [$clog2(NUM_SORT_CORE)    : 0] addr;
 reg  [2**IDX_WIDTH          -1 : 0] Mask_Array[0 : NUM_SORT_CORE-1];
 
 
-
 wire [SRAM_WIDTH*NUM_SORT_CORE-1 : 0] PSSMap;
 wire [NUM_SORT_CORE           -1 : 0] INSPSS_IdxVld;
 wire [NUM_SORT_CORE           -1 : 0] PSSINS_IdxRdy;
 wire [(IDX_WIDTH*SORT_LEN)*NUM_SORT_CORE-1 : 0] INSPSS_Idx;
 wire                                  PISO_IN_RDY;
+
+integer int_i;
 //=====================================================================================================================
 // Logic Design 2: HandShake
 //=====================================================================================================================
@@ -64,9 +65,12 @@ wire                                  PISO_IN_RDY;
 // Logic Design 1: INSPSS_Idx
 //=====================================================================================================================
 always @(posedge clk or negedge rst_n) begin
-    if (FPSPSS_MaskVld & PSSFPS_MaskRdy) begin
+    if(!rst_n) begin
+        for(int_i=0; int_i<NUM_SORT_CORE; int_i=int_i+1) begin
+            Mask_Array[0] <= 0;
+        end
+    end else if (FPSPSS_MaskVld & PSSFPS_MaskRdy) begin
         Mask_Array[addr] <= FPSPSS_Mask;
-        addr <= addr + 1;
     end
 end
 

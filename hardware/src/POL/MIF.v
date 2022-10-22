@@ -67,7 +67,7 @@ generate
             .POOL_COMP_CORE ( POOL_COMP_CORE ),
             .IDX_WIDTH      ( IDX_WIDTH ),
             .ACT_WIDTH      ( ACT_WIDTH )
-        )u_MIFC(
+        )u_MIC(
             .clk            ( clk            ),
             .rst_n          ( rst_n          ),
             .MIFMIC_Rst     ( POLMIF_Rst     ),
