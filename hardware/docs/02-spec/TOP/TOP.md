@@ -2,14 +2,18 @@
 1. 创新点只有一个，不够
 2. :white_check_mark:整体性能评估超过SOTA两倍
 3. 硬件设计
-    - :question: ISA文件生成
-    - :question: 直接RAM生成
-    - :question:先系统整出来综合一下，面积很重要决定功耗
-        - 系统仿真建立起来跑起来，先解决完语法问题
+    - :question: 代码不断优化
+    - :question:先系统整出来综合一下1M，面积很重要决定功耗
+        - 看post-synth的check，修改multiply drivers和bitwidth mismatch
         - 综合
-    - :white_check_mark:GLB每个接口位宽问题
-    - CTR出来的MAP怎么存，好送到POL，暂时一个SRAM_WIDTH的word存cp_idx和lp_idx，但是同一点不同层同时出来的？
-    - POL输出怎么规则存到GLB？先6个核顺序输出
+            - 100M无SYA
+            - 100M整个
+            - 1M整个
+    - :question: 最后是C_Model验证
+    - 暂不解决
+        - CTR出来的MAP怎么存，好送到POL，暂时一个SRAM_WIDTH的word存cp_idx和lp_idx，但是同一点不同层同时出来的？
+        - POL输出怎么规则存到GLB？先6个核顺序输出
+        - POL：当通道不是64时待后面补全
 
 # 文件列表
 | File | Descriptions |

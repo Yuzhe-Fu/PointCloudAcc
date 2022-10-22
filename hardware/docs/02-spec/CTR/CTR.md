@@ -65,10 +65,10 @@
 
 
 ## 模块陈述
-构建模块是用来将原始点云采样（FPS)后，找出每个点的K邻近点的index（K个index称为这个点的map即映射）。在顶层模块construct硬件图中，FPS和KNN复用部分硬件（黑色），FPS独有的是青色，KNN独有的是蓝色。在子模块中一律用黑色，不作区别，CTR分为FPS模块，KNN模块和共同部分，用流水线分级分块写
+构建模块是用来将原始点云采样（FPS)后，找出每个点的K邻近点的index（K个index称为这个点的map即映射）。在顶层模块construct硬件图中，FPS和KNN复用部分硬件（黑色），FPS独有的是青色，KNN独有的是蓝色。在子模块中一律用黑色，不作区别，CTR分为FPS模块，KNN模块和共同部分，用流水线顺序分级分块写
 - FPS
     - Stage0: **两个计数器：Cp和Lop** 生成地址
-        - FPS时，Cp计数从0到Nop-1，Lop从0到Nip-CpIdx，但第二层FPS由于Mask需要**跳着生成地址？**需要把列为最远点的坐标存到GLB，但暂时不用，直接用Mask使能计数器生成的Addr的有效，跳过的就无效和等
+        - FPS时，Cp计数从0到Nop-1，Lop从0到Nip-CpIdx，但第二层FPS由于Mask需要**跳着生成地址？**需要把列为最远点的坐标存到GLB，但暂时不用，直接用Mask_Loop（是上一次Mask与本次Mash的非的与）使能计数器生成的Addr的有效，跳过的就无效和等
     - Stage1: 同时取1. 输入点的坐标LopIdx的GLBCTR_Crd从ITF（经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD））和2. Dist_Buffer中取出与上一次FPS点集的距离FPS_LastPsDist，
     - Stage2: 都同时打一拍后，得(LopCrd_s2,LopIdx_s2)和(FPS_LastPsIdx_s2, FPS_LastPsDist_s2)，必须要打拍
         - 将LopCrd_s2与FPS_CpCrd（FPS中，FPS_CpCrd是上一次找出的最远点的坐标，KNN中，KNN_CpCrd_s2是当前需要找出邻近点的中心点坐标），计算欧式距离EDC LopDist_s2，比较出LopDist_s2和FPS_LastPsDist_s2的最小值，作为与当前FPS点集的距离FPS_PsDist，当前点FPS_PsDist需要与之前点到点集的距离FPS_MaxDist比较出最大值FPS_UpdMax，
