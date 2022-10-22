@@ -4,6 +4,8 @@ set period_clk $PERIOD
 create_clock -period $period_clk -add -name clock_clk -waveform [list 0 [expr $period_clk*0.5]] [get_ports I_SysClk]
 # create_clock -period $period_sck -add -name clock_sck -waveform [list 0 [expr $period_sck*0.5]] [get_ports O_spi_sck_PAD_rd0/DI]
 
+set clock_list [concat clock_clk]
+
 set_clock_uncertainty -setup 0.3  [get_ports I_SysClk]
 set_clock_uncertainty -hold  0.15 [get_ports I_SysClk]
 
@@ -31,6 +33,30 @@ set_output_delay -clock clock_clk -clock_fall -add_delay [expr 0.2*$period_clk] 
 set_output_delay -clock clock_clk -clock_fall -add_delay [expr 0.2*$period_clk] [get_ports O_DatOE]
 set_output_delay -clock clock_clk -clock_fall -add_delay [expr 0.2*$period_clk] [get_ports O_NetFnh]
 
+
+###### Cost groups ######
+foreach clock_name $clock_list {
+	define_cost_group -name ${clock_name}_in2reg -design $DESIGN
+	path_group -from [all_inputs] -to $clock_name -group ${clock_name}_in2reg
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_in2reg > ${SYNTH_PROJDIR}/rpt/${clock_name}_in2reg.rpt
+}
+
+
+
+#register to output
+foreach clock_name $clock_list {
+	define_cost_group -name ${clock_name}_reg2out -design $DESIGN
+	path_group -from $clock_name -to [all_outputs] -group ${clock_name}_reg2out
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2out > ${SYNTH_PROJDIR}/rpt/${clock_name}_reg2out.rpt
+}
+
+
+#register to register
+foreach clock_name $clock_list {
+	define_cost_group -name ${clock_name}_reg2reg -design $DESIGN
+	path_group -from $clock_name -to $clock_name -group ${clock_name}_reg2reg
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2reg > ${SYNTH_PROJDIR}/rpt/${clock_name}_reg2reg.rpt
+}
 
 # set_input_delay -clock clock_sck -clock_fall -add_delay [expr 0.0*$period_sck] [get_pins OE_req_PAD_rd0/DI]
 # set_max_delay 8 -from [get_ports I_OE_req] -to [get_ports IO*]

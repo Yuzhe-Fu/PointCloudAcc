@@ -14,6 +14,16 @@
 ../../src/POL/PCC.v
 ../../src/POL/MIF.v
 ../../src/POL/MIC.v
+../../src/SYA/SYA.v                     
+    ../../src/SYA/PE_BANK.v                 
+        ../../src/SYA/PE_ROW.v                 
+            ../../src/SYA/PE.v                 
+                ../../src/SYA/CPM/CPM_FIFO.v
+                ../../src/SYA/CPM/CPM_CNT.v                 
+                ../../src/SYA/CPM/CPM_CNT_C.v                 
+                ../../src/SYA/CPM/CPM_REG_E.v                 
+                ../../src/SYA/CPM/CPM_REG.v                 
+    ../../src/SYA/SYNC_SHAPE.v                 
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DEB/DEB.v
 ../../src/primitives/MINMAX/MINMAX.v
