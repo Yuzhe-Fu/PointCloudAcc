@@ -24,7 +24,7 @@ module INS #(
     input                                       PSSINS_LopLast  ,
     input        [IDX_WIDTH+DIST_WIDTH  -1 : 0] PSSINS_Lop      ,
     input                                       PSSINS_LopVld   ,
-    output                                      PSSINS_LopRdy   ,
+    output                                      INSPSS_LopRdy   ,
     output       [IDX_WIDTH*SORT_LEN    -1 : 0] INSPSS_Idx      ,   
     output reg                                  INSPSS_IdxVld   ,
     input                                       PSSINS_IdxRdy
@@ -59,7 +59,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 assign Out_HandShake = PSSINS_IdxRdy & INSPSS_IdxVld;
-assign PSSINS_LopRdy = !INSPSS_IdxVld;
+assign INSPSS_LopRdy = !INSPSS_IdxVld;
 
 //=====================================================================================================================
 // Logic Design 1: INSPSS_Idx
@@ -67,7 +67,7 @@ assign PSSINS_LopRdy = !INSPSS_IdxVld;
 
 
 assign {Idx, Dist} = PSSINS_Lop;
-assign In_HandShake = PSSINS_LopVld & PSSINS_LopRdy;
+assign In_HandShake = PSSINS_LopVld & INSPSS_LopRdy;
 
 genvar i;
 generate 
@@ -93,10 +93,7 @@ generate
             end
         end
         assign cur_insert[i] = !last_shift[i] & (DistArray[i] > Dist);
-        if(i==0)
-            assign last_shift[i] = 1'b0;
-        else
-            assign last_shift[i+1] = last_shift[i] | cur_insert[i];
+        assign last_shift[i] = i==0 ? 0 : last_shift[i-1] | cur_insert[i-1];
         assign INSPSS_Idx[IDX_WIDTH*i +: IDX_WIDTH] = IdxArray[i];
     end
 

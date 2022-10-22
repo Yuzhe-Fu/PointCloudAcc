@@ -79,8 +79,8 @@ wire [SRAM_WIDTH*MAXPAR         -1 : 0] WrPortDat_Array [0 : NUM_WRPORT -1];
 // reg [NUM_RDPORT+NUM_WRPORT      -1 : 0] CfgVld;
 // wire [NUM_RDPORT+NUM_WRPORT     -1 : 0] CfgRdy;
 
-wire [ADDR_WIDTH                -1 : 0] Cnt_RdPortAddr;
-wire [ADDR_WIDTH                -1 : 0] Cnt_WrPortAddr;
+
+
 
 wire                                    rvalid_array  [0 : NUM_BANK     -1];
 wire [SRAM_WIDTH                -1 : 0] rdata_array   [0 : NUM_BANK     -1];
@@ -209,6 +209,7 @@ endgenerate
 
 generate
     for(gv_j=0; gv_j<NUM_RDPORT; gv_j=gv_j+1) begin
+        wire [ADDR_WIDTH            -1 : 0] Cnt_RdPortAddr;
         wire                                INC;
         wire [$clog2(NUM_BANK)      -1 : 0] PortCur1stBankIdx;
         wire [$clog2(NUM_BANK)      -1 : 0] RdPort1stBankIdx;
@@ -236,8 +237,8 @@ generate
             assign RdPortDat[SRAM_WIDTH*(MAXPAR*gv_j + gv_i) +: SRAM_WIDTH] =  rdata_array[PortCur1stBankIdx+gv_i];
         end
         assign RdPortAddrRdy[gv_j] = INC;
-        assign RdPortFull[gv_j] = RdPortReqNum[gv_j] == CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ;
-        assign RdPortReqNum[gv_j] = WrPortAddr_Array[RdPortMthWrPortIdx] - RdPortAddr_Array[gv_j];
+        assign RdPortFull[gv_j] = RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPort_AddrMax[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ;
+        assign RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[RdPortMthWrPortIdx] - RdPortAddr_Array[gv_j];
         assign RdPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = RdPortAddr_Array[gv_j];
 
         counter#(
@@ -256,6 +257,14 @@ generate
             .COUNT     ( Cnt_RdPortAddr                                            )
         );
 
+        prior_arb#(
+            .REQ_WIDTH ( NUM_BANK )
+        )u_prior_arb_RdPort1stBankIdx(
+            .req ( CCUGLB_CfgPortBankFlag[NUM_BANK*(gv_j+NUM_WRPORT) +: NUM_BANK] ),
+            .gnt (  ),
+            .arb_port  ( RdPort1stBankIdx  )
+        );
+
     end
 
 endgenerate
@@ -266,6 +275,7 @@ endgenerate
 
 generate
     for(gv_j=0; gv_j<NUM_WRPORT; gv_j=gv_j+1) begin
+        wire [ADDR_WIDTH        -1 : 0] Cnt_WrPortAddr;
         wire                            INC;
         wire [$clog2(NUM_BANK)  -1 : 0] PortCur1stBankIdx;
         wire [$clog2(NUM_BANK)  -1 : 0] WrPort1stBankIdx;
@@ -313,7 +323,7 @@ generate
 
         prior_arb#(
             .REQ_WIDTH ( NUM_BANK )
-        )u_prior_arb(
+        )u_prior_arb_WrPort1stBankIdx(
             .req ( CCUGLB_CfgPortBankFlag[NUM_BANK*gv_j +: NUM_BANK]),
             .gnt (  ),
             .arb_port  ( WrPort1stBankIdx  )

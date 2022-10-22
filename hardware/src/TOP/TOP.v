@@ -299,7 +299,7 @@ assign TOPITF_DatVld    = RdPortDatVld[0 +: 2];
 // assign TOPITF_DatLast   = RdPortDatLast[0 +: 2];
 assign RdPortDatRdy[0 +: 2] = ITFTOP_DatRdy;
 
-assign {WrPortDat[SRAM_WIDTH*0 +: SRAM_WIDTH*4], ITFCCU_Dat}= ITFTOP_Dat;
+assign {WrPortDat[ (SRAM_WIDTH*MAXPAR)*0 +:  (SRAM_WIDTH*MAXPAR)*4], ITFCCU_Dat}= ITFTOP_Dat;
 assign {WrPortDatVld[0 +: 4], ITFCCU_DatVld}                = ITFTOP_DatVld;
 assign {WrPortDatLast[0 +: 4], ITFCCU_DatLast}              = ITFTOP_DatLast;
 assign TOPITF_DatRdy                                        = {WrPortDatRdy[0 +: 4], CCUITF_DatRdy};
@@ -429,14 +429,14 @@ assign RdPortDatRdy[GLBRDIDX_CTRDST] = CTRGLB_DistIdxRdy;
 assign WrPortUseAddr[GLBWRIDX_CTRDST] = 1'b1;
 assign WrPortAddr[ADDR_WIDTH*GLBWRIDX_CTRDST +: ADDR_WIDTH] = CTRGLB_DistWrAddr;
 
-assign WrPortDat[SRAM_WIDTH*GLBWRIDX_CTRDST +: SRAM_WIDTH] = CTRGLB_DistIdx;
+assign WrPortDat[ (SRAM_WIDTH*MAXPAR)*GLBWRIDX_CTRDST +:  (SRAM_WIDTH*MAXPAR)] = CTRGLB_DistIdx;
 assign WrPortDatVld[GLBWRIDX_CTRDST] = CTRGLB_DistIdxVld;
 assign GLBCTR_DistIdxRdy = WrPortDatRdy[GLBWRIDX_CTRDST];
 
 // Write MAP
-assign WrPortDat[ADDR_WIDTH*6 +: ADDR_WIDTH] =  CTRGLB_Map;
-assign WrPortDatVld[6] = CTRGLB_MapVld;
-assign GLBCTR_MapRdy = WrPortDatRdy[6];
+assign WrPortDat[ADDR_WIDTH*GLBWRIDX_CTRMAP +:  (SRAM_WIDTH*MAXPAR)] =  CTRGLB_Map;
+assign WrPortDatVld[GLBWRIDX_CTRMAP] = CTRGLB_MapVld;
+assign GLBCTR_MapRdy = WrPortDatRdy[GLBWRIDX_CTRMAP];
 
 CTR#(
     .SRAM_WIDTH         ( SRAM_WIDTH    ),
@@ -490,39 +490,39 @@ assign WrPortDat[ (SRAM_WIDTH*MAXPAR)*GLBWRIDX_SYAOFM +: (SRAM_WIDTH*MAXPAR) ] =
 assign WrPortDatVld[GLBWRIDX_SYAOFM] = SYAGLB_OfmVld;
 assign GLBSYA_OfmRdy = WrPortDatRdy[GLBWRIDX_SYAOFM];
 
-// SYA #(
-//     .ACT_WIDTH ( ACT_WIDTH), 
-//     .WGT_WIDTH ( ACT_WIDTH), 
-//     .NUM_ROW   ( SYA_NUM_ROW  ), 
-//     .NUM_COL   ( SYA_NUM_COL  ), 
-//     .NUM_BANK  ( SYA_NUM_BANK ), 
-//     .SRAM_WIDTH( SRAM_WIDTH) 
-// )(
-//     .clk            (clk            ),
-//     .rst_n          (rst_n          ),
-//     .CCUSYA_Rst     (CCUSYA_Rst     ),
-//     .CCUSYA_CfgVld  (CCUSYA_CfgVld  ),
-//     .SYACCU_CfgRdy  (SYACCU_CfgRdy  ),
-//     .CCUSYA_CfgMod  (CCUSYA_CfgMod  ),
-//     .CCUSYA_CfgNip  (CCUSYA_CfgNip  ),
-//     .CCUSYA_CfgChi  (CCUSYA_CfgChi  ),
-//     .CCUSYA_CfgScale(CCUSYA_CfgScale),
-//     .CCUSYA_CfgShift(CCUSYA_CfgShift),
-//     .CCUSYA_CfgZp   (CCUSYA_CfgZp   ),
-//     .GLBSYA_Act     (GLBSYA_Act     ), 
-//     .GLBSYA_ActVld  (GLBSYA_ActVld  ),
-//     .SYAGLB_ActRdy  (SYAGLB_ActRdy  ),
-//     .GLBSYA_Wgt     (GLBSYA_Wgt     ),
-//     .GLBSYA_WgtVld  (GLBSYA_WgtVld  ),
-//     .SYAGLB_WgtRdy  (SYAGLB_WgtRdy  ),
-//     .SYAGLB_Ofm     (SYAGLB_Ofm     ),
-//     .SYAGLB_OfmVld  (SYAGLB_OfmVld  ),
-//     .GLBSYA_OfmRdy  (GLBSYA_OfmRdy  )
-// );
+SYA #(
+    .ACT_WIDTH ( ACT_WIDTH), 
+    .WGT_WIDTH ( ACT_WIDTH), 
+    .NUM_ROW   ( SYA_NUM_ROW  ), 
+    .NUM_COL   ( SYA_NUM_COL  ), 
+    .NUM_BANK  ( SYA_NUM_BANK ), 
+    .SRAM_WIDTH( SRAM_WIDTH) 
+) U_SYA(
+    .clk            (clk            ),
+    .rst_n          (rst_n          ),
+    .CCUSYA_Rst     (CCUSYA_Rst     ),
+    .CCUSYA_CfgVld  (CCUSYA_CfgVld  ),
+    .SYACCU_CfgRdy  (SYACCU_CfgRdy  ),
+    .CCUSYA_CfgMod  (CCUSYA_CfgMod  ),
+    .CCUSYA_CfgNip  (CCUSYA_CfgNip  ),
+    .CCUSYA_CfgChi  (CCUSYA_CfgChi  ),
+    .CCUSYA_CfgScale(CCUSYA_CfgScale),
+    .CCUSYA_CfgShift(CCUSYA_CfgShift),
+    .CCUSYA_CfgZp   (CCUSYA_CfgZp   ),
+    .GLBSYA_Act     (GLBSYA_Act     ), 
+    .GLBSYA_ActVld  (GLBSYA_ActVld  ),
+    .SYAGLB_ActRdy  (SYAGLB_ActRdy  ),
+    .GLBSYA_Wgt     (GLBSYA_Wgt     ),
+    .GLBSYA_WgtVld  (GLBSYA_WgtVld  ),
+    .SYAGLB_WgtRdy  (SYAGLB_WgtRdy  ),
+    .SYAGLB_Ofm     (SYAGLB_Ofm     ),
+    .SYAGLB_OfmVld  (SYAGLB_OfmVld  ),
+    .GLBSYA_OfmRdy  (GLBSYA_OfmRdy  )
+);
 
 assign GLBPOL_Map                                   = RdPortDat[(SRAM_WIDTH*MAXPAR)*GLBRDIDX_POLMAP +: (SRAM_WIDTH*MAXPAR)];
 assign GLBPOL_MapVld                                = RdPortDatVld[GLBRDIDX_POLMAP];
-assign RdPortDatVld[GLBRDIDX_POLMAP]                = POLGLB_MapRdy;
+assign RdPortDatRdy[GLBRDIDX_POLMAP]                = POLGLB_MapRdy;
 
 assign RdPortUseAddr[GLBRDIDX_POLOFM +: POOL_CORE]  = {POOL_CORE{1'b1}};
 assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_POLOFM +: ADDR_WIDTH*POOL_CORE]= POLGLB_Addr;
