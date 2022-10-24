@@ -5,9 +5,7 @@
     - :question:先系统整出来综合一下1M，面积很重要决定功耗
         - 修改看post-synth的check，和面积报告
             - 面积里面优化
-                - PLC反常：可能是MIF的仲裁问题，已修正看结果
-                - **KNN太大：寄存器2**16 = 8KB太大必须用SRAM,FPS和KNN里面的都用SRAM**, FPS和PSS中使用%取余得ByteIdx
-                    - KNN其它模块大小？INS多大？
+                - FPS增加bitEn, KNN.PSS.PISO缩小（暂不）
                 - 寄存器
                     - 减少不必要的寄存器：也是为了工具能自动优化组合逻辑
                     - **大寄存器都换成SRAM** >=128bit

@@ -170,7 +170,7 @@ counter#( // Pipe S0
     .COUNT     ( LopIdx             )
 );
 
-always @(posedge clk or rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         MaskRAMByteIdx <= 0;
     end else if( CCUCTR_Rst ) begin

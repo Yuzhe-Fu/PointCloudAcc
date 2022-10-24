@@ -2,7 +2,7 @@ set DESIGN_NAME = "TOP"
 set VT = "3vt"
 set PERIOD = "1000"
 set UNGROUP = "group"
-set NOTE = "whole"
+set NOTE = "whole_opt_CTR"
 
 if ($DESIGN_NAME == "TOP") then
     set SDC_FILE=./TOP.sdc 

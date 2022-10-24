@@ -49,6 +49,8 @@ hardware/work/
 hardware/project/
 hardware/vft/
 .*
+fv/
+*.gz
 #######################################################
 #      The above part is Yuzhe Fu software part
 #      May Buddha Blesses u~

@@ -17,7 +17,7 @@ set_attribute hdl_max_loop_limit 8192
 set_attribute hdl_track_filename_row_col true /
 
 set_attribute max_cpus_per_server 16
-set_attribute super_thread_servers [string repeat "localhost " 8]
+set_attribute super_thread_servers [string repeat "localhost " 16]
 ##########################################################################
 #                     Libraries and technology files                     #
 ##########################################################################
