@@ -32,6 +32,8 @@ module POL #(
     input  [POOL_MAP_DEPTH_WIDTH                    -1 : 0] CCUPOL_CfgK  , // 24
     input  [IDX_WIDTH                               -1 : 0] CCUPOL_CfgNip, // 1024
     input  [CHN_WIDTH                               -1 : 0] CCUPOL_CfgChi, // 64
+    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_AddrMin,
+    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_AddrMax,// Not Included
     input                                                   GLBPOL_MapVld ,
     input  [SRAM_WIDTH                              -1 : 0] GLBPOL_Map    ,
     output                                                  POLGLB_MapRdy ,
@@ -213,6 +215,8 @@ MIF#(
     .clk            ( clk            ),
     .rst_n          ( rst_n          ),
     .POLMIF_Rst     ( state== IDLE  ),
+    .CCUMIF_AddrMin ( CCUPOL_AddrMin ),
+    .CCUMIF_AddrMax ( CCUPOL_AddrMax ),
     .POLMIF_AddrVld ( PLCPOL_AddrVld ),
     .POLMIF_Addr    ( PLCPOL_Addr    ),
     .MIFPOL_Rdy     ( POLPLC_AddrRdy ),

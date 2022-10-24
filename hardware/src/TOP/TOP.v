@@ -147,6 +147,8 @@ wire                                              POLCCU_CfgRdy;
 wire  [MAP_WIDTH                          -1 : 0] CCUPOL_CfgK;
 wire  [IDX_WIDTH                          -1 : 0] CCUPOL_CfgNip;
 wire  [CHN_WIDTH                          -1 : 0] CCUPOL_CfgChi;
+wire  [IDX_WIDTH*POOL_CORE                -1 : 0] CCUPOL_AddrMin;
+wire  [IDX_WIDTH*POOL_CORE                -1 : 0] CCUPOL_AddrMax;
 wire                                              CCUCTR_Rst;
 wire                                              CCUCTR_CfgVld;
 wire                                              CTRCCU_CfgRdy;
@@ -376,6 +378,8 @@ CCU#(
     .CCUPOL_CfgK             ( CCUPOL_CfgK             ),
     .CCUPOL_CfgNip           ( CCUPOL_CfgNip           ),
     .CCUPOL_CfgChi           ( CCUPOL_CfgChi           ),
+    .CCUPOL_AddrMin          ( CCUPOL_AddrMin          ),
+    .CCUPOL_AddrMax          ( CCUPOL_AddrMax          ),    
     .CCUCTR_Rst              ( CCUCTR_Rst              ),
     .CCUCTR_CfgVld           ( CCUCTR_CfgVld           ),
     .CTRCCU_CfgRdy           ( CTRCCU_CfgRdy           ),
@@ -629,6 +633,8 @@ POL#(
     .CCUPOL_CfgK          ( CCUPOL_CfgK          ),
     .CCUPOL_CfgNip        ( CCUPOL_CfgNip        ),
     .CCUPOL_CfgChi        ( CCUPOL_CfgChi        ),
+    .CCUPOL_AddrMin       ( CCUPOL_AddrMin       ),
+    .CCUPOL_AddrMax       ( CCUPOL_AddrMax       ),
     .GLBPOL_MapVld        ( GLBPOL_MapVld        ),
     .GLBPOL_Map           ( GLBPOL_Map           ),
     .POLGLB_MapRdy        ( POLGLB_MapRdy        ),

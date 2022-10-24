@@ -68,6 +68,8 @@ module CCU #(
     output  reg [MAP_WIDTH                      -1 : 0] CCUPOL_CfgK,
     output  reg [IDX_WIDTH                      -1 : 0] CCUPOL_CfgNip,
     output  reg [CHN_WIDTH                      -1 : 0] CCUPOL_CfgChi,
+    output  reg [IDX_WIDTH*POOL_CORE            -1 : 0] CCUPOL_AddrMin,
+    output  reg [IDX_WIDTH*POOL_CORE            -1 : 0] CCUPOL_AddrMax,// Not Included
 
     output                                              CCUCTR_Rst,
     output                                              CCUCTR_CfgVld,
@@ -336,7 +338,7 @@ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         OpNumWord[0] = 1;// localparam Word_Array = 1;
         OpNumWord[1] = 6;// localparam Word_Conv  = 2;
-        OpNumWord[2] = 7;// localparam Word_Pool  = 2;
+        OpNumWord[2] = 9;// localparam Word_Pool  = 2;
         OpNumWord[3] = 7;// localparam Word_CTR   = 1;
     end
 end
@@ -473,6 +475,8 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgMod           <= 0;
         CCUPOL_CfgNip           <= 0;
         CCUPOL_CfgChi           <= 0;
+        CCUPOL_AddrMin          <= 0;
+        CCUPOL_AddrMax          <= 0;
         CCUPOL_CfgK             <= 0;
         CCUCTR_CfgMod           <= 0;
         CCUCTR_CfgNip           <= 0;
@@ -530,33 +534,37 @@ always @(posedge clk or negedge rst_n) begin
                 CCUPOL_CfgNip   <= ISA_DatOut[40 +: 16];
                 CCUPOL_CfgChi   <= ISA_DatOut[56 +: 16];// 
                 CCUPOL_CfgK     <= ISA_DatOut[72 +: 16];// 
-            end else if(ISA_CntRdWord == 2) begin
+            end else if(ISA_CntRdWord == 2) begin  
+                CCUPOL_AddrMin  <= ISA_DatOut[PORT_WIDTH-1 : 8]; // Min BUG with 120 bit
+            end else if(ISA_CntRdWord == 3) begin  
+                CCUPOL_AddrMax  <= ISA_DatOut[PORT_WIDTH-1 : 8];
+            end else if(ISA_CntRdWord == 4) begin
                 ITF_WrPortMapBank <= ISA_DatOut[8  +: 32];
                 POL_WrPortOfmBank <= ISA_DatOut[40 +: 32];
                 POL_RdPortMapBank <= ISA_DatOut[72 +: 32];
-            end else if (ISA_CntRdWord == 3) begin
+            end else if (ISA_CntRdWord == 5) begin
                 POL_RdPortOfm0Bank <= ISA_DatOut[8  +: 32];
                 POL_RdPortOfm1Bank <= ISA_DatOut[40  +: 32];
                 POL_RdPortOfm2Bank <= ISA_DatOut[72  +: 32];
-            end else if (ISA_CntRdWord == 4) begin
+            end else if (ISA_CntRdWord == 6) begin
                 POL_RdPortOfm3Bank <= ISA_DatOut[8  +: 32];
                 POL_RdPortOfm4Bank <= ISA_DatOut[40  +: 32];
                 POL_RdPortOfm5Bank <= ISA_DatOut[72  +: 32];
-            end else if(ISA_CntRdWord == 5) begin
+            end else if(ISA_CntRdWord == 7) begin
                 POL_RdPortOfm0_AddrMax <= ISA_DatOut[8  +: 16];
                 POL_RdPortOfm1_AddrMax <= ISA_DatOut[24  +: 16];
                 POL_RdPortOfm2_AddrMax <= ISA_DatOut[40  +: 16];
                 POL_RdPortOfm3_AddrMax <= ISA_DatOut[56  +: 16];
                 POL_RdPortOfm4_AddrMax <= ISA_DatOut[72  +: 16];
                 POL_RdPortOfm5_AddrMax <= ISA_DatOut[88  +: 16];
-            end else if(ISA_CntRdWord == 6) begin
+            end else if(ISA_CntRdWord == 8) begin
                 POL_RdPortOfm0ParBank  <= ISA_DatOut[8 +:  8];
                 POL_RdPortOfm1ParBank  <= ISA_DatOut[16 +:  8];
                 POL_RdPortOfm2ParBank  <= ISA_DatOut[24 +:  8];
                 POL_RdPortOfm3ParBank  <= ISA_DatOut[32 +:  8];
                 POL_RdPortOfm4ParBank  <= ISA_DatOut[40 +:  8];
                 POL_RdPortOfm5ParBank  <= ISA_DatOut[48 +:  8];
-            end else if(ISA_CntRdWord == 7) begin
+            end else if(ISA_CntRdWord == 9) begin
                 POL_WrPortOfm_AddrMax <= ISA_DatOut[24 +: 16];
                 POL_RdPortMap_AddrMax <= ISA_DatOut[40 +: 16];
                 ITF_WrPortMap_AddrMax <= ISA_DatOut[56 +: 16];

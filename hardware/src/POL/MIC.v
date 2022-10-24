@@ -23,10 +23,14 @@ module MIC #(
     input                                                           rst_n                   ,
     input                                                           MIFMIC_Rst,
 
+    input       [IDX_WIDTH                                  -1 : 0] CCUMIC_AddrMin,
+    input       [IDX_WIDTH                                  -1 : 0] CCUMIC_AddrMax,// Not Included
+
+
     // Configure
-    input       [POOL_CORE                                  -1 : 0] POLMIF_AddrVld,
-    input       [IDX_WIDTH*POOL_CORE                        -1 : 0] POLMIF_Addr   ,
-    output      [POOL_CORE                                  -1 : 0] MIFPOL_Rdy    ,
+    input       [POOL_CORE                                  -1 : 0] POLMIC_AddrVld,
+    input       [IDX_WIDTH*POOL_CORE                        -1 : 0] POLMIC_Addr   ,
+    output      [POOL_CORE                                  -1 : 0] MICMIF_Rdy    ,
 
     output                                                          MIFGLB_AddrVld,
     output      [IDX_WIDTH                                  -1 : 0] MIFGLB_Addr   ,
@@ -56,6 +60,8 @@ wire                                cmd_full;
 wire                                out_empty;  
 wire                                out_full;  
 
+wire [POOL_CORE             -1 : 0] AddrMatch;
+genvar gv_i;
 //=====================================================================================================================
 // Logic Design : 
 //=====================================================================================================================
@@ -97,9 +103,9 @@ FIFO_FWFT#(
     .clk        ( clk                                                       ),
     .Reset      ( MIFMIC_Rst                                                      ),
     .rst_n      ( rst_n                                                     ),
-    .push       ( POLMIF_AddrVld[arb_port] & MIFPOL_Rdy[arb_port]           ), 
+    .push       ( POLMIC_AddrVld[arb_port] & MICMIF_Rdy[arb_port]           ), 
     .pop        ( MIFGLB_AddrVld & GLBMIF_AddrRdy                           ),
-    .data_in    ( {arb_port, POLMIF_Addr[IDX_WIDTH*arb_port +: IDX_WIDTH]}  ),
+    .data_in    ( {arb_port, POLMIC_Addr[IDX_WIDTH*arb_port +: IDX_WIDTH]}  ),
     .data_out   ( {rd_port, MIFGLB_Addr}                                    ),
     .empty      ( cmd_empty                                                 ),
     .full       ( cmd_full                                                  ),
@@ -107,13 +113,18 @@ FIFO_FWFT#(
 );
 
 assign MIFGLB_AddrVld   = !cmd_empty;
-assign MIFPOL_Rdy       =  gnt & {POOL_CORE{!cmd_full}};
+assign MICMIF_Rdy       =  gnt & {POOL_CORE{!cmd_full}};
 
+generate
+    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin
+        assign AddrMatch[gv_i] = POLMIC_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH]>= CCUMIC_AddrMin & POLMIC_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH] < CCUMIC_AddrMax;
+    end
+endgenerate
 
 prior_arb#(
     .REQ_WIDTH ( POOL_CORE )
 )u_prior_arb(
-    .req ( POLMIF_AddrVld   ),
+    .req ( POLMIC_AddrVld & AddrMatch   ),
     .gnt ( gnt              ), // 010000
     .arb_port( arb_port             )
 );

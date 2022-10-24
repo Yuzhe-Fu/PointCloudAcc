@@ -21,10 +21,12 @@ module MIF #(
     input                               clk                     ,
     input                               rst_n                   ,
     input                               POLMIF_Rst,
+    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUMIF_AddrMin,
+    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUMIF_AddrMax,// Not Included
     // Configure
     input  [POOL_CORE                               -1 : 0] POLMIF_AddrVld,
     input  [IDX_WIDTH*POOL_CORE                     -1 : 0] POLMIF_Addr   ,
-    output [POOL_CORE                               -1 : 0] MIFPOL_Rdy    ,
+    output reg [POOL_CORE                           -1 : 0] MIFPOL_Rdy    ,
     output [POOL_CORE                               -1 : 0] MIFGLB_AddrVld,
     output [IDX_WIDTH*POOL_CORE                     -1 : 0] MIFGLB_Addr   ,
     input  [POOL_CORE                               -1 : 0] GLBMIF_AddrRdy,
@@ -49,6 +51,7 @@ wire [$clog2(POOL_CORE)         -1 : 0] PolCoreIdx  [0 : POOL_CORE-1];
 wire [ACT_WIDTH*POOL_COMP_CORE  -1 : 0] Ofm         [0 : POOL_CORE-1];
 reg  [POOL_CORE     -1 : 0] MIFMIC_OfmRdy;
 wire [POOL_CORE     -1 : 0] MICMIF_OfmVld;
+wire [POOL_CORE     -1 : 0] MICMIF_AddrRdy[0 : POOL_CORE -1];
 reg [POOL_CORE          -1 : 0] match [0 : POOL_CORE -1];
 wire[POOL_CORE          -1 : 0] arbreq[0 : POOL_CORE -1];
 wire[$clog2(POOL_CORE)  -1 : 0] PLCArbMICIdx[0 : POOL_CORE -1];
@@ -74,9 +77,11 @@ generate
             .clk            ( clk            ),
             .rst_n          ( rst_n          ),
             .MIFMIC_Rst     ( POLMIF_Rst     ),
-            .POLMIF_AddrVld ( POLMIF_AddrVld ),
-            .POLMIF_Addr    ( POLMIF_Addr    ),
-            .MIFPOL_Rdy     ( MIFPOL_Rdy     ),
+            .CCUMIC_AddrMin ( CCUMIF_AddrMin[IDX_WIDTH*gv_i +: IDX_WIDTH] ),
+            .CCUMIC_AddrMax ( CCUMIF_AddrMax[IDX_WIDTH*gv_i +: IDX_WIDTH] ),
+            .POLMIC_AddrVld ( POLMIF_AddrVld ),
+            .POLMIC_Addr    ( POLMIF_Addr    ),
+            .MICMIF_Rdy     ( MICMIF_AddrRdy[gv_i]     ),
             .MIFGLB_AddrVld ( MIFGLB_AddrVld[gv_i] ),
             .MIFGLB_Addr    ( MIFGLB_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH]    ),
             .GLBMIF_AddrRdy ( GLBMIF_AddrRdy[gv_i] ),
@@ -91,6 +96,13 @@ generate
 
     end 
 endgenerate
+
+always @(*) begin
+    MIFPOL_Rdy = 0;
+    for(int_i=0; int_i <POOL_CORE; int_i=int_i+1) begin
+        MIFPOL_Rdy = MIFPOL_Rdy | (POLMIF_AddrVld & MICMIF_AddrRdy[int_i]);
+    end
+end
 
 
 generate
