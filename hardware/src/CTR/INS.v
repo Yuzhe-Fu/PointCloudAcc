@@ -93,12 +93,12 @@ generate
             end
         end
         assign cur_insert[i] = !last_shift[i] & (DistArray[i] > Dist);
-        assign last_shift[i] = i==0 ? 0 : last_shift[i-1] | cur_insert[i-1];
+        assign last_shift[i+1] = last_shift[i] | cur_insert[i];
         assign INSPSS_Idx[IDX_WIDTH*i +: IDX_WIDTH] = IdxArray[i];
     end
 
 endgenerate
-
+assign last_shift[0] = 0;
 
 
 //=====================================================================================================================
