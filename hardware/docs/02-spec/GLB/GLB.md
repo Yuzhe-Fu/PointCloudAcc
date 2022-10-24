@@ -48,17 +48,20 @@ FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于a
     - 3: IF写MAP：~
     - 4: SA写sa_fm SYAGLB_Ofm：2个Bank，64B，固定为两个Bank位宽，不随CCUSYA_CfgMod
     - 5: POOL写pool_fm POLGLB_Fm: 2个Bank，64个比较器出，就64出，要是channel=128，就两次loop，写两次64
-    - 6: CTR写Dist CTRGLB_DistIdx：固定最少的一个Bank
-    - 7: CTR写MAP CTRGLB_Map：固定最少的一个Bank
+    - 6: CTR写Dist CTRGLB_DistIdx：固定最少的一个Bank位宽
+    - 7: CTR写MAP CTRGLB_Map：固定最少的一个Bank位宽
+    - 8：CTR的FPS写Mask：固定最少的一个Bank位宽
 - 读口：
     - 0: IF读MAP：IF读都是1个SRAM_WIDTH
     - 1: IF读ofm：IF读都是1个SRAM_WIDTH
     - 2: SA读sa_fm(act/ofm) GLBSYA_Act：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时1，2时4
     - 3: SA读weight GLBSYA_Wgt：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时4，2时1
-    - 4: CTR读Crd GLBCTR_Crd：固定最少的一个Bank
-    - 5: CTR读Dist GLBCTR_DistIdx：固定最少的一个Bank
-    - 6: POL读MAP GLBPOL_Map：固定最少的一个Bank
-    - 7-12: POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个Bank位宽
+    - 4: CTR读Crd GLBCTR_Crd：固定最少的一个Bank位宽
+    - 5: CTR读Dist GLBCTR_DistIdx：固定最少的一个Bank位宽
+    - 6: CTR的FPS读Mask：固定最少的一个Bank位宽
+    - 7: CTR的KNN读Mask：固定最少的一个Bank位宽
+    - 8: POL读MAP GLBPOL_Map：固定最少的一个Bank
+    - 9-14: POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个Bank位宽
 
 localparam GLBWRIDX_ITFACT = 0;
 localparam GLBWRIDX_ITFWGT = 1;

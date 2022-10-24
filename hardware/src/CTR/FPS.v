@@ -17,7 +17,9 @@ module FPS #(
     parameter IDX_WIDTH         = 10,
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3, 
-    parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) )
+    parameter NUM_SORT_CORE     = 8,
+    parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) ),
+    parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
     )(
     input                               clk  ,
     input                               rst_n,
@@ -50,10 +52,21 @@ module FPS #(
     output reg                          CTRGLB_DistIdxVld,
     input                               GLBCTR_DistIdxRdy,
 
-    output reg [2**IDX_WIDTH    -1 : 0] FPSPSS_Mask,
-    output reg                          FPSPSS_MaskVld,
-    input                               PSSFPS_MaskRdy
-      
+    // Input Mask Bit
+    output  [MASK_ADDR_WIDTH    -1 : 0] FPSGLB_MaskRdAddr,
+    output                              FPSGLB_MaskRdAddrVld,
+    input                               GLBFPS_MaskRdAddrRdy,
+    input   [SRAM_WIDTH         -1 : 0] GLBFPS_MaskRdDat,
+    input                               GLBFPS_MaskRdDatVld, // Not Used
+    output                              FPSGLB_MaskRdDatRdy,  
+
+    // Output Mask Bit
+    output  [MASK_ADDR_WIDTH    -1 : 0] FPSGLB_MaskWrAddr,
+    output reg[SRAM_WIDTH       -1 : 0] FPSGLB_MaskWrBitEn,
+    output                              FPSGLB_MaskWrDatVld,
+    output reg [SRAM_WIDTH      -1 : 0] FPSGLB_MaskWrDat,
+    input                               GLBFPS_MaskWrDatRdy  // Not Used
+
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -94,9 +107,10 @@ wire                            CpLast;
 wire                            LopLast;
 
 wire [IDX_WIDTH         -1 : 0] LopIdx;
-
-reg [2**IDX_WIDTH       -1 : 0] Mask_LastLy;
-wire [2**IDX_WIDTH      -1 : 0] Mask_Loop;
+wire                            Mask_Loop;
+wire [NUM_SORT_CORE     -1 : 0] Mask_Before;
+reg  [$clog2(NUM_SORT_CORE)-1 : 0] FPSLyIdx;
+genvar gv_i;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -134,6 +148,16 @@ always @ ( posedge clk or negedge rst_n ) begin
 end
 
 assign FPSCCU_CfgRdy = state==IDLE;
+
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        FPSLyIdx <= 0;
+    end else if(CCUCTR_Rst) begin
+        FPSLyIdx <= 0;
+    end else if(FPSCCU_CfgRdy & CCUCTR_CfgVld) begin
+        FPSLyIdx <= FPSLyIdx + 1;
+    end
+end
 
 //=====================================================================================================================
 // Logic Design: PIPE0: Addr Gen
@@ -177,12 +201,24 @@ counter#( // Pipe S0
 assign CTRGLB_DistRdAddr    = FPSGLB_CrdAddr;
 assign CTRGLB_DistRdAddrVld = FPSGLB_CrdAddrVld;
 
-assign INC_LopIdx = (FPSGLB_CrdAddrVld & GLBFPS_CrdAddrRdy & CTRGLB_DistRdAddrVld & GLBCTR_DistRdAddrRdy) |  (!FPSGLB_CrdAddrVld & !CTRGLB_DistRdAddrVld);
+assign INC_LopIdx = (FPSGLB_CrdAddrVld & GLBFPS_CrdAddrRdy & CTRGLB_DistRdAddrVld & GLBCTR_DistRdAddrRdy & GLBFPS_MaskRdAddrRdy) |  (!FPSGLB_CrdAddrVld & !CTRGLB_DistRdAddrVld & !FPSGLB_MaskRdAddrVld);
 
 assign FPSGLB_CrdAddr = LopIdx;
-assign FPSGLB_CrdAddrVld = state == LP & Mask_Loop[FPSGLB_CrdAddr];
+assign FPSGLB_CrdAddrVld = state == LP & Mask_Loop;
 
-assign Mask_Loop = Mask_LastLy & !FPSPSS_Mask;
+assign Mask_Loop = &Mask_Before;
+generate
+    for(gv_i=0; gv_i<NUM_SORT_CORE; gv_i=gv_i+1) begin
+        assign Mask_Before[gv_i] = gv_i > FPSLyIdx? 0 : GLBFPS_MaskRdDat[NUM_SORT_CORE*(FPSGLB_CrdAddr)%(SRAM_WIDTH/NUM_SORT_CORE) + gv_i];
+    end
+endgenerate
+
+// Mask is same with Crd
+assign FPSGLB_MaskRdAddr = FPSGLB_CrdAddr+1;
+assign FPSGLB_MaskRdAddrVld = FPSGLB_CrdAddrVld;
+
+assign FPSGLB_MaskRdDatRdy = FPSGLB_CrdRdy;
+
 
 //=====================================================================================================================
 // Logic Design: PIPE1: DatIn
@@ -235,6 +271,17 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
+// Write GLB Mask Update
+assign FPSGLB_MaskWrAddr = FPS_MaxIdx / (SRAM_WIDTH/NUM_SORT_CORE);
+assign FPSGLB_MaskWrDatVld = LopLast_s2;
+
+always @(*) begin
+    FPSGLB_MaskWrBitEn = {SRAM_WIDTH{1'b1}};
+    FPSGLB_MaskWrDat = {SRAM_WIDTH{1'b0}};
+    FPSGLB_MaskWrBitEn[FPSLyIdx % (SRAM_WIDTH/NUM_SORT_CORE)] = 1'b0;
+    FPSGLB_MaskWrDat[FPSLyIdx % (SRAM_WIDTH/NUM_SORT_CORE)] = 1'b1;
+end
+
 EDC#(
     .CRD_WIDTH ( CRD_WIDTH  ),
     .CRD_DIM   ( CRD_DIM    )
@@ -246,23 +293,8 @@ EDC#(
 //=====================================================================================================================
 // Logic Design: PIPE3: Update
 //=====================================================================================================================
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        FPSPSS_Mask <= 0;
-    end else if (LopLast_s2 ) begin
-        FPSPSS_Mask[FPS_MaxIdx] <= 1'b1;
-    end
-end
 
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        FPSPSS_MaskVld <= 0;
-    end else if (LopLast_s2 ) begin
-        FPSPSS_MaskVld <= 1'b1;
-    end else if (FPSPSS_MaskVld & PSSFPS_MaskRdy ) begin
-        FPSPSS_MaskVld <= 1'b0;
-    end
-end
+
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -282,18 +314,6 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
-
-
-//=====================================================================================================================
-// Logic Design: PIPE4: 
-//=====================================================================================================================
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        Mask_LastLy <= {(2**IDX_WIDTH){1'b1}};
-    end else if ( state==FNH ) begin
-        Mask_LastLy <= FPSPSS_Mask;
-    end
-end
 
 
 //=====================================================================================================================

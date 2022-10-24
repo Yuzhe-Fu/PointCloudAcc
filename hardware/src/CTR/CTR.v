@@ -19,7 +19,8 @@ module CTR #(
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3, 
     parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) ),
-    parameter NUM_SORT_CORE     = 8
+    parameter NUM_SORT_CORE     = 8,
+    parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
     )(
     input                               clk  ,
     input                               rst_n,
@@ -53,7 +54,29 @@ module CTR #(
     output [DISTSQR_WIDTH+IDX_WIDTH-1 : 0] CTRGLB_DistIdx,   
     output reg                          CTRGLB_DistIdxVld,
     input                               GLBCTR_DistIdxRdy,
-    
+
+    output  [MASK_ADDR_WIDTH    -1 : 0] KNNGLB_MaskRdAddr,
+    output                              KNNGLB_MaskRdAddrVld,
+    input                               GLBKNN_MaskRdAddrRdy,
+    input   [SRAM_WIDTH         -1 : 0] GLBKNN_MaskRdDat,
+    input                               GLBKNN_MaskRdDatVld,
+    output                              KNNGLB_MaskRdDatRdy,
+    // Input Mask Bit
+    output  [MASK_ADDR_WIDTH    -1 : 0] FPSGLB_MaskRdAddr,
+    output                              FPSGLB_MaskRdAddrVld,
+    input                               GLBFPS_MaskRdAddrRdy,
+    input   [SRAM_WIDTH         -1 : 0] GLBFPS_MaskRdDat,
+    input                               GLBFPS_MaskRdDatVld, // Not Used
+    output                              FPSGLB_MaskRdDatRdy,  
+
+    // Output Mask Bit
+    output [MASK_ADDR_WIDTH     -1 : 0] FPSGLB_MaskWrAddr,
+    output [SRAM_WIDTH          -1 : 0] FPSGLB_MaskWrBitEn,
+    output                              FPSGLB_MaskWrDatVld,
+    output [SRAM_WIDTH          -1 : 0] FPSGLB_MaskWrDat,
+    input                               GLBFPS_MaskWrDatRdy,  // Not Used
+
+
     // Output Map of KNN
     output [SRAM_WIDTH          -1 : 0 ]CTRGLB_Map,   
     output                              CTRGLB_MapVld,     
@@ -77,9 +100,6 @@ wire                            FPSGLB_CrdRdy;
 wire [IDX_WIDTH         -1 : 0] KNNGLB_CrdAddr;
 wire [IDX_WIDTH         -1 : 0] FPSGLB_CrdAddr;
 
-wire [2**IDX_WIDTH      -1 : 0] FPSPSS_Mask;
-
-
 //=====================================================================================================================
 // Logic Design 
 //=====================================================================================================================
@@ -97,6 +117,7 @@ FPS#(
     .IDX_WIDTH            ( IDX_WIDTH    ),
     .CRD_WIDTH            ( CRD_WIDTH    ),
     .CRD_DIM              ( CRD_DIM      ),
+    .NUM_SORT_CORE        ( NUM_SORT_CORE),
     .DISTSQR_WIDTH        ( DISTSQR_WIDTH)
 )u_FPS(
     .clk                  ( clk                  ),
@@ -122,9 +143,17 @@ FPS#(
     .CTRGLB_DistIdx       ( CTRGLB_DistIdx       ),
     .CTRGLB_DistIdxVld    ( CTRGLB_DistIdxVld    ),
     .GLBCTR_DistIdxRdy    ( GLBCTR_DistIdxRdy    ),
-    .FPSPSS_Mask          ( FPSPSS_Mask          ),
-    .FPSPSS_MaskVld       ( FPSPSS_MaskVld       ),
-    .PSSFPS_MaskRdy       ( PSSFPS_MaskRdy       )
+    .FPSGLB_MaskRdAddr    ( FPSGLB_MaskRdAddr    ),  
+    .FPSGLB_MaskRdAddrVld ( FPSGLB_MaskRdAddrVld ),
+    .GLBFPS_MaskRdAddrRdy ( GLBFPS_MaskRdAddrRdy ),
+    .GLBFPS_MaskRdDat     ( GLBFPS_MaskRdDat     ),
+    .GLBFPS_MaskRdDatVld  ( GLBFPS_MaskRdDatVld  ), 
+    .FPSGLB_MaskRdDatRdy  ( FPSGLB_MaskRdDatRdy  ), 
+    .FPSGLB_MaskWrAddr    ( FPSGLB_MaskWrAddr    ),
+    .FPSGLB_MaskWrBitEn   ( FPSGLB_MaskWrBitEn   ),
+    .FPSGLB_MaskWrDatVld  ( FPSGLB_MaskWrDatVld  ),
+    .FPSGLB_MaskWrDat     ( FPSGLB_MaskWrDat     ),
+    .GLBFPS_MaskWrDatRdy  ( GLBFPS_MaskWrDatRdy  )  
 );
 
 
@@ -150,9 +179,12 @@ KNN#(
     .GLBKNN_Crd        ( GLBCTR_Crd        ),
     .GLBKNN_CrdVld     ( GLBCTR_CrdVld & CCUCTR_CfgMod   ),
     .KNNGLB_CrdRdy     ( KNNGLB_CrdRdy     ),
-    .FPSPSS_Mask       ( FPSPSS_Mask       ),
-    .FPSPSS_MaskVld    ( FPSPSS_MaskVld    ),
-    .PSSFPS_MaskRdy    ( PSSFPS_MaskRdy    ),
+    .PSSGLB_MaskRdAddr      ( KNNGLB_MaskRdAddr    ),
+    .PSSGLB_MaskRdAddrVld   ( KNNGLB_MaskRdAddrVld ),
+    .GLBPSS_MaskRdAddrRdy   ( GLBKNN_MaskRdAddrRdy ),
+    .GLBPSS_MaskDatOut      ( GLBKNN_MaskRdDat    ),
+    .GLBPSS_MaskDatOutVld   ( GLBKNN_MaskRdDatVld ),
+    .PSSGLB_MaskDatRdy      ( KNNGLB_MaskRdDatRdy    ),
     .PSSCTR_Map        ( CTRGLB_Map        ),
     .PSSCTR_MapVld     ( CTRGLB_MapVld     ),
     .CTRPSS_MapRdy     ( GLBCTR_MapRdy     )
