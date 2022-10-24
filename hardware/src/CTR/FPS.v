@@ -110,6 +110,7 @@ wire [IDX_WIDTH         -1 : 0] LopIdx;
 wire                            Mask_Loop;
 wire [NUM_SORT_CORE     -1 : 0] Mask_Before;
 reg  [$clog2(NUM_SORT_CORE)-1 : 0] FPSLyIdx;
+reg  [$clog2(SRAM_WIDTH/NUM_SORT_CORE) -1 : 0] MaskRAMByteIdx;
 genvar gv_i;
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -196,6 +197,16 @@ counter#( // Pipe S0
     .UNDERFLOW (                    ),
     .COUNT     ( LopIdx             )
 );
+always @(posedge clk or rst_n) begin
+    if(!rst_n) begin
+        MaskRAMByteIdx <= 0;
+    end else if( CCUCTR_Rst ) begin
+        MaskRAMByteIdx <= 0;
+    end else if( INC_LopIdx) begin
+        MaskRAMByteIdx <= MaskRAMByteIdx + 1; // Loop
+    end
+end
+
 
 // DistIdx is same with Crd
 assign CTRGLB_DistRdAddr    = FPSGLB_CrdAddr;
@@ -209,7 +220,7 @@ assign FPSGLB_CrdAddrVld = state == LP & Mask_Loop;
 assign Mask_Loop = &Mask_Before;
 generate
     for(gv_i=0; gv_i<NUM_SORT_CORE; gv_i=gv_i+1) begin
-        assign Mask_Before[gv_i] = gv_i > FPSLyIdx? 0 : GLBFPS_MaskRdDat[NUM_SORT_CORE*(FPSGLB_CrdAddr)%(SRAM_WIDTH/NUM_SORT_CORE) + gv_i];
+        assign Mask_Before[gv_i] = gv_i > FPSLyIdx? 0 : GLBFPS_MaskRdDat[NUM_SORT_CORE*MaskRAMByteIdx + gv_i];
     end
 endgenerate
 
@@ -272,7 +283,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // Write GLB Mask Update
-assign FPSGLB_MaskWrAddr = FPS_MaxIdx / (SRAM_WIDTH/NUM_SORT_CORE);
+assign FPSGLB_MaskWrAddr = FPS_MaxIdx >> $clog2(SRAM_WIDTH/NUM_SORT_CORE);
 assign FPSGLB_MaskWrDatVld = LopLast_s2;
 
 always @(*) begin

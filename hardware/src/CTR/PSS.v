@@ -26,7 +26,7 @@ module PSS #(
     input                                   KNNPSS_Rst  ,
     input                                   KNNPSS_LopLast  ,
     input   [IDX_WIDTH              -1 : 0] KNNPSS_CpIdx    ,
-    input   [IDX_WIDTH+DIST_WIDTH   -1 : 0] KNNPSS_Lop      ,  
+    input   [$clog2(SRAM_WIDTH/NUM_SORT_CORE) + DIST_WIDTH+ IDX_WIDTH -1 : 0] KNNPSS_Lop      ,  
     input                                   KNNPSS_LopVld   ,  
     output                                  PSSKNN_LopRdy   ,
 
@@ -74,14 +74,13 @@ genvar i;
 generate
     for(i=0; i<NUM_SORT_CORE; i=i+1) begin
 
-        wire [$clog2(SRAM_WIDTH/NUM_SORT_CORE)  -1 : 0] ByteIdx;
-        reg  [IDX_WIDTH                         -1 : 0] LopIdx_s1;
+        reg [$clog2(SRAM_WIDTH/NUM_SORT_CORE)   -1 : 0] MaskRAMByteIdx;
         wire                                            INSPSS_LopRdy;
         wire                                            PSSINS_LopVld;
         reg [IDX_WIDTH+DIST_WIDTH               -1 : 0] PSSINS_Lop;
 
         // PIPE0: Input SRAM
-        assign PSSGLB_MaskRdAddr = KNNPSS_Lop[IDX_WIDTH+DIST_WIDTH -1 -: IDX_WIDTH]>>$clog2(SRAM_WIDTH/NUM_SORT_CORE); // /(SRAM_WIDTH/NUM_SORT_CORE)
+        assign PSSGLB_MaskRdAddr = KNNPSS_Lop[0 +: IDX_WIDTH]>>$clog2(SRAM_WIDTH/NUM_SORT_CORE); // /(SRAM_WIDTH/NUM_SORT_CORE)
         assign PSSGLB_MaskRdAddrVld = KNNPSS_LopVld;
         assign PSSKNN_LopRdy = GLBPSS_MaskRdAddrRdy;
 
@@ -90,14 +89,13 @@ generate
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
                 PSSINS_Lop <= 0;
-                LopIdx_s1  <= 0;
+                MaskRAMByteIdx  <= 0;
             end else if(KNNPSS_LopVld & PSSKNN_LopRdy) begin
                 PSSINS_Lop <= KNNPSS_Lop;
-                LopIdx_s1  <= KNNPSS_Lop[IDX_WIDTH+DIST_WIDTH -1 -: IDX_WIDTH];
+                MaskRAMByteIdx  <= KNNPSS_Lop[DIST_WIDTH + IDX_WIDTH +: $clog2(SRAM_WIDTH/NUM_SORT_CORE)];
             end
         end
-        assign ByteIdx = LopIdx_s1 % (SRAM_WIDTH/NUM_SORT_CORE);
-        assign PSSINS_LopVld = GLBPSS_MaskDatOutVld & GLBPSS_MaskDatOut[NUM_SORT_CORE*ByteIdx + i];
+        assign PSSINS_LopVld = GLBPSS_MaskDatOutVld & GLBPSS_MaskDatOut[NUM_SORT_CORE*MaskRAMByteIdx + i];
         INS#(
             .SORT_LEN_WIDTH   ( SORT_LEN_WIDTH ),
             .IDX_WIDTH       ( IDX_WIDTH ),

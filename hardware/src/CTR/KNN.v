@@ -89,7 +89,9 @@ wire                            LopLast;
 reg                             KNNPSS_LopVld;
 wire                            PSSKNN_LopRdy;
 wire [IDX_WIDTH         -1 : 0] LopIdx;
-
+reg  [$clog2(SRAM_WIDTH/NUM_SORT_CORE) -1 : 0] MaskRAMByteIdx;
+reg  [$clog2(SRAM_WIDTH/NUM_SORT_CORE) -1 : 0] MaskRAMByteIdx_s1;
+reg  [$clog2(SRAM_WIDTH/NUM_SORT_CORE) -1 : 0] MaskRAMByteIdx_s2;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -167,6 +169,17 @@ counter#( // Pipe S0
     .UNDERFLOW (                    ),
     .COUNT     ( LopIdx             )
 );
+
+always @(posedge clk or rst_n) begin
+    if(!rst_n) begin
+        MaskRAMByteIdx <= 0;
+    end else if( CCUCTR_Rst ) begin
+        MaskRAMByteIdx <= 0;
+    end else if( INC_LopIdx) begin
+        MaskRAMByteIdx <= MaskRAMByteIdx + 1; // Loop
+    end
+end
+
 assign INC_LopIdx = KNNGLB_CrdAddrVld & GLBKNN_CrdAddrRdy ;
 
 assign KNNGLB_CrdAddr = state == CP ? CpIdx : LopIdx;
@@ -176,9 +189,9 @@ assign KNNGLB_CrdAddrVld = state == CP | state == LP;
 //=====================================================================================================================
 always @(posedge clk or negedge rst_n) begin: Pipe1
     if(!rst_n) begin
-        {KNNGLB_CrdAddr_s1, LopLast_s1} <= 0;
+        {MaskRAMByteIdx_s1, KNNGLB_CrdAddr_s1, LopLast_s1} <= 0;
     end else if (KNNGLB_CrdAddrVld & GLBKNN_CrdAddrRdy) begin
-        {KNNGLB_CrdAddr_s1, LopLast_s1} <= {KNNGLB_CrdAddr, LopLast};
+        {MaskRAMByteIdx_s1, KNNGLB_CrdAddr_s1, LopLast_s1} <= {MaskRAMByteIdx, KNNGLB_CrdAddr, LopLast};
     end
 end
 
@@ -197,9 +210,9 @@ end
 
 always @(posedge clk or negedge rst_n) begin: Pipe2_LopCrd_s2
     if(!rst_n) begin
-        {LopCrd_s2, LopIdx_s2, LopLast_s2} <= 0;
+        {MaskRAMByteIdx_s2, LopCrd_s2, LopIdx_s2, LopLast_s2} <= 0;
     end else if (GLBKNN_CrdVld & KNNGLB_CrdRdy) begin
-        {LopCrd_s2, LopIdx_s2, LopLast_s2} <= {GLBKNN_Crd, KNNGLB_CrdAddr_s1, LopLast_s1};
+        {MaskRAMByteIdx_s2, LopCrd_s2, LopIdx_s2, LopLast_s2} <= {MaskRAMByteIdx_s1, GLBKNN_Crd, KNNGLB_CrdAddr_s1, LopLast_s1};
     end
 end
 
@@ -237,7 +250,7 @@ PSS#(
     .KNNPSS_LopLast  ( KNNPSS_LopLast_s2),
     .KNNPSS_Rst      ( CCUCTR_Rst      ),
     .KNNPSS_CpIdx    ( CpIdx           ),
-    .KNNPSS_Lop      ( {LopDist_s2, LopIdx_s2 }),// {idx, dist} 
+    .KNNPSS_Lop      ( {MaskRAMByteIdx_s2, LopDist_s2,  LopIdx_s2 }),// {idx, dist} 
     .KNNPSS_LopVld   ( KNNPSS_LopVld   ),
     .PSSKNN_LopRdy   ( PSSKNN_LopRdy   ),
     .PSSGLB_MaskRdAddr      ( PSSGLB_MaskRdAddr    ),
