@@ -2,9 +2,17 @@
 1. 创新点只有一个，不够
 2. :white_check_mark:整体性能评估超过SOTA两倍
 3. 硬件设计
-    - :question: 代码不断优化
     - :question:先系统整出来综合一下1M，面积很重要决定功耗
-        - 看post-synth的check，修改multiply drivers和bitwidth mismatch
+        - 修改看post-synth的check，和面积报告
+            - 面积里面优化
+                - PLC反常：可能是MIF的仲裁问题，已修正看结果
+                - **KNN太大：寄存器2**16 = 8KB太大必须用SRAM,FPS和KNN里面的都用SRAM**, FPS和PSS中使用%取余得ByteIdx
+                    - KNN其它模块大小？INS多大？
+                - 寄存器
+                    - 减少不必要的寄存器：也是为了工具能自动优化组合逻辑
+                    - **大寄存器都换成SRAM** >=128bit
+                - KNN和FPS拆开同时运行：共享太少，KNN太大但运行时间短闲置多
+                - 各个模块核数的确立
         - 综合
             - 100M无SYA
             - 100M整个
