@@ -56,6 +56,12 @@ wire [NUM_SORT_CORE           -1 : 0] PSSINS_IdxRdy;
 wire [(IDX_WIDTH*SORT_LEN)*NUM_SORT_CORE-1 : 0] INSPSS_Idx;
 wire                                  PISO_IN_RDY;
 
+wire                                          s0_rdy;
+reg [IDX_WIDTH+DIST_WIDTH             -1 : 0] PSSINS_Lop;
+reg [$clog2(SRAM_WIDTH/NUM_SORT_CORE) -1 : 0] MaskRAMByteIdx;
+wire [NUM_SORT_CORE                   -1 : 0] PSSINS_LopVld;
+wire [NUM_SORT_CORE                   -1 : 0] INSPSS_LopRdy;
+
 integer int_i;
 //=====================================================================================================================
 // Logic Design 2: HandShake
@@ -67,6 +73,28 @@ integer int_i;
 //=====================================================================================================================
 
 
+// Input SRAM
+assign PSSGLB_MaskRdAddr = KNNPSS_Lop[0 +: IDX_WIDTH]>>$clog2(SRAM_WIDTH/NUM_SORT_CORE); // /(SRAM_WIDTH/NUM_SORT_CORE)
+assign PSSGLB_MaskRdAddrVld = KNNPSS_LopVld & PSSKNN_LopRdy;//
+
+assign PSSKNN_LopRdy = GLBPSS_MaskRdAddrRdy & s0_rdy; // drive 2 loads
+
+
+// PIPE0: Output SRAM
+assign s0_rdy = &(!PSSINS_LopVld | INSPSS_LopRdy); // All == 1
+
+assign PSSGLB_MaskDatRdy = s0_rdy;
+
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        PSSINS_Lop <= 0;
+        MaskRAMByteIdx  <= 0;
+    end else if(KNNPSS_LopVld & PSSKNN_LopRdy) begin
+        PSSINS_Lop <= KNNPSS_Lop;
+        MaskRAMByteIdx  <= KNNPSS_Lop[DIST_WIDTH + IDX_WIDTH +: $clog2(SRAM_WIDTH/NUM_SORT_CORE)];
+    end
+end
+
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
@@ -74,28 +102,7 @@ genvar i;
 generate
     for(i=0; i<NUM_SORT_CORE; i=i+1) begin
 
-        reg [$clog2(SRAM_WIDTH/NUM_SORT_CORE)   -1 : 0] MaskRAMByteIdx;
-        wire                                            INSPSS_LopRdy;
-        wire                                            PSSINS_LopVld;
-        reg [IDX_WIDTH+DIST_WIDTH               -1 : 0] PSSINS_Lop;
-
-        // PIPE0: Input SRAM
-        assign PSSGLB_MaskRdAddr = KNNPSS_Lop[0 +: IDX_WIDTH]>>$clog2(SRAM_WIDTH/NUM_SORT_CORE); // /(SRAM_WIDTH/NUM_SORT_CORE)
-        assign PSSGLB_MaskRdAddrVld = KNNPSS_LopVld;
-        assign PSSKNN_LopRdy = GLBPSS_MaskRdAddrRdy;
-
-        // PIPE1: Output SRAM
-        assign PSSGLB_MaskDatRdy = INSPSS_LopRdy;
-        always @(posedge clk or negedge rst_n) begin
-            if(!rst_n) begin
-                PSSINS_Lop <= 0;
-                MaskRAMByteIdx  <= 0;
-            end else if(KNNPSS_LopVld & PSSKNN_LopRdy) begin
-                PSSINS_Lop <= KNNPSS_Lop;
-                MaskRAMByteIdx  <= KNNPSS_Lop[DIST_WIDTH + IDX_WIDTH +: $clog2(SRAM_WIDTH/NUM_SORT_CORE)];
-            end
-        end
-        assign PSSINS_LopVld = GLBPSS_MaskDatOutVld & GLBPSS_MaskDatOut[NUM_SORT_CORE*MaskRAMByteIdx + i];
+        assign PSSINS_LopVld[i] = GLBPSS_MaskDatOutVld & GLBPSS_MaskDatOut[NUM_SORT_CORE*MaskRAMByteIdx + i];
         INS#(
             .SORT_LEN_WIDTH   ( SORT_LEN_WIDTH ),
             .IDX_WIDTH       ( IDX_WIDTH ),
@@ -105,8 +112,8 @@ generate
             .rst_n               ( rst_n               ),
             .PSSINS_LopLast      ( KNNPSS_LopLast      ),
             .PSSINS_Lop          ( PSSINS_Lop          ),
-            .PSSINS_LopVld       ( PSSINS_LopVld       ),
-            .INSPSS_LopRdy       ( INSPSS_LopRdy       ),
+            .PSSINS_LopVld       ( PSSINS_LopVld[i]    ),
+            .INSPSS_LopRdy       ( INSPSS_LopRdy[i]    ),
             .INSPSS_Idx          ( INSPSS_Idx[(IDX_WIDTH*SORT_LEN)*i +: (IDX_WIDTH*SORT_LEN)]),
             .INSPSS_IdxVld       ( INSPSS_IdxVld[i]       ),
             .PSSINS_IdxRdy       ( PSSINS_IdxRdy[i]       )
@@ -117,7 +124,6 @@ generate
     end
 endgenerate
 
-assign PSSKNN_LopRdy = & INS_LopRdy;
 
 assign PSSINS_IdxRdy = {NUM_SORT_CORE{PISO_IN_RDY}};
 
