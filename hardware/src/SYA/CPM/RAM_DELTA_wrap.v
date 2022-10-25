@@ -99,8 +99,41 @@ endgenerate
 genvar gen_i;
 generate
     if( SRAM_DEPTH_BIT == 6 && SRAM_WIDTH == 128 ) begin
- 
-
+        SYLA55_64X32X4CM2 RAM_DELTA0(
+            .A       (  A     ),
+            .DO      (  DO    ),
+            .DI      (  DI    ),
+            .DVSE    (  1'b0  ),
+            .DVS     (  4'b0  ),
+            .WEB     (  WEB   ),
+            .CK      (  clk   ),
+            .CSB     (  CSB   )
+       );
+    end
+    else if( SRAM_DEPTH_BIT == 8 && SRAM_WIDTH == 8 ) begin
+        SYLA55_256X8X1CM4 RAM_DELTA1(
+            .A       (  A     ),
+            .DO      (  DO    ),
+            .DI      (  DI    ),
+            .DVSE    (  1'b0  ),
+            .DVS     (  4'b0  ),
+            .WEB     (  WEB   ),
+            .CK      (  clk   ),
+            .CSB     (  CSB   )
+       );
+    end     
+    else if( SRAM_DEPTH_BIT == 8 && SRAM_WIDTH == 128 ) begin
+        SYLA55_256X32X4CM2 RAM_DELTA2(
+            .A       (  A     ),
+            .DO      (  DO    ),
+            .DI      (  DI    ),
+            .DVSE    (  1'b0  ),
+            .DVS     (  4'b0  ),
+            .WEB     (  WEB   ),
+            .CK      (  clk   ),
+            .CSB     (  CSB   )
+       );
+    end
 
 endgenerate
 

@@ -41,16 +41,22 @@ wire [NUM_BANK -1:0][NUM_ROW -1:0] din_data_en = din_data_vld & din_data_rdy;
 wire [NUM_OUT  -1:0] out_data_en = out_data_vld & out_data_rdy;
 
 reg  [NUM_BANK -1:0][ADD_WIDTH -1:0] pkg_act_cnt;
-wire [NUM_BANK -1:0][ADD_WIDTH -1:0] pkg_add_cnt = pkg_act_cnt;
+reg  [NUM_BANK -1:0][ADD_WIDTH   :0] pkg_add_cnt;
+reg  [NUM_BANK -1:0][ADD_WIDTH -1:0] ram_out_cnt;
 reg  [NUM_BANK -1:0][ADD_WIDTH -1:0] pkg_out_cnt;
 
 reg  [NUM_BANK -1:0][NUM_ROW -1:0][ADD_WIDTH -1:0] pe_sync_radd;
 reg  [NUM_BANK -1:0][NUM_ROW -1:0][ADD_WIDTH -1:0] pe_sync_wadd;
-reg  [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH -1:0] pe_sync_data;
+wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH -1:0] pe_sync_data = pkg_act;
 wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH -1:0] pe_sync_dout;
-reg  [NUM_BANK -1:0] pe_sync_rena, pe_sync_rena_d;
-reg  [NUM_BANK -1:0] pe_sync_wena;
-reg  [NUM_BANK -1:0] pe_sync_ok;
+reg  [NUM_BANK -1:0] pe_sync_rena_s;
+reg  [NUM_BANK -1:0][NUM_ROW -1:0] pe_sync_rena;
+reg  [NUM_BANK -1:0][NUM_ROW -1:0] pe_sync_rena_d;
+wire [NUM_BANK -1:0][NUM_ROW -1:0] pe_sync_wena = din_data_en;
+
+reg  [NUM_BANK -1:0] ram_out_ok;
+reg  [NUM_BANK -1:0] pkg_din_ok;
+reg  [NUM_BANK -1:0] pkg_out_ok;
 
 wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH -1:0] pe_fifo_data = pe_sync_dout;
 wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH -1:0] pe_fifo_dout;
@@ -60,9 +66,7 @@ reg  [NUM_BANK -1:0] pe_fifo_rena;
 wire [NUM_BANK -1:0] pe_fifo_full;
 wire [NUM_BANK -1:0] pe_fifo_empty;
 
-reg  [NUM_BANK -1:0][NUM_ROW -1:0] pe_sync_rena_s;
-reg  [NUM_BANK -1:0][NUM_ROW -1:0] pe_sync_wena_s;
-RAM #( .SRAM_WORD( 2**ADD_WIDTH ), .SRAM_BIT( ACT_WIDTH ), .SRAM_BYTE(1)) PE_SHAPE_RAM_U [NUM_BANK*NUM_ROW-1:0] ( clk, rst_n, pe_sync_radd, pe_sync_wadd, pe_sync_rena_s, pe_sync_wena_s, pe_sync_data, pe_sync_dout);
+RAM_DELTA_wrap #( .SRAM_DEPTH_BIT( ADD_WIDTH ), .SRAM_WIDTH( ACT_WIDTH ), .BYTES(1), .KEEP_DATA(1)) PE_SHAPE_RAM_U [NUM_BANK*NUM_ROW-1:0] ( clk, rst_n, pe_sync_radd, pe_sync_wadd, pe_sync_rena, pe_sync_wena, pe_sync_data, pe_sync_dout);
 
 CPM_FIFO #( .DATA_WIDTH( NUM_ROW*ACT_WIDTH ), .ADDR_WIDTH( OUT_WIDTH ) ) SHAPE_OUT_FIFO[NUM_BANK-1:0] ( clk, rst_n, 1'd0, pe_fifo_wena, pe_fifo_rena, pe_fifo_data, pe_fifo_dout, pe_fifo_empty, pe_fifo_full, pe_fifo_cnt);
 
@@ -76,8 +80,26 @@ generate
     always @ ( posedge clk or negedge rst_n )begin
     if( ~rst_n )
       pkg_act_cnt[gen_i] <= 'd0;
-    else if( &din_data_en[gen_i] )
+    else if( pkg_out_ok[gen_i] )
+      pkg_act_cnt[gen_i] <= 'd0;
+    else if( |din_data_en[gen_i] )
       pkg_act_cnt[gen_i] <= pkg_act_cnt[gen_i] + 'd1;
+    end
+  
+    always @ ( posedge clk or negedge rst_n )begin
+    if( ~rst_n )
+      pkg_add_cnt[gen_i] <= 'd0;
+    else if( pkg_out_ok[gen_i] )
+      pkg_add_cnt[gen_i] <= 'd0;
+    else if( |din_data_en[gen_i] )
+      pkg_add_cnt[gen_i] <= pkg_add_cnt[gen_i] + 'd1;
+    end
+
+    always @ ( posedge clk or negedge rst_n )begin
+    if( ~rst_n )
+      ram_out_cnt[gen_i] <= 'd0;
+    else if( pe_sync_rena_s[gen_i] )
+      ram_out_cnt[gen_i] <= ram_out_cnt[gen_i] + 'd1;
     end
   
     always @ ( posedge clk or negedge rst_n )begin
@@ -96,49 +118,51 @@ generate
 
     always @ ( posedge clk or negedge rst_n )begin
     if( ~rst_n )
-      pe_sync_ok[gen_i] <= 'd0;
-    else if( &pkg_act_cnt[gen_i] && &din_data_en[gen_i] )
-      pe_sync_ok[gen_i] <= 'd1;
-    else if( &pkg_out_cnt[gen_i] && &out_data_en[gen_i] )
-      pe_sync_ok[gen_i] <= 'd0;
+      pkg_din_ok[gen_i] <= 'd0;
+    else if( pkg_out_ok[gen_i] )
+      pkg_din_ok[gen_i] <= 'd0;
+    else if( pkg_add_cnt[gen_i] == 2*NUM_ROW-2 && |din_data_en[gen_i] )
+      pkg_din_ok[gen_i] <= 'd1;
+    end
+
+    always @ ( posedge clk or negedge rst_n )begin
+    if( ~rst_n )
+      ram_out_ok[gen_i] <= 'd0;
+    else if( pkg_out_ok[gen_i] )
+      ram_out_ok[gen_i] <= 'd0;
+    else if( ram_out_cnt[gen_i] == ADD_DEPTH-1 )
+      ram_out_ok[gen_i] <= 'd1;
+    end
+
+    always @ ( * )begin
+      pkg_out_ok[gen_i] = &pkg_out_cnt[gen_i] && &out_data_en[gen_i];
     end
   
     always @ ( * )begin
-      pe_sync_wena[gen_i] = &din_data_en[gen_i];
-      pe_sync_rena[gen_i] = pe_sync_ok[gen_i] && pe_fifo_cnt[gen_i] < 'd0 ? {NUM_ROW{1'd1}} : {NUM_ROW{1'd0}};
+      pe_sync_rena_s[gen_i] = pkg_din_ok[gen_i] && ~ram_out_ok[gen_i] && ram_out_cnt[gen_i] <= ADD_DEPTH-1 ? 'd1 : 'd0;
+      pe_sync_rena  [gen_i] = {NUM_ROW{pe_sync_rena_s[gen_i]}};
     end
 
     always @ ( * )begin
       pe_fifo_wena[gen_i] = pe_sync_rena_d[gen_i];
-      pe_fifo_rena[gen_i] = out_data_rdy[gen_i];
-    end
-  
-    always @ ( * )begin
-      pe_sync_rena_s[gen_i] = {NUM_ROW{pe_fifo_rena[gen_i]}};
-      pe_sync_wena_s[gen_i] = {NUM_ROW{pe_fifo_wena[gen_i]}};
+      pe_fifo_rena[gen_i] = pkg_din_ok[gen_i] && out_data_rdy[gen_i];
     end
     
     for( gen_j=0 ; gen_j < NUM_ROW; gen_j = gen_j+1 ) begin : ROW_BLOCK
     
         always @ ( * )begin
-          pe_sync_wadd[gen_i][gen_j] = pkg_act_cnt[gen_i] +gen_j;
+          pe_sync_wadd[gen_i][gen_j] = pkg_act_cnt[gen_i] -gen_j;
           pe_sync_radd[gen_i][gen_j] = pkg_out_cnt[gen_i];
         end
     
     end
     
-  
-    assign out_data_vld[gen_i] = ~pe_fifo_empty[gen_i];
-    assign din_data_rdy[gen_i*NUM_ROW +:NUM_ROW] = &pkg_act_cnt[gen_i] ? {NUM_ROW{1'd0}} : {NUM_ROW{1'd1}};
+
+    assign out_data_vld[gen_i] = pkg_din_ok[gen_i] && ~pe_fifo_empty[gen_i];
+    assign din_data_rdy[gen_i*NUM_ROW +:NUM_ROW] = &pkg_din_ok[gen_i] ? {NUM_ROW{1'd0}} : {NUM_ROW{1'd1}};
   
 end
 endgenerate
-
-always @ ( * )begin
-  pe_sync_data = pkg_act;
-end
-
-
 
 //=====================================================================================================================
 // Logic Design :

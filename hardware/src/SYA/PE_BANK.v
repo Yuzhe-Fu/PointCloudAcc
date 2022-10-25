@@ -54,24 +54,26 @@ wire [NUM_ROW -1:0][ACT_WIDTH  -1:0] row_din_act = in_act_left;
 wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] row_out_wgt;
 wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] row_din_wgt = {row_out_wgt[NUM_ROW -2:0], in_wgt_above};
 
-reg  [NUM_ROW -1:0] row_din_vld;
+reg  [NUM_ROW -1:0] row_din_vld_reg;
+wire [NUM_ROW -1:0] row_din_vld = {row_din_vld_reg[NUM_ROW -2:0], in_vld_left};
 wire [NUM_ROW -1:0] row_din_rdy = {NUM_ROW{in_rdy_left}};
 
 wire [NUM_ROW -1:0] row_out_acc_reset;
-reg  [NUM_ROW -1:0] row_din_acc_reset;
+reg  [NUM_ROW -1:0] row_din_acc_reset_reg;
+wire [NUM_ROW -1:0] row_din_acc_reset = {row_din_acc_reset_reg[NUM_ROW-2:0], in_acc_reset_left};
 
 always @ ( posedge clk or negedge rst_n )begin
   if( ~rst_n )
-    row_din_acc_reset <= 'd0;
+    row_din_acc_reset_reg <= 'd0;
   else if( in_rdy_left )
-    row_din_acc_reset <= {row_din_acc_reset[NUM_ROW-2:0], in_acc_reset_left};
+    row_din_acc_reset_reg <= {row_din_acc_reset_reg[NUM_ROW-2:0], in_acc_reset_left};
 end
 
 always @ ( posedge clk or negedge rst_n )begin
 if( ~rst_n )
-  row_din_vld <= 'd0;
+  row_din_vld_reg <= 'd0;
 else if( in_rdy_left )
-  row_din_vld <= {row_din_vld[NUM_ROW -2:0], in_vld_left};
+  row_din_vld_reg <= {row_din_vld_reg[NUM_ROW -2:0], in_vld_left};
 end
 
     PE_ROW #(
@@ -108,7 +110,7 @@ end
 assign out_act_right = row_out_act;
 assign out_wgt_below = row_out_wgt[NUM_ROW -1];
 assign out_acc_reset_right = row_out_acc_reset[0];
-assign out_acc_reset_below = row_din_acc_reset[NUM_ROW-1];
+assign out_acc_reset_below = row_din_acc_reset_reg[NUM_ROW-1];
 assign out_fm = row_out_fm;
 
 endmodule

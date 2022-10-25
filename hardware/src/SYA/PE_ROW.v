@@ -51,15 +51,15 @@ wire [FM_WIDTH   -1:0] out_sum_qnt8 = (out_sum_reg0*quant_scale)>>quant_shift +q
 wire [FM_WIDTH   -1:0] out_sum_reg1;
 
 wire [NUM_PE -1:0][ACT_WIDTH  -1:0] row_out_act;
-wire [NUM_PE -1:0][ACT_WIDTH  -1:0] row_din_act = {row_out_act[NUM_PE-1:1], in_act_left};
-reg  [NUM_PE -1:0] row_din_vld;
-wire [NUM_PE -1:0] row_din_ena = row_din_vld & {NUM_PE{in_rdy_left}};
+wire [NUM_PE -1:0][ACT_WIDTH  -1:0] row_din_act = {row_out_act[NUM_PE-2:0], in_act_left};
+reg  [NUM_PE -1:0] row_din_vld_reg;
+wire [NUM_PE -1:0] row_din_vld = {row_din_vld_reg[NUM_PE -2:0], in_vld_left};
 
 wire [NUM_PE -1:0][WGT_WIDTH  -1:0] row_din_wgt = in_wgt_above;
 wire [NUM_PE -1:0][WGT_WIDTH  -1:0] row_out_wgt;
 
 wire [NUM_PE -1:0] row_out_acc_reset;
-wire [NUM_PE -1:0] row_din_acc_reset = {row_out_acc_reset[NUM_PE-1:1], in_acc_reset_left};
+wire [NUM_PE -1:0] row_din_acc_reset = {row_out_acc_reset[NUM_PE-2:0], in_acc_reset_left};
 
 integer i;
 always @ ( * )begin
@@ -72,13 +72,16 @@ end
 
 always @ ( posedge clk or negedge rst_n )begin
 if( ~rst_n )
-  row_din_vld <= 'd0;
+  row_din_vld_reg <= 'd0;
 else if( in_rdy_left )
-  row_din_vld <= {row_din_vld[NUM_PE -2:0], in_vld_left};
+  row_din_vld_reg <= {row_din_vld_reg[NUM_PE -2:0], in_vld_left};
 end
 
-CPM_REG_E #( PSUM_WIDTH ) OUT_REG0 ( clk, rst_n, in_rdy_left, out_sum_pick, out_sum_reg0);
-CPM_REG_E #( FM_WIDTH   ) OUT_REG1 ( clk, rst_n, in_rdy_left, out_sum_qnt8, out_sum_reg1);
+assign out_sum_reg0 = out_sum_pick;
+assign out_sum_reg1 = out_sum_qnt8;
+
+//CPM_REG_E #( PSUM_WIDTH ) OUT_REG0 ( clk, rst_n, in_rdy_left, out_sum_pick, out_sum_reg0);
+//CPM_REG_E #( FM_WIDTH   ) OUT_REG1 ( clk, rst_n, in_rdy_left, out_sum_qnt8, out_sum_reg1);
 
 
     PE #(
@@ -90,7 +93,9 @@ CPM_REG_E #( FM_WIDTH   ) OUT_REG1 ( clk, rst_n, in_rdy_left, out_sum_qnt8, out_
       .clk                 ( clk               ),
       .rst_n               ( rst_n             ),
                                               
-      .in_en_left          ( row_din_ena       ),
+      .in_vld_left         ( row_din_vld       ),
+      .in_rdy_left         ( in_rdy_left       ),
+      
       .out_sum             ( row_out_sum       ),
                                               
       .in_act_left         ( row_din_act       ),

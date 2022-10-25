@@ -92,13 +92,15 @@ wire [NUM_BANK -1:0] bank_you_rst;
 wire [NUM_BANK -1:0] bank_xia_rst;
 reg  [NUM_BANK -1:0] bank_din_rst;
 reg  [NUM_BANK -1:0] [CHI_WIDTH  :0] bank_acc_cnt;
-reg  [NUM_BANK -1:0] [NUM_ROW  -1:0] bank_acc_ena;
 reg  [NUM_BANK -1:0] bank_acc_rdy;
 wire [NUM_BANK -1:0] bank_acc_run;
+wire [NUM_BANK -1:0] bank_acc_out;
+reg  [NUM_BANK -1:0][NUM_ROW -1:0] bank_out_ena;
+reg  [NUM_BANK -1:0][NUM_ROW -1:0] bank_row_out_ena;
 
-wire [NUM_ROW*NUM_BANK*ACT_WIDTH     -1:0]  sync_din = bank_out_fm;
-wire [NUM_ROW*NUM_BANK               -1:0]  sync_din_vld = bank_ena_you & bank_acc_ena;
-wire [NUM_ROW*NUM_BANK               -1:0]  sync_din_rdy;
+wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1:0] sync_din = bank_out_fm;
+wire [NUM_BANK -1:0][NUM_ROW -1:0] sync_din_vld = bank_row_out_ena & bank_out_ena;
+wire [NUM_BANK -1:0][NUM_ROW -1:0] sync_din_rdy;
 
 wire [NUM_OUT*SRAM_WIDTH/2           -1:0]  sync_out;
 wire [NUM_OUT                        -1:0]  sync_out_vld;
@@ -153,14 +155,27 @@ generate
   
     always @ ( posedge clk or negedge rst_n )begin
     if( ~rst_n )
-      bank_acc_ena[gen_i] <= 'd0;
+      bank_out_ena[gen_i] <= 'd0;
     else if( CCUSYA_Rst )
-      bank_acc_ena[gen_i] <= 'd0;
+      bank_out_ena[gen_i] <= 'd0;
     else if( bank_acc_cnt[gen_i] == cfg_chi && |cfg_chi )
-      bank_acc_ena[gen_i] <= {NUM_ROW{1'd1}};
+      bank_out_ena[gen_i] <= {NUM_ROW{1'd1}};
     end
     
-    assign bank_acc_run[gen_i] = bank_acc_rdy[1] && bank_acc_cnt[gen_i] <= cfg_chi;
+    always @ ( posedge clk or negedge rst_n )begin
+    if( ~rst_n )
+      bank_row_out_ena[gen_i] <= 'd0;
+    else if( CCUSYA_Rst )
+      bank_row_out_ena[gen_i] <= 'd0;
+    else if( bank_acc_rdy[gen_i] )
+      bank_row_out_ena[gen_i] <= bank_row_out_ena[gen_i][NUM_ROW -1] ? {bank_row_out_ena[gen_i][NUM_ROW -2:0], bank_acc_out[gen_i]} & bank_row_out_ena[gen_i] : {bank_row_out_ena[gen_i][NUM_ROW -2:0], bank_acc_out[gen_i]} | bank_row_out_ena[gen_i];
+    end
+    
+    
+    assign bank_acc_run[gen_i] = bank_acc_rdy[gen_i] && bank_acc_cnt[gen_i] <= cfg_chi;
+    assign bank_acc_out[gen_i] = bank_acc_rdy[gen_i] && bank_acc_cnt[gen_i] == cfg_chi;
+    
+    assign bank_din_rdy[gen_i] = &sync_din_rdy[gen_i];
 end
 endgenerate
 
@@ -171,12 +186,12 @@ always @ (*)
 begin
     bank_din_act[0] = bank_pkg_act[0];
     bank_din_wgt[0] = GLBSYA_Wgt;
-    bank_din_rst[0] = CCUSYA_Rst;
+    bank_din_rst[0] = CCUSYA_Rst || bank_out_ena[0][NUM_ROW-1];
     bank_din_vld[0] = GLBSYA_ActVld && GLBSYA_WgtVld && bank_acc_run[0];
     
-    bank_din_act[1] = cfg_mod == 'd2 ? bank_pkg_act[0] : bank_out_act[1];
+    bank_din_act[1] = cfg_mod == 'd2 ? bank_pkg_act[0] : bank_out_act[0];
     bank_din_wgt[1] = cfg_mod == 'd2 ? bank_out_wgt[0] : bank_pkg_wgt[1];
-    bank_din_rst[1] = cfg_mod == 'd2 ? bank_xia_rst[0] : bank_you_rst[1];
+    bank_din_rst[1] = cfg_mod == 'd2 ? bank_xia_rst[0] : bank_you_rst[0];
     bank_din_vld[1] =(cfg_mod == 'd2 ? bank_ena_xia[0][NUM_COL -1] && GLBSYA_ActVld: bank_ena_you[0][NUM_COL -1] && GLBSYA_WgtVld ) && bank_acc_run[1];
     
 end
@@ -185,12 +200,12 @@ always @ (*)
 begin
     bank_din_act[2] = cfg_mod == 'd1 ? bank_out_act[1] : bank_pkg_act[2];
     bank_din_wgt[2] = cfg_mod == 'd0 ? bank_out_wgt[0] : cfg_mod == 'd1 ? bank_pkg_wgt[2] : bank_out_wgt[1];
-    bank_din_rst[2] = cfg_mod == 'd0 ? bank_xia_rst[0] : cfg_mod == 'd1 ? bank_you_rst[1] : bank_you_rst[1];
+    bank_din_rst[2] = cfg_mod == 'd0 ? bank_xia_rst[0] : cfg_mod == 'd1 ? bank_you_rst[1] : bank_xia_rst[1];
     bank_din_vld[2] =(cfg_mod == 'd0 ? bank_ena_xia[0][NUM_COL -1] && GLBSYA_ActVld: cfg_mod == 'd1 ? bank_ena_you[1][NUM_COL -1] && GLBSYA_WgtVld : bank_ena_xia[1][NUM_COL -1] && GLBSYA_ActVld ) && bank_acc_run[2];
 
     bank_din_act[3] = cfg_mod == 'd2 ? bank_pkg_act[3] : bank_out_act[2];
     bank_din_wgt[3] = cfg_mod == 'd0 ? bank_out_wgt[1] : cfg_mod == 'd1 ? bank_pkg_wgt[3] : bank_out_wgt[2];
-    bank_din_rst[3] = cfg_mod == 'd0 ? bank_xia_rst[1] : cfg_mod == 'd1 ? bank_you_rst[2] : bank_you_rst[2];
+    bank_din_rst[3] = cfg_mod == 'd0 ? bank_xia_rst[1] : cfg_mod == 'd1 ? bank_you_rst[2] : bank_xia_rst[2];
     bank_din_vld[3] =(cfg_mod == 'd0 ? bank_ena_xia[1][NUM_COL -1] : cfg_mod == 'd1 ? bank_ena_you[2][NUM_COL -1] && GLBSYA_WgtVld: bank_ena_xia[2][NUM_COL -1] && GLBSYA_ActVld ) && bank_acc_run[3];
 end
 
@@ -250,8 +265,6 @@ end
       .out_data_vld        ( sync_out_vld       ),
       .out_data_rdy        ( sync_out_rdy       )
     );
-
-assign bank_din_rdy = {NUM_BANK{sync_din_rdy}};
 
 assign SYACCU_CfgRdy = cfg_rdy && pe_idle;
 assign SYAGLB_ActRdy = sync_din_rdy;
