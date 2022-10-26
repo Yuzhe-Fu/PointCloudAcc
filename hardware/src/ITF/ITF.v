@@ -222,7 +222,7 @@ MINMAX # (
     .DATA_WIDTH (ADDR_WIDTH),
     .PORT(ITF_NUM_RDPORT+ITF_NUM_WRPORT),
     .MINMAX(1)
-)U_MAX_REQNUM(
+)u_MAX_REQNUM(
     .IN (TOPITF_ReqNum),
     .IDX(MaxIdx),
     .VALUE(MaxNum)

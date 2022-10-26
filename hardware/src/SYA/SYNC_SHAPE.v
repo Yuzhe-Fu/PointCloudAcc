@@ -66,7 +66,7 @@ reg  [NUM_BANK -1:0] pe_fifo_rena;
 wire [NUM_BANK -1:0] pe_fifo_full;
 wire [NUM_BANK -1:0] pe_fifo_empty;
 
-RAM_DELTA_wrap #( .SRAM_DEPTH_BIT( ADD_WIDTH ), .SRAM_WIDTH( ACT_WIDTH ), .BYTES(1), .KEEP_DATA(1)) PE_SHAPE_RAM_U [NUM_BANK*NUM_ROW-1:0] ( clk, rst_n, pe_sync_radd, pe_sync_wadd, pe_sync_rena, pe_sync_wena, pe_sync_data, pe_sync_dout);
+RAM #( .SRAM_WORD( 2**ADD_WIDTH ), .SRAM_BIT( ACT_WIDTH ), .SRAM_BYTE(1)) PE_SHAPE_RAM_U [NUM_BANK*NUM_ROW-1:0] ( clk, rst_n, pe_sync_radd, pe_sync_wadd, pe_sync_rena, pe_sync_wena, pe_sync_data, pe_sync_dout);
 
 CPM_FIFO #( .DATA_WIDTH( NUM_ROW*ACT_WIDTH ), .ADDR_WIDTH( OUT_WIDTH ) ) SHAPE_OUT_FIFO[NUM_BANK-1:0] ( clk, rst_n, 1'd0, pe_fifo_wena, pe_fifo_rena, pe_fifo_data, pe_fifo_dout, pe_fifo_empty, pe_fifo_full, pe_fifo_cnt);
 

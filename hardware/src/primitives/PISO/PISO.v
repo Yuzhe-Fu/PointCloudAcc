@@ -49,7 +49,7 @@ module PISO
 always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
     if (!RST_N) begin
         serial <= 0;
-        last        <= 0;
+        last   <= 0;
     end else begin
         if (IN_VLD & IN_RDY) begin
             serial <= IN_DAT;

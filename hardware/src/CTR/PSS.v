@@ -130,7 +130,7 @@ assign PSSINS_IdxRdy = {NUM_SORT_CORE{PISO_IN_RDY}};
 PISO#(
     .DATA_IN_WIDTH   ( SRAM_WIDTH*NUM_SORT_CORE  ), // (32+1)*10 /96 = 330 /96 <= 4
     .DATA_OUT_WIDTH  ( SRAM_WIDTH  )
-)U_PISO(
+)u_PISO(
     .CLK       ( clk            ),
     .RST_N     ( rst_n          ),
     .IN_VLD    ( &INSPSS_IdxVld ),

@@ -21,6 +21,7 @@
 | SRAM_WIDTH | 256 | | SRAM Bank的位宽 |
 | CHN_WIDTH | 12 | 通道数的位宽 |
 | QNTSL_WIDTH | 20 | | 量化的scale位宽 |
+| IDX_WIDTH  | 16 | Nip（输入点的个数）的位宽 |
 ## pe_array 端口列表
 | Ports | Input/Output | Width | Descriptions |
 | ---- | ---- | ---- | ---- |

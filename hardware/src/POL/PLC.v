@@ -105,7 +105,7 @@ FIFO_FWFT#(
     .DATA_WIDTH ( IDX_WIDTH ),
     .ADDR_WIDTH ( POOL_MAP_DEPTH_WIDTH ),
     .INITIALIZE_FIFO ( "no" )
-)U_FIFO_FWFT(
+)u_FIFO_FWFT(
     .clk        ( clk                           ),
     .Reset      ( POLPLC_Rst                    ),
     .rst_n      ( rst_n                         ),

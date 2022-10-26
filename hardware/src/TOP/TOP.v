@@ -494,7 +494,7 @@ assign RdPortDatRdy[GLBRDIDX_CTRKMK] = KNNGLB_MaskRdDatRdy;
 
 
 // Write MAP
-assign WrPortDat[ADDR_WIDTH*GLBWRIDX_CTRMAP +:  (SRAM_WIDTH*MAXPAR)] =  CTRGLB_Map;
+assign WrPortDat[(SRAM_WIDTH*MAXPAR)*GLBWRIDX_CTRMAP +:  (SRAM_WIDTH*MAXPAR)] =  CTRGLB_Map;
 assign WrPortDatVld[GLBWRIDX_CTRMAP] = CTRGLB_MapVld;
 assign GLBCTR_MapRdy = WrPortDatRdy[GLBWRIDX_CTRMAP];
 
@@ -567,15 +567,15 @@ assign WrPortDatVld[GLBWRIDX_SYAOFM] = &SYAGLB_OfmVld; // ??????????????????????
 assign GLBSYA_OfmRdy = {NUM_BANK{WrPortDatRdy[GLBWRIDX_SYAOFM]}};
 
 SYA #(
-    .ACT_WIDTH ( ACT_WIDTH), 
-    .WGT_WIDTH ( ACT_WIDTH), 
-    .NUM_ROW   ( SYA_NUM_ROW  ), 
-    .NUM_COL   ( SYA_NUM_COL  ), 
-    .NUM_BANK  ( SYA_NUM_BANK ), 
-    .SRAM_WIDTH( SRAM_WIDTH   ),
-    .CHI_WIDTH ( CHN_WIDTH     ),
-    .QNT_WIDTH ( QNTSL_WIDTH     ) 
-) U_SYA(
+    .ACT_WIDTH ( ACT_WIDTH      ), 
+    .WGT_WIDTH ( ACT_WIDTH      ), 
+    .NUM_ROW   ( SYA_NUM_ROW    ), 
+    .NUM_COL   ( SYA_NUM_COL    ), 
+    .NUM_BANK  ( SYA_NUM_BANK   ), 
+    .SRAM_WIDTH( SRAM_WIDTH     ),
+    .CHI_WIDTH ( CHN_WIDTH      ),
+    .QNT_WIDTH ( QNTSL_WIDTH    )
+) u_SYA(
     .clk            (clk            ),
     .rst_n          (rst_n          ),
     .CCUSYA_Rst     (CCUSYA_Rst     ),

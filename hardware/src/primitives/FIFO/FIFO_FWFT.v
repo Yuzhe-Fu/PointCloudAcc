@@ -72,7 +72,7 @@ FIFO #(
         .INIT               ( "init_x.mif" ),
         .INITIALIZE_FIFO    ( "no"         ))
 
-    U_FIFO(
+    u_FIFO(
         .clk                ( clk           ),  //input
         .rst_n              ( rst_n         ),  //input
         .Reset              ( Reset         ),
