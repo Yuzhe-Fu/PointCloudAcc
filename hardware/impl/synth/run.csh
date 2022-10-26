@@ -1,17 +1,14 @@
 set DESIGN_NAME = "TOP"
+set clk="I_SysClk"
+
+################################################################################
 set VT = "3vt"
-set PERIOD = "1000"
+set PERIOD = "10"
 set UNGROUP = "group"
-set NOTE = "whole_opt_CTR"
+set NOTE = "whole_opt_CTR_SYA"
+set SDC_FILE=./TOP.sdc 
 
-if ($DESIGN_NAME == "TOP") then
-    set SDC_FILE=./TOP.sdc 
-    echo "<<<<<<<<<<<<<<<<<<<set SDC=ASIC.sdc>>>>>>>>>>>>>>>>>>>>>>"
-else 
-    set SDC_FILE=./module.sdc 
-    echo "<<<<<<<<<<<<<<<<<<<set SDC=module.sdc>>>>>>>>>>>>>>>>>>>>>>"
-endif
-
+################################################################################
 if ($VT == "3vt") then
     set TECH_SETTING=tech_settings.tcl
 else if($VT == "rvt") then
@@ -38,6 +35,7 @@ cp -r ../synth ${SYNTH_PROJDIR}
 rm ./config_temp.tcl
 
 echo "set DESIGN_NAME $DESIGN_NAME" >> ./config_temp.tcl
+echo "set clk $clk" >> ./config_temp.tcl
 echo "set PERIOD $PERIOD" >> ./config_temp.tcl
 echo "set DATE_VALUE $DATE_VALUE" >> ./config_temp.tcl
 echo "set TECH_SETTING $TECH_SETTING" >> ./config_temp.tcl

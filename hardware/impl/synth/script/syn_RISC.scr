@@ -6,8 +6,7 @@
 source -verbose ./config_temp.tcl
 
 set DESIGN      $DESIGN_NAME
-set TOP_MODULE  ${DESIGN}
-set clk         I_SysClk
+set clk         $clk
 
 set_attribute hdl_search_path "./"
 set_attribute script_search_path ./script
@@ -94,11 +93,6 @@ check_design -unresolved
 
 
 ##########################################################################
-#                              Cost groups                               #
-##########################################################################
-
-
-##########################################################################
 #                         Clock gating constraint                        #
 ##########################################################################
 set_attribute lp_clock_gating_max_flops 16 /designs/*
@@ -135,6 +129,30 @@ write -m ${DESIGN} > ${SYNTH_PROJDIR}/gate/${DESIGN}.v
 ##########################################################################
 #                    Report and analyze power and timing                 # 
 ##########################################################################
+
+##########################################################################
+#                              Cost groups                               #
+##########################################################################
+foreach clock_name $clock_list {
+	define_cost_group -name ${clock_name}_in2reg -design $DESIGN
+	path_group -from [all_inputs] -to $clock_name -group ${clock_name}_in2reg
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_in2reg > ${SYNTH_PROJDIR}/rpt/${clock_name}_in2reg.rpt
+}
+
+#register to output
+foreach clock_name $clock_list {
+	define_cost_group -name ${clock_name}_reg2out -design $DESIGN
+	path_group -from $clock_name -to [all_outputs] -group ${clock_name}_reg2out
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2out > ${SYNTH_PROJDIR}/rpt/${clock_name}_reg2out.rpt
+}
+
+#register to register
+foreach clock_name $clock_list {
+	define_cost_group -name ${clock_name}_reg2reg -design $DESIGN
+	path_group -from $clock_name -to $clock_name -group ${clock_name}_reg2reg
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2reg > ${SYNTH_PROJDIR}/rpt/${clock_name}_reg2reg.rpt
+}
+
 report power        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power.rpt
 report area         > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area.rpt
 report gates        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.gates.rpt
@@ -152,5 +170,6 @@ report area -depth 3       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth3.rpt
 report area -depth 4       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth4.rpt
 report area -depth 5       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth5.rpt
 report area -depth 6       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth6.rpt
+report area -depth 7       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth7.rpt
 
 puts "The RUNTIME is [get_attr runtime /] seconds"
