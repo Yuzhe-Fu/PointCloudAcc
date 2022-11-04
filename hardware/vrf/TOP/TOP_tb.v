@@ -1,6 +1,6 @@
 `timescale  1 ns / 100 ps
 `define SIM
-// `define FUNC_SIM
+`define FUNC_SIM
 module TOP_tb();
 //=====================================================================================================================
 // Constant Definition :

@@ -76,7 +76,7 @@ genvar gv_i;
 FIFO_FWFT#(
     .INIT       ( "init.mif"                    ),
     .DATA_WIDTH ( $clog2(POOL_CORE) + ACT_WIDTH*POOL_COMP_CORE ),
-    .ADDR_WIDTH ( 2                             ),
+    .ADDR_WIDTH ( 1                             ),
     .INITIALIZE_FIFO ( "no"                     )
 )U0_FIFO_FWFT_OUT(
     .clk        ( clk                               ),

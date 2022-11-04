@@ -76,12 +76,6 @@ wire [ADDR_WIDTH                -1 : 0] RdPortAddr_Array[0 : NUM_RDPORT -1];
 reg  [SRAM_WIDTH*MAXPAR         -1 : 0] RdPortDat_Array [0 : NUM_RDPORT -1];
 wire [SRAM_WIDTH*MAXPAR         -1 : 0] WrPortDat_Array [0 : NUM_WRPORT -1];
 
-// reg [NUM_RDPORT+NUM_WRPORT      -1 : 0] CfgVld;
-// wire [NUM_RDPORT+NUM_WRPORT     -1 : 0] CfgRdy;
-
-
-
-
 wire                                    rvalid_array  [0 : NUM_BANK     -1];
 wire [SRAM_WIDTH                -1 : 0] rdata_array   [0 : NUM_BANK     -1];
 wire [NUM_BANK                  -1 : 0] WrPortBankEn  [0 : NUM_WRPORT   -1];
@@ -96,25 +90,6 @@ wire [NUM_RDPORT                -1 : 0] WrPortEn;
 genvar      gv_i;
 genvar      gv_j;
 integer     int_i;
-//=====================================================================================================================
-// Logic Design
-//=====================================================================================================================
-
-// generate
-//     for(gv_j=0; gv_j<NUM_WRPORT+NUM_RDPORT; gv_j=gv_j+1) begin
-//         always @ ( posedge clk or negedge rst_n ) begin
-//             if ( !rst_n ) begin
-//                 CfgVld[gv_j] <= 0;
-//             end else if (CCUGLB_CfgVld[gv_j] & GLBCCU_CfgRdy[gv_j]) begin
-//                 CfgVld[gv_j] <= 1'b1;
-//             end else if (GLBCCU_CfgRdy[gv_j]) begin
-//                 CfgVld[gv_j] <= 1'b0;
-//             end
-//         end
-//     end
-// endgenerate
-// assign GLBCCU_CfgRdy = CfgRdy | !CfgVld;
-
 
 //=====================================================================================================================
 // Logic Design
@@ -332,7 +307,6 @@ generate
 
     end
 endgenerate
-
 
 //=====================================================================================================================
 // Sub-Module :
