@@ -35,6 +35,10 @@ software/PointNeXt/PointNeXt-master/openpoints/cpp
 software/PointNeXt/PointNeXt-master/runs
 software/PointNeXt/PointNeXt-master/wandb
 
+software/PointNeXt/HW/Data/
+*.pt
+
+
 *.checkpoint
 *.log
 #######################################################
@@ -44,7 +48,9 @@ software/PointNeXt/PointNeXt-master/wandb
 hardware/work/
 hardware/project/
 hardware/vft/
-
+.*
+fv/
+*.gz
 #######################################################
 #      The above part is Yuzhe Fu software part
 #      May Buddha Blesses u~

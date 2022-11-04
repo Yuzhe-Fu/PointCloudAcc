@@ -1,35 +1,28 @@
-// 读SRAM用握手协议的接口；
-// 对于是否能读/写SRAM，由addr的valid控制，也就是valid高就能读写，因此assign wready  = 1'b1; 和assign arready = rready;
-// 1. 对于写，地址，数据和使能都是同周期的，自然满足握手协议
-// 2. 对于读：由于SRAM口上的数据延后于读使能和地址，不是握手协议所要要求的提前放到端口
-//      因此，对地址和数据分别使用握手协议：
-//          先握手地址输入，arready是否有效取决于rready让端口数据是否将被取走；再
-//          再握手数据输出，rvalid是：要么上一次读了，否则要么读了没被取走
 
 module RAM_HS #(
-    parameter SRAM_BIT = 128,
-    parameter SRAM_BYTE = 1,
-    parameter SRAM_WORD = 64,
-    parameter CLOCK_PERIOD = 10,
+    parameter SRAM_BIT      = 128,
+    parameter SRAM_BYTE     = 1,
+    parameter SRAM_WORD     = 64,
+    parameter CLOCK_PERIOD  = 10,
     
-    parameter SRAM_WIDTH = SRAM_BIT*SRAM_BYTE,
-    parameter SRAM_DEPTH_BIT = $clog2(SRAM_WORD)
+    parameter SRAM_WIDTH    = SRAM_BIT*SRAM_BYTE,
+    parameter SRAM_DEPTH_BIT= $clog2(SRAM_WORD)
 )(
-	input clk,
-	input rst_n,
+	input                           clk,
+	input                           rst_n,
 	
-	input  					   wvalid,
-	output 					   wready,
-	input  [SRAM_DEPTH_BIT -1:0]waddr,
-	input  [SRAM_WIDTH         -1:0]wdata,
+	input  					        wvalid,
+	output 					        wready,
+	input  [SRAM_DEPTH_BIT  -1 : 0] waddr,
+	input  [SRAM_WIDTH      -1 : 0] wdata,
 	
-	input  					   arvalid,
-	output 					   arready,
-	input  [SRAM_DEPTH_BIT -1:0]araddr,
+	input  					        arvalid,
+	output 					        arready,
+	input  [SRAM_DEPTH_BIT  -1 : 0] araddr,
 	
-	output					   rvalid,
-	input					   rready,
-	output [SRAM_WIDTH         -1:0]rdata	
+	output reg					    rvalid,
+	input					        rready,
+	output [SRAM_WIDTH      -1 : 0] rdata	
 );
 
 //***********************************************
@@ -41,13 +34,13 @@ module RAM_HS #(
 //***********************************************
 // ram inst
 //***********************************************
-wire 					 ram_wenc;
-wire [SRAM_DEPTH_BIT -1:0]ram_waddr;
-wire [SRAM_WIDTH         -1:0]ram_wdata;
-wire 					 ram_renc;
-wire [SRAM_DEPTH_BIT -1:0]ram_raddr;
-wire [SRAM_WIDTH         -1:0]ram_rdata;
-
+wire 					    ram_wenc;
+wire [SRAM_DEPTH_BIT-1 : 0] ram_waddr;
+wire [SRAM_WIDTH    -1 : 0] ram_wdata;
+wire 					    ram_renc;
+// wire 					    ram_renc_d;
+wire [SRAM_DEPTH_BIT-1 : 0] ram_raddr;
+wire [SRAM_WIDTH    -1 : 0] ram_rdata;
 
 
 //***********************************************
@@ -57,7 +50,7 @@ assign ram_wenc  = wvalid && wready;
 assign ram_waddr = waddr;
 assign ram_wdata = wdata;
 
-assign wready  = 1'b1;
+assign wready   = 1'b1;
 //***********************************************
 // read path
 //***********************************************
@@ -77,27 +70,37 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign rvalid = ram_renc_ff;
-assign rdata = ram_rdata;
+assign rdata   = ram_rdata;
 assign arready = rready;
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 RAM#(
-    .SRAM_BIT     ( SRAM_BIT ),
-    .SRAM_BYTE    ( SRAM_BYTE ),
-    .SRAM_WORD    ( SRAM_WORD ),
-    .CLOCK_PERIOD ( CLOCK_PERIOD )
+    .SRAM_BIT     ( SRAM_BIT    ),
+    .SRAM_BYTE    ( SRAM_BYTE   ),
+    .SRAM_WORD    ( SRAM_WORD   ),
+    .CLOCK_PERIOD ( CLOCK_PERIOD)
 )u_RAM(
     .clk          ( clk          ),
     .rst_n        ( rst_n        ),
-    .addr_r       ( ram_raddr       ),
-    .addr_w       ( ram_waddr       ),
-    .read_en      ( ram_renc      ),
+    .addr_r       ( ram_raddr    ),
+    .addr_w       ( ram_waddr    ),
+    .read_en      ( ram_renc     ),
     .write_en     ( ram_wenc     ),
-    .data_in      ( ram_wdata      ),
-    .data_out     ( ram_rdata     )
+    .data_in      ( ram_wdata    ),
+    .data_out     ( ram_rdata    )
 );
+
+// DELAY#(
+//     .NUM_STAGES ( 1 ),
+//     .DATA_WIDTH ( 1 )
+// )u_DELAY_ram_renc_d(
+//     .CLK        ( clk        ),
+//     .RST_N      ( rst_n      ),
+//     .DIN        ( ram_renc        ),
+//     .DOUT       ( ram_renc_d       )
+// );
+
 
 endmodule

@@ -1,4 +1,4 @@
-`timescale 1ns/1ps
+
 module DELAY #(
     parameter NUM_STAGES = 1,
     parameter DATA_WIDTH = 1

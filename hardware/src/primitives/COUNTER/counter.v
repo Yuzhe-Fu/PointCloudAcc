@@ -1,4 +1,4 @@
-`timescale 1ns/1ps
+
 module counter #(
     // INPUT PARAMETERS
     parameter COUNT_WIDTH               = 3

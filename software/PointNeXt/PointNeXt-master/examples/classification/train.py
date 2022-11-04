@@ -103,12 +103,24 @@ def print_cls_results(oa, macc, accs, epoch, cfg):
 
 input_data = {}
 output_data = {}
-activation = {}
 def get_activation(name):
     def hook(model,input,output):
         # output_data[name] = output.numpy()
         input_data[name] = input[0].detach() # input type is tulple, only has one element, which is the tensor
         output_data[name] = output.detach()  # output type is tensor
+    return hook
+
+support_xyz = {}
+features = {}
+grouped_xyz = {}
+grouped_features = {}
+def get_activation_grouper(name):
+    def hook(model,input,output):
+        # output_data[name] = output.numpy()
+        support_xyz[name] = input[1].detach()
+        features[name] = input[2].detach()
+        grouped_xyz[name] = output[0].detach()
+        grouped_features[name] = output[1].detach()
     return hook
 
 def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
@@ -210,7 +222,11 @@ def main(gpu, cfg, profile=False, compress_path=False, save_name=False):
             if cfg.mode == 'test':
                 # test mode
                 epoch, best_val = load_checkpoint(model, pretrained_path=cfg.pretrained_path)
-                macc, oa, accs, cm = validate_fn(model, test_loader, cfg)
+                print(model.inputs_quant.scale)
+                print(model.inputs_quant.zero_point)
+                torch.save(model.inputs_quant.scale, './data/TensorData/model_inputs_quant/scale.pt')
+                torch.save(model.inputs_quant.zero_point, './data/TensorData/model_inputs_quant/zero_point.pt')
+                # macc, oa, accs, cm = validate_fn(model, test_loader, cfg)
                 # print_cls_results(oa, macc, accs, epoch, cfg)
                 print('Finish test, data see in data/TensorData')
                 return True
@@ -240,97 +256,114 @@ def validate(model, val_loader, cfg):
     # layer = model.encoder.encoder[1][0].act.fake_q
     # layer_name = 'encoder_encoder_1_0_act_fake_q'
 
-    layer0  =   model.encoder.encoder[0][0].convs[0][0]
-    layer1  =   model.encoder.encoder[1][0].skipconv[0]
-    layer2  =   model.encoder.encoder[1][0].act.fake_q
-    layer3  =   model.encoder.encoder[1][0].convs[0][0]
-    layer4  =   model.encoder.encoder[1][0].convs[0][1]
-    layer5  =   model.encoder.encoder[1][0].convs[0][2].fake_q
-    layer6  =   model.encoder.encoder[1][0].convs[1][0]
-    layer7  =   model.encoder.encoder[1][0].convs[1][1]
-    layer8  =   model.encoder.encoder[2][0].skipconv[0]
-    layer9  =   model.encoder.encoder[2][0].act.fake_q
-    layer10 =   model.encoder.encoder[2][0].convs[0][0]
-    layer11 =   model.encoder.encoder[2][0].convs[0][1]
-    layer12 =   model.encoder.encoder[2][0].convs[0][2].fake_q
-    layer13 =   model.encoder.encoder[2][0].convs[1][0]
-    layer14 =   model.encoder.encoder[2][0].convs[1][1]
-    layer15 =   model.encoder.encoder[3][0].skipconv[0]
-    layer16 =   model.encoder.encoder[3][0].act.fake_q
-    layer17 =   model.encoder.encoder[3][0].convs[0][0]
-    layer18 =   model.encoder.encoder[3][0].convs[0][1]
-    layer19 =   model.encoder.encoder[3][0].convs[0][2].fake_q
-    layer20 =   model.encoder.encoder[3][0].convs[1][0]
-    layer21 =   model.encoder.encoder[3][0].convs[1][1]
-    layer22 =   model.encoder.encoder[4][0].skipconv[0]
-    layer23 =   model.encoder.encoder[4][0].act.fake_q
-    layer24 =   model.encoder.encoder[4][0].convs[0][0]
-    layer25 =   model.encoder.encoder[4][0].convs[0][1]
-    layer26 =   model.encoder.encoder[4][0].convs[0][2].fake_q
-    layer27 =   model.encoder.encoder[4][0].convs[1][0]
-    layer28 =   model.encoder.encoder[4][0].convs[1][1]
-    layer29 =   model.encoder.encoder[5][0].convs[0][0]
-    layer30 =   model.encoder.encoder[5][0].convs[0][1]
-    layer31 =   model.encoder.encoder[5][0].convs[0][2].fake_q
-    layer32 =   model.encoder.encoder[5][0].convs[1][0]
-    layer33 =   model.encoder.encoder[5][0].convs[1][1]
-    layer34 =   model.encoder.encoder[5][0].convs[1][2].fake_q
-    layer35 =   model.prediction.head[0][0]
-    layer36 =   model.prediction.head[0][1]
-    layer37 =   model.prediction.head[0][2].fake_q
-    layer38 =   model.prediction.head[2][0]
-    layer39 =   model.prediction.head[2][1]
-    layer40 =   model.prediction.head[2][2].fake_q
-    layer41 =   model.prediction.head[4][0]
+    # for conv layer
+    # layer0  =   model.encoder.encoder[0][0].convs[0][0]
+    # layer1  =   model.encoder.encoder[1][0].skipconv[0]
+    # layer2  =   model.encoder.encoder[1][0].act.fake_q
+    # layer3  =   model.encoder.encoder[1][0].convs[0][0]
+    # layer4  =   model.encoder.encoder[1][0].convs[0][1]
+    # layer5  =   model.encoder.encoder[1][0].convs[0][2].fake_q
+    # layer6  =   model.encoder.encoder[1][0].convs[1][0]
+    # layer7  =   model.encoder.encoder[1][0].convs[1][1]
+    # layer8  =   model.encoder.encoder[2][0].skipconv[0]
+    # layer9  =   model.encoder.encoder[2][0].act.fake_q
+    # layer10 =   model.encoder.encoder[2][0].convs[0][0]
+    # layer11 =   model.encoder.encoder[2][0].convs[0][1]
+    # layer12 =   model.encoder.encoder[2][0].convs[0][2].fake_q
+    # layer13 =   model.encoder.encoder[2][0].convs[1][0]
+    # layer14 =   model.encoder.encoder[2][0].convs[1][1]
+    # layer15 =   model.encoder.encoder[3][0].skipconv[0]
+    # layer16 =   model.encoder.encoder[3][0].act.fake_q
+    # layer17 =   model.encoder.encoder[3][0].convs[0][0]
+    # layer18 =   model.encoder.encoder[3][0].convs[0][1]
+    # layer19 =   model.encoder.encoder[3][0].convs[0][2].fake_q
+    # layer20 =   model.encoder.encoder[3][0].convs[1][0]
+    # layer21 =   model.encoder.encoder[3][0].convs[1][1]
+    # layer22 =   model.encoder.encoder[4][0].skipconv[0]
+    # layer23 =   model.encoder.encoder[4][0].act.fake_q
+    # layer24 =   model.encoder.encoder[4][0].convs[0][0]
+    # layer25 =   model.encoder.encoder[4][0].convs[0][1]
+    # layer26 =   model.encoder.encoder[4][0].convs[0][2].fake_q
+    # layer27 =   model.encoder.encoder[4][0].convs[1][0]
+    # layer28 =   model.encoder.encoder[4][0].convs[1][1]
+    # layer29 =   model.encoder.encoder[5][0].convs[0][0]
+    # layer30 =   model.encoder.encoder[5][0].convs[0][1]
+    # layer31 =   model.encoder.encoder[5][0].convs[0][2].fake_q
+    # layer32 =   model.encoder.encoder[5][0].convs[1][0]
+    # layer33 =   model.encoder.encoder[5][0].convs[1][1]
+    # layer34 =   model.encoder.encoder[5][0].convs[1][2].fake_q
+    # layer35 =   model.prediction.head[0][0]
+    # layer36 =   model.prediction.head[0][1]
+    # layer37 =   model.prediction.head[0][2].fake_q
+    # layer38 =   model.prediction.head[2][0]
+    # layer39 =   model.prediction.head[2][1]
+    # layer40 =   model.prediction.head[2][2].fake_q
+    # layer41 =   model.prediction.head[4][0]
 
 
-    list=[\
-        {'layer': layer0,   'layer_name': 'model_encoder_encoder_0_0_convs_0_0',          'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer1,   'layer_name': 'model_encoder_encoder_1_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer2,   'layer_name': 'model_encoder_encoder_1_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer3,   'layer_name': 'model_encoder_encoder_1_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer4,   'layer_name': 'model_encoder_encoder_1_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer5,   'layer_name': 'model_encoder_encoder_1_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer6,   'layer_name': 'model_encoder_encoder_1_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer7,   'layer_name': 'model_encoder_encoder_1_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, 
-        {'layer': layer8,   'layer_name': 'model_encoder_encoder_2_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer9,   'layer_name': 'model_encoder_encoder_2_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer10,  'layer_name': 'model_encoder_encoder_2_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer11,  'layer_name': 'model_encoder_encoder_2_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer12,  'layer_name': 'model_encoder_encoder_2_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer13,  'layer_name': 'model_encoder_encoder_2_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer14,  'layer_name': 'model_encoder_encoder_2_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer15,  'layer_name': 'model_encoder_encoder_3_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer16,  'layer_name': 'model_encoder_encoder_3_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer17,  'layer_name': 'model_encoder_encoder_3_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer18,  'layer_name': 'model_encoder_encoder_3_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True }, \
-        {'layer': layer19,  'layer_name': 'model_encoder_encoder_3_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer20,  'layer_name': 'model_encoder_encoder_3_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer21,  'layer_name': 'model_encoder_encoder_3_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer22,  'layer_name': 'model_encoder_encoder_4_0_skipconv_0',         'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer23,  'layer_name': 'model_encoder_encoder_4_0_act_fake_q',         'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer24,  'layer_name': 'model_encoder_encoder_4_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer25,  'layer_name': 'model_encoder_encoder_4_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer26,  'layer_name': 'model_encoder_encoder_4_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer27,  'layer_name': 'model_encoder_encoder_4_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer28,  'layer_name': 'model_encoder_encoder_4_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer29,  'layer_name': 'model_encoder_encoder_5_0_convs_0_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer30,  'layer_name': 'model_encoder_encoder_5_0_convs_0_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer31,  'layer_name': 'model_encoder_encoder_5_0_convs_0_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer32,  'layer_name': 'model_encoder_encoder_5_0_convs_1_0',          'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer33,  'layer_name': 'model_encoder_encoder_5_0_convs_1_1',          'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer34,  'layer_name': 'model_encoder_encoder_5_0_convs_1_2_fake_q',   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer35,  'layer_name': 'model_prediction_head_0_0',                    'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer36,  'layer_name': 'model_prediction_head_0_1',                    'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer37,  'layer_name': 'model_prediction_head_0_2_fake_q',             'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer38,  'layer_name': 'model_prediction_head_2_0',                    'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
-        {'layer': layer39,  'layer_name': 'model_prediction_head_2_1',                    'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
-        {'layer': layer40,  'layer_name': 'model_prediction_head_2_2_fake_q',             'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
-        {'layer': layer41,  'layer_name': 'model_prediction_head_4_0',                    'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}]
+    # list=[\
+    #     {'layer': layer0,   'layer_name': 'model_encoder_encoder_0_0_convs_0_0',          'isGrouper': False,   'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer1,   'layer_name': 'model_encoder_encoder_1_0_skipconv_0',         'isGrouper': False,   'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer2,   'layer_name': 'model_encoder_encoder_1_0_act_fake_q',         'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer3,   'layer_name': 'model_encoder_encoder_1_0_convs_0_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer4,   'layer_name': 'model_encoder_encoder_1_0_convs_0_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer5,   'layer_name': 'model_encoder_encoder_1_0_convs_0_2_fake_q',   'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer6,   'layer_name': 'model_encoder_encoder_1_0_convs_1_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer7,   'layer_name': 'model_encoder_encoder_1_0_convs_1_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, 
+    #     {'layer': layer8,   'layer_name': 'model_encoder_encoder_2_0_skipconv_0',         'isGrouper': False,   'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer9,   'layer_name': 'model_encoder_encoder_2_0_act_fake_q',         'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer10,  'layer_name': 'model_encoder_encoder_2_0_convs_0_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer11,  'layer_name': 'model_encoder_encoder_2_0_convs_0_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer12,  'layer_name': 'model_encoder_encoder_2_0_convs_0_2_fake_q',   'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer13,  'layer_name': 'model_encoder_encoder_2_0_convs_1_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer14,  'layer_name': 'model_encoder_encoder_2_0_convs_1_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer15,  'layer_name': 'model_encoder_encoder_3_0_skipconv_0',         'isGrouper': False,   'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer16,  'layer_name': 'model_encoder_encoder_3_0_act_fake_q',         'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer17,  'layer_name': 'model_encoder_encoder_3_0_convs_0_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer18,  'layer_name': 'model_encoder_encoder_3_0_convs_0_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True }, \
+    #     {'layer': layer19,  'layer_name': 'model_encoder_encoder_3_0_convs_0_2_fake_q',   'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer20,  'layer_name': 'model_encoder_encoder_3_0_convs_1_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer21,  'layer_name': 'model_encoder_encoder_3_0_convs_1_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer22,  'layer_name': 'model_encoder_encoder_4_0_skipconv_0',         'isGrouper': False,   'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer23,  'layer_name': 'model_encoder_encoder_4_0_act_fake_q',         'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer24,  'layer_name': 'model_encoder_encoder_4_0_convs_0_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer25,  'layer_name': 'model_encoder_encoder_4_0_convs_0_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer26,  'layer_name': 'model_encoder_encoder_4_0_convs_0_2_fake_q',   'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer27,  'layer_name': 'model_encoder_encoder_4_0_convs_1_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer28,  'layer_name': 'model_encoder_encoder_4_0_convs_1_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer29,  'layer_name': 'model_encoder_encoder_5_0_convs_0_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer30,  'layer_name': 'model_encoder_encoder_5_0_convs_0_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer31,  'layer_name': 'model_encoder_encoder_5_0_convs_0_2_fake_q',   'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer32,  'layer_name': 'model_encoder_encoder_5_0_convs_1_0',          'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer33,  'layer_name': 'model_encoder_encoder_5_0_convs_1_1',          'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer34,  'layer_name': 'model_encoder_encoder_5_0_convs_1_2_fake_q',   'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer35,  'layer_name': 'model_prediction_head_0_0',                    'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer36,  'layer_name': 'model_prediction_head_0_1',                    'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer37,  'layer_name': 'model_prediction_head_0_2_fake_q',             'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer38,  'layer_name': 'model_prediction_head_2_0',                    'isGrouper': False,   'isWeight': True,      'isBias': False,    'isFakeQ': False, 'isBN': False}, \
+    #     {'layer': layer39,  'layer_name': 'model_prediction_head_2_1',                    'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': False, 'isBN': True}, \
+    #     {'layer': layer40,  'layer_name': 'model_prediction_head_2_2_fake_q',             'isGrouper': False,   'isWeight': False,     'isBias': False,    'isFakeQ': True,  'isBN': False}, \
+    #     {'layer': layer41,  'layer_name': 'model_prediction_head_4_0',                    'isGrouper': False,   'isWeight': True,      'isBias': True,     'isFakeQ': False, 'isBN': False}]
 
+    # for dic in list:
+    #     dic['layer'].register_forward_hook(get_activation(dic['layer_name']))
+    
+    # for grouper layer
+    grouper_0 = model.encoder.encoder[1][0].grouper 
+    grouper_1 = model.encoder.encoder[2][0].grouper
+    grouper_2 = model.encoder.encoder[3][0].grouper
+    grouper_3 = model.encoder.encoder[4][0].grouper
+    grouper_4 = model.encoder.encoder[5][0].grouper # GroupAll
 
-    for dic in list:
-        dic['layer'].register_forward_hook(get_activation(dic['layer_name']))
+    grouper_list=[\
+        {'layer': grouper_0,   'layer_name': 'model_encoder_encoder_1_0_grouper',  'isGrouper': True, 'isQueryAndGroup': True, 'isGroupAll': False}, \
+        {'layer': grouper_1,   'layer_name': 'model_encoder_encoder_2_0_grouper',  'isGrouper': True, 'isQueryAndGroup': True, 'isGroupAll': False}, \
+        {'layer': grouper_2,   'layer_name': 'model_encoder_encoder_3_0_grouper',  'isGrouper': True, 'isQueryAndGroup': True, 'isGroupAll': False}, \
+        {'layer': grouper_3,   'layer_name': 'model_encoder_encoder_4_0_grouper',  'isGrouper': True, 'isQueryAndGroup': True, 'isGroupAll': False}, \
+        {'layer': grouper_4,   'layer_name': 'model_encoder_encoder_5_0_grouper',  'isGrouper': True, 'isQueryAndGroup': False, 'isGroupAll': True}]
+
+    for dic in grouper_list:
+        dic['layer'].register_forward_hook(get_activation_grouper(dic['layer_name']))
 
     cm = ConfusionMatrix(num_classes=cfg.num_classes)
     npoints = cfg.num_points
@@ -353,8 +386,11 @@ def validate(model, val_loader, cfg):
             break
         
     # save the hooked tesnsor value
-    for dic in list:
-        save_Tensor(dic['layer'], dic['layer_name'], dic['isWeight'], dic['isBias'], dic['isFakeQ'], dic['isBN'])
+    # for dic in list:
+    #     save_Tensor(layer=dic['layer'], layer_name=dic['layer_name'], isGrouper=dic['isGrouper'],isWeight=dic['isWeight'], isBias=dic['isBias'], isFakeQ=dic['isFakeQ'], isBN=dic['isBN'])
+    
+    for dic in grouper_list:
+        save_Tensor(layer=dic['layer'], layer_name=dic['layer_name'], isGrouper=dic['isGrouper'], isQueryAndGroup=dic['isQueryAndGroup'], isGroupAll=dic['isGroupAll'])
 
     # tp, count = cm.tp, cm.count
     # if cfg.distributed:
@@ -364,26 +400,31 @@ def validate(model, val_loader, cfg):
     return None, None, None, None
 
 
-def save_Tensor(layer, layer_name, isWeight, isBias, isFakeQ, isBN):
+def save_Tensor(layer, layer_name, isGrouper=False, isWeight=False, isBias=False, isFakeQ=False, isBN=False, isQueryAndGroup=False, isGroupAll=False):
     path=r'./data/TensorData/'+layer_name
     if not os.path.exists(path):
         os.mkdir(path)
-    
-    torch.save(input_data[layer_name], path+'/input.pt')
-    torch.save(output_data[layer_name],path+'/output.pt')
-    
-    if isWeight is True:
-        torch.save(layer.weight, path+'/weight.pt')
-        torch.save(layer.weight_scale, path+'/weight_scale.pt')
-        torch.save(layer.weight_zero_point, path+'/weight_zero_point.pt')
-    if isBias is True:
-        torch.save(layer.bias, path+'/bias.pt')
-        torch.save(layer.bias_scale, path+'/bias_scale.pt')
-        torch.save(layer.bias_zero_point, path+'/bias_zero_point.pt')
-    if isFakeQ is True:
-        torch.save(layer.scale, path+'/scale.pt')
-        torch.save(layer.zero_point, path+'/zero_point.pt')
-    if isBN is True:
-        torch.save(layer.weight, path+'/weight.pt')
-        torch.save(layer.bias, path+'/bias.pt')
+    if isGrouper is False:
+        torch.save(input_data[layer_name], path+'/input.pt')
+        torch.save(output_data[layer_name],path+'/output.pt')
+        
+        if isWeight is True:
+            torch.save(layer.weight, path+'/weight.pt')
+            torch.save(layer.weight_scale, path+'/weight_scale.pt')
+            torch.save(layer.weight_zero_point, path+'/weight_zero_point.pt')
+        if isBias is True:
+            torch.save(layer.bias, path+'/bias.pt')
+            torch.save(layer.bias_scale, path+'/bias_scale.pt')
+            torch.save(layer.bias_zero_point, path+'/bias_zero_point.pt')
+        if isFakeQ is True:
+            torch.save(layer.scale, path+'/scale.pt')
+            torch.save(layer.zero_point, path+'/zero_point.pt')
+        if isBN is True:
+            torch.save(layer.weight, path+'/weight.pt')
+            torch.save(layer.bias, path+'/bias.pt')
+    else:
+        torch.save(support_xyz[layer_name], path+'/support_xyz.pt')
+        torch.save(features[layer_name], path+'/features.pt')
+        torch.save(grouped_xyz[layer_name], path+'/grouped_xyz.pt')
+        torch.save(grouped_features[layer_name], path+'/grouped_features.pt')
     print('successfully saved the '+ layer_name + ' data')

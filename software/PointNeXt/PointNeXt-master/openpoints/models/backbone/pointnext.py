@@ -149,9 +149,8 @@ class SetAbstraction(nn.Module):
                 identity = torch.gather(
                     x, -1, idx.unsqueeze(1).expand(-1, x.shape[1], -1))
                 identity = self.skipconv(identity)
-            # pdb.set_trace()
             dp, xj = self.grouper(new_p, p, x)
-            
+            # pdb.set_trace()
             x = self.pool(self.convs(torch.cat((dp, xj), dim=1)))
             if self.use_res:
                 x = self.act(x + identity)
