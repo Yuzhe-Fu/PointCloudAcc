@@ -36,6 +36,7 @@
 ../../src/primitives/FIFO/FIFO_FWFT.v
 ../../src/primitives/COUNTER/counter.v
 ../../src/primitives/ARB/prior_arb.v
+../../src/primitives/DEBUG/DEC2D.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb128x256m1sso_170a/VERILOG/ts1n28hpcpuhdhvtb128x256m1sso_170a_ssg0p81v125c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb64x128m4sso_170a/VERILOG/ts1n28hpcpuhdhvtb64x128m4sso_170a_ssg0p81v125c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb16x8m2sso_170a/VERILOG/ts1n28hpcpuhdhvtb16x8m2sso_170a_ssg0p81v125c.v
