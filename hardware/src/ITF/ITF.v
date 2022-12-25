@@ -167,10 +167,10 @@ prior_arb#(
 //=====================================================================================================================
 genvar i;
 generate
-    for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin
-        assign ITFTOP_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = DatIn;
-        assign ITFTOP_DatVld[i] = DatInVld;
-        assign ITFTOP_DatLast[i] = DatInLast;
+    for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin // state ==IN and portidx match
+        assign ITFTOP_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = (state == IN  && i==PortIdx ? DatIn : 0);
+        assign ITFTOP_DatVld[i] = (state == IN  && i==PortIdx ? DatInVld : 0);
+        assign ITFTOP_DatLast[i]= (state == IN  && i==PortIdx ? DatInLast : 0);
     end
 endgenerate
 
@@ -274,7 +274,16 @@ end
 assign IntraTOPITF_DatLast = CntOverflow & (state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] : 1'b0);
 assign CntInc = state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] & ITFTOP_DatRdy[PortIdx-ITF_NUM_WRPORT] : 1'b0;
 
+//=====================================================================================================================
+// Debug
+//=====================================================================================================================
 
+DEC2D #(
+    .WIDTH(ADDR_WIDTH),
+    .DEPTH(ITF_NUM_WRPORT+ITF_NUM_RDPORT)
+) u_DEC2D_TOPITF_ReqNum(
+    .IN(TOPITF_ReqNum)
+);
 
 
 endmodule
