@@ -117,7 +117,7 @@ assign MICMIF_Rdy       =  gnt & {POOL_CORE{!cmd_full}};
 
 generate
     for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin
-        assign AddrMatch[gv_i] = POLMIC_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH]>= CCUMIC_AddrMin & POLMIC_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH] < CCUMIC_AddrMax;
+        assign AddrMatch[gv_i] = POLMIC_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH]>= CCUMIC_AddrMin & POLMIC_Addr[IDX_WIDTH*gv_i +: IDX_WIDTH] <= CCUMIC_AddrMax;
     end
 endgenerate
 
