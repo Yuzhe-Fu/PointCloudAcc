@@ -90,8 +90,8 @@
 | CCUCTR_CfgNfl             | output | NUM_FPS_WIDTH| FPS的层数     |
 | CCUCTR_CfgNop             | output |IDX_WIDTH     |  2            | FPS筛选出原始点数的>> FPS_factor，例如当FPS_factor=1时，>>1表示一半 |
 | CCUCTR_CfgK               | output | K_WIDTH           | KNN/BQ需要找出多少个邻近点 |
-| CCUGLB_CfgVld             | output |NUM_PORT| 每个Port单独配置和使能，vld rdy取代rst和fnh
-| GLBCCU_CfgRdy             | input  |NUM_PORT|
+| CCUGLB_CfgVld             | output |NUM_PORT| 用CCUGLB_CfgVld**重置**相应的Port |
+| GLBCCU_CfgRdy             | input  |NUM_PORT| 代表完成了 |
 | CCUGLB_CfgPort_BankFlg    | output |
 | CCUGLB_CfgPort_AddrMax    | output |
 | CCUGLB_CfgRdPortParBank   | output |
@@ -116,10 +116,8 @@
         - 读：每种层单独配置，Cfg不同信息归属不同种的层，所有种层的信息连续存到RAM，RAM的宽度就是PORT_WIDTH=96，每个种层有多个PROT_WIDTH的word，深度为64（PointMLP-lite就有43层）
             - 用FSM直接使能读RAM，用读数中的OpCode确认是否取到相应的种层的配置，否则地址加1，当取完各种层一层的所有word后（当取到配置数为需要的-1且当前取的match时），完成种层的配置
     - GLB控制：达到单独控制一个Port转移到另一个Bank，需要：
-        - 单独控制到哪个Bank：
-            - 不影响其它Bank：在刷新时，其它的配置信息应该是不变的
-            - 从Bank哪个地址开始读写起止，（IF还有DRAM的读写起止地址）：
-                - 用相应的CfgVld的bit位，是一个脉冲，与SYA_RdPortActBank等信息同时变化。
+        - 用CCUGLB_CfgVld重置相应的Port
+        - 直接实时控制相应Port的CfgPortBankFlag
         - 配置信息怎么来？
             - 直接从片外配置的来得出，每个口随层变：但什么时候Port改变呢？**每种层变化时也即取配置时**
                 - 每种层配置port的bank flag，得到如下口的信息，然后assign 给让CCUGLB_CfgBankPort，CCUGLB_CfgPortMod，防止multidriver
