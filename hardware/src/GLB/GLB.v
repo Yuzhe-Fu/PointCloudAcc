@@ -202,7 +202,7 @@ generate
 
         // To Output
         assign RdPortAddrRdy[gv_j] = !Empty;
-        assign RdPortFull[gv_j] = RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ;
+        assign RdPortFull[gv_j] = CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] != 0 & RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ; // CCUGLB_CfgPortNum!=0 (exist) & Full
         assign RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[RdPortMthWrPortIdx] - RdPortAddr_Array[gv_j];
         assign RdPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = RdPortAddr_Array[gv_j];
 
@@ -284,8 +284,8 @@ generate
 
         // To Output
         assign WrPortDatRdy[gv_j] = !Full;
-        assign WrPortEmpty[gv_j] = WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH];
-        assign WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] - (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx]);
+        assign WrPortEmpty[gv_j] = CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] != 0 & WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH]; // CCUGLB_CfgPortNum!=0 (exist) & Empty
+        assign WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] =  CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] - (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx]);
         assign WrPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[gv_j];
 
         counter#(
