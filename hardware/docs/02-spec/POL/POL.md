@@ -35,18 +35,20 @@
 | CCUPOL_CfgK   | input | 24 | 24: KNN, 32: Ball Query |
 | CCUPOL_CfgNip | input | 
 | CCUPOL_CfgChi | input | 
-| GLBPOL_IdxVld | input | 1 | 握手协议的valid信号 |
-| GLBPOL_Idx    | input | SRAM_WIDTH | 输入的map idx |
-| POLGLB_IdxRdy | output | 1 | 握手协议的ready信号 |
+| CCUPOL_AddrMin | input | IDX_WIDTH*POOL_CORE | 给每个MIC配置的IFM在Bank的取值范围（含） |
+| CCUPOL_AddrMax | input | IDX_WIDTH*POOL_CORE | 给每个MIC配置的IFM在Bank的取值范围（含） |
+| GLBPOL_MapVld | input | 1 | 握手协议的valid信号 |
+| GLBPOL_Map    | input | SRAM_WIDTH | 输入的map idx |
+| POLGLB_MapRdy | output | 1 | 握手协议的ready信号 |
 | POLGLB_AddrVld| output | 1 | 握手协议的valid信号 |
 | POLGLB_Addr   | output | IDX_WIDTH\*POOL_CORE | 输出的地址来请求读数据 |
 | GLBPOL_AddrRdy| input | 1 | 握手协议的ready信号 |
-| GLBPOL_Fm     | input | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | 输入的feature map=fm，同时给6个pool_core |
-| GLBPOL_Fmld   | input | 1 | 握手协议的valid信号 |
-| POLGLB_FmRdy  | output | 1 | 握手协议的ready信号 |
-| POLGLB_Fm     | output | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | pool输出计算结果 |
-| POLGLB_FmVld  | output | 1 | 握手协议的valid信号 | 
-| GLBPOL_FmRdy  | input | 1 | 握手协议的ready信号 |
+| GLBPOL_Ofm     | input | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | 输入的feature map=fm，同时给6个pool_core |
+| GLBPOL_Ofmld   | input | 1 | 握手协议的valid信号 |
+| POLGLB_OfmRdy  | output | 1 | 握手协议的ready信号 |
+| POLGLB_Ofm     | output | ACT_WIDTH\*POOL_COMP_CORE\*POOL_CORE | pool输出计算结果 |
+| POLGLB_OfmVld  | output | 1 | 握手协议的valid信号 | 
+| GLBPOL_OfmRdy  | input | 1 | 握手协议的ready信号 |
 
 ## 模块陈述
 背景：需要做pooling的整块feature map，均匀分为6块，存于global buffer中。
