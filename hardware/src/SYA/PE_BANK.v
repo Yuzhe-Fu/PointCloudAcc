@@ -21,6 +21,8 @@ module PE_BANK #(
     input                            clk,
     input                            rst_n,
     
+    input                            rst_reset,
+    
     input  [QNT_WIDTH          -1:0] quant_scale,
     input  [ACT_WIDTH          -1:0] quant_shift,
     input  [ACT_WIDTH          -1:0] quant_zero_point,
@@ -46,6 +48,8 @@ module PE_BANK #(
 //=====================================================================================================================
 localparam DMUL_WIDTH = ACT_WIDTH*WGT_WIDTH;
 
+wire in_ena_left = in_vld_left && in_rdy_left;
+
 wire [NUM_ROW -1:0][FM_WIDTH   -1:0] row_out_fm;
 
 wire [NUM_ROW -1:0][ACT_WIDTH  -1:0] row_out_act;
@@ -64,6 +68,8 @@ wire [NUM_ROW -1:0] row_din_acc_reset = {row_din_acc_reset_reg[NUM_ROW-2:0], in_
 
 always @ ( posedge clk or negedge rst_n )begin
   if( ~rst_n )
+    row_din_acc_reset_reg <= 'd0;
+  else if( rst_reset )
     row_din_acc_reset_reg <= 'd0;
   else if( in_rdy_left )
     row_din_acc_reset_reg <= {row_din_acc_reset_reg[NUM_ROW-2:0], in_acc_reset_left};
@@ -87,6 +93,8 @@ end
     
       .clk                  ( clk               ),
       .rst_n                ( rst_n             ),
+      
+      .rst_reset            ( rst_reset         ),
                             
       .quant_scale          ( quant_scale       ),
       .quant_shift          ( quant_shift       ),
