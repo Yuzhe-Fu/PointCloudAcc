@@ -76,6 +76,7 @@ wire [ADDR_WIDTH                -1 : 0] RdPortAddr_Array[0 : NUM_RDPORT -1];
 reg  [SRAM_WIDTH*MAXPAR         -1 : 0] RdPortDat_Array [0 : NUM_RDPORT -1];
 wire [SRAM_WIDTH*MAXPAR         -1 : 0] WrPortDat_Array [0 : NUM_WRPORT -1];
 
+wire                                    arready_array [0 : NUM_BANK     -1];
 wire                                    rvalid_array  [0 : NUM_BANK     -1];
 wire [SRAM_WIDTH                -1 : 0] rdata_array   [0 : NUM_BANK     -1];
 wire [NUM_BANK                  -1 : 0] WrPortBankEn  [0 : NUM_WRPORT   -1];
@@ -149,6 +150,7 @@ generate
         //=====================================================================================================================
         assign arvalid  = RdPortBankEn[BankRdPortIdx[gv_i]];    
         assign araddr   = RdPortAddr_Array[BankRdPortIdx[gv_i]]; 
+        assign arready_array[gv_i]  = arready;
 
         assign rready = RdPortDatRdy[BankRdPortIdx[gv_i]];
         assign rvalid_array[gv_i]  = rvalid;
@@ -194,14 +196,14 @@ generate
 
         // Clock Domain0: Addr Control
         // Addr generate
-        assign INC = RdPortAddrUse[gv_j] ? 1'b0 : ( !RdPortDatVld[gv_j] |  RdPortDatRdy[gv_j]) & RdPortAddrRdy[gv_j]; // : need read data and !empty
+        assign INC = RdPortAddrUse[gv_j] ? 1'b0 : ( !RdPortDatVld[gv_j] |  RdPortDatRdy[gv_j]) & RdPortAddrRdy[gv_j]; // : need read data and AddrRdy
         assign PortCur1stBankIdx = RdPort1stBankIdx + (RdPortAddr_Array[gv_j] >> SRAM_DEPTH_WIDTH)*CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)];
         assign RdPortMthWrPortIdx = BankWrPortIdx[PortCur1stBankIdx];
         assign Empty = RdPortAddr_Array[gv_j] == WrPortAddr_Array[RdPortMthWrPortIdx];
         assign RdPortAddr_Array[gv_j] = RdPortAddrUse[gv_j] ? RdPortAddr[ADDR_WIDTH*gv_j +: ADDR_WIDTH] : Cnt_RdPortAddr;
 
         // To Output
-        assign RdPortAddrRdy[gv_j] = !Empty;
+        assign RdPortAddrRdy[gv_j] = !Empty & arready_array[PortCur1stBankIdx];
         assign RdPortFull[gv_j] = CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] != 0 & RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ; // CCUGLB_CfgPortNum!=0 (exist) & Full
         assign RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[RdPortMthWrPortIdx] - RdPortAddr_Array[gv_j];
         assign RdPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = RdPortAddr_Array[gv_j];
