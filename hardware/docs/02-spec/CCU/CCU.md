@@ -101,36 +101,57 @@
 
 # 模块描述
 - CCU是中央控制器，负责配置模块和模块的**最顶层控制**（模块内部只要配置能控制的都不要用CCU控制，多少层由CCU控制，CfgVld相当于控制了层的开始，CfgRdy相当于模块反馈结束，再加上整个网络的Rst）
-    - 与片外通信：先直接通过统一接口ITF（ITF相当于挂载了CCU和GLB），从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
-    - FSM控制片内：用FSM，每层输出一次配置，根据子模块请求FPS、KNN、CONV、POL等层的配置，各自取各自下一层的配置
+
+    - FSM控制片内：需要给每个模块，甚至是模块中的口(如GLB的口），单独配置，因此每个都有单独指令操作码
+        - 模块请求信号CfgRdy, 如FPS、KNN、SYA、POL等模块或GLB的各个口，各自取下一个的配置
         - IDLE(芯片启动空状态）->RD_CFG(读取整个网络的参数配置）
-        - 转到配置子FSM: IDLE_CFG ->接收到CfgRdy(可否直接将其当成ReqCfg?)
+        - 转到配置子模块FSM: IDLE_CFG ->接收到CfgRdy（表示完成计算，需要重新配置）
             - ARRAY_CFG, localparam OpCode_Array = 3'd0;
-            - CONV_CFG（配置网络一层）, localparam OpCode_Conv  = 3'd1; == FC
+            - SYA_CFG（配置网络一层）, localparam OpCode_Conv  = 3'd1; == FC
             - POL_CFG: OpCode_Pool  = 3'd3;
             - FPS_CFG OpCode_FPS   = 3'd4;
             - KNN_CFG OpCode_KNN   = 3'd5;
+            - GLB_CFG
+                - localparam GLBWRIDX_ITFACT = 0;
+                - localparam GLBWRIDX_ITFWGT = 1;
+                - localparam GLBWRIDX_ITFCRD = 2;
+                - localparam GLBWRIDX_ITFMAP = 3;
+                - localparam GLBWRIDX_SYAOFM = 4;
+                - localparam GLBWRIDX_POLOFM = 5;
+                - localparam GLBWRIDX_CTRDST = 6;
+                - localparam GLBWRIDX_CTRMAP = 7;
+                - localparam GLBWRIDX_CTRFMK = 8; // FPS Writes Mask
+
+                - localparam GLBRDIDX_ITFMAP = 0;
+                - localparam GLBRDIDX_ITFOFM = 1;
+                - localparam GLBRDIDX_SYAACT = 2;
+                - localparam GLBRDIDX_SYAWGT = 3;
+                - localparam GLBRDIDX_CTRCRD = 4;
+                - localparam GLBRDIDX_CTRDST = 5;
+                - localparam GLBRDIDX_CTRFMK = 6; // FPS Read MASK
+                - localparam GLBRDIDX_CTRKMK = 7; // KNN Read MASK
+                - localparam GLBRDIDX_POLMAP = 8;
+                - localparam GLBRDIDX_POLOFM = 9;
         - 到FNH（整个网络计算完成）
+
+    - 与片外通信：先直接通过统一接口ITF（ITF相当于挂载了CCU和GLB），从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
+
     - RAM_ISA：
         - 写：每次请求的就是一整个RAM深度的，addr_w是所有层数，是深度的倍数，满深度后，仍然加1，相当于重新写RAM
         - 读：每种层单独配置，Cfg不同信息归属不同种的层，所有种层的信息连续存到RAM，RAM的宽度就是PORT_WIDTH=96，每个种层有多个PROT_WIDTH的word，深度为64（PointMLP-lite就有43层）
             - 用FSM直接使能读RAM，用读数中的OpCode确认是否取到相应的种层的配置，否则地址加1，当取完各种层一层的所有word后（当取到配置数为需要的-1且当前取的match时），完成种层的配置
     - GLB控制：达到单独控制一个Port转移到另一个Bank，需要：
-        - 用CCUGLB_CfgVld重置相应的Port
-        - 直接实时控制相应Port的CfgPortBankFlag
-        - 配置信息怎么来？
-            - 直接从片外配置的来得出，每个口随层变：但什么时候Port改变呢？**每种层变化时也即取配置时**
-                - 每种层配置port的bank flag，得到如下口的信息，然后assign 给让CCUGLB_CfgBankPort，CCUGLB_CfgPortMod，防止multidriver
-                - SYA_RdPortAct
-                - SYA_RdPortWgt
-                - SYA_WrPortFm
-                - POL_RdPortFm
-                - POL_WrPortFm
-                - ITF_RdPortAct
-                - ITF_WrPortWgt
-                - ITF_WrPort...
-        - 与GLB的Bank通过CfgInfo
-            - 输出到Bank的地址是相对地址
+        - 什么时候重置：检测口写完/读完一次的信号CfgRdy(Fnh)后根据loop次数决定是否要重新配置口，一旦完成loop次数，口就要重新配置；
+        - 重置什么信息：用CCUGLB_CfgVld重置相应的Port，loop次数，Bank对应
+            - 每种层配置port的bank flag，得到如下口的信息，然后assign 给让CCUGLB_CfgBankPort，CCUGLB_CfgPortMod，防止multidriver
+            - SYA_RdPortAct
+            - SYA_RdPortWgt
+            - SYA_WrPortFm
+            - POL_RdPortFm
+            - POL_WrPortFm
+            - ITF_RdPortAct
+            - ITF_WrPortWgt
+            - ITF_WrPort...
     - Debug: 暂未考虑
 # 下一步：画图
 
