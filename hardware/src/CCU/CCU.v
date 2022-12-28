@@ -228,6 +228,7 @@ wire                                        PISO_ISAInRdy;
 wire [PORT_WIDTH                    -1 : 0] PISO_ISAOut;
 wire                                        PISO_ISAOutVld;
 wire                                        PISO_ISAOutRdy;
+reg                                         Debug_TriggerSYACfgHS;   
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -252,7 +253,7 @@ always @(*) begin
                         next_state <= RD_ISA;
                     else if (NumLy==0)
                         next_state <= ARRAY_CFG;
-                    else if (SYACCU_CfgRdy)
+                    else if (SYACCU_CfgRdy & !Debug_TriggerSYACfgHS)
                         next_state <= CONV_CFG;
                     else if (POLCCU_CfgRdy)
                         next_state <= POL_CFG;
@@ -834,5 +835,11 @@ DELAY#(
     .DOUT       ( ISA_CntRdWord_d       )
 );
 
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n)
+        Debug_TriggerSYACfgHS <= 0;
+    else if (CCUSYA_CfgVld & SYACCU_CfgRdy)
+        Debug_TriggerSYACfgHS <= 1;
+end
 
 endmodule
