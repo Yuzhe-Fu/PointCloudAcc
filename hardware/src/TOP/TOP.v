@@ -24,7 +24,7 @@ module TOP #(
     parameter ISA_SRAM_WORD  = 64,
     parameter ITF_NUM_RDPORT = 2,  
     parameter ITF_NUM_WRPORT = 5, // + CCU
-    parameter GLB_NUM_RDPORT = 15,    
+    parameter GLB_NUM_RDPORT = 15,  // 10 + 5(POOL_CORE)
     parameter GLB_NUM_WRPORT = 9, 
     parameter MAXPAR         = 32,
     parameter NUM_BANK       = 32,
@@ -318,13 +318,22 @@ ITF#(
 );
 
 assign TOPITF_EmptyFull = {RdPortFull[0 +: 2], WrPortEmpty[0 +: 4], CCUITF_Empty};
-assign TOPITF_ReqNum    = {RdPortReqNum[ADDR_WIDTH*0 +: ADDR_WIDTH*2], WrPortReqNum[0 +: ADDR_WIDTH*4], CCUITF_ReqNum};
+assign TOPITF_ReqNum    = {RdPortReqNum[ADDR_WIDTH*0 +: ADDR_WIDTH*2]*SRAM_WIDTH/PORT_WIDTH, WrPortReqNum[0 +: ADDR_WIDTH*4]*SRAM_WIDTH/PORT_WIDTH, CCUITF_ReqNum};
 assign TOPITF_Addr      = {RdPortAddr_Out[ADDR_WIDTH*0 +: ADDR_WIDTH*2], WrPortAddr_Out[0 +: ADDR_WIDTH*4], CCUITF_Addr};
 
-assign TOPITF_Dat       = RdPortDat[SRAM_WIDTH*0 +: SRAM_WIDTH*2]; // First 2 port directly connected to ITF and arbed inside ITF
+// First 2 port (GLBRDIDX_ITFMAP, GLBRDIDX_ITFOFM) directly connected to ITF and arbed inside ITF
+assign TOPITF_Dat       = RdPortDat[SRAM_WIDTH*0 +: SRAM_WIDTH*2]; 
 assign TOPITF_DatVld    = RdPortDatVld[0 +: 2];
 // assign TOPITF_DatLast   = RdPortDatLast[0 +: 2];
 assign RdPortDatRdy[0 +: 2] = ITFTOP_DatRdy;
+
+assign RdPortAddrUse[GLBRDIDX_ITFMAP] = 1'b0;
+assign RdPortAddrVld[GLBRDIDX_ITFMAP] = 1'b0;
+assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_ITFMAP +: ADDR_WIDTH] = 0;
+assign RdPortAddrUse[GLBRDIDX_ITFOFM] = 1'b0;
+assign RdPortAddrVld[GLBRDIDX_ITFOFM] = 1'b0;
+assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_ITFOFM +: ADDR_WIDTH] = 0;
+
 
 assign WrPortAddrUse[0 +: 4] = {4{1'b0}};
 assign WrPortAddr[ADDR_WIDTH*0 +: ADDR_WIDTH*4] = 'd0;
@@ -435,14 +444,6 @@ GLB#(
     .RdPortAddrVld           ( RdPortAddrVld           ),
     .RdPortAddrRdy           ( RdPortAddrRdy           ) 
 );
-
-assign RdPortAddrUse[GLBRDIDX_ITFMAP] = 1'b0;
-assign RdPortAddrVld[GLBRDIDX_ITFMAP] = 1'b0;
-assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_ITFMAP +: ADDR_WIDTH] = 0;
-assign RdPortAddrUse[GLBRDIDX_ITFOFM] = 1'b0;
-assign RdPortAddrVld[GLBRDIDX_ITFOFM] = 1'b0;
-assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_ITFOFM +: ADDR_WIDTH] = 0;
-
 
 // Read Crd
 assign RdPortAddrUse[GLBRDIDX_CTRCRD] = 1'b1;
