@@ -322,7 +322,8 @@ assign TOPITF_ReqNum    = {RdPortReqNum[ADDR_WIDTH*0 +: ADDR_WIDTH*2]*SRAM_WIDTH
 assign TOPITF_Addr      = {RdPortAddr_Out[ADDR_WIDTH*0 +: ADDR_WIDTH*2], WrPortAddr_Out[0 +: ADDR_WIDTH*4], CCUITF_Addr};
 
 // First 2 port (GLBRDIDX_ITFMAP, GLBRDIDX_ITFOFM) directly connected to ITF and arbed inside ITF
-assign TOPITF_Dat       = RdPortDat[SRAM_WIDTH*0 +: SRAM_WIDTH*2]; 
+assign TOPITF_Dat[0          +: SRAM_WIDTH]       = RdPortDat[0                     +: (SRAM_WIDTH*MAXPAR)]; 
+assign TOPITF_Dat[SRAM_WIDTH +: SRAM_WIDTH]       = RdPortDat[(SRAM_WIDTH*MAXPAR)   +: (SRAM_WIDTH*MAXPAR)]; 
 assign TOPITF_DatVld    = RdPortDatVld[0 +: 2];
 // assign TOPITF_DatLast   = RdPortDatLast[0 +: 2];
 assign RdPortDatRdy[0 +: 2] = ITFTOP_DatRdy;
@@ -337,7 +338,11 @@ assign RdPortAddr[ADDR_WIDTH*GLBRDIDX_ITFOFM +: ADDR_WIDTH] = 0;
 
 assign WrPortAddrUse[0 +: 4] = {4{1'b0}};
 assign WrPortAddr[ADDR_WIDTH*0 +: ADDR_WIDTH*4] = 'd0;
-assign {WrPortDat[ (SRAM_WIDTH*MAXPAR)*0 +:  (SRAM_WIDTH*MAXPAR)*4], ITFCCU_Dat}= ITFTOP_Dat;
+assign ITFCCU_Dat= ITFTOP_Dat[0 +: SRAM_WIDTH];
+assign WrPortDat[0                      +:  (SRAM_WIDTH*MAXPAR)]= ITFTOP_Dat[SRAM_WIDTH     +: SRAM_WIDTH];
+assign WrPortDat[(SRAM_WIDTH*MAXPAR)    +:  (SRAM_WIDTH*MAXPAR)]= ITFTOP_Dat[SRAM_WIDTH*2   +: SRAM_WIDTH];
+assign WrPortDat[(SRAM_WIDTH*MAXPAR)*2  +:  (SRAM_WIDTH*MAXPAR)]= ITFTOP_Dat[SRAM_WIDTH*3   +: SRAM_WIDTH];
+assign WrPortDat[(SRAM_WIDTH*MAXPAR)*3  +:  (SRAM_WIDTH*MAXPAR)]= ITFTOP_Dat[SRAM_WIDTH*4   +: SRAM_WIDTH];
 assign {WrPortDatVld[0 +: 4], ITFCCU_DatVld}                = ITFTOP_DatVld;
 assign {WrPortDatLast[0 +: 4], ITFCCU_DatLast}              = ITFTOP_DatLast;
 assign TOPITF_DatRdy                                        = {WrPortDatRdy[0 +: 4], CCUITF_DatRdy};
