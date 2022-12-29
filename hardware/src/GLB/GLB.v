@@ -193,6 +193,9 @@ generate
         wire [$clog2(NUM_WRPORT)    -1 : 0] RdPortMthWrPortIdx;
         wire                                Empty;
         wire [NUM_BANK              -1 : 0] RdPortHitBank;
+        wire                                RdPortAlloc;
+
+
 
         // PipeLine 0: Addr HS
         // Addr generate
@@ -203,9 +206,9 @@ generate
         assign RdPortAddr_Array[gv_j] = RdPortAddrUse[gv_j] ? RdPortAddr[ADDR_WIDTH*gv_j +: ADDR_WIDTH] : Cnt_RdPortAddr;
 
         // To Output
-        assign RdPortAddrRdy[gv_j] = !Empty & arready_array[PortCur1stBankIdx];
-        assign RdPortFull[gv_j] = CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] != 0 & RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ; // CCUGLB_CfgPortNum!=0 (exist) & Full
-        assign RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[RdPortMthWrPortIdx] - RdPortAddr_Array[gv_j];
+        assign RdPortAddrRdy[gv_j] = RdPortAlloc & !Empty & arready_array[PortCur1stBankIdx];
+        assign RdPortFull[gv_j] = RdPortAlloc & RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ; // CCUGLB_CfgPortNum!=0 (exist) & Full
+        assign RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = RdPortAlloc ?  WrPortAddr_Array[RdPortMthWrPortIdx] - RdPortAddr_Array[gv_j] : 0;
         assign RdPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = RdPortAddr_Array[gv_j];
 
         // To Bank
@@ -218,7 +221,7 @@ generate
         assign RdPortBankEn[gv_j] = RdPortEn[gv_j] & RdPortHitBank; // 32bits
 
         // PipeLine 1:: Dat HS
-        assign RdPortDatVld[gv_j] = rvalid_array[PortCur1stBankIdx];
+        assign RdPortDatVld[gv_j] = RdPortAlloc & rvalid_array[PortCur1stBankIdx];
 
         for(gv_i=0; gv_i<MAXPAR; gv_i=gv_i+1) begin
             assign RdPortDat[SRAM_WIDTH*(MAXPAR*gv_j + gv_i) +: SRAM_WIDTH] =  rdata_array[PortCur1stBankIdx+gv_i];
@@ -241,6 +244,8 @@ generate
             .UNDERFLOW (                                                                ),
             .COUNT     ( Cnt_RdPortAddr                                            )
         );
+
+        assign RdPortAlloc = |CCUGLB_CfgPortBankFlag[NUM_BANK*(gv_j+NUM_WRPORT) +: NUM_BANK];
 
         prior_arb#(
             .REQ_WIDTH ( NUM_BANK )
@@ -273,6 +278,7 @@ generate
         wire [$clog2(NUM_RDPORT)-1 : 0] WrPortMthRdPortIdx;
         wire                            Full;
         wire [NUM_BANK          -1 : 0] WrPortHitBank;
+        wire                            WrPortAlloc;
 
 
         // Intra signals
@@ -291,9 +297,9 @@ generate
         assign WrPortBankEn[gv_j] = WrPortEn[gv_j] & WrPortHitBank; // 32bits
 
         // To Output
-        assign WrPortDatRdy[gv_j] = !Full & !(RdPortEn[WrPortMthRdPortIdx]);
-        assign WrPortEmpty[gv_j] = CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] != 0 & WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH]; // CCUGLB_CfgPortNum!=0 (exist) & Empty
-        assign WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] =  CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] - (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx]);
+        assign WrPortDatRdy[gv_j] = WrPortAlloc & !Full & !(RdPortEn[WrPortMthRdPortIdx]);
+        assign WrPortEmpty[gv_j] = WrPortAlloc & WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH]; // CCUGLB_CfgPortNum!=0 (exist) & Empty
+        assign WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] =  WrPortAlloc? CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] - (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx]) : 0;
         assign WrPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[gv_j];
 
         counter#(
@@ -311,7 +317,7 @@ generate
             .UNDERFLOW (            ),
             .COUNT     ( Cnt_WrPortAddr)
         );
-
+        assign WrPortAlloc = |CCUGLB_CfgPortBankFlag[NUM_BANK*gv_j +: NUM_BANK];
         prior_arb#(
             .REQ_WIDTH ( NUM_BANK )
         )u_prior_arb_WrPort1stBankIdx(
