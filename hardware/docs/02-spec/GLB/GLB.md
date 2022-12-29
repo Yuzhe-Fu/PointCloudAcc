@@ -29,8 +29,8 @@
 | --control--            |
 | CCUGLB_Rst            |
 | --config--            |           | | 顶层模块只分最顶层的东西，跟网络相关的，比如： |
-| CCUGLB_CfgVld             | i nput | NUM_PORT | 每个Port单独配置和使能，vld rdy取代rst和fnh, 重置Port所有信号
-| GLBCCU_CfgRdy             | output | NUM_PORT | 表示读写口完成配置的Num次读写
+| CCUGLB_CfgVld             | i nput | NUM_PORT | 每个Port单独配置的使能，vld rdy取代rst和fnh, 重置Port所有信号
+| GLBCCU_CfgRdy             | output | NUM_PORT | 暂时不用：暂设定为初始为1，一旦配置一次就为0，等后面再决定
 | CCUGLB_CfgBankPort        | input     | (NUM_RDPORT + NUM_WRPORT)* NUM_BANK | 为每个Bank分配读/写Port是两个，1表示有分到，也表示Port是否有效 |
 | CCUGLB_CfgPortNum |input     | 配置数据容量（个数）
 | CCUGLB_CfgRdPortParBank|input     | 

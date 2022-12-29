@@ -30,7 +30,7 @@ module GLB #(
 
     // Configure
     input  [NUM_RDPORT+NUM_WRPORT               -1 : 0] CCUGLB_CfgVld,
-    output [NUM_RDPORT+NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy,
+    output reg [NUM_RDPORT+NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy,
 
     input [NUM_BANK * (NUM_RDPORT + NUM_WRPORT) -1 : 0] CCUGLB_CfgPortBankFlag,
 
@@ -194,7 +194,7 @@ generate
         wire                                Empty;
         wire [NUM_BANK              -1 : 0] RdPortHitBank;
 
-        // Clock Domain0: Addr Control
+        // PipeLine 0: Addr HS
         // Addr generate
         assign INC = RdPortAddrUse[gv_j] ? 1'b0 : ( !RdPortDatVld[gv_j] |  RdPortDatRdy[gv_j]) & RdPortAddrRdy[gv_j]; // : need read data and AddrRdy
         assign PortCur1stBankIdx = RdPort1stBankIdx + (RdPortAddr_Array[gv_j] >> SRAM_DEPTH_WIDTH)*CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)];
@@ -217,7 +217,7 @@ generate
 
         assign RdPortBankEn[gv_j] = RdPortEn[gv_j] & RdPortHitBank; // 32bits
 
-        // Clock Domain1: Dat Control
+        // PipeLine 1:: Dat HS
         assign RdPortDatVld[gv_j] = rvalid_array[PortCur1stBankIdx];
 
         for(gv_i=0; gv_i<MAXPAR; gv_i=gv_i+1) begin
@@ -237,7 +237,7 @@ generate
             .DEC       ( 1'b0                                                           ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}                                                              ),
             .MAX_COUNT ( CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH]   ),
-            .OVERFLOW  ( GLBCCU_CfgRdy[NUM_WRPORT+gv_j]                                  ),
+            .OVERFLOW  (  ),
             .UNDERFLOW (                                                                ),
             .COUNT     ( Cnt_RdPortAddr                                            )
         );
@@ -249,6 +249,12 @@ generate
             .gnt (  ),
             .arb_port  ( RdPort1stBankIdx  )
         );
+        always @(posedge clk or negedge rst_n) begin
+            if(!rst_n)
+                GLBCCU_CfgRdy[NUM_WRPORT+gv_j] <= 1;
+            else if (CCUGLB_CfgVld[NUM_WRPORT+gv_j])
+                GLBCCU_CfgRdy[NUM_WRPORT+gv_j] <= 0;
+        end
 
     end
 
@@ -270,13 +276,13 @@ generate
 
 
         // Intra signals
-        assign INC = WrPortAddrUse[gv_j]? 0 : WrPortDatRdy[gv_j] & WrPortDatVld[gv_j];
+        assign INC = WrPortAddrUse[gv_j]? 0 : WrPortEn[gv_j];
         assign PortCur1stBankIdx = WrPort1stBankIdx + (WrPortAddr_Array[gv_j] >> SRAM_DEPTH_WIDTH)*CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*gv_j +: ($clog2(MAXPAR) + 1)];
         assign WrPortMthRdPortIdx = BankRdPortIdx[PortCur1stBankIdx];
         assign Full = ( (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx])== CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] );
 
         // To Bank
-        assign WrPortEn[gv_j] = !(RdPortEn[WrPortMthRdPortIdx]) & WrPortDatVld[gv_j]  & WrPortDatRdy[gv_j];
+        assign WrPortEn[gv_j] =  WrPortDatVld[gv_j]  & WrPortDatRdy[gv_j];
         assign WrPortDat_Array[gv_j] = WrPortDat[SRAM_WIDTH*MAXPAR*gv_j +: SRAM_WIDTH*MAXPAR];
         assign WrPortAddr_Array[gv_j] = WrPortAddrUse[gv_j] ? WrPortAddr[ADDR_WIDTH*gv_j +: ADDR_WIDTH] : Cnt_WrPortAddr;
         for(gv_i=0; gv_i<NUM_BANK; gv_i=gv_i+1) begin
@@ -285,7 +291,7 @@ generate
         assign WrPortBankEn[gv_j] = WrPortEn[gv_j] & WrPortHitBank; // 32bits
 
         // To Output
-        assign WrPortDatRdy[gv_j] = !Full;
+        assign WrPortDatRdy[gv_j] = !Full & !(RdPortEn[WrPortMthRdPortIdx]);
         assign WrPortEmpty[gv_j] = CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] != 0 & WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH]; // CCUGLB_CfgPortNum!=0 (exist) & Empty
         assign WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] =  CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] - (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx]);
         assign WrPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[gv_j];
@@ -301,7 +307,7 @@ generate
             .DEC       ( 1'b0       ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}          ),
             .MAX_COUNT ( CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH]),
-            .OVERFLOW  ( GLBCCU_CfgRdy[gv_j]  ),
+            .OVERFLOW  (   ),
             .UNDERFLOW (            ),
             .COUNT     ( Cnt_WrPortAddr)
         );
@@ -314,6 +320,12 @@ generate
             .arb_port  ( WrPort1stBankIdx  )
         );
 
+        always @(posedge clk or negedge rst_n) begin
+            if(!rst_n)
+                GLBCCU_CfgRdy[gv_j] <= 1;
+            else if (CCUGLB_CfgVld[gv_j])
+                GLBCCU_CfgRdy[gv_j] <= 0;
+        end
 
     end
 endgenerate
