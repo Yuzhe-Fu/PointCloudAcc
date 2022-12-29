@@ -142,7 +142,7 @@
             - 用FSM直接使能读RAM，用读数中的OpCode确认是否取到相应的种层的配置，否则地址加1，当取完各种层一层的所有word后（当取到配置数为需要的-1且当前取的match时），完成种层的配置
     - GLB控制：达到单独控制一个Port转移到另一个Bank，需要：
         - 什么时候重置：检测口写完/读完一次的信号CfgRdy(Fnh)后根据loop次数决定是否要重新配置口，一旦完成loop次数，口就要重新配置；
-        - 重置什么信息：用CCUGLB_CfgVld重置相应的Port，loop次数，Bank对应
+        - 重置什么信息：用CCUGLB_CfgVld重置相应的Port: Bank对应(Flag, Num, Par), loop次数，ITF读写还要配置DramAddr
             - 每种层配置port的bank flag，得到如下口的信息，然后assign 给让CCUGLB_CfgBankPort，CCUGLB_CfgPortMod，防止multidriver
             - SYA_RdPortAct
             - SYA_RdPortWgt
