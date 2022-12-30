@@ -142,7 +142,7 @@ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         PortIdx <= 0;
     end else if(state==IDLE && next_state == CMD) begin
-        if (TOPITF_EmptyFull[0] | TOPITF_ReqNum[0 +: ADDR_WIDTH] !=0) begin// CCU
+        if (TOPITF_ReqNum[0 +: ADDR_WIDTH] !=0) begin// CCU
             PortIdx <= 0; // Update
         end else if( |TOPITF_EmptyFull ) begin
             PortIdx <= ArbEmptyFullIdx;
@@ -152,7 +152,7 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign RdTOP = PortIdx >= ITF_NUM_WRPORT -1;
+assign RdTOP = PortIdx >= ITF_NUM_WRPORT;
 
 prior_arb#(
     .REQ_WIDTH ( ITF_NUM_WRPORT + ITF_NUM_RDPORT )
@@ -185,7 +185,12 @@ assign ITFPAD_DatVld    = state==CMD? CmdVld : DatOutVld;
 assign ITFPAD_DatLast   = state==CMD? CmdVld : DatOutLast;
 assign DatOutRdy        = PADITF_DatRdy;
 assign CmdRdy           = PADITF_DatRdy;
-assign ITFTOP_DatRdy    = {ITF_NUM_RDPORT{PISO_OUTRdy & state == OUT}};
+genvar gv_i;
+generate
+    for(gv_i=0; gv_i<ITF_NUM_RDPORT; gv_i=gv_i+1) begin
+        assign ITFTOP_DatRdy[gv_i]    = (PISO_OUTRdy & state == OUT) & PortIdx == gv_i + ITF_NUM_WRPORT;
+    end
+endgenerate
 
 assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*PortIdx +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], RdTOP};
 assign CmdVld = state == CMD;
@@ -277,7 +282,7 @@ assign CntInc = state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] & ITFTOP_Dat
 //=====================================================================================================================
 // Debug
 //=====================================================================================================================
-
+wire Debug_IO_Uti;
 DEC2D #(
     .WIDTH(ADDR_WIDTH),
     .DEPTH(ITF_NUM_WRPORT+ITF_NUM_RDPORT)
@@ -285,5 +290,6 @@ DEC2D #(
     .IN(TOPITF_ReqNum)
 );
 
+assign Debug_IO_Uti = (ITFPAD_DatVld & PADITF_DatRdy) | (PADITF_DatVld & ITFPAD_DatRdy);
 
 endmodule
