@@ -84,7 +84,8 @@ module CCU #(
     input  [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy ,         
     output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK  -1 : 0] CCUGLB_CfgPortBankFlag ,
     output reg [ADDR_WIDTH*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgPortNum, 
-    output reg [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)     -1 : 0] CCUGLB_CfgPortParBank  
+    output reg [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)     -1 : 0] CCUGLB_CfgPortParBank,  
+    output reg [GLB_NUM_RDPORT+GLB_NUM_WRPORT                  -1 : 0] CCUGLB_CfgPortLoop
 
 );
 //=====================================================================================================================
@@ -387,6 +388,7 @@ always @(posedge clk or negedge rst_n) begin
             CCUGLB_CfgPortBankFlag[NUM_BANK* int_i +: NUM_BANK] <= 'd0;
             CCUGLB_CfgPortNum[ADDR_WIDTH*int_i +: ADDR_WIDTH] <= 'd0;
             CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= 'd0;
+            CCUGLB_CfgPortLoop[int_i] <= 0;
             // GLB read/write DRAM by ITF
             DramAddr[int_i]     <= 'd0;
         end
@@ -429,8 +431,9 @@ always @(posedge clk or negedge rst_n) begin
                 CCUGLB_CfgPortBankFlag[NUM_BANK*int_i +: NUM_BANK] <= ISA_DatOut[8  +: 32];
                 CCUGLB_CfgPortNum[ADDR_WIDTH*int_i +: ADDR_WIDTH] <= ISA_DatOut[40 +: 16];
                 CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= ISA_DatOut[56 +: 8];
+                CCUGLB_CfgPortLoop[int_i] <= ISA_DatOut[64 +: 4];
                 // GLB read/write DRAM by ITF
-                DramAddr[int_i]     <= ISA_DatOut[64   +: 32];
+                DramAddr[int_i]     <= ISA_DatOut[68   +: 32];
                 end
         end
                

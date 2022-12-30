@@ -30,11 +30,12 @@
 | CCUGLB_Rst            |
 | --config--            |           | | 顶层模块只分最顶层的东西，跟网络相关的，比如： |
 | CCUGLB_CfgVld             | i nput | NUM_PORT | 每个Port单独配置的使能，vld rdy取代rst和fnh, 重置Port所有信号
-| GLBCCU_CfgRdy             | output | NUM_PORT | 暂时不用：暂设定为初始为1，一旦配置一次就为0，等后面再决定
+| GLBCCU_CfgRdy             | output | NUM_PORT | 含义是读/写到配置的CfgNum：写表示写完了，读表示读完了一次，CCU可以知道读完了多少次
 | CCUGLB_CfgBankPort        | input     | (NUM_RDPORT + NUM_WRPORT)* NUM_BANK | 为每个Bank分配读/写Port是两个，1表示有分到，也表示Port是否有效 |
 | CCUGLB_CfgPortNum |input     | 配置数据容量（个数）
 | CCUGLB_CfgRdPortParBank|input     | 
 | CCUGLB_CfgWrPortParBank|input     | 
+| CCUGLB_CfgPortLoop|input     | 表示是否要循环读写，目前只用了循环读功能
 
 # 模块陈述
 **目标是写成通用的多Bank，多读写口的存储模块。**
@@ -101,18 +102,16 @@ localparam GLBRDIDX_POLOFM = 9;
     - 地址来源：用是否分配到读写口来选择来源1和来源2
         - 来源. 各个GLB读/写口的地址生成器：（采用口不复用方式，也不用保持上次读的地址）
             - 模式0：连续读数，计数器自动生成
-                - CCU根据CCUGLB_CfgPortNum，控制地址计数器0-多少的地址范围，当达到最大值addrmax时，写等CfgVld重新配置置位，读直接循环
+                    - 读循环读模式：写完某个数后，（小于等于容量）；计数器MAXCNT是配置的个数CfgNum-1；在0-MaxCNT循环计数；PortCur1stBankIdx因为地址不超过容量不需要改(实际上统一手动cut到指定bank的地址范围)；写ReqNum是CfgNum-WrAddr(即写到CfgNum就可以了)
+                    - 读一次模式：一直读够CfgNum个（小于容量，等于容量，大于容量）：计数器MAXCNT是配置的个数CfgNum-1；在0-MaxCNT一次计数；PortCur1stBankIdx因为地址可能超过容量，需要手动改范围(实际上统一手动cut到指定bank的地址范围)；写ReqNum是CfgNum-WrAddr(即写到CfgNum就可以了)
                 - 自己根据能否读/写成功(Port对应的Bank只要有arrvalid & arready握手），控制什么时候INC,CLEAR还有让地址重新有效即启动读写的功能
-                - 但写地址作为判断读地址，当写口如ITF移走时，写地址是空：
-                    - 每个Bank需要保持读口对应的写地址来判断空满
-                        - 读这一大块Bank应该会保留之前写的地址：但地址不能由每个bank内部产生，需要额外一个表来记录每个Bank的读写地址：当有分到写口时，以写口为准，没有则以表为准
-                        - 在下一次换写的时候被更新
+                - 因为目前是单口模式不复用口，所以写的地址会自动保留用来判断读空Empty。
                 - 不需要给地址，Addr相关的信号没起作用，自动地址向上累加，提前准备好数据，数据取走后再地址加1准备好数据
             - **模式1**：输入地址来跳着读写，读空判断写满判断不变，但输出的ReqNum和Addr是实变的，而且之前读过的不能被盖，目前需要addr的是接CTR和POL的不是ITF，因此不需要，先不管
     - 读写使能生成
         - 有读写请求才读写使能，直接用端口的RdPortDatRdy作为arvalid的一部分，和WrPortDatVld作为wvalid的一部分
         - 读空写满：
-            - 读：有写入了数才能读：假定读写口分配相同Bank且读写顺序一致，则非空时可以读，即RdEn= !(RdAddr == WrAddr); 且RdAddr=WrAddr，（圈数GLB自己控制，GCCU只负责配置，比如有多少圈，当Mode0时，WrAddr大于最后一个有效地址，当RdAddr也最后一个有效地址时，发出CfgRdy，然后复位0）
+            - 读：有写入了数才能读：假定读写口分配相同Bank且读写顺序一致，则非空时可以读，即RdEn= !(RdAddr == WrAddr); 且RdAddr=WrAddr，（圈数由CCU通过RdAddr发出CfgRdy知道多少圈了，当Mode0时，WrAddr大于最后一个有效地址，当RdAddr也最后一个有效地址时，发出CfgRdy，然后复位0）
             - 写：有写满的存在(像FIFO），只当串入串出时，RdAddr相差WrAddr一圈(AddrMax)
         - 有读不能写：单口SRAM
     - 选择：
