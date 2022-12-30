@@ -184,11 +184,11 @@ generate
     
     assign bank_din_ena_s[gen_i] = {NUM_ROW{bank_din_rdy_d[gen_i]}};
     
-    assign bank_acc_run[gen_i] = bank_acc_cnt[gen_i] <= cfg_chi_cnt && bank_acc_rdy;
-    assign bank_acc_out[gen_i] = bank_acc_cnt[gen_i] == cfg_chi;
+    assign bank_acc_run[gen_i] = 1'b1; // bank_acc_cnt[gen_i] <= cfg_chi_cnt && bank_acc_rdy;
+    assign bank_acc_out[gen_i] = bank_acc_cnt[gen_i] % cfg_chi == 0;
     
     assign bank_din_run[gen_i] = bank_acc_cnt[gen_i] <= cfg_chi_cnt;
-    assign bank_din_don[gen_i] = bank_acc_cnt[gen_i] >  cfg_chi_cnt;    
+    assign bank_din_don[gen_i] = 1'b0; //bank_acc_cnt[gen_i] >  cfg_chi_cnt;    
     
     assign bank_din_rdy[gen_i] = bank_acc_rdy && &sync_din_rdy[gen_i] && bank_din_rdy_tmp[gen_i];
     assign bank_act_rdy[gen_i] = bank_acc_rdy && &sync_din_rdy[gen_i] && bank_act_rdy_tmp[gen_i];
