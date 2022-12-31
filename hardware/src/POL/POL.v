@@ -151,7 +151,7 @@ assign OfmOutLast = CntOfmOut >= CCUPOL_CfgNip;
 
 genvar i;
 generate
-    for(i=0; i<POOL_CORE; i=i+1) begin
+    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_PLC
         wire                        POLPLC_IdxVld;
         wire [IDX_WIDTH     -1 : 0] POLPLC_Idx;
 
@@ -179,7 +179,7 @@ generate
             .POLPLC_OfmRdy  ( POLPLC_OfmRdy[i]   )
         );
         assign POLPLC_Idx = GLBPOL_Map[IDX_WIDTH*i +: IDX_WIDTH];
-        assign POLPLC_IdxVld = state == MAPIN & GLBPOL_MapVld;
+        assign POLPLC_IdxVld = GLBPOL_MapVld & POLGLB_MapRdy;
 
     end
 endgenerate
@@ -190,7 +190,7 @@ assign POLGLB_OfmVld = |PLCPOL_OfmVld ;
 assign POLGLB_Ofm    = PLCPOL_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*ARBIdx_PLCPOL_OfmVld +: ACT_WIDTH*POOL_COMP_CORE];
 genvar gv_i;
 generate
-    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin
+    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin: GEN_POLPLC_OfmRdy
         assign POLPLC_OfmRdy[gv_i] = gv_i == ARBIdx_PLCPOL_OfmVld? GLBPOL_OfmRdy : 0;
     end
 endgenerate
