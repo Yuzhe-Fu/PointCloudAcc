@@ -130,7 +130,7 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign MapInLast = CntMapIn*POOL_CORE >= CCUPOL_CfgK*CCUPOL_CfgNip;
+assign MapInLast = CntMapIn >= CCUPOL_CfgK*(CCUPOL_CfgNip%POOL_CORE==0? CCUPOL_CfgNip/POOL_CORE : CCUPOL_CfgNip/POOL_CORE+1);// CntMapIn >= CCUPOL_CfgK*ceil(CCUPOL_CfgNip/POOL_CORE)
 
 
 always @(posedge clk or negedge rst_n) begin
@@ -230,6 +230,49 @@ MIF#(
     .MIFPOL_OfmVld   ( POLPLC_OfmVld   ),
     .MIFPOL_OfmRdy   ( PLCPOL_OfmRdy   )
 );
+
+
+// Debug
+wire [16    -1 : 0] cnt_PLCPOL_Ofm[ 0 : POOL_CORE -1];
+wire [16    -1 : 0] cnt_POLPLC_Ofm[ 0 : POOL_CORE -1];
+
+generate
+    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_cnt_PLCPOL_Ofm
+
+        counter#(
+            .COUNT_WIDTH ( 16 )
+        )u_counter_Debug_RecPOLPLC_Ofm(
+            .CLK       ( clk        ),
+            .RESET_N   ( rst_n      ),
+            .CLEAR     ( state == IDLE ),
+            .DEFAULT   ( 'd0        ),
+            .INC       ( POLPLC_OfmVld[i] & PLCPOL_OfmRdy[i]   ),
+            .DEC       ( 1'b0       ),
+            .MIN_COUNT ( 'd0        ),
+            .MAX_COUNT ( 2**15      ),
+            .OVERFLOW  (            ),
+            .UNDERFLOW (            ),
+            .COUNT     ( cnt_POLPLC_Ofm[i] )
+        );
+
+        counter#(
+            .COUNT_WIDTH ( 16 )
+        )u_counter_Debug_SendPLCPOL_Ofm(
+            .CLK       ( clk        ),
+            .RESET_N   ( rst_n      ),
+            .CLEAR     ( state == IDLE ),
+            .DEFAULT   ( 'd0 ),
+            .INC       ( PLCPOL_OfmVld[i] & POLPLC_OfmRdy[i]   ),
+            .DEC       ( 1'b0       ),
+            .MIN_COUNT ( 'd0 ),
+            .MAX_COUNT ( 2**15  ),
+            .OVERFLOW  (    ),
+            .UNDERFLOW (            ),
+            .COUNT     ( cnt_PLCPOL_Ofm[i]           )
+        );
+
+    end
+endgenerate
 
 
 
