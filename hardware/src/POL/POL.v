@@ -233,39 +233,39 @@ MIF#(
 
 
 // Debug
-wire [16    -1 : 0] cnt_PLCPOL_Ofm[ 0 : POOL_CORE -1];
-wire [16    -1 : 0] cnt_POLPLC_Ofm[ 0 : POOL_CORE -1];
+wire [IDX_WIDTH    -1 : 0] cnt_PLCPOL_Ofm[ 0 : POOL_CORE -1];
+wire [IDX_WIDTH    -1 : 0] cnt_POLPLC_Ofm[ 0 : POOL_CORE -1];
 
 generate
     for(i=0; i<POOL_CORE; i=i+1) begin: GEN_cnt_PLCPOL_Ofm
-
+        wire [IDX_WIDTH     -1 : 0] MaxCnt = 2**IDX_WIDTH -1;
         counter#(
-            .COUNT_WIDTH ( 16 )
+            .COUNT_WIDTH ( IDX_WIDTH )
         )u_counter_Debug_RecPOLPLC_Ofm(
             .CLK       ( clk        ),
             .RESET_N   ( rst_n      ),
             .CLEAR     ( state == IDLE ),
-            .DEFAULT   ( 'd0        ),
+            .DEFAULT   ( {IDX_WIDTH{1'd0}}        ),
             .INC       ( POLPLC_OfmVld[i] & PLCPOL_OfmRdy[i]   ),
             .DEC       ( 1'b0       ),
-            .MIN_COUNT ( 'd0        ),
-            .MAX_COUNT ( 2**15      ),
+            .MIN_COUNT ( {IDX_WIDTH{1'd0}}        ),
+            .MAX_COUNT ( MaxCnt      ),
             .OVERFLOW  (            ),
             .UNDERFLOW (            ),
             .COUNT     ( cnt_POLPLC_Ofm[i] )
         );
 
         counter#(
-            .COUNT_WIDTH ( 16 )
+            .COUNT_WIDTH ( IDX_WIDTH )
         )u_counter_Debug_SendPLCPOL_Ofm(
             .CLK       ( clk        ),
             .RESET_N   ( rst_n      ),
             .CLEAR     ( state == IDLE ),
-            .DEFAULT   ( 'd0 ),
+            .DEFAULT   ( {IDX_WIDTH{1'd0}} ),
             .INC       ( PLCPOL_OfmVld[i] & POLPLC_OfmRdy[i]   ),
             .DEC       ( 1'b0       ),
-            .MIN_COUNT ( 'd0 ),
-            .MAX_COUNT ( 2**15  ),
+            .MIN_COUNT ( {IDX_WIDTH{1'd0}} ),
+            .MAX_COUNT ( MaxCnt  ),
             .OVERFLOW  (    ),
             .UNDERFLOW (            ),
             .COUNT     ( cnt_PLCPOL_Ofm[i]           )
