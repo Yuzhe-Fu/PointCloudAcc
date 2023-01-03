@@ -30,7 +30,8 @@ module CCU #(
     parameter MAP_WIDTH             = 6,
     parameter NUM_LAYER_WIDTH       = 20,
     parameter ISARDWORD_WIDTH       = 4,
-    parameter OPNUM                 = 28, // 4(module) + 9(GLBWR) + (10 + 5)(GLBRD(POOL_CORE*6))
+    parameter NUM_MODULE            = 5,
+    parameter OPNUM                 = NUM_MODULE + GLB_NUM_WRPORT + GLB_NUM_RDPORT + POOL_CORE-1, // 5(module) + 9(GLBWR) + (11 + 5)(GLBRD(POOL_CORE*6))
 
     parameter MAXPAR                = 32,
     parameter NUM_BANK              = 32,
@@ -71,13 +72,17 @@ module CCU #(
     output  reg [IDX_WIDTH*POOL_CORE            -1 : 0] CCUPOL_AddrMin,
     output  reg [IDX_WIDTH*POOL_CORE            -1 : 0] CCUPOL_AddrMax,// Not Included
 
-    output                                              CCUCTR_Rst,
-    output                                              CCUCTR_CfgVld,
-    input                                               CTRCCU_CfgRdy,
-    output  reg                                         CCUCTR_CfgMod,         
-    output  reg [IDX_WIDTH                      -1 : 0] CCUCTR_CfgNip,                    
-    output  reg [IDX_WIDTH                      -1 : 0] CCUCTR_CfgNop,          
-    output  reg [MAP_WIDTH                      -1 : 0] CCUCTR_CfgK,  
+    output                                              CCUFPS_Rst   ,
+    output                                              CCUFPS_CfgVld,
+    input                                               FPSCCU_CfgRdy,        
+    output  reg [IDX_WIDTH                      -1 : 0] CCUFPS_CfgNip,                    
+    output  reg [IDX_WIDTH                      -1 : 0] CCUFPS_CfgNop, 
+
+    output                                              CCUKNN_Rst   ,
+    output                                              CCUKNN_CfgVld,
+    input                                               KNNCCU_CfgRdy,        
+    output  reg [IDX_WIDTH                      -1 : 0] CCUKNN_CfgNip,                    
+    output  reg [MAP_WIDTH                      -1 : 0] CCUKNN_CfgK  , 
 
     output                                              CCUGLB_Rst,
     output [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] CCUGLB_CfgVld ,         
@@ -97,32 +102,8 @@ localparam ISA_SRAM_DEPTH_WIDTH = $clog2(ISA_SRAM_WORD);
 localparam IDLE     = 4'b0000;
 localparam RD_ISA   = 4'b0001;
 localparam IDLE_CFG = 4'b0010;
-localparam NETFNH      = 4'b0011;
-// localparam ARRAY_CFG= 4'b1000; // 0
+localparam NETFNH   = 4'b0011;
 
-// localparam OpCode_TOP             = 128 + 0;
-// localparam OpCode_SYA             = 128 + 1;
-// localparam OpCode_POL             = 128 + 2;
-// localparam OpCode_CTR             = 128 + 3;
-// localparam OpCode_GLBWRIDX_ITFACT = 128 + 4 + 0;
-// localparam OpCode_GLBWRIDX_ITFWGT = 128 + 4 + 1;
-// localparam OpCode_GLBWRIDX_ITFCRD = 128 + 4 + 2;
-// localparam OpCode_GLBWRIDX_ITFMAP = 128 + 4 + 3;
-// localparam OpCode_GLBWRIDX_SYAOFM = 128 + 4 + 4;
-// localparam OpCode_GLBWRIDX_POLOFM = 128 + 4 + 5;
-// localparam OpCode_GLBWRIDX_CTRDST = 128 + 4 + 6;
-// localparam OpCode_GLBWRIDX_CTRMAP = 128 + 4 + 7;
-// localparam OpCode_GLBWRIDX_CTRFMK = 128 + 4 + 8; // FPS Writes Mask
-// localparam OpCode_GLBRDIDX_ITFMAP = 128 + 4 + GLB_NUM_WRPORT + 0;
-// localparam OpCode_GLBRDIDX_ITFOFM = 128 + 4 + GLB_NUM_WRPORT + 1;
-// localparam OpCode_GLBRDIDX_SYAACT = 128 + 4 + GLB_NUM_WRPORT + 2;
-// localparam OpCode_GLBRDIDX_SYAWGT = 128 + 4 + GLB_NUM_WRPORT + 3;
-// localparam OpCode_GLBRDIDX_CTRCRD = 128 + 4 + GLB_NUM_WRPORT + 4;
-// localparam OpCode_GLBRDIDX_CTRDST = 128 + 4 + GLB_NUM_WRPORT + 5;
-// localparam OpCode_GLBRDIDX_CTRFMK = 128 + 4 + GLB_NUM_WRPORT + 6; // FPS Read MASK
-// localparam OpCode_GLBRDIDX_CTRKMK = 128 + 4 + GLB_NUM_WRPORT + 7; // KNN Read MASK
-// localparam OpCode_GLBRDIDX_POLMAP = 128 + 4 + GLB_NUM_WRPORT + 8;
-// localparam OpCode_GLBRDIDX_POLOFM = 128 + 4 + GLB_NUM_WRPORT + 9; // + 5(POOL_CORE)
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
@@ -273,10 +254,11 @@ assign ISA_Empty = ISA_WrAddr == ISA_RdAddrMin;
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        OpNumWord[0] = 1;// localparam Word_Array = 1;
-        OpNumWord[1] = 1;// localparam Word_Conv  = 2;
-        OpNumWord[2] = 3;// localparam Word_Pool  = 2;
-        OpNumWord[3] = 1;// localparam Word_CTR   = 1;
+        OpNumWord[0] = 1;// localparam TOP = 1;
+        OpNumWord[1] = 1;// localparam SYA = 2;
+        OpNumWord[2] = 3;// localparam POL = 2;
+        OpNumWord[3] = 1;// localparam FPS = 1;
+        OpNumWord[4] = 1;// localparam KNN = 1;
         for (int_i =0; int_i < OPNUM;int_i = int_i + 1) begin
             StateCode[int_i] = 8'd128 + int_i; // 8'b1000_0000 + 0
             if (int_i >= 4)
@@ -287,7 +269,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // CfgRdy -> Req
-assign CfgRdy = { GLBCCU_CfgRdy, CTRCCU_CfgRdy,  POLCCU_CfgRdy, SYACCU_CfgRdy & !Debug_TriggerSYACfgHS, CCUTOP_CfgRdy};
+assign CfgRdy = { GLBCCU_CfgRdy, KNNCCU_CfgRdy, FPSCCU_CfgRdy,  POLCCU_CfgRdy, SYACCU_CfgRdy & !Debug_TriggerSYACfgHS, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
@@ -321,7 +303,7 @@ generate
     end
 endgenerate
 
-assign {CCUGLB_CfgVld, CCUCTR_CfgVld,  CCUPOL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign {CCUGLB_CfgVld, CCUKNN_CfgVld, CCUFPS_CfgVld,  CCUPOL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
 
 //=====================================================================================================================
 // Logic Design: ISA_RAM Read
@@ -379,10 +361,10 @@ always @(posedge clk or negedge rst_n) begin
         CCUPOL_AddrMin          <= 0;
         CCUPOL_AddrMax          <= 0;
         CCUPOL_CfgK             <= 0;
-        CCUCTR_CfgMod           <= 0;
-        CCUCTR_CfgNip           <= 0;
-        CCUCTR_CfgNop           <= 0;
-        CCUCTR_CfgK             <= 0;
+        CCUFPS_CfgNip           <= 0;
+        CCUFPS_CfgNop           <= 0;
+        CCUKNN_CfgNip           <= 0;
+        CCUKNN_CfgK             <= 0;
         for(int_i = 0; int_i < GLB_NUM_WRPORT + GLB_NUM_RDPORT; int_i=int_i+1) begin
             // GLB Ports
             CCUGLB_CfgPortBankFlag[NUM_BANK* int_i +: NUM_BANK] <= 'd0;
@@ -409,7 +391,7 @@ always @(posedge clk or negedge rst_n) begin
 
         end else if (OpCode == 128 + 2) begin
             if (ISA_CntRdWord == 1) begin
-                CCUPOL_CfgNip   <= ISA_DatOut[8 +: 16];
+                CCUPOL_CfgNip   <= ISA_DatOut[8  +: 16];
                 CCUPOL_CfgChi   <= ISA_DatOut[24 +: 16];// 
                 CCUPOL_CfgK     <= ISA_DatOut[40 +: 16];// 
             end else if(ISA_CntRdWord == 2) begin  
@@ -420,13 +402,16 @@ always @(posedge clk or negedge rst_n) begin
 
         end else if (OpCode == 128 + 3) begin
             if(ISA_CntRdWord == 1) begin
-                CCUCTR_CfgMod   <= ISA_DatOut[8  +   8];
-                CCUCTR_CfgNip   <= ISA_DatOut[16 +: 16];
-                CCUCTR_CfgNop   <= ISA_DatOut[32 +: 16];
-                CCUCTR_CfgK     <= ISA_DatOut[48 +:  8];
+                CCUFPS_CfgNip           <= ISA_DatOut[8  +: 16];
+                CCUFPS_CfgNop           <= ISA_DatOut[24 +: 16];
+            end
+        end else if (OpCode == 128 + 4) begin
+            if(ISA_CntRdWord == 1) begin
+                CCUKNN_CfgNip           <= ISA_DatOut[8  +: 16];
+                CCUKNN_CfgK             <= ISA_DatOut[24 +: 16];
             end
         end else for(int_i = 0; int_i < GLB_NUM_WRPORT + GLB_NUM_RDPORT; int_i=int_i+1) begin
-            if ( OpCode == 128 + 4 + int_i) begin
+            if ( OpCode == 128 + NUM_MODULE + int_i) begin
                 // GLB Ports
                 CCUGLB_CfgPortBankFlag[NUM_BANK*int_i +: NUM_BANK] <= ISA_DatOut[8  +: 32];
                 CCUGLB_CfgPortNum[ADDR_WIDTH*int_i +: ADDR_WIDTH] <= ISA_DatOut[40 +: 16];
@@ -446,7 +431,8 @@ end
 //=====================================================================================================================
 assign CCUSYA_Rst = state == IDLE;
 assign CCUPOL_Rst = state == IDLE;
-assign CCUCTR_Rst = state == IDLE;
+assign CCUFPS_Rst = state == IDLE;
+assign CCUKNN_Rst = state == IDLE;
 assign CCUGLB_Rst = state == IDLE;
 
 

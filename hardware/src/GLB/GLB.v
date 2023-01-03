@@ -229,6 +229,7 @@ generate
             assign RdPortDat[SRAM_WIDTH*(MAXPAR*gv_j + gv_i) +: SRAM_WIDTH] =  rdata_array[PortCur1stBankIdx+gv_i];
         end
 
+        wire [ADDR_WIDTH    -1 : 0] MaxCnt =  CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] == 0? 0 : CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH]-1;
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter_RdPortAddr(
@@ -239,7 +240,7 @@ generate
             .INC       ( INC                                                            ),
             .DEC       ( 1'b0                                                           ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}                                                              ),
-            .MAX_COUNT ( CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH]-1   ),
+            .MAX_COUNT ( MaxCnt   ),
             .OVERFLOW  (  ),
             .UNDERFLOW (                                                                ),
             .COUNT     ( Cnt_RdPortAddr                                            )

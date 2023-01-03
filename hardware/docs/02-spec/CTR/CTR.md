@@ -78,12 +78,13 @@ Mask也使用GLB存储：为了便于KNN一次取所有层的Mask的bit，在GLB
     
 - FPS
     - Stage0: **两个计数器：Cp和Lop** 生成地址
-        - FPS时，Cp计数从0到Nop-1，Lop从0到Nip-CpIdx，但第二层FPS由于Mask需要跳着生成地址？需要把列为最远点的坐标存到GLB，但暂时不用，直接取GLB中的Mask_Loop（对应取GLB中同一个点的不同层，是上一次Mask与本次Mask的非的与）使能计数器生成的Addr的有效，**:question:跳过的就无效和等，还会存在读写GLB冲突会等的问题, 还有除法和取余数要用加法循环替换**
+        - FPS时，Cp计数从0到Nop-1，Lop从0到Nip-CpIdx，但第二层FPS由于Mask需要跳着生成地址？（需要把列为最远点的坐标存到GLB，但暂时不用）直接取GLB中的Mask_Loop（对应取GLB中同一个点的不同层的(GLBFPS_MaskRdDat)，是上一次Mask与本次Mask的非的与，表示当前点经前面层的过滤是否还剩下来Mask_Before，剩下来前面层都是1）来使能计数器生成的Addr的有效(Mask_Before前面位要为均为1)
+            - **:question:跳过的就无效和等，还会存在读写GLB冲突会等的问题, 还有除法和取余数要用加法循环替换**
     - Stage1: 同时取1. 输入点的坐标LopIdx的GLBCTR_Crd从ITF（经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD））和2. Dist_Buffer中取出与上一次FPS点集的距离FPS_LastPsDist，
     - Stage2: 都同时打一拍后，得(LopCrd_s2,LopIdx_s2)和(FPS_LastPsIdx_s2, FPS_LastPsDist_s2)，必须要打拍
         - 将LopCrd_s2与FPS_CpCrd（FPS中，FPS_CpCrd是上一次找出的最远点的坐标，KNN中，KNN_CpCrd_s2是当前需要找出邻近点的中心点坐标），计算欧式距离EDC LopDist_s2，比较出LopDist_s2和FPS_LastPsDist_s2的最小值，作为与当前FPS点集的距离FPS_PsDist，当前点FPS_PsDist需要与之前点到点集的距离FPS_MaxDist比较出最大值FPS_UpdMax，
     - Stage3: 并更新到Dist_Buffer；和更新这个最大值FPS_MaxDist，最大值对应的点的index FPS_MaxIdx，和最大值对应的点的坐标FPS_MaxCrd；
-        - 对于固定的FPS_CpCrd，当所有非点集的点遍历完成LopLast_s2后，这个最大值的点坐标FPS_MaxCrd成为新的FPS_CpCrd，:question:对应的index输出到GLB的FPS_out_buffer，让表示1024个点是否有效的Mask里面对应的bit位置为1并存到GLB相应的bit；
+        - 对于固定的FPS_CpCrd，当所有非点集的点遍历完成LopLast_s2后，这个最大值的点坐标FPS_MaxCrd成为新的FPS_CpCrd，:question:对应的index输出到GLB的FPS_out_buffer，让表示1024个点是否有效的Mask里面对应的bit位置为1并存到GLB相应的bit(FPSGLB_MaskWrDat)
         - 当FPS选出的点集点数达到所需的点数（Nop）时，state转到FNH，后转到IDLE，发出CfgRdy，配置下一层FPS
 
 - KNN

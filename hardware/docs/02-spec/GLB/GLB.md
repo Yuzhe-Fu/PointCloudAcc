@@ -32,7 +32,7 @@
 | CCUGLB_CfgVld             | i nput | NUM_PORT | 每个Port单独配置的使能，vld rdy取代rst和fnh, 重置Port所有信号
 | GLBCCU_CfgRdy             | output | NUM_PORT | 含义是读/写到配置的CfgNum：写表示写完了，读表示读完了一次，CCU可以知道读完了多少次
 | CCUGLB_CfgBankPort        | input     | (NUM_RDPORT + NUM_WRPORT)* NUM_BANK | 为每个Bank分配读/写Port是两个，1表示有分到，也表示Port是否有效 |
-| CCUGLB_CfgPortNum |input     | 配置数据容量（个数）
+| CCUGLB_CfgPortNum |input     | 配置数据容量（个数）:写：最大个数；读：一次循环的个数不是所有循环个数
 | CCUGLB_CfgRdPortParBank|input     | 
 | CCUGLB_CfgWrPortParBank|input     | 
 | CCUGLB_CfgPortLoop|input     | 表示是否要循环读写，目前只用了循环读功能

@@ -42,6 +42,16 @@
 WRPORT[0]给CCU
 WRPORT[1 +:4]写给GLB
 
+WRIDX_ITFCCU = 0;
+WRIDX_ITFACT = 1;
+WRIDX_ITFWGT = 2;
+WRIDX_ITFCRD = 3;
+WRIDX_ITFMAP = 4;
+
+RDIDX_ITFMAP = 0;
+RDIDX_ITFOFM = 1;
+
+
 Interface负责将GLB的握手协议，与PAD的协议相连接
 PAD的协议是：借鉴AHB协议，先传首地址（决定是取哪种数据类型）和取多少个(统称为指令），然后收发数据。地址和数据共用PAD, 所以，有1bit控制信号区别指令和数据，数据传输还是基于握手协议。
 - 先是没有异步FIFO的，直接与PAD相连

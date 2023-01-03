@@ -112,26 +112,37 @@
             - FPS_CFG OpCode_FPS   = 3'd4;
             - KNN_CFG OpCode_KNN   = 3'd5;
             - GLB_CFG
-                - localparam GLBWRIDX_ITFACT = 0;
-                - localparam GLBWRIDX_ITFWGT = 1;
-                - localparam GLBWRIDX_ITFCRD = 2;
-                - localparam GLBWRIDX_ITFMAP = 3;
-                - localparam GLBWRIDX_SYAOFM = 4;
-                - localparam GLBWRIDX_POLOFM = 5;
-                - localparam GLBWRIDX_CTRDST = 6;
-                - localparam GLBWRIDX_CTRMAP = 7;
-                - localparam GLBWRIDX_CTRFMK = 8; // FPS Writes Mask
+                localparam IDLE     = 4'b0000;
+                localparam RD_ISA   = 4'b0001;
+                localparam IDLE_CFG = 4'b0010;
+                localparam NETFNH   = 4'b0011;
+                // localparam ARRAY_CFG= 4'b1000; // 0
 
-                - localparam GLBRDIDX_ITFMAP = 0;
-                - localparam GLBRDIDX_ITFOFM = 1;
-                - localparam GLBRDIDX_SYAACT = 2;
-                - localparam GLBRDIDX_SYAWGT = 3;
-                - localparam GLBRDIDX_CTRCRD = 4;
-                - localparam GLBRDIDX_CTRDST = 5;
-                - localparam GLBRDIDX_CTRFMK = 6; // FPS Read MASK
-                - localparam GLBRDIDX_CTRKMK = 7; // KNN Read MASK
-                - localparam GLBRDIDX_POLMAP = 8;
-                - localparam GLBRDIDX_POLOFM = 9;
+                // localparam OpCode_TOP             = 128 + 0;
+                // localparam OpCode_SYA             = 128 + 1;
+                // localparam OpCode_POL             = 128 + 2;
+                // localparam OpCode_FPS             = 128 + 3;
+                // localparam OpCode_KNN             = 128 + 4;
+                // localparam OpCode_GLBWRIDX_ITFACT = 128 + 5 + 0;
+                // localparam OpCode_GLBWRIDX_ITFWGT = 128 + 5 + 1;
+                // localparam OpCode_GLBWRIDX_ITFCRD = 128 + 5 + 2;
+                // localparam OpCode_GLBWRIDX_ITFMAP = 128 + 5 + 3;
+                // localparam OpCode_GLBWRIDX_SYAOFM = 128 + 5 + 4;
+                // localparam OpCode_GLBWRIDX_POLOFM = 128 + 5 + 5;
+                // localparam OpCode_GLBWRIDX_FPSDST = 128 + 5 + 6;
+                // localparam OpCode_GLBWRIDX_FPSFMK = 128 + 5 + 7;
+                // localparam OpCode_GLBWRIDX_KNNMAP = 128 + 5 + 8;
+                // localparam OpCode_GLBRDIDX_ITFMAP = 128 + 5 + 9 + 0;
+                // localparam OpCode_GLBRDIDX_ITFOFM = 128 + 5 + 9 + 1;
+                // localparam OpCode_GLBRDIDX_SYAACT = 128 + 5 + 9 + 2;
+                // localparam OpCode_GLBRDIDX_SYAWGT = 128 + 5 + 9 + 3;
+                // localparam OpCode_GLBRDIDX_FPSCRD = 128 + 5 + 9 + 4;
+                // localparam OpCode_GLBRDIDX_FPSDST = 128 + 5 + 9 + 5;
+                // localparam OpCode_GLBRDIDX_FPSFMK = 128 + 5 + 9 + 6;
+                // localparam OpCode_GLBRDIDX_KNNCRD = 128 + 5 + 9 + 7;
+                // localparam OpCode_GLBRDIDX_KNNKMK = 128 + 5 + 9 + 8;
+                // localparam OpCode_GLBRDIDX_POLMAP = 128 + 5 + 9 + 9;
+                // localparam OpCode_GLBRDIDX_POLOFM = 128 + 5 + 9 + 10; // + 5(POOL_CORE)
         - 到FNH（整个网络计算完成）
 
     - 与片外通信：先直接通过统一接口ITF（ITF相当于挂载了CCU和GLB），从片外读取ARRAY parameter和layer parameters和configurations(可以用来选择的模块配置），存入到RAM里面，再从RAM里的ARRAY parameter和layer parameters
