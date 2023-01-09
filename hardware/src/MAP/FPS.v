@@ -52,14 +52,6 @@ module FPS #(
     output reg                          FPSGLB_DistIdxVld,
     input                               GLBFPS_DistIdxRdy,
 
-    // Input Mask Bit
-    output  [MASK_ADDR_WIDTH    -1 : 0] FPSGLB_MaskRdAddr,
-    output                              FPSGLB_MaskRdAddrVld,
-    input                               GLBFPS_MaskRdAddrRdy,
-    input   [SRAM_WIDTH         -1 : 0] GLBFPS_MaskRdDat,
-    input                               GLBFPS_MaskRdDatVld, // Not Used
-    output                              FPSGLB_MaskRdDatRdy,  
-
     // Output Mask Bit
     output  [MASK_ADDR_WIDTH    -1 : 0] FPSGLB_MaskWrAddr,
     output reg[SRAM_WIDTH       -1 : 0] FPSGLB_MaskWrBitEn,
@@ -96,17 +88,17 @@ wire[IDX_WIDTH          -1 : 0] CntCp;
 
 wire[DISTSQR_WIDTH      -1 : 0] LopDist_s2;
 
-reg                             LopLast_s2;
-reg                             LopLast_s1;
+reg                             LopCntLast_s2;
+reg                             LopCntLast_s1;
 reg                             FPSGLB_CrdAddr_s1;
-reg [IDX_WIDTH          -1 : 0] LopIdx_s2;
-reg [IDX_WIDTH          -1 : 0] LopIdx_s1;
+reg [IDX_WIDTH          -1 : 0] LopPntIdx_s2;
+reg [IDX_WIDTH          -1 : 0] LopPntIdx_s1;
 
 wire                            CpLast;
 
-wire                            LopLast;
+wire                            LopCntLast;
 
-wire [IDX_WIDTH         -1 : 0] LopIdx;
+wire [IDX_WIDTH         -1 : 0] LopCnt;
 reg                             MaskLoop;
 wire [NUM_LAYER         -1 : 0] PreLyrMask;
 reg  [$clog2(NUM_LAYER) -1 : 0] FPSLyIdx;
@@ -129,7 +121,7 @@ always @(*) begin
                     next_state <= LP;
                 else
                     next_state <= CP;
-        LP:     if ( LopLast ) begin
+        LP:     if ( LopCntLast ) begin
                     if ( CpLast )
                         next_state <= FNH;
                     else //
@@ -161,10 +153,6 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-//=====================================================================================================================
-// Logic Design: Stage0
-//=====================================================================================================================
-
 wire INC_CntCp;
 counter#(
     .COUNT_WIDTH ( IDX_WIDTH )
@@ -173,15 +161,18 @@ counter#(
     .RESET_N   ( rst_n          ),
     .CLEAR     ( CCUFPS_Rst     ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}),
-    .INC       ( INC_CntCp      ),
+    .INC       ( state == LP && next_state == CP      ),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}}),
     .MAX_COUNT ( CCUFPS_CfgNop  ),
-    .OVERFLOW  ( CpLast               ),
+    .OVERFLOW  ( CpLast         ),
     .UNDERFLOW (                ),
     .COUNT     (    )
 );
-assign INC_CntCp    =  LopLast_s2;
+
+//=====================================================================================================================
+// Logic Design: Stage0
+//=====================================================================================================================
 
 counter#( // Pipe S0
     .COUNT_WIDTH ( IDX_WIDTH )
@@ -190,27 +181,34 @@ counter#( // Pipe S0
     .RESET_N   ( rst_n              ),
     .CLEAR     ( INC_CntCp | CCUFPS_Rst   ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
-    .INC       ( INC_LopIdx         ),
+    .INC       ( INC_LopCnt         ),
     .DEC       ( 1'b0               ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
-    .MAX_COUNT ( CCUFPS_CfgNip     ),
-    .OVERFLOW  ( LopLast     ),
+    .MAX_COUNT ( CCUFPS_CfgNip -1   ),
+    .OVERFLOW  ( LopCntLast     ),
     .UNDERFLOW (                    ),
-    .COUNT     ( LopIdx             )
+    .COUNT     ( LopCnt             )
 );
-assign INC_LopIdx = (FPSGLB_CrdAddrVld & GLBFPS_CrdAddrRdy & FPSGLB_DistRdAddrVld & GLBFPS_DistRdAddrRdy & GLBFPS_MaskRdAddrRdy) |  (!FPSGLB_CrdAddrVld & !FPSGLB_DistRdAddrVld & !FPSGLB_MaskRdAddrVld);
 
-
+assign rdy_s0 = arready;
+assign handshake_s0 = rdy_s0 & vld_s0;
+assign ena_s0 = handshake_s1 | ~vld_s0;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        MaskRAMByteIdx <= 0;
-    end else if( CCUFPS_Rst ) begin
-        MaskRAMByteIdx <= 0;
-    end else if( INC_LopIdx) begin
-        MaskRAMByteIdx <= MaskRAMByteIdx + 1; // Loop
+        vld_s0 <= 0;
+    end else if( ena_s0) begin
+        vld_s0 <= next_state == LP;
     end
 end
+
+assign INC_LopCnt = handshake_s0; // After being fetched by the next stage
+
+//=====================================================================================================================
+// Logic Design: Stage1: Addr Gen
+//=====================================================================================================================
+
+
 
 RAM_HS#(
     .SRAM_BIT     ( IDX_WIDTH ),
@@ -224,40 +222,51 @@ RAM_HS#(
     .wready       ( wready       ),
     .waddr        ( waddr        ),
     .wdata        ( wdata        ),
-    .arvalid      ( arvalid      ),
+    .arvalid      ( vld_s0      ),
     .arready      ( arready      ),
-    .araddr       ( araddr       ),
-    .rvalid       ( AddrLL_DatOutVld),
-    .rready       ( AddrLL_DatOutRdy       ),
-    .rdata        ( AddrLL_DatOut)
+    .araddr       ( LopCnt       ),
+    .rvalid       ( vld_s1),
+    .rready       ( rdy_s1       ),
+    .rdata        ( LopPntIdx)
 );
 
-//=====================================================================================================================
-// Logic Design: Stage1: Addr Gen
-//=====================================================================================================================
+assign rdy_s1 = GLBFPS_CrdAddrRdy & GLBFPS_DistRdAddrRdy;
+assign handshake_s1 = rdy_s1 & vld_s1;
+assign ena_s1 = handshake_s1 | ~vld_s1;
 
-assign FPSGLB_CrdAddr = AddrLL_DatOut;
-assign FPSGLB_CrdAddrVld = AddrLL_DatOutVld & AddrLL_DatOutRdy; //(state == LP & MaskLoop) | FPSLyIdx == 0;// First layer not use mask
+assign FPSGLB_CrdAddr = LopPntIdx;
+assign FPSGLB_CrdAddrVld = handshake_s1; //(state == LP & MaskLoop) | FPSLyIdx == 0;// First layer not use mask
 
-assign FPSGLB_DistRdAddr    = AddrLL_DatOut;
-assign FPSGLB_DistRdAddrVld = AddrLL_DatOutVld & AddrLL_DatOutRdy;
+assign FPSGLB_DistRdAddr    = LopPntIdx;
+assign FPSGLB_DistRdAddrVld = handshake_s1;
 
-assign FPSGLB_MaskRdAddr = AddrLL_DatOut+1;
-assign FPSGLB_MaskRdAddrVld = AddrLL_DatOutVld & AddrLL_DatOutRdy;
-
-assign AddrLL_DatOutRdy = GLBFPS_CrdAddrRdy & GLBFPS_DistRdAddrRdy & FPSGLB_MaskRdDatRdy;
-
+always @(posedge clk or negedge rst_n) begin: Pipe1
+    if(!rst_n) begin
+        { LopCntLast_s1} <= 0;
+    end else if (ena_s1) begin
+        {LopCntLast_s1} <= {LopCntLast};
+    end
+end
 
 //=====================================================================================================================
 // Logic Design: Stage2: Use
 //=====================================================================================================================
+// Upper stage
+assign FPSGLB_CrdRdy        = ena_s2;
+assign FPSGLB_DistIdxRdy    = ena_s2;
 
-assign RdCrdDistMaskVld = GLBFPS_CrdVld & GLBFPS_DistIdxVld & GLBFPS_MaskRdDatVld;
-assign RdCrdDistMaskRdy = ;
+// next stage
+assign rdy_s2 = GLBFPS_DistIdxRdy & GLBFPS_MaskWrDatRdy;
+assign handshake_s2 = rdy_s2 & vld_s2;
+assign ena_s2 = handshake_s2 | ~vld_s2;
 
-assign FPSGLB_CrdRdy        = RdCrdDistMaskRdy;
-assign FPSGLB_DistIdxRdy    = RdCrdDistMaskRdy;
-assign FPSGLB_MaskRdDatRdy  = RdCrdDistMaskRdy;
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        vld_s2 <= 0;
+    end else if( ena_s2) begin
+        vld_s2 <= GLBFPS_CrdVld & GLBFPS_DistIdxVld;
+    end
+end
 
 EDC#(
     .CRD_WIDTH ( CRD_WIDTH  ),
@@ -272,97 +281,38 @@ assign FPS_LastPsDist = GLBFPS_DistIdx[IDX_WIDTH +: DISTSQR_WIDTH];
 
 
 // Write back (Update) DistIdx
-assign {FPS_PsDist, FPS_PsIdx} = FPS_LastPsDist > LopDist ? {LopDist, AddrLL_DatOut_s2} : {FPS_LastPsDist, FPS_LastPsIdx};
+assign {FPS_PsDist, FPS_PsIdx} = FPS_LastPsDist > LopDist ? {LopDist, LopPntIdx_s2} : {FPS_LastPsDist, FPS_LastPsIdx};
 
-assign FPSGLB_DistWrAddr = FPS_PsIdx;
-assign FPSGLB_DistIdx = {FPS_PsDist, FPS_PsIdx};
-
-
-// Update Max
 assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
+assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} <= FPS_UpdMax ? {FPS_PsDist, GLBFPS_Crd, FPS_PsIdx} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
 
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx} <= 0;
-    end else if (FPS_UpdMax ) begin
-        {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx} <= {FPS_PsDist, LopCrd_s2, FPS_PsIdx};
+
+// Reg Update
+always @(posedge clk or negedge rst_n) begin: Pipe2_LopCrd_s2
+    if(!rst_n) begin
+        {FPSGLB_DistIdx, FPSGLB_DistWrAddr, LopPntIdx_s2} <= 0;
+    end else if (ena_s2) begin
+        {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPSGLB_DistIdx, FPSGLB_DistWrAddr, LopPntIdx_s2, LopCntLast_s2} <= {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_, FPS_PsDist, FPS_PsIdx, FPS_PsIdx, LopPntIdx_s1, LopCntLast_s1};
     end
 end
+assign FPSGLB_DistIdxVld = vld_s2;
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         FPS_CpCrd <= 0;
-    end else if (LopLast_s2 ) begin
-        FPS_CpCrd <= FPS_MaxCrd;
+    end else if (ena_s2 & LopCntLast_s1) begin
+        FPS_CpCrd <= FPS_MaxCrd_;
     end
 end
-
-
-
-
 
 // Write back (Update) Mask
-
-
-integer i;
-always@(*) begin
-    MaskLoop = 1'b1;
-    for(i=0; i<FPSLyIdx; i=i+1) begin
-        MaskLoop = MaskLoop & PreLyrMask[i];
-    end
-end
-
-generate
-    for(gv_i=0; gv_i<NUM_LAYER; gv_i=gv_i+1) begin
-        assign PreLyrMask[gv_i] = gv_i >= FPSLyIdx? 0 : GLBFPS_MaskRdDat[NUM_LAYER*MaskRAMByteIdx + gv_i];// Whether remained in before layers
-    end
-endgenerate
-
-
-// 
-
-always @(posedge clk or negedge rst_n) begin: Pipe1
-    if(!rst_n) begin
-        {FPSGLB_CrdAddr_s1, LopLast_s1} <= 0;
-    end else if (FPSGLB_CrdAddrVld & GLBFPS_CrdAddrRdy) begin
-        {FPSGLB_CrdAddr_s1, LopLast_s1} <= {FPSGLB_CrdAddr, LopLast};
-    end
-end
-
-// 
-
-always @(posedge clk or negedge rst_n) begin: Pipe2_LopCrd_s2
-    if(!rst_n) begin
-        {LopCrd_s2, LopIdx_s2, LopLast_s2} <= 0;
-    end else if (GLBFPS_CrdVld & FPSGLB_CrdRdy) begin
-        {LopCrd_s2, LopIdx_s2, LopLast_s2} <= {GLBFPS_Crd, FPSGLB_CrdAddr_s1, LopLast_s1};
-    end
-end
-
-always @(posedge clk or negedge rst_n) begin: Pipe2_FPS_LastPsDist_s2
-    if(!rst_n) begin
-        {FPS_LastPsDist_s2, FPS_LastPsIdx_s2} <= 0;
-    end else if (GLBFPS_DistIdxVld & FPSGLB_DistIdxRdy) begin
-        {FPS_LastPsDist_s2, FPS_LastPsIdx_s2} <= GLBFPS_DistIdx;
-    end
-end
-
-
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        FPSGLB_DistIdxVld <= 0;
-    end else if (GLBFPS_DistIdxVld & FPSGLB_DistIdxRdy) begin
-        FPSGLB_DistIdxVld <= 1'b1;
-    end else if (FPSGLB_DistIdxVld & GLBFPS_DistIdxRdy) begin
-        FPSGLB_DistIdxVld <= 1'b0;
-    end
-end
-
-// Write GLB Mask Update
 assign FPSGLB_MaskWrAddr = FPS_MaxIdx >> $clog2(SRAM_WIDTH/NUM_LAYER);
-assign FPSGLB_MaskWrDatVld = LopLast_s2;
+assign FPSGLB_MaskWrDatVld = vld_s2 & LopCntLast_s2;
 
 assign MaskRAMBitIdx = FPSLyIdx % (SRAM_WIDTH/NUM_LAYER);
+assign MaskByteIdx = FPS_MaxIdx / NUM_LAYER;
+assign MaskRAMByteIdx = MaskByteIdx[0 +: $clog2((SRAM_WIDTH/NUM_LAYER))];
+
 always @(*) begin
     FPSGLB_MaskWrBitEn = {SRAM_WIDTH{1'b0}};
     FPSGLB_MaskWrDat = {SRAM_WIDTH{1'b0}};
@@ -371,12 +321,6 @@ always @(*) begin
     // Mask of FPS_MaxIdx set to 1: remained in the current layer
     FPSGLB_MaskWrDat[MaskRAMBitIdx + NUM_LAYER*MaskRAMByteIdx] = 1'b1; 
 end
-
-
-
-// Update
-
-
 
 
 //=====================================================================================================================
