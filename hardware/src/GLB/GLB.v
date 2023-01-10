@@ -132,7 +132,7 @@ generate
             .rdata        ( rdata        )
         );
         //=====================================================================================================================
-        // Logic Designss
+        // Logic Design
         //=====================================================================================================================
         assign wvalid = WrPortBankEn[BankWrPortIdx[gv_i]][gv_i];
         assign waddr   = WrPortAddr_Array[BankWrPortIdx[gv_i]]; // Cut LSB
