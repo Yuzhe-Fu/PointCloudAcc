@@ -30,7 +30,7 @@ module KNN #(
     input                               CCUKNN_CfgVld,
     output                              KNNCCU_CfgRdy,
     input [IDX_WIDTH            -1 : 0] CCUKNN_CfgNip,
-    input [MAP_WIDTH       -1 : 0] CCUKNN_CfgK, 
+    input [MAP_WIDTH            -1 : 0] CCUKNN_CfgK, 
 
     // Fetch Crd
     output [IDX_WIDTH           -1 : 0] KNNGLB_CrdAddr,   
@@ -40,12 +40,12 @@ module KNN #(
     input                               GLBKNN_CrdVld,     
     output                              KNNGLB_CrdRdy,
 
-    output  [MASK_ADDR_WIDTH        -1 : 0] KNNGLB_MaskRdAddr,
-    output                                  KNNGLB_MaskRdAddrVld,
-    input                                   GLBKNN_MaskRdAddrRdy,
-    input   [SRAM_WIDTH             -1 : 0] GLBKNN_MaskRdDat,
-    input                                   GLBKNN_MaskRdDatVld,
-    output                                  KNNGLB_MaskRdDatRdy,
+    output  [MASK_ADDR_WIDTH    -1 : 0] KNNGLB_MaskRdAddr,
+    output                              KNNGLB_MaskRdAddrVld,
+    input                               GLBKNN_MaskRdAddrRdy,
+    input   [SRAM_WIDTH         -1 : 0] GLBKNN_MaskRdDat,
+    input                               GLBKNN_MaskRdDatVld,
+    output                              KNNGLB_MaskRdDatRdy,
 
     // Output Map of KNN
     output [SRAM_WIDTH          -1 : 0 ]KNNGLB_Map,   
