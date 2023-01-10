@@ -41,7 +41,7 @@ module FPS #(
 
     output [IDX_WIDTH           -1 : 0] FPSGLB_DistCrdLLAWrAddr,
     output [DISTCRDLLA_WIDTH    -1 : 0] FPSGLB_DistCrdLLAWrDat,   
-    output reg                          FPSGLB_DistCrdLLAWrDatVld,
+    output                              FPSGLB_DistCrdLLAWrDatVld,
     input                               GLBFPS_DistCrdLLAWrDatRdy,
 
     // Input Mask Bit
@@ -113,7 +113,7 @@ wire                            rdy_s1;
 wire                            rdy_s2;
 wire                            rdy_s3;
 reg                             vld_s0;
-reg                             vld_s1;
+wire                            vld_s1;
 reg                             vld_s2;
 reg                             vld_s3;
 wire                            handshake_s0;
