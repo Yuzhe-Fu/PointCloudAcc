@@ -19,7 +19,8 @@ module FPS #(
     parameter CRD_DIM           = 3, 
     parameter NUM_LAYER         = 8,
     parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) ),
-    parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_LAYER/SRAM_WIDTH)
+    parameter MASK_ADDR_WIDTH   = $clog2(2**IDX_WIDTH*NUM_LAYER/SRAM_WIDTH),
+    parameter DISTCRDLLA_WIDTH  = DISTSQR_WIDTH+CRD_WIDTH*CRD_DIM+IDX_WIDTH
     )(
     input                               clk  ,
     input                               rst_n,
@@ -28,35 +29,26 @@ module FPS #(
     input                               CCUFPS_Rst,
     input                               CCUFPS_CfgVld,
     output                              FPSCCU_CfgRdy,
-    input [IDX_WIDTH            -1 : 0] CCUFPS_CfgNip,
-    input [IDX_WIDTH            -1 : 0] CCUFPS_CfgNop,
+    input  [IDX_WIDTH           -1 : 0] CCUFPS_CfgNip,
+    input  [IDX_WIDTH           -1 : 0] CCUFPS_CfgNop,
+                    
+    output [IDX_WIDTH           -1 : 0] FPSGLB_DistCrdLLARdAddr, // Linked link Address
+    output                              FPSGLB_DistCrdLLARdAddrVld,
+    input                               GLBFPS_LLADistRdAddrRdy,
+    input  [DISTCRDLLA_WIDTH    -1 : 0] GLBFPS_DistCrdLLARdDat,    
+    input                               GLBFPS_DistCrdLLARdDatVld,    
+    output                              FPSGLB_DistCrdLLARdDatRdy,    
 
-    // Fetch Crd
-    output [IDX_WIDTH           -1 : 0] FPSGLB_CrdAddr,   
-    output                              FPSGLB_CrdAddrVld, 
-    input                               GLBFPS_CrdAddrRdy,
-    input  [SRAM_WIDTH          -1 : 0 ]GLBFPS_Crd,        
-    input                               GLBFPS_CrdVld,     
-    output                              FPSGLB_CrdRdy,
-
-    // Fetch Dist and Idx of FPS
-    output [IDX_WIDTH           -1 : 0] FPSGLB_DistRdAddr, 
-    output                              FPSGLB_DistRdAddrVld,
-    input                               GLBFPS_DistRdAddrRdy,
-    input  [DISTSQR_WIDTH+IDX_WIDTH-1 : 0] GLBFPS_DistIdx,    
-    input                               GLBFPS_DistIdxVld,    
-    output                              FPSGLB_DistIdxRdy,    
-
-    output [IDX_WIDTH           -1 : 0] FPSGLB_DistWrAddr,
-    output [DISTSQR_WIDTH+IDX_WIDTH-1 : 0] FPSGLB_DistIdx,   
-    output reg                          FPSGLB_DistIdxVld,
-    input                               GLBFPS_DistIdxRdy,
+    output [IDX_WIDTH           -1 : 0] FPSGLB_DistCrdLLAWrAddr,
+    output [DISTCRDLLA_WIDTH    -1 : 0] FPSGLB_DistCrdLLAWrDat,   
+    output reg                          FPSGLB_DistCrdLLAWrDatVld,
+    input                               GLBFPS_DistCrdLLAWrDatRdy,
 
     // Output Mask Bit
     output  [MASK_ADDR_WIDTH    -1 : 0] FPSGLB_MaskWrAddr,
     output reg[SRAM_WIDTH       -1 : 0] FPSGLB_MaskWrBitEn,
     output                              FPSGLB_MaskWrDatVld,
-    output reg [SRAM_WIDTH      -1 : 0] FPSGLB_MaskWrDat,
+    output reg[SRAM_WIDTH       -1 : 0] FPSGLB_MaskWrDat,
     input                               GLBFPS_MaskWrDatRdy  // Not Used
 
 );
@@ -164,16 +156,32 @@ counter#(
     .INC       ( state == LP && next_state == CP      ),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}}),
-    .MAX_COUNT ( CCUFPS_CfgNop  ),
+    .MAX_COUNT ( CCUFPS_CfgNop -1 ),
     .OVERFLOW  ( CpLast         ),
     .UNDERFLOW (                ),
-    .COUNT     (    )
+    .COUNT     ( CpCnt   )
 );
 
 //=====================================================================================================================
 // Logic Design: Stage0
 //=====================================================================================================================
 
+// Combinational Logic
+assign INC_LopCnt = handshake_s0; // After being fetched by the next stage
+
+// HandShake
+assign rdy_s0 = GLBFPS_LLADistRdAddrRdy;
+assign handshake_s0 = rdy_s0 & vld_s0;
+assign ena_s0 = handshake_s1 | ~vld_s0;
+
+// Reg Update
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        vld_s0 <= 0;
+    end else if( ena_s0) begin
+        vld_s0 <= next_state == LP;
+    end
+end
 counter#( // Pipe S0
     .COUNT_WIDTH ( IDX_WIDTH )
 )u1_counter_LopIdx(
@@ -184,132 +192,87 @@ counter#( // Pipe S0
     .INC       ( INC_LopCnt         ),
     .DEC       ( 1'b0               ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
-    .MAX_COUNT ( CCUFPS_CfgNip -1   ),
+    .MAX_COUNT ( (CCUFPS_CfgNip - (CpCnt+1)) -1  ),
     .OVERFLOW  ( LopCntLast     ),
     .UNDERFLOW (                    ),
     .COUNT     ( LopCnt             )
 );
 
-assign rdy_s0 = arready;
-assign handshake_s0 = rdy_s0 & vld_s0;
-assign ena_s0 = handshake_s1 | ~vld_s0;
-
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        vld_s0 <= 0;
-    end else if( ena_s0) begin
-        vld_s0 <= next_state == LP;
-    end
-end
-
-assign INC_LopCnt = handshake_s0; // After being fetched by the next stage
-
 //=====================================================================================================================
-// Logic Design: Stage1: Addr Gen
+// Logic Design: Stage1: DistCrdLLA Gen
 //=====================================================================================================================
+// Combinational Logic
+assign LopPntIdx = FPSLyIdx == 0?  LopCnt : GLBFPS_DistCrdLLARdDat[0 +: IDX_WIDTH];
+assign FPSGLB_DistCrdLLARdAddr = LopPntIdx;
+assign FPSGLB_DistCrdLLARdAddrVld = handshake_s0;
 
-
-
-RAM_HS#(
-    .SRAM_BIT     ( IDX_WIDTH ),
-    .SRAM_BYTE    ( 1 ),
-    .SRAM_WORD    ( IDX_WIDTH ),
-    .CLOCK_PERIOD ( CLOCK_PERIOD )
-)u_RAM_HS_AddrLL( // Linked List
-    .clk          ( clk          ),
-    .rst_n        ( rst_n        ),
-    .wvalid       ( wvalid       ),
-    .wready       ( wready       ),
-    .waddr        ( waddr        ),
-    .wdata        ( wdata        ),
-    .arvalid      ( vld_s0      ),
-    .arready      ( arready      ),
-    .araddr       ( LopCnt       ),
-    .rvalid       ( vld_s1),
-    .rready       ( rdy_s1       ),
-    .rdata        ( LopPntIdx)
-);
-
-assign rdy_s1 = GLBFPS_CrdAddrRdy & GLBFPS_DistRdAddrRdy;
+// HandShake
+assign FPSGLB_DistCrdLLARdDatRdy = rdy_s1;
+assign rdy_s1 = ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1 = handshake_s1 | ~vld_s1;
 
-assign FPSGLB_CrdAddr = LopPntIdx;
-assign FPSGLB_CrdAddrVld = handshake_s1; //(state == LP & MaskLoop) | FPSLyIdx == 0;// First layer not use mask
-
-assign FPSGLB_DistRdAddr    = LopPntIdx;
-assign FPSGLB_DistRdAddrVld = handshake_s1;
-
-always @(posedge clk or negedge rst_n) begin: Pipe1
-    if(!rst_n) begin
-        { LopCntLast_s1} <= 0;
-    end else if (ena_s1) begin
-        {LopCntLast_s1} <= {LopCntLast};
-    end
-end
-
-//=====================================================================================================================
-// Logic Design: Stage2: Use
-//=====================================================================================================================
-// Upper stage
-assign FPSGLB_CrdRdy        = ena_s2;
-assign FPSGLB_DistIdxRdy    = ena_s2;
-
-// next stage
-assign rdy_s2 = GLBFPS_DistIdxRdy & GLBFPS_MaskWrDatRdy;
-assign handshake_s2 = rdy_s2 & vld_s2;
-assign ena_s2 = handshake_s2 | ~vld_s2;
-
+// Reg Update
+assign vld_s1 = GLBFPS_DistCrdLLARdDatVld;
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        vld_s2 <= 0;
-    end else if( ena_s2) begin
-        vld_s2 <= GLBFPS_CrdVld & GLBFPS_DistIdxVld;
+        {LopPntIdx_s1, FPSLyIdx_s1, LopCntLast_s1} <= 0;
+    end else if (ena_s1) begin
+        {LopPntIdx_s1, FPSLyIdx_s1, LopCntLast_s1} <= 
+        {LopPntIdx, FPSLyIdx, LopCntLast};
     end
 end
+
+//=====================================================================================================================
+// Logic Design: Stage2: Max Gen
+//=====================================================================================================================
+// Combinational Logic
+assign FPS_LastPsDist = GLBFPS_DistCrdLLARdDat[CRD_WIDTH*CRD_DIM + IDX_WIDTH +: DISTSQR_WIDTH];
+assign LopPntCrd = GLBFPS_DistCrdLLARdDat[IDX_WIDTH +: CRD_WIDTH*CRD_DIM];
+
 
 EDC#(
     .CRD_WIDTH ( CRD_WIDTH  ),
     .CRD_DIM   ( CRD_DIM    )
 )u_EDC(
     .Crd0      ( FPS_CpCrd      ),
-    .Crd1      ( GLBFPS_Crd     ),
+    .Crd1      ( LopPntCrd     ),
     .DistSqr   ( LopDist    )
 );
-assign FPS_LastPsIdx = GLBFPS_DistIdx[0 +: IDX_WIDTH];
-assign FPS_LastPsDist = GLBFPS_DistIdx[IDX_WIDTH +: DISTSQR_WIDTH];
 
-
-// Write back (Update) DistIdx
-assign {FPS_PsDist, FPS_PsIdx} = FPS_LastPsDist > LopDist ? {LopDist, LopPntIdx_s2} : {FPS_LastPsDist, FPS_LastPsIdx};
+assign FPS_PsDist = FPS_LastPsDist > LopDist ? LopDist : FPS_LastPsDist;
 
 assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
-assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} <= FPS_UpdMax ? {FPS_PsDist, GLBFPS_Crd, FPS_PsIdx} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
+assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} <= FPS_UpdMax ? {FPS_PsDist, LopPntCrd, LopPntIdx_s1} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
 
+// HandShake
+assign rdy_s2 = GLBFPS_MaskWrDatRdy & GLBFPS_DistCrdLLAWrRdy;
+assign handshake_s2 = rdy_s2 & vld_s2;
+assign ena_s2 = handshake_s2 | ~vld_s2;
 
 // Reg Update
-always @(posedge clk or negedge rst_n) begin: Pipe2_LopCrd_s2
-    if(!rst_n) begin
-        {FPSGLB_DistIdx, FPSGLB_DistWrAddr, LopPntIdx_s2} <= 0;
-    end else if (ena_s2) begin
-        {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPSGLB_DistIdx, FPSGLB_DistWrAddr, LopPntIdx_s2, LopCntLast_s2} <= {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_, FPS_PsDist, FPS_PsIdx, FPS_PsIdx, LopPntIdx_s1, LopCntLast_s1};
-    end
-end
-assign FPSGLB_DistIdxVld = vld_s2;
-
 always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        FPS_CpCrd <= 0;
-    end else if (ena_s2 & LopCntLast_s1) begin
-        FPS_CpCrd <= FPS_MaxCrd_;
+    if(!rst_n) begin
+        {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2, LopPntIdx_s2, FPSLyIdx_s2, LopCntLast_s2, vld_s2} <= 0;
+    end else if (ena_s2) begin
+        {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2, LopPntIdx_s2, FPSLyIdx_s2, LopCntLast_s2, vld_s2} <= 
+        {(LopCntLast_s1 | CpCnt_s1==0)? FPS_MaxCrd_ : FPS_CpCrd, FPS_MaxCrd_, FPS_MaxIdx_, FPS_PsDist, LopPntIdx_s1, FPSLyIdx_s1, LopCntLast_s1, GLBFPS_DistCrdLLARdDatVld}; ?????????????
     end
 end
+
+//=====================================================================================================================
+// Logic Design: Out
+//=====================================================================================================================
+
+// Combinational Logic
+assign FPSGLB_DistCrdLLAWrDatVld = handshake_s2;
+assign {FPSGLB_DistCrdLLAWrDat, FPSGLB_DistCrdLLAWrAddr}= {FPS_PsDist_s2, LopPntIdx_s2}; ???????????????
 
 // Write back (Update) Mask
 assign FPSGLB_MaskWrAddr = FPS_MaxIdx >> $clog2(SRAM_WIDTH/NUM_LAYER);
 assign FPSGLB_MaskWrDatVld = vld_s2 & LopCntLast_s2;
 
-assign MaskRAMBitIdx = FPSLyIdx % (SRAM_WIDTH/NUM_LAYER);
+assign MaskRAMBitIdx = FPSLyIdx_s2 % (SRAM_WIDTH/NUM_LAYER);
 assign MaskByteIdx = FPS_MaxIdx / NUM_LAYER;
 assign MaskRAMByteIdx = MaskByteIdx[0 +: $clog2((SRAM_WIDTH/NUM_LAYER))];
 
