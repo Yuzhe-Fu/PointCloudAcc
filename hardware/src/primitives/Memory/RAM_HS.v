@@ -71,7 +71,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 assign rdata   = ram_rdata;
-assign arready = rready;
+assign arready = rready | !rvalid;
 
 //=====================================================================================================================
 // Sub-Module :

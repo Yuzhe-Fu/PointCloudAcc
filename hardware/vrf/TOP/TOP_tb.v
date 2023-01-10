@@ -110,6 +110,7 @@ end
 // Logic Design 
 //=====================================================================================================================
 
+// Indexed addressing
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
         addr <= 0;
@@ -117,11 +118,27 @@ always @(posedge clk or rst_n) begin
         addr <= 0;
     end else if(state==CMD && IO_DatVld & OI_DatRdy) begin
         addr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
-        BaseAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
-        ReqNum <= IO_Dat[1+DRAM_ADDR_WIDTH +: ADDR_WIDTH];
     end else if(state== IN | state == OUT) begin
         if(IO_DatVld & OI_DatRdy)
             addr <= addr + 1;
+    end
+end
+
+// Base Address
+always @(posedge clk or rst_n) begin
+    if (!rst_n) begin
+        BaseAddr <= 0;
+    end else if(state==CMD && IO_DatVld & OI_DatRdy) begin
+        BaseAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
+    end
+end
+
+// ReqNum
+always @(posedge clk or rst_n) begin
+    if (!rst_n) begin
+        ReqNum <= 0;
+    end else if(state==CMD && IO_DatVld & OI_DatRdy) begin
+        ReqNum <= IO_Dat[1+DRAM_ADDR_WIDTH +: ADDR_WIDTH];
     end
 end
 

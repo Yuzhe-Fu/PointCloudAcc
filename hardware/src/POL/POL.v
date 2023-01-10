@@ -130,7 +130,7 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign MapInLast = CntMapIn*POOL_CORE >= CCUPOL_CfgK*CCUPOL_CfgNip;
+assign MapInLast = CntMapIn >= CCUPOL_CfgK*(CCUPOL_CfgNip%POOL_CORE==0? CCUPOL_CfgNip/POOL_CORE : CCUPOL_CfgNip/POOL_CORE+1);// CntMapIn >= CCUPOL_CfgK*ceil(CCUPOL_CfgNip/POOL_CORE)
 
 
 always @(posedge clk or negedge rst_n) begin
@@ -151,7 +151,7 @@ assign OfmOutLast = CntOfmOut >= CCUPOL_CfgNip;
 
 genvar i;
 generate
-    for(i=0; i<POOL_CORE; i=i+1) begin
+    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_PLC
         wire                        POLPLC_IdxVld;
         wire [IDX_WIDTH     -1 : 0] POLPLC_Idx;
 
@@ -179,7 +179,7 @@ generate
             .POLPLC_OfmRdy  ( POLPLC_OfmRdy[i]   )
         );
         assign POLPLC_Idx = GLBPOL_Map[IDX_WIDTH*i +: IDX_WIDTH];
-        assign POLPLC_IdxVld = state == MAPIN & GLBPOL_MapVld;
+        assign POLPLC_IdxVld = GLBPOL_MapVld & POLGLB_MapRdy;
 
     end
 endgenerate
@@ -190,7 +190,7 @@ assign POLGLB_OfmVld = |PLCPOL_OfmVld ;
 assign POLGLB_Ofm    = PLCPOL_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*ARBIdx_PLCPOL_OfmVld +: ACT_WIDTH*POOL_COMP_CORE];
 genvar gv_i;
 generate
-    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin
+    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin: GEN_POLPLC_OfmRdy
         assign POLPLC_OfmRdy[gv_i] = gv_i == ARBIdx_PLCPOL_OfmVld? GLBPOL_OfmRdy : 0;
     end
 endgenerate
@@ -230,6 +230,49 @@ MIF#(
     .MIFPOL_OfmVld   ( POLPLC_OfmVld   ),
     .MIFPOL_OfmRdy   ( PLCPOL_OfmRdy   )
 );
+
+
+// Debug
+wire [IDX_WIDTH    -1 : 0] cnt_PLCPOL_Ofm[ 0 : POOL_CORE -1];
+wire [IDX_WIDTH    -1 : 0] cnt_POLPLC_Ofm[ 0 : POOL_CORE -1];
+
+generate
+    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_cnt_PLCPOL_Ofm
+        wire [IDX_WIDTH     -1 : 0] MaxCnt = 2**IDX_WIDTH -1;
+        counter#(
+            .COUNT_WIDTH ( IDX_WIDTH )
+        )u_counter_Debug_RecPOLPLC_Ofm(
+            .CLK       ( clk        ),
+            .RESET_N   ( rst_n      ),
+            .CLEAR     ( state == IDLE ),
+            .DEFAULT   ( {IDX_WIDTH{1'd0}}        ),
+            .INC       ( POLPLC_OfmVld[i] & PLCPOL_OfmRdy[i]   ),
+            .DEC       ( 1'b0       ),
+            .MIN_COUNT ( {IDX_WIDTH{1'd0}}        ),
+            .MAX_COUNT ( MaxCnt      ),
+            .OVERFLOW  (            ),
+            .UNDERFLOW (            ),
+            .COUNT     ( cnt_POLPLC_Ofm[i] )
+        );
+
+        counter#(
+            .COUNT_WIDTH ( IDX_WIDTH )
+        )u_counter_Debug_SendPLCPOL_Ofm(
+            .CLK       ( clk        ),
+            .RESET_N   ( rst_n      ),
+            .CLEAR     ( state == IDLE ),
+            .DEFAULT   ( {IDX_WIDTH{1'd0}} ),
+            .INC       ( PLCPOL_OfmVld[i] & POLPLC_OfmRdy[i]   ),
+            .DEC       ( 1'b0       ),
+            .MIN_COUNT ( {IDX_WIDTH{1'd0}} ),
+            .MAX_COUNT ( MaxCnt  ),
+            .OVERFLOW  (    ),
+            .UNDERFLOW (            ),
+            .COUNT     ( cnt_PLCPOL_Ofm[i]           )
+        );
+
+    end
+endgenerate
 
 
 

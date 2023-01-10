@@ -55,7 +55,7 @@ always @(*) begin
         COMP: if ( DatInLast & (DatInVld & DatInRdy))
                     next_state <= OUTPUT;
                 else
-                    next_state <= OUTPUT;
+                    next_state <= COMP;
         OUTPUT: if( DatOutVld & DatOutRdy) /// 
                     next_state <= COMP;
                 else

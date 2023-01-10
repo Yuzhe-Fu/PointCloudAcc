@@ -19,6 +19,8 @@ module PE_ROW #(
   )(
     input                            clk,
     input                            rst_n,
+
+    input                            rst_reset,
     
     input  [QNT_WIDTH          -1:0] quant_scale,
     input  [ACT_WIDTH          -1:0] quant_shift,
@@ -44,10 +46,16 @@ module PE_ROW #(
 //=====================================================================================================================
 localparam DMUL_WIDTH = ACT_WIDTH*WGT_WIDTH;
 
+wire in_ena_left = in_vld_left && in_rdy_left;
+
 wire [NUM_PE -1:0][PSUM_WIDTH -1:0] row_out_sum;
 reg  [PSUM_WIDTH -1:0] out_sum_pick;
 wire [PSUM_WIDTH -1:0] out_sum_reg0;
-wire [FM_WIDTH   -1:0] out_sum_qnt8 = (out_sum_reg0*quant_scale)>>quant_shift +quant_zero_point;
+wire [PSUM_WIDTH+QNT_WIDTH -1:0] out_sum_expd = {{QNT_WIDTH{out_sum_reg0[PSUM_WIDTH-1]}}, out_sum_reg0};
+wire [PSUM_WIDTH+QNT_WIDTH -1:0] out_sum_scal = out_sum_expd*quant_scale;
+
+wire [FM_WIDTH   -1:0] out_sum_rsft = out_sum_scal>>quant_shift;
+wire [FM_WIDTH   -1:0] out_sum_qnt8 = out_sum_rsft +quant_zero_point;
 wire [FM_WIDTH   -1:0] out_sum_reg1;
 
 wire [NUM_PE -1:0][ACT_WIDTH  -1:0] row_out_act;
@@ -80,8 +88,8 @@ end
 assign out_sum_reg0 = out_sum_pick;
 assign out_sum_reg1 = out_sum_qnt8;
 
-//CPM_REG_E #( PSUM_WIDTH ) OUT_REG0 ( clk, rst_n, in_rdy_left, out_sum_pick, out_sum_reg0);
-//CPM_REG_E #( FM_WIDTH   ) OUT_REG1 ( clk, rst_n, in_rdy_left, out_sum_qnt8, out_sum_reg1);
+//CPM_REG_E #( PSUM_WIDTH ) OUT_REG0 ( clk, rst_n, in_ena_left, out_sum_pick, out_sum_reg0);
+//CPM_REG_E #( FM_WIDTH   ) OUT_REG1 ( clk, rst_n, in_ena_left, out_sum_qnt8, out_sum_reg1);
 
 
     PE #(
@@ -92,6 +100,8 @@ assign out_sum_reg1 = out_sum_qnt8;
                            
       .clk                 ( clk               ),
       .rst_n               ( rst_n             ),
+      
+      .rst_reset           ( rst_reset         ),
                                               
       .in_vld_left         ( row_din_vld       ),
       .in_rdy_left         ( in_rdy_left       ),

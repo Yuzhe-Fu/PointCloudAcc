@@ -33,13 +33,13 @@ module PSS #(
     output  [MASK_ADDR_WIDTH        -1 : 0] PSSGLB_MaskRdAddr,
     output                                  PSSGLB_MaskRdAddrVld,
     input                                   GLBPSS_MaskRdAddrRdy,
-    input   [SRAM_WIDTH             -1 : 0] GLBPSS_MaskDatOut,
-    input                                   GLBPSS_MaskDatOutVld,
-    output                                  PSSGLB_MaskDatRdy,
+    input   [SRAM_WIDTH             -1 : 0] GLBPSS_MaskRdDat,
+    input                                   GLBPSS_MaskRdDatVld,
+    output                                  PSSGLB_MaskRdDatRdy,
 
-    output  [SRAM_WIDTH             -1 : 0] PSSCTR_Map      , 
-    output                                  PSSCTR_MapVld   , 
-    input                                   CTRPSS_MapRdy    
+    output  [SRAM_WIDTH             -1 : 0] PSSGLB_Map      , 
+    output                                  PSSGLB_MapVld   , 
+    input                                   GLBPSS_MapRdy    
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -83,7 +83,7 @@ assign PSSKNN_LopRdy = GLBPSS_MaskRdAddrRdy & s0_rdy; // drive 2 loads
 // PIPE0: Output SRAM
 assign s0_rdy = &(!PSSINS_LopVld | INSPSS_LopRdy); // All == 1
 
-assign PSSGLB_MaskDatRdy = s0_rdy;
+assign PSSGLB_MaskRdDatRdy = s0_rdy;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
@@ -102,7 +102,7 @@ genvar i;
 generate
     for(i=0; i<NUM_SORT_CORE; i=i+1) begin
 
-        assign PSSINS_LopVld[i] = GLBPSS_MaskDatOutVld & GLBPSS_MaskDatOut[NUM_SORT_CORE*MaskRAMByteIdx + i];
+        assign PSSINS_LopVld[i] = GLBPSS_MaskRdDatVld & GLBPSS_MaskRdDat[NUM_SORT_CORE*MaskRAMByteIdx + i];
         INS#(
             .SORT_LEN_WIDTH   ( SORT_LEN_WIDTH ),
             .IDX_WIDTH       ( IDX_WIDTH ),
@@ -137,10 +137,10 @@ PISO#(
     .IN_LAST   ( 1'b0           ),
     .IN_DAT    ( PSSMap         ),
     .IN_RDY    ( PISO_IN_RDY  ),
-    .OUT_DAT   ( PSSCTR_Map     ),
-    .OUT_VLD   ( PSSCTR_MapVld  ),
+    .OUT_DAT   ( PSSGLB_Map     ),
+    .OUT_VLD   ( PSSGLB_MapVld  ),
     .OUT_LAST  (                ),
-    .OUT_RDY   ( CTRPSS_MapRdy  )
+    .OUT_RDY   ( GLBPSS_MapRdy  )
 );
 
 

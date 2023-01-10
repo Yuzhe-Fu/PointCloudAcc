@@ -15,7 +15,7 @@
 module KNN #(
     parameter SRAM_WIDTH        = 256,
     parameter IDX_WIDTH         = 10,
-    parameter SORT_LEN_WIDTH    = 5,
+    parameter MAP_WIDTH    = 5,
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3, 
     parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) ),
@@ -26,11 +26,11 @@ module KNN #(
     input                               rst_n,
 
     // Configure
-    input                               CCUCTR_Rst,
-    input                               CCUCTR_CfgVld,
+    input                               CCUKNN_Rst,
+    input                               CCUKNN_CfgVld,
     output                              KNNCCU_CfgRdy,
-    input [IDX_WIDTH            -1 : 0] CCUCTR_CfgNip,
-    input [SORT_LEN_WIDTH       -1 : 0] CCUCTR_CfgK, 
+    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgNip,
+    input [MAP_WIDTH            -1 : 0] CCUKNN_CfgK, 
 
     // Fetch Crd
     output [IDX_WIDTH           -1 : 0] KNNGLB_CrdAddr,   
@@ -40,17 +40,17 @@ module KNN #(
     input                               GLBKNN_CrdVld,     
     output                              KNNGLB_CrdRdy,
 
-    output  [MASK_ADDR_WIDTH        -1 : 0] PSSGLB_MaskRdAddr,
-    output                                  PSSGLB_MaskRdAddrVld,
-    input                                   GLBPSS_MaskRdAddrRdy,
-    input   [SRAM_WIDTH             -1 : 0] GLBPSS_MaskDatOut,
-    input                                   GLBPSS_MaskDatOutVld,
-    output                                  PSSGLB_MaskDatRdy,
+    output  [MASK_ADDR_WIDTH    -1 : 0] KNNGLB_MaskRdAddr,
+    output                              KNNGLB_MaskRdAddrVld,
+    input                               GLBKNN_MaskRdAddrRdy,
+    input   [SRAM_WIDTH         -1 : 0] GLBKNN_MaskRdDat,
+    input                               GLBKNN_MaskRdDatVld,
+    output                              KNNGLB_MaskRdDatRdy,
 
     // Output Map of KNN
-    output [SRAM_WIDTH          -1 : 0 ]PSSCTR_Map,   
-    output                              PSSCTR_MapVld,     
-    input                               CTRPSS_MapRdy     
+    output [SRAM_WIDTH          -1 : 0 ]KNNGLB_Map,   
+    output                              KNNGLB_MapVld,     
+    input                               GLBKNN_MapRdy     
 
 );
 //=====================================================================================================================
@@ -100,7 +100,7 @@ reg [ 3 -1:0 ]state;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
-        IDLE :  if(KNNCCU_CfgRdy & CCUCTR_CfgVld)
+        IDLE :  if(KNNCCU_CfgRdy & CCUKNN_CfgVld)
                     next_state <= CP; //
                 else
                     next_state <= IDLE;
@@ -140,12 +140,12 @@ counter#(
 )u0_counter_CpIdx(
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
-    .CLEAR     ( CCUCTR_Rst     ),
+    .CLEAR     ( CCUKNN_Rst     ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}),
     .INC       ( INC_CpIdx      ),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}}),
-    .MAX_COUNT ( CCUCTR_CfgNip  ),
+    .MAX_COUNT ( CCUKNN_CfgNip  ),
     .OVERFLOW  ( CpLast               ),
     .UNDERFLOW (                ),
     .COUNT     ( CpIdx   )
@@ -159,12 +159,12 @@ counter#( // Pipe S0
 )u1_counter_LopIdx(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( INC_CpIdx | CCUCTR_Rst   ),
+    .CLEAR     ( INC_CpIdx | CCUKNN_Rst   ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
     .INC       ( INC_LopIdx         ),
     .DEC       ( 1'b0               ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
-    .MAX_COUNT ( CCUCTR_CfgNip    ),
+    .MAX_COUNT ( CCUKNN_CfgNip    ),
     .OVERFLOW  ( LopLast     ),
     .UNDERFLOW (                    ),
     .COUNT     ( LopIdx             )
@@ -173,7 +173,7 @@ counter#( // Pipe S0
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         MaskRAMByteIdx <= 0;
-    end else if( CCUCTR_Rst ) begin
+    end else if( CCUKNN_Rst ) begin
         MaskRAMByteIdx <= 0;
     end else if( INC_LopIdx) begin
         MaskRAMByteIdx <= MaskRAMByteIdx + 1; // Loop
@@ -239,7 +239,7 @@ EDC#(
 );
 
 PSS#(
-    .SORT_LEN_WIDTH  ( SORT_LEN_WIDTH   ),
+    .SORT_LEN_WIDTH  ( MAP_WIDTH   ),
     .IDX_WIDTH       ( IDX_WIDTH        ),
     .DIST_WIDTH      ( DISTSQR_WIDTH    ),
     .NUM_SORT_CORE   ( NUM_SORT_CORE    ),
@@ -248,20 +248,20 @@ PSS#(
     .clk             ( clk              ),
     .rst_n           ( rst_n            ),
     .KNNPSS_LopLast  ( KNNPSS_LopLast_s2),
-    .KNNPSS_Rst      ( CCUCTR_Rst      ),
+    .KNNPSS_Rst      ( CCUKNN_Rst      ),
     .KNNPSS_CpIdx    ( CpIdx           ),
     .KNNPSS_Lop      ( {MaskRAMByteIdx_s2, LopDist_s2,  LopIdx_s2 }),// {idx, dist} 
     .KNNPSS_LopVld   ( KNNPSS_LopVld   ),
     .PSSKNN_LopRdy   ( PSSKNN_LopRdy   ),
-    .PSSGLB_MaskRdAddr      ( PSSGLB_MaskRdAddr    ),
-    .PSSGLB_MaskRdAddrVld   ( PSSGLB_MaskRdAddrVld ),
-    .GLBPSS_MaskRdAddrRdy   ( GLBPSS_MaskRdAddrRdy ),
-    .GLBPSS_MaskDatOut      ( GLBPSS_MaskDatOut    ),
-    .GLBPSS_MaskDatOutVld   ( GLBPSS_MaskDatOutVld ),
-    .PSSGLB_MaskDatRdy      ( PSSGLB_MaskDatRdy    ),
-    .PSSCTR_Map      ( PSSCTR_Map      ),
-    .PSSCTR_MapVld   ( PSSCTR_MapVld   ),
-    .CTRPSS_MapRdy   ( CTRPSS_MapRdy   )
+    .PSSGLB_MaskRdAddr      ( KNNGLB_MaskRdAddr    ),
+    .PSSGLB_MaskRdAddrVld   ( KNNGLB_MaskRdAddrVld ),
+    .GLBPSS_MaskRdAddrRdy   ( GLBKNN_MaskRdAddrRdy ),
+    .GLBPSS_MaskRdDat      ( GLBKNN_MaskRdDat    ),
+    .GLBPSS_MaskRdDatVld   ( GLBKNN_MaskRdDatVld ),
+    .PSSGLB_MaskRdDatRdy   ( KNNGLB_MaskRdDatRdy    ),
+    .PSSGLB_Map      ( KNNGLB_Map      ),
+    .PSSGLB_MapVld   ( KNNGLB_MapVld   ),
+    .GLBPSS_MapRdy   ( GLBKNN_MapRdy   )
 );
 
 

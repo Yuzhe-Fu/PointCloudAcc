@@ -60,7 +60,7 @@ wire [POOL_MAP_DEPTH_WIDTH  -1 : 0] MAX_COUNT;
 //=====================================================================================================================
 
 assign CpOfmInLast  = overflow; //
-assign inc_addr   = POLPLC_OfmVld & POLPLC_OfmRdy;
+assign inc_addr   = POLPLC_OfmVld & PLCPOL_OfmRdy;
 
 //=====================================================================================================================
 // Sub-Module :
@@ -105,7 +105,7 @@ FIFO_FWFT#(
     .DATA_WIDTH ( IDX_WIDTH ),
     .ADDR_WIDTH ( POOL_MAP_DEPTH_WIDTH ),
     .INITIALIZE_FIFO ( "no" )
-)u_FIFO_FWFT(
+)u_FIFO_FWFT_POLPLC_Idx(
     .clk        ( clk                           ),
     .Reset      ( POLPLC_Rst                    ),
     .rst_n      ( rst_n                         ),
