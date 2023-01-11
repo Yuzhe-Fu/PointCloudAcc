@@ -18,7 +18,7 @@ module FPS #(
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3, 
     parameter NUM_LAYER         = 8,
-    parameter DISTSQR_WIDTH     = $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) ),
+    parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_DIM),
     parameter MASK_ADDR_WIDTH   = $clog2(2**IDX_WIDTH*NUM_LAYER/SRAM_WIDTH),
     parameter DISTCRDLLA_WIDTH  = DISTSQR_WIDTH+CRD_WIDTH*CRD_DIM+IDX_WIDTH
     )(
