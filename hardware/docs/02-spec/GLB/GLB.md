@@ -1,5 +1,7 @@
 # [整个模块和所有子模块的硬件框图（实时维护）](global_buffer.excalidraw)
 
+**问题**：GLB，怎么避免循环读数时，ReqNum起作用？区分当前是满还是不足？WrAddr与CfgNum，再加上控制是循环读还是边读边写的信号RdLoop
+
 # 文件列表
 | File          | Descriptions      |
 | ----          | ----              |

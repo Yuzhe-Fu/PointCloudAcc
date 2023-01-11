@@ -18,7 +18,7 @@ module KNN #(
     parameter MAP_WIDTH    = 5,
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3, 
-    parameter DISTSQR_WIDTH     =  $clog2( CRD_WIDTH*2*$clog2(CRD_DIM) ),
+    parameter DISTSQR_WIDTH     =  CRD_WIDTH*2 + $clog2(CRD_DIM),
     parameter NUM_SORT_CORE     = 8,
     parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
     )(
