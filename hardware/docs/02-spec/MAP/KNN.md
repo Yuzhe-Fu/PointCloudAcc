@@ -7,19 +7,22 @@
 | EDC.v | 欧式dist_comp欧式距离计算模块 |
 | RAM.v | 通用SRAM模块，直接在primitives调用 |
 
-- KNN
-    - stage0是送地址：从第0个点到最后一个点，轮流作为中心点KNN_CpCrd_s2，将所有点LopIdx依次从GLB取出后。地址计数器，Cp和Lop都从0到Nip
-    - stage2:pipe是把SRAM取来的数存到LopCrd_s2, LopCrd_s2与KNN_CpCrd_s2计算出LopDist_s2，直接输出到PSS模块，PSS计算出的每个点的map，输出out_idx到ITF
-- 随网络Scaling
-    - Crd_Buffer和Dist_Buffer是用GLB统一
-        - 取决于有多大？ModelNet40有1024,那最大的S3DIS呢？有15, 000个点，96KB，ScanNetPart也有2K个点，需要放到GLB，而且可以给SA让位灵活测试
-        - 取决于能否用GLB? 结论是要用GLB缩小面积
-            -（Crd_buffer是单口读，Dist_Buffer是双口？无所谓，可以用PingPong buffer），
-            - 而且是用地址取的，GLB能支持，POL也是
-    - K最大多少？32，即使是S3DIS的最大nsample也是32
-    - FPS层最大？S3DIS XL也才5个
-    - KNN层最大？
-
+问题
+    - :white_check_mark:KNN.PSS.PISO缩小Reg，其实不需要，它的利用率很低
+    - :white_check_mark:INS利用率指数降低:读取第一层Crd时，由于FPS过滤掉一半，不能每次读取都有效，需要链表或压缩
+    - :white_check_mark:KNN出来的MAP怎么存，好送到POL，暂时一个SRAM_WIDTH的word存cp_idx和lp_idx，但是同一点不同层同时出来的？
+        - 方案：目前采用最简单朴素的压缩的方式，Crd+PntIdx一组SRAM，Dist一组SRAM，按照先点再层的排列，KNN的INS核数是SRAM一次读多少组Crd+PntIdx
+            - 讨论过程
+                - 压缩只需要把LopPntIdx也写入SRAM就行，不需要Mask但需要每一层的Idx
+                    - 根据存储量对比Mask和Idx：Mask：1*8*1024; Idx: 16*512 + 16*256...=16*1024，是两倍
+                    - 但要满足每层同时KNN时，INS利用率100%，必须用压缩或链表，不能用Mask
+                - 关于SRAM中数据的排列问题：:white_check_mark:先点
+                    - SRAM宽度不是问题，大不了两个SRAM并联
+                    - FPS考虑到Dist，要么先层：一行SRAM一个Dist，MSB是每层的Crd和PntIdx。但不是点在每一层都有的效率低，要么先点：来存需要多存Dist。
+                    - KNN：
+                        - :white_check_mark:先点：一次读取多个点，给8个INS（中心点不同），并行排序。
+                        - 先层：一次读取一个点的多层，理想是多个INS并行，（INS7，Ly7)先完成，承担Ly0，但是，由于一次读取所有层，INS之间不能负载均衡
+    - :question: POL中报seq占60%
 
 ## PSS 端口列表
 | Ports | Input/Output | Width | Descriptions |

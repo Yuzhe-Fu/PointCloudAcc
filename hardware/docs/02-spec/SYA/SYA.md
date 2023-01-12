@@ -1,5 +1,8 @@
 # [整个模块和所有子模块的硬件框图（实时维护）](PointCloudAccelerator_Design_01_Systolic_Array-2022-09-6.excalidraw)
 
+**问题**：SYACCU_CfgRdy一直是1？因为en_you和en_xia同时为0？可以先不管跑着，但目前SYA都不需要数，也先不管
+**问题**：SYA, bank_acc_cnt用来控制_run, _don, 但是需要Rst来重置，要求是不间断，自动控制重置,手动改了下
+
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
