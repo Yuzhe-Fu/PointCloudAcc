@@ -78,6 +78,7 @@ reg  [SRAM_WIDTH*MAXPAR         -1 : 0] RdPortDat_Array [0 : NUM_RDPORT -1];
 wire [SRAM_WIDTH*MAXPAR         -1 : 0] WrPortDat_Array [0 : NUM_WRPORT -1];
 
 wire                                    arready_array [0 : NUM_BANK     -1];
+wire                                    wready_array [0 : NUM_BANK     -1];
 wire                                    rvalid_array  [0 : NUM_BANK     -1];
 wire [SRAM_WIDTH                -1 : 0] rdata_array   [0 : NUM_BANK     -1];
 wire [NUM_BANK                  -1 : 0] WrPortBankEn  [0 : NUM_WRPORT   -1];
@@ -102,6 +103,7 @@ generate
     for(gv_i=0; gv_i<NUM_BANK; gv_i=gv_i+1) begin: GEN_BANK
 
         wire                            wvalid;
+        wire                            wready;
         wire                            arvalid;
         wire                            arready;
         wire                            rvalid;
@@ -121,7 +123,7 @@ generate
             .clk          ( clk          ),
             .rst_n        ( rst_n        ),
             .wvalid       ( wvalid       ),
-            .wready       (              ),
+            .wready       ( wready       ),
             .waddr        ( waddr        ),
             .wdata        ( wdata        ),
             .arvalid      ( arvalid      ),
@@ -136,6 +138,7 @@ generate
         //=====================================================================================================================
         assign wvalid = WrPortBankEn[BankWrPortIdx[gv_i]][gv_i];
         assign waddr   = WrPortAddr_Array[BankWrPortIdx[gv_i]]; // Cut LSB
+        assign wready_array[gv_i] = wready;
 
         always @(*) begin
             BankWrPortParIdx = 0;
@@ -198,37 +201,35 @@ generate
         wire [$clog2(NUM_BANK)          : 0] RdPortNumBank;
         wire [ADDR_WIDTH            -1 : 0] RdPortAddrVldRange;
 
-        // PipeLine 0: Addr HS
-        // Addr generate
-        assign INC = RdPortAddrUse[gv_j] ? 1'b0 : ( !RdPortDatVld[gv_j] |  RdPortDatRdy[gv_j]) & RdPortAddrRdy[gv_j]; // : need read data and AddrRdy
+
+        // Map RdPort to Bank
         assign RdPortAddrVldRange =  (SRAM_WORD*RdPortNumBank/CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)]); // Cut address to a relative(valid) range in NumBank/ParBank
-        assign PortCur1stBankIdx = RdPort1stBankIdx + (RdPortAddr_Array[gv_j] % RdPortAddrVldRange >> SRAM_DEPTH_WIDTH)*CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)];
-        assign RdPortMthWrPortIdx = BankWrPortIdx[PortCur1stBankIdx];
-        assign Empty = RdPortAddr_Array[gv_j] >= WrPortAddr_Array[RdPortMthWrPortIdx];
         assign RdPortAddr_Array[gv_j] = RdPortAddrUse[gv_j] ? RdPortAddr[ADDR_WIDTH*gv_j +: ADDR_WIDTH] : Cnt_RdPortAddr;
+        assign PortCur1stBankIdx = RdPort1stBankIdx + (RdPortAddr_Array[gv_j] % RdPortAddrVldRange >> SRAM_DEPTH_WIDTH)*CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)];
+
+        // Map RdPort to WrPort
+        assign RdPortMthWrPortIdx = BankWrPortIdx[PortCur1stBankIdx];
+
+        // To Bank
+        for(gv_i=0; gv_i<NUM_BANK; gv_i=gv_i+1) begin
+                assign RdPortHitBank[gv_i] = PortCur1stBankIdx <= gv_i & gv_i < PortCur1stBankIdx + CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)];
+        end
+        assign RdPortEn[gv_j] = RdPortAddrUse[gv_j] ? RdPortAddrVld[gv_j] & RdPortAddrRdy[gv_j] : INC; // addr handshake : enable of (add+1)
+        assign RdPortBankEn[gv_j] = {NUM_BANK{RdPortEn[gv_j]}} & RdPortHitBank; // 32bits
 
         // To Output
+        assign Empty = RdPortAddr_Array[gv_j] >= WrPortAddr_Array[RdPortMthWrPortIdx];
         assign RdPortAddrRdy[gv_j] = RdPortAlloc & !Empty & arready_array[PortCur1stBankIdx];
         assign RdPortFull[gv_j] = RdPortAlloc & RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] ; // CCUGLB_CfgPortNum!=0 (exist) & Full
         assign RdPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = RdPortAlloc ?  WrPortAddr_Array[RdPortMthWrPortIdx] - RdPortAddr_Array[gv_j] : 0;
         assign RdPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = RdPortAddr_Array[gv_j];
 
-        // To Bank
-        assign RdPortEn[gv_j] = RdPortAddrUse[gv_j] ? RdPortAddrVld[gv_j] & RdPortAddrRdy[gv_j] : INC; // addr handshake : enable of (add+1)
-        
-        for(gv_i=0; gv_i<NUM_BANK; gv_i=gv_i+1) begin
-                assign RdPortHitBank[gv_i] = PortCur1stBankIdx <= gv_i & gv_i < PortCur1stBankIdx + CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)];
-        end
-
-        assign RdPortBankEn[gv_j] = {NUM_BANK{RdPortEn[gv_j]}} & RdPortHitBank; // 32bits
-
-        // PipeLine 1:: Dat HS
         assign RdPortDatVld[gv_j] = RdPortAlloc & rvalid_array[PortCur1stBankIdx];
-
         for(gv_i=0; gv_i<MAXPAR; gv_i=gv_i+1) begin
             assign RdPortDat[SRAM_WIDTH*(MAXPAR*gv_j + gv_i) +: SRAM_WIDTH] =  rdata_array[PortCur1stBankIdx+gv_i];
         end
 
+        assign INC = RdPortAddrUse[gv_j] ? 1'b0 : ( !RdPortDatVld[gv_j] |  RdPortDatRdy[gv_j]) & RdPortAddrRdy[gv_j]; // : need read data and AddrRdy
         wire [ADDR_WIDTH    -1 : 0] MaxCnt =  CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH] == 0? 0 : CCUGLB_CfgPortNum[ADDR_WIDTH*(NUM_WRPORT+gv_j) +: ADDR_WIDTH]-1;
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
@@ -286,15 +287,15 @@ generate
         wire [NUM_BANK          -1 : 0] WrPortHitBank;
         wire                            WrPortAlloc;
         wire [$clog2(NUM_BANK)      : 0] WrPortNumBank;
-        wire [ADDR_WIDTH        -1 : 0] WrPortAddrVldRange;
+        wire [ADDR_WIDTH        -1 : 0] WrPortAddrVldSpace;
 
 
-        // Intra signals
-        assign INC = WrPortAddrUse[gv_j]? 0 : WrPortEn[gv_j];
-        assign WrPortAddrVldRange = (SRAM_WORD*WrPortNumBank/CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(gv_j) +: ($clog2(MAXPAR) + 1)]);// Cut address to a relative(valid) range in NumBank/ParBank
-        assign PortCur1stBankIdx = WrPort1stBankIdx + (WrPortAddr_Array[gv_j] % WrPortAddrVldRange  >> SRAM_DEPTH_WIDTH)*CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*gv_j +: ($clog2(MAXPAR) + 1)];
+        // Map WrPort to Bank
+        assign WrPortAddrVldSpace = (SRAM_WORD*WrPortNumBank/CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(gv_j) +: ($clog2(MAXPAR) + 1)]);// Cut address to a relative(valid) range in NumBank/ParBank
+        assign PortCur1stBankIdx = WrPort1stBankIdx + (WrPortAddr_Array[gv_j] % WrPortAddrVldSpace  >> SRAM_DEPTH_WIDTH)*CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*gv_j +: ($clog2(MAXPAR) + 1)];
+
+        // Map WrPort to RdPort
         assign WrPortMthRdPortIdx = BankRdPortIdx[PortCur1stBankIdx];
-        assign Full = (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx]) == WrPortAddrVldRange ;
 
         // To Bank
         assign WrPortEn[gv_j] =  WrPortDatVld[gv_j]  & WrPortDatRdy[gv_j];
@@ -306,20 +307,21 @@ generate
         assign WrPortBankEn[gv_j] = {NUM_BANK{WrPortEn[gv_j]}} & WrPortHitBank; // 32bits
 
         // To Output
-        assign WrPortDatRdy[gv_j] = WrPortAlloc & !Full & !(RdPortEn[WrPortMthRdPortIdx]);
-        assign WrPortEmpty[gv_j] = WrPortAlloc & WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == WrPortAddrVldRange; // 
+        assign Full = (WrPortAddr_Array[gv_j] - RdPortAddr_Array[WrPortMthRdPortIdx]) == WrPortAddrVldSpace ;
+        assign WrPortDatRdy[gv_j] = WrPortAlloc & !Full & !(RdPortEn[WrPortMthRdPortIdx]) & !arready_array[PortCur1stBankIdx];
+        assign WrPortEmpty[gv_j] = WrPortAlloc & WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] == WrPortAddrVldSpace; // 
 
-        // 
-        wire [ADDR_WIDTH    -1 : 0] WrPortRemainRange;
-        wire [ADDR_WIDTH    -1 : 0] WrPortRealNeedNum;
-        assign WrPortRemainRange = CCUGLB_CfgPortLoop[WrPortMthRdPortIdx]? WrPortAddrVldRange- WrPortAddr_Array[gv_j] : WrPortAddrVldRange- (WrPortAddr_Array[gv_j]-RdPortAddr_Array[WrPortMthRdPortIdx]);// Loop read: VldRange - WrittenAddr Can be Written; Otherwise: + ReadAddr
-        assign WrPortRealNeedNum = CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH]- WrPortAddr_Array[gv_j];
-        // Require Write Number <= WrPortRealNeedNum;
+        wire [ADDR_WIDTH    -1 : 0] WrPortRAMRemainSpace;
+        wire [ADDR_WIDTH    -1 : 0] WrPortCfgRealNeedNum;
+        assign WrPortRAMRemainSpace = WrPortAddrVldSpace- WrPortAddr_Array[gv_j] + (CCUGLB_CfgPortLoop[WrPortMthRdPortIdx]? 0 : RdPortAddr_Array[WrPortMthRdPortIdx]);// RAM can contain; Loop read(multiple read): VldRange - WrittenAddr Can be Written; Otherwise(FIFO): + ReadAddr
+        assign WrPortCfgRealNeedNum = CCUGLB_CfgPortNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH]- WrPortAddr_Array[gv_j];// Cfg Need to write
+        // Acturally Require Write Number <= WrPortCfgRealNeedNum or WrPortRAMRemainSpace to avoid overflow SRAM;
         assign WrPortReqNum[ADDR_WIDTH*gv_j +: ADDR_WIDTH] =  WrPortAlloc?
-                                                                (WrPortRealNeedNum > WrPortRemainRange? WrPortRemainRange : WrPortRealNeedNum)
+                                                                (WrPortCfgRealNeedNum > WrPortRAMRemainSpace? WrPortRAMRemainSpace : WrPortCfgRealNeedNum)
                                                                 : 0;
         assign WrPortAddr_Out[ADDR_WIDTH*gv_j +: ADDR_WIDTH] = WrPortAddr_Array[gv_j];
 
+        assign INC = WrPortAddrUse[gv_j]? 0 : WrPortEn[gv_j];
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter(

@@ -1,6 +1,17 @@
 # [整个模块和所有子模块的硬件框图（实时维护）](global_buffer.excalidraw)
 
-**问题**：GLB，怎么避免循环读数时，ReqNum起作用？区分当前是满还是不足？WrAddr与CfgNum，再加上控制是循环读还是边读边写的信号RdLoop
+暂不解决问题：不简洁通用：自循环读是否有必要？因为怎么读本就是读口决定的，由CCU配置给每个模块要读哪些bank，怎么读，而不是配置GLB来提供读的选项
+    - 方案2：
+        - GLB的功能定义作为中间媒介，一是给每个读写口提供读写信息(总体的读写握手协议)，二是给每个Bank也提供读写握手协议；内部对请求进行仲裁；
+        - 端口定义：每个读写口的握手协议（含口的配置哪个bank的请求）；
+        - 存在的问题：
+            - 满空怎么知道？
+            - 切换到新的Bank读时，怎么知道是否有数？
+            - 只提供握手协议不行，还是需要有判断空满的功能
+
+已解决问题：GLB，怎么避免循环读数时，ReqNum起作用？区分当前是满还是不足？WrAddr与CfgNum，再加上控制是循环读还是边读边写的信号RdLoop
+
+
 
 # 文件列表
 | File          | Descriptions      |
@@ -38,7 +49,8 @@
 | CCUGLB_CfgRdPortParBank|input     | 
 | CCUGLB_CfgWrPortParBank|input     | 
 | CCUGLB_CfgPortLoop|input     | 表示是否要循环读写，目前只用了循环读功能
-
+| WrPortAddr_Out | output | 实时输出写地址只用于给ITF，用于ITF从DRAM读时，(CCUITF_BaseAddr+WrPortAddr_Out)作为读DRAM的基址 |
+| RdPortAddr_Out | output | 同上 |
 # 模块陈述
 **目标是写成通用的多Bank，多读写口的存储模块。**
 将32块单口SRAM Bank并联，封装成32B*32宽，深为128的整个大的SRAM_GB具备自动SRAM读写功能，GLB的功能应该是完整的，CCU只能配置，不能直接控制，只配置bank的性质，只需要顶层里面addrmax和numbank来控制读完写完的复位（addrmax/numbank是圈数，真实地址是=addr%(numbank\*128)=(addr>>7)%numbank）。读写口统一为多个二维阵列，RdPortDat_Array和WrPortDat_Array，宽度取最大并行度MAXPAR，在综合时会去除掉无用的口。
