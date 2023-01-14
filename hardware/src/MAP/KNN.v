@@ -40,13 +40,6 @@ module KNN #(
     input                               GLBKNN_CrdVld,     
     output                              KNNGLB_CrdRdy,
 
-    output  [MASK_ADDR_WIDTH    -1 : 0] KNNGLB_MaskRdAddr,
-    output                              KNNGLB_MaskRdAddrVld,
-    input                               GLBKNN_MaskRdAddrRdy,
-    input   [SRAM_WIDTH         -1 : 0] GLBKNN_MaskRdDat,
-    input                               GLBKNN_MaskRdDatVld,
-    output                              KNNGLB_MaskRdDatRdy,
-
     // Output Map of KNN
     output [SRAM_WIDTH          -1 : 0 ]KNNGLB_Map,   
     output                              KNNGLB_MapVld,     
@@ -82,7 +75,7 @@ reg [IDX_WIDTH          -1 : 0] LopIdx_s2;
 reg [IDX_WIDTH          -1 : 0] LopIdx_s1;
 
 wire                            CpLast;
-reg [CRD_WIDTH*CRD_DIM  -1 : 0] KNN_CpCrd_s2;
+reg [CRD_WIDTH*CRD_DIM  -1 : 0] CpCrd_s2;
 
 wire                            LopLast;
 
@@ -131,7 +124,7 @@ end
 assign KNNCCU_CfgRdy = state==IDLE;
  
 //=====================================================================================================================
-// Logic Design: PIPE0
+// Logic Design: s0
 //=====================================================================================================================
 
  wire INC_CpIdx;
@@ -151,8 +144,6 @@ counter#(
     .COUNT     ( CpIdx   )
 );
 
-assign INC_CpIdx    =  LopLast_s2 & (KNNPSS_LopVld & PSSKNN_LopRdy);
-
 
 counter#( // Pipe S0
     .COUNT_WIDTH ( IDX_WIDTH )
@@ -170,99 +161,76 @@ counter#( // Pipe S0
     .COUNT     ( LopIdx             )
 );
 
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        MaskRAMByteIdx <= 0;
-    end else if( CCUKNN_Rst ) begin
-        MaskRAMByteIdx <= 0;
-    end else if( INC_LopIdx) begin
-        MaskRAMByteIdx <= MaskRAMByteIdx + 1; // Loop
-    end
-end
+//=====================================================================================================================
+// Logic Design: s1
+//=====================================================================================================================
 
+// Combinational Logic
+assign INC_CpIdx    =  LopLast_s2 & (KNNPSS_LopVld & PSSKNN_LopRdy);
 assign INC_LopIdx = KNNGLB_CrdAddrVld & GLBKNN_CrdAddrRdy ;
 
 assign KNNGLB_CrdAddr = state == CP ? CpIdx : LopIdx;
+
 assign KNNGLB_CrdAddrVld = state == CP | state == LP;
+
+// HandShake
+assign KNNGLB_CrdRdy = rdy_s0; // pipe1 of HS: last_ready or current invalid
+assign vld_s0 = KNNGLB_CrdVld;
+
+assign rdy_s0 = PSSKNN_LopRdy | !KNNPSS_LopVld;
+assign handshake_s0 = rdy_s0 & vld_s0;
+assign ena_s0 = handshake_s1 | ~vld_s0;
+
+// Reg Update
+
+
 //=====================================================================================================================
-// Logic Design: PIPE1
-//=====================================================================================================================
-always @(posedge clk or negedge rst_n) begin: Pipe1
-    if(!rst_n) begin
-        {MaskRAMByteIdx_s1, KNNGLB_CrdAddr_s1, LopLast_s1} <= 0;
-    end else if (KNNGLB_CrdAddrVld & GLBKNN_CrdAddrRdy) begin
-        {MaskRAMByteIdx_s1, KNNGLB_CrdAddr_s1, LopLast_s1} <= {MaskRAMByteIdx, KNNGLB_CrdAddr, LopLast};
-    end
-end
-
-assign KNNGLB_CrdRdy = PSSKNN_LopRdy | !KNNPSS_LopVld; // pipe1 of HS: last_ready or current invalid
-//=====================================================================================================================
-// Logic Design: PIPE2
+// Logic Design: s2
 //=====================================================================================================================
 
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        KNN_CpCrd_s2 <= 0;
-    end else if (GLBKNN_CrdVld & KNNGLB_CrdRdy) begin
-        KNN_CpCrd_s2 <= GLBKNN_Crd;
-    end
-end
+genvar i;
+generate
+    for(i=0; i<NUM_SORT_CORE; i=i+1) begin
 
-always @(posedge clk or negedge rst_n) begin: Pipe2_LopCrd_s2
-    if(!rst_n) begin
-        {MaskRAMByteIdx_s2, LopCrd_s2, LopIdx_s2, LopLast_s2} <= 0;
-    end else if (GLBKNN_CrdVld & KNNGLB_CrdRdy) begin
-        {MaskRAMByteIdx_s2, LopCrd_s2, LopIdx_s2, LopLast_s2} <= {MaskRAMByteIdx_s1, GLBKNN_Crd, KNNGLB_CrdAddr_s1, LopLast_s1};
-    end
-end
+        assign LopCrd_s2 = ;
+        assign LopPntIdx_s2 = ;
+        EDC#(
+            .CRD_WIDTH ( CRD_WIDTH  ),
+            .CRD_DIM   ( CRD_DIM    )
+        )u_EDC(
+            .Crd0      ( CpCrd_s2),
+            .Crd1      ( LopCrd_s2     ),
+            .DistSqr   ( LopDist_s2    )
+        );
+        assign PSSINS_LopVld[i] = state_s2 == LP & KNNGLB_CrdVld & (&INSPSS_LopRdy);
+        INS#(
+            .SORT_LEN_WIDTH   ( SORT_LEN_WIDTH ),
+            .IDX_WIDTH       ( IDX_WIDTH ),
+            .DIST_WIDTH      ( DIST_WIDTH )
+        )u_INS(
+            .clk                 ( clk                 ),
+            .rst_n               ( rst_n               ),
+            .PSSINS_LopLast      ( KNNPSS_LopLast      ),
+            .PSSINS_Lop          ( {LopDist_s2, LopPntIdx_s2}),
+            .PSSINS_LopVld       ( PSSINS_LopVld[i]    ),
+            .INSPSS_LopRdy       ( INSPSS_LopRdy[i]    ),
+            .INSPSS_Idx          ( INSPSS_Idx[(IDX_WIDTH*SORT_LEN)*i +: (IDX_WIDTH*SORT_LEN)]),
+            .INSPSS_IdxVld       ( INSPSS_IdxVld[i]       ),
+            .PSSINS_IdxRdy       ( PSSINS_IdxRdy[i]       )
+        );
 
-
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        KNNPSS_LopVld <= 1'b0;
-    end else if (GLBKNN_CrdVld & KNNGLB_CrdRdy) begin
-        KNNPSS_LopVld <= 1'b1;
-    end else if (KNNPSS_LopVld & PSSKNN_LopRdy) begin
-        KNNPSS_LopVld <= 1'b0;
+        assign PSSMap[SRAM_WIDTH*i +: SRAM_WIDTH] = {54'd0, {KNNPSS_CpIdx, INSPSS_Idx[(IDX_WIDTH*SORT_LEN)*i +: (IDX_WIDTH*SORT_LEN)]}};
+        
     end
-end
+endgenerate
+
 
 assign KNNPSS_LopLast_s2 = LopLast_s2 & KNNPSS_LopVld;
 
-EDC#(
-    .CRD_WIDTH ( CRD_WIDTH  ),
-    .CRD_DIM   ( CRD_DIM    )
-)u_EDC(
-    .Crd0      ( KNN_CpCrd_s2),
-    .Crd1      ( LopCrd_s2     ),
-    .DistSqr   ( LopDist_s2    )
-);
+//=====================================================================================================================
+// Logic Design: s3-out
+//=====================================================================================================================
 
-PSS#(
-    .SORT_LEN_WIDTH  ( MAP_WIDTH   ),
-    .IDX_WIDTH       ( IDX_WIDTH        ),
-    .DIST_WIDTH      ( DISTSQR_WIDTH    ),
-    .NUM_SORT_CORE   ( NUM_SORT_CORE    ),
-    .SRAM_WIDTH      ( SRAM_WIDTH       )
-)u_PSS(
-    .clk             ( clk              ),
-    .rst_n           ( rst_n            ),
-    .KNNPSS_LopLast  ( KNNPSS_LopLast_s2),
-    .KNNPSS_Rst      ( CCUKNN_Rst      ),
-    .KNNPSS_CpIdx    ( CpIdx           ),
-    .KNNPSS_Lop      ( {MaskRAMByteIdx_s2, LopDist_s2,  LopIdx_s2 }),// {idx, dist} 
-    .KNNPSS_LopVld   ( KNNPSS_LopVld   ),
-    .PSSKNN_LopRdy   ( PSSKNN_LopRdy   ),
-    .PSSGLB_MaskRdAddr      ( KNNGLB_MaskRdAddr    ),
-    .PSSGLB_MaskRdAddrVld   ( KNNGLB_MaskRdAddrVld ),
-    .GLBPSS_MaskRdAddrRdy   ( GLBKNN_MaskRdAddrRdy ),
-    .GLBPSS_MaskRdDat      ( GLBKNN_MaskRdDat    ),
-    .GLBPSS_MaskRdDatVld   ( GLBKNN_MaskRdDatVld ),
-    .PSSGLB_MaskRdDatRdy   ( KNNGLB_MaskRdDatRdy    ),
-    .PSSGLB_Map      ( KNNGLB_Map      ),
-    .PSSGLB_MapVld   ( KNNGLB_MapVld   ),
-    .GLBPSS_MapRdy   ( GLBKNN_MapRdy   )
-);
 
 
 endmodule

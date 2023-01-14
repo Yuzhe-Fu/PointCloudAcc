@@ -63,13 +63,13 @@ localparam NUMPORT_WIDTH = $clog2(ITF_NUM_WRPORT + ITF_NUM_RDPORT);
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                        Trans;
-wire [PORT_WIDTH    -1 : 0] Cmd;
+reg  [PORT_WIDTH    -1 : 0] Cmd;
 wire                        CmdRdy;
 wire                        CmdVld;
 wire                        RdTOP;
 wire [$clog2(ITF_NUM_WRPORT + ITF_NUM_RDPORT)   -1 : 0] ArbEmptyFullIdx;
-reg [NUMPORT_WIDTH  -1 : 0] PortIdx;
+reg [NUMPORT_WIDTH      : 0] PortIdx_;
+reg [NUMPORT_WIDTH      : 0] PortIdx;
 
 wire [NUMPORT_WIDTH -1 : 0] MaxIdx;
 wire [ADDR_WIDTH    -1 : 0] MaxNum;
@@ -90,6 +90,7 @@ wire                        PISO_OUTRdy;
 wire                        IntraTOPITF_DatLast;
 wire                        CntOverflow;
 wire                        CntInc;
+reg  [ADDR_WIDTH     -1 : 0] InOutNum_s1;
 
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -99,7 +100,7 @@ reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE:   if( Trans )
+        IDLE:   if( PortIdx_ != -1 )
                     next_state <= CMD;
                 else
                     next_state <= IDLE;
@@ -134,25 +135,30 @@ always @ ( posedge clk or negedge rst_n ) begin
 end
 
 //=====================================================================================================================
-// Logic Design 2: ARB Request
+// Logic Design: s1
 //=====================================================================================================================
-assign Trans = state == IDLE & ( |TOPITF_EmptyFull | MaxNum != 0);
 
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        PortIdx <= 0;
-    end else if(state==IDLE && next_state == CMD) begin
-        if (TOPITF_ReqNum[0 +: ADDR_WIDTH] !=0) begin// CCU
-            PortIdx <= 0; // Update
-        end else if( |TOPITF_EmptyFull ) begin
-            PortIdx <= ArbEmptyFullIdx;
-        end else if( MaxNum != 0 ) begin
-            PortIdx <= MaxIdx;
-        end
+// Combinational Logic
+MINMAX # (
+    .DATA_WIDTH (ADDR_WIDTH),
+    .PORT(ITF_NUM_RDPORT+ITF_NUM_WRPORT),
+    .MINMAX(1)
+)u_MAX_REQNUM(
+    .IN (TOPITF_ReqNum),
+    .IDX(MaxIdx),
+    .VALUE(MaxNum)
+);
+
+always @(*) begin
+    PortIdx_ = -1;
+    if (TOPITF_ReqNum[0 +: ADDR_WIDTH] !=0) begin// CCU
+        PortIdx_ = 0; // Update
+    end else if( |TOPITF_EmptyFull ) begin
+        PortIdx_ = ArbEmptyFullIdx;
+    end else if( MaxNum != 0 ) begin
+        PortIdx_ = MaxIdx;
     end
 end
-
-assign RdTOP = PortIdx >= ITF_NUM_WRPORT;
 
 prior_arb#(
     .REQ_WIDTH ( ITF_NUM_WRPORT + ITF_NUM_RDPORT )
@@ -162,50 +168,26 @@ prior_arb#(
     .arb_port  ( ArbEmptyFullIdx  )
 );
 
-//=====================================================================================================================
-// Logic Design 2: Input to TOP
-//=====================================================================================================================
-genvar i;
-generate
-    for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin // state ==IN and portidx match
-        assign ITFTOP_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = (state == IN  && i==PortIdx ? DatIn : 0);
-        assign ITFTOP_DatVld[i] = (state == IN  && i==PortIdx ? DatInVld : 0);
-        assign ITFTOP_DatLast[i]= (state == IN  && i==PortIdx ? DatInLast : 0);
-    end
-endgenerate
-
-assign DatInRdy = TOPITF_DatRdy[WrPort];
-assign WrPort   = state == OUT? 0 : PortIdx;
-
-//=====================================================================================================================
-// Logic Design 2: Out to off-chip
-//=====================================================================================================================
-assign ITFPAD_Dat       = state==CMD? Cmd : DatOut;
-assign ITFPAD_DatVld    = state==CMD? CmdVld : DatOutVld;
-assign ITFPAD_DatLast   = state==CMD? CmdVld : DatOutLast;
-assign DatOutRdy        = PADITF_DatRdy;
-assign CmdRdy           = PADITF_DatRdy;
-genvar gv_i;
-generate
-    for(gv_i=0; gv_i<ITF_NUM_RDPORT; gv_i=gv_i+1) begin
-        assign ITFTOP_DatRdy[gv_i]    = (PISO_OUTRdy & state == OUT) & PortIdx == gv_i + ITF_NUM_WRPORT;
-    end
-endgenerate
-
-assign Cmd = {TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*PortIdx +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], RdTOP};
+// HandShake
 assign CmdVld = state == CMD;
 
+// Reg Update
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)
-        ITFPAD_DatOE <= 0;
-    else
-        ITFPAD_DatOE <= next_state == CMD | next_state == OUT;
+    if(!rst_n) begin
+        {InOutNum_s1, Cmd, PortIdx} <= { {ADDR_WIDTH{1'b0}} , {PORT_WIDTH{1'b0}}, { {NUMPORT_WIDTH{1'b1}}, {1'b1} } };
+    end else if(state == IDLE && next_state == CMD) begin
+        {InOutNum_s1, Cmd, PortIdx} <= {TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH], {TOPITF_ReqNum[ADDR_WIDTH*PortIdx_ +: ADDR_WIDTH], CCUITF_BaseAddr[DRAM_ADDR_WIDTH*PortIdx_ +: DRAM_ADDR_WIDTH] + TOPITF_Addr[ADDR_WIDTH*PortIdx_ +: ADDR_WIDTH], RdTOP}, PortIdx_};
+    end
 end
 
 //=====================================================================================================================
-// Sub-Module :
+// Logic Design: s2
 //=====================================================================================================================
+// Combinational Logic
+assign RdTOP = PortIdx >= ITF_NUM_WRPORT;
+assign ITFPAD_DatOE = state == CMD | state == OUT;
 
+// Input to on-chip
 SIPO#(
     .DATA_IN_WIDTH ( PORT_WIDTH ),
     .DATA_OUT_WIDTH ( SRAM_WIDTH )
@@ -222,16 +204,46 @@ SIPO#(
     .OUT_RDY      ( DatInRdy       )
 );
 
+genvar i;
+generate
+    for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin // state ==IN and portidx match
+        assign ITFTOP_Dat[SRAM_WIDTH*i +: SRAM_WIDTH] = (state == IN  && i==PortIdx ? DatIn : 0);
+        assign ITFTOP_DatVld[i] = (state == IN  && i==PortIdx ? DatInVld : 0);
+        assign ITFTOP_DatLast[i]= (state == IN  && i==PortIdx ? DatInLast : 0);
+    end
+endgenerate
 
-MINMAX # (
-    .DATA_WIDTH (ADDR_WIDTH),
-    .PORT(ITF_NUM_RDPORT+ITF_NUM_WRPORT),
-    .MINMAX(1)
-)u_MAX_REQNUM(
-    .IN (TOPITF_ReqNum),
-    .IDX(MaxIdx),
-    .VALUE(MaxNum)
-);
+assign DatInRdy = state == IN & TOPITF_DatRdy[PortIdx];
+
+// Out to off-chip
+    // IntraTOPITF_DatLast
+    wire [ADDR_WIDTH     -1 : 0] MAX_COUNT= InOutNum_s1 -1;
+    assign CntInc = state == OUT & TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] & ITFTOP_DatRdy[PortIdx-ITF_NUM_WRPORT];
+    counter#(
+        .COUNT_WIDTH ( ADDR_WIDTH )
+    )u_counter_RdPortCnt(
+        .CLK       ( clk            ),
+        .RESET_N   ( rst_n          ),
+        .CLEAR     ( state == CMD   ),
+        .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+        .INC       ( CntInc         ),
+        .DEC       ( 1'b0           ),
+        .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+        .MAX_COUNT ( MAX_COUNT    ),
+        .OVERFLOW  ( CntOverflow    ),
+        .UNDERFLOW (                ),
+        .COUNT     (                )
+    );
+
+    assign IntraTOPITF_DatLast = state == OUT & CntOverflow & TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT];
+
+
+genvar gv_i;
+generate
+    for(gv_i=0; gv_i<ITF_NUM_RDPORT; gv_i=gv_i+1) begin
+        assign ITFTOP_DatRdy[gv_i]    = (PISO_OUTRdy & state == OUT) & PortIdx == gv_i + ITF_NUM_WRPORT;
+    end
+endgenerate
 
 PISO#(
     .DATA_IN_WIDTH ( SRAM_WIDTH ),
@@ -239,9 +251,9 @@ PISO#(
 )u_PISO_OUT(
     .CLK          ( clk                        ),
     .RST_N        ( rst_n                      ),
-    .IN_VLD       ( state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] : 1'b0 ),
+    .IN_VLD       ( state == OUT & TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT]),
     .IN_LAST      ( IntraTOPITF_DatLast),
-    .IN_DAT       ( state == OUT? TOPITF_Dat[SRAM_WIDTH*(PortIdx-ITF_NUM_WRPORT) +: SRAM_WIDTH] : {SRAM_WIDTH{1'b0}} ),
+    .IN_DAT       ( TOPITF_Dat[SRAM_WIDTH*(PortIdx-ITF_NUM_WRPORT) +: SRAM_WIDTH]),
     .IN_RDY       ( PISO_OUTRdy                ),
     .OUT_DAT      ( DatOut                     ), // On-chip output to Off-chip 
     .OUT_VLD      ( DatOutVld                  ),
@@ -249,35 +261,21 @@ PISO#(
     .OUT_RDY      ( DatOutRdy                  )
 );
 
-reg [ADDR_WIDTH     -1 : 0] RdReqNum;
-wire [ADDR_WIDTH     -1 : 0] MAX_COUNT;
-assign MAX_COUNT = RdReqNum -1;
+assign ITFPAD_Dat       = state==CMD? Cmd : DatOut;
+assign ITFPAD_DatVld    = state==CMD? CmdVld : DatOutVld;
+assign ITFPAD_DatLast   = state==CMD? CmdVld : DatOutLast;
+assign DatOutRdy        = PADITF_DatRdy;
+assign CmdRdy           = PADITF_DatRdy;
 
-counter#(
-    .COUNT_WIDTH ( ADDR_WIDTH )
-)u_counter_RdPortCnt(
-    .CLK       ( clk            ),
-    .RESET_N   ( rst_n          ),
-    .CLEAR     ( state == CMD   ),
-    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
-    .INC       ( CntInc         ),
-    .DEC       ( 1'b0           ),
-    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
-    .MAX_COUNT ( MAX_COUNT    ),
-    .OVERFLOW  ( CntOverflow    ),
-    .UNDERFLOW (                ),
-    .COUNT     (                )
-);
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        RdReqNum <= 0;
-    end else if(state == CMD && next_state == OUT) begin
-        RdReqNum <= TOPITF_ReqNum[ADDR_WIDTH*PortIdx +: ADDR_WIDTH];
-    end
-end
+// Reg Update
 
-assign IntraTOPITF_DatLast = CntOverflow & (state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] : 1'b0);
-assign CntInc = state == OUT? TOPITF_DatVld[PortIdx-ITF_NUM_WRPORT] & ITFTOP_DatRdy[PortIdx-ITF_NUM_WRPORT] : 1'b0;
+
+//=====================================================================================================================
+// Sub-Module :
+//=====================================================================================================================
+
+
+
 
 //=====================================================================================================================
 // Debug

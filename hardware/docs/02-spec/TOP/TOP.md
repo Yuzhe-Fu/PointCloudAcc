@@ -2,10 +2,13 @@
 硬件设计
     - 正解决
         - 图结合代码
+            - PISO无延迟
             - KNN
             - POL
-            - GLB
-            - SYA
+            - DRAM
+        - 流水化所有模块的控制信号显式
+        - 图示最优跑的策略（算出理论计算时间），再调通实际硬件
+
 
 2. :white_check_mark:整体性能评估超过SOTA两倍，各个模块核数的确立
     - 总体带宽是否满足; 技术减少了多少访问量带宽
@@ -20,7 +23,6 @@
                 - 整个网络只读第一层act，
                 - 每层wgt，
                 - 每层Map（按照KNN存起来）
-
 
     - 三元二次方程：
         - 公式1：面积随MAC变化：    Area = FA*NBANK + BA;
@@ -41,13 +43,41 @@
 # 参数列表
 | Parameters | default | optional | Descriptions |
 | ---- | ---- | ---- | ---- |
-| NUM_LAYER_WIDTH | 20 |  |  |
-| ADDR_WIDTH | 16 |  |  |
-| OPCODE_WIDTH | 3 | |  |
-| IDX_WIDTH | 16 |   |  |
-| CHN_WIDTH | 12 |   |  |
-| SRAM_WIDTH | 256 | 256 | GLB宽度 |
-| SRAM_WORD_ISA | 64 | 
+    parameter CLOCK_PERIOD   = 10,
+
+    parameter PORT_WIDTH     = 128,
+    parameter SRAM_WIDTH     = 256,
+    parameter SRAM_BYTE_WIDTH= 8,
+    parameter SRAM_WORD      = 128,
+    parameter ADDR_WIDTH     = 16,
+    parameter DRAM_ADDR_WIDTH= 32,  
+    parameter ISA_SRAM_WORD  = 64,
+    parameter ITF_NUM_RDPORT = 2,  
+    parameter ITF_NUM_WRPORT = 5, // + CCU
+    parameter GLB_NUM_RDPORT = 16,  // 11 + 5(POOL_CORE)
+    parameter GLB_NUM_WRPORT = 9, 
+    parameter MAXPAR         = 32,
+    parameter NUM_BANK       = 32,
+    parameter POOL_CORE      = 6, // 
+    parameter POOL_COMP_CORE = 64, 
+
+    // NetWork Parameters
+    parameter IDX_WIDTH      = 16,
+    parameter CHN_WIDTH      = 12,
+    parameter ACT_WIDTH      = 8,
+    parameter MAP_WIDTH      = 6,
+
+    parameter CRD_WIDTH      = 16,   
+    parameter CRD_DIM        = 3,   
+    parameter NUM_SORT_CORE  = 4, // SRAM_WIDTH / (Crd+Idx)
+
+    parameter SYA_NUM_ROW    = 16,
+    parameter SYA_NUM_COL    = 16, // 是正方形，必须等于SYA_NUM_ROW
+    parameter SYA_NUM_BANK   = 4,
+    parameter QNTSL_WIDTH    = 20,
+    parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
+
+
 
 # 端口列表
 | Ports | Input/Output | Width | Descriptions |
