@@ -39,7 +39,7 @@ module TOP #(
 
     parameter CRD_WIDTH      = 16,   
     parameter CRD_DIM        = 3,   
-    parameter NUM_SORT_CORE  = 8,
+    parameter NUM_SORT_CORE  = 4,// SRAM_WIDTH / (Crd+Idx)
 
     parameter SYA_NUM_ROW    = 16,
     parameter SYA_NUM_COL    = 16,

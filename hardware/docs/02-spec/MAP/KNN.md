@@ -1,8 +1,6 @@
 **去掉无用的PSS，按照KNN硬件图**
 
 | KNN.v | 
-| PSS.v | parallel_sample_sort，并行采样和排序模块 |
-| SSC. v | 采样和排序核 |
 | INS.v | 插入排序模块 |
 | EDC.v | 欧式dist_comp欧式距离计算模块 |
 | RAM.v | 通用SRAM模块，直接在primitives调用 |
