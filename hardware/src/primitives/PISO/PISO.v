@@ -30,18 +30,21 @@ module PISO
   reg                       last;
 // ******************************************************************
 
-  assign OUT_VLD = |shift_count;
-  assign OUT_LAST = last & (shift_count == 1);
-  assign IN_RDY = !(OUT_VLD);
+  assign OUT_VLD = |shift_count | (IN_VLD & IN_RDY);
+  assign OUT_LAST = last & shift_count[NUM_SHIFTS -1];
+  assign IN_RDY = !OUT_VLD | (OUT_RDY & shift_count[NUM_SHIFTS -1]);
 
   assign OUT_DAT = serial [DATA_OUT_WIDTH-1:0];
 
   always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
     if (!RST_N)
         shift_count <= 0;
-    else if (IN_VLD & IN_RDY)
-        shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
-    else if (OUT_VLD & OUT_RDY) 
+    else if (IN_VLD & IN_RDY) begin
+        if (shift_count==0) // Bypass
+            shift_count <= {shift_count[NUM_SHIFTS-3:0], 1'b1, 1'b0};// ahead shift 1
+        else 
+            shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
+    end else if (OUT_VLD & OUT_RDY) 
         shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b0};
   end
 
@@ -52,12 +55,16 @@ always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
         last   <= 0;
     end else begin
         if (IN_VLD & IN_RDY) begin
-            serial <= IN_DAT;
-            last   <= IN_LAST;
+            if (shift_count==0) begin
+                serial <= {{DATA_OUT_WIDTH{1'b0}}, serial[DATA_IN_WIDTH-1:DATA_OUT_WIDTH]}; // ahead shift
+                last   <= IN_LAST;
+            end else begin
+                serial <= IN_DAT;
+                last   <= IN_LAST;
+            end 
         end else if (OUT_VLD & OUT_RDY)
             serial <= {{DATA_OUT_WIDTH{1'b0}}, serial[DATA_IN_WIDTH-1:DATA_OUT_WIDTH]};
     end
 end
-
 
 endmodule
