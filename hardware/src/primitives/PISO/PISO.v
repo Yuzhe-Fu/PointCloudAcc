@@ -28,20 +28,24 @@ module PISO
   reg [NUM_SHIFTS   -1 : 0] shift_count;
   reg [DATA_IN_WIDTH-1 : 0] serial;
   reg                       last;
+  wire                      bypass;
 // ******************************************************************
+  assign bypass     = shift_count==0;
+  assign OUT_VLD    = bypass? IN_VLD : 1'b1;
+  assign OUT_LAST   = last & shift_count[NUM_SHIFTS -1];
+  assign IN_RDY     = bypass? OUT_RDY : OUT_RDY & shift_count[NUM_SHIFTS -1]; // : last data will be fetched
 
-  assign OUT_VLD = |shift_count;
-  assign OUT_LAST = last & (shift_count == 1);
-  assign IN_RDY = !(OUT_VLD);
-
-  assign OUT_DAT = serial [DATA_OUT_WIDTH-1:0];
+  assign OUT_DAT    = bypass? IN_DAT[DATA_OUT_WIDTH-1:0] : serial [DATA_OUT_WIDTH-1:0];
 
   always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
     if (!RST_N)
         shift_count <= 0;
-    else if (IN_VLD & IN_RDY)
-        shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
-    else if (OUT_VLD & OUT_RDY) 
+    else if (IN_VLD & IN_RDY) begin
+        if (bypass) // Bypass
+            shift_count <= {shift_count[NUM_SHIFTS-3:0], 1'b1, 1'b0};// ahead shift 1
+        else 
+            shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
+    end else if (OUT_VLD & OUT_RDY) 
         shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b0};
   end
 
@@ -52,12 +56,16 @@ always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
         last   <= 0;
     end else begin
         if (IN_VLD & IN_RDY) begin
-            serial <= IN_DAT;
-            last   <= IN_LAST;
+            if (bypass) begin
+                serial <= {{DATA_OUT_WIDTH{1'b0}}, IN_DAT[DATA_IN_WIDTH-1:DATA_OUT_WIDTH]}; // ahead shift
+                last   <= IN_LAST;
+            end else begin
+                serial <= IN_DAT;
+                last   <= IN_LAST;
+            end 
         end else if (OUT_VLD & OUT_RDY)
             serial <= {{DATA_OUT_WIDTH{1'b0}}, serial[DATA_IN_WIDTH-1:DATA_OUT_WIDTH]};
     end
 end
-
 
 endmodule
