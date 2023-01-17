@@ -30,12 +30,12 @@ module PISO
   reg                       last;
   wire                      bypass;
 // ******************************************************************
-  assign bypass = shift_count==0;
-  assign OUT_VLD = bypass? (IN_VLD & IN_RDY) : 1'b1;
-  assign OUT_LAST = last & shift_count[NUM_SHIFTS -1];
-  assign IN_RDY = bypass? 1'b1 : OUT_RDY & shift_count[NUM_SHIFTS -1];
+  assign bypass     = shift_count==0;
+  assign OUT_VLD    = bypass? IN_VLD : 1'b1;
+  assign OUT_LAST   = last & shift_count[NUM_SHIFTS -1];
+  assign IN_RDY     = bypass? OUT_RDY : OUT_RDY & shift_count[NUM_SHIFTS -1]; // : last data will be fetched
 
-  assign OUT_DAT = bypass? IN_DAT[DATA_OUT_WIDTH-1:0] : serial [DATA_OUT_WIDTH-1:0];
+  assign OUT_DAT    = bypass? IN_DAT[DATA_OUT_WIDTH-1:0] : serial [DATA_OUT_WIDTH-1:0];
 
   always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
     if (!RST_N)
