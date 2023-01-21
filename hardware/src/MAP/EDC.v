@@ -18,7 +18,7 @@ module EDC #(
     )(
     input       [CRD_WIDTH*CRD_DIM                      -1 : 0] Crd0,
     input       [CRD_WIDTH*CRD_DIM                      -1 : 0] Crd1,
-    output reg  [$clog2( CRD_WIDTH*2*$clog2(CRD_DIM) )   -1 : 0] DistSqr
+    output reg  [CRD_WIDTH*2+$clog2(CRD_DIM)            -1 : 0] DistSqr
 );
 //=====================================================================================================================
 // Constant Definition :
