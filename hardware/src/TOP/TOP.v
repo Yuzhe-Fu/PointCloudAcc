@@ -86,7 +86,6 @@ localparam GLBRDIDX_KNNKMK = 8; // KNN Read MASK
 localparam GLBRDIDX_POLMAP = 9;
 localparam GLBRDIDX_POLOFM = 10;
 
-
 localparam DISTSQR_WIDTH     =  CRD_WIDTH*2 + $clog2(CRD_DIM);
 //=====================================================================================================================
 // Variable Definition :

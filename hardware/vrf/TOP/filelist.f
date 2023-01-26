@@ -3,11 +3,10 @@
 ../../src/ITF/ITF.v
 ../../src/CCU/CCU.v
 ../../src/GLB/GLB.v
-../../src/CTR/FPS.v
-../../src/CTR/KNN.v
-../../src/CTR/INS.v
-../../src/CTR/PSS.v
-../../src/CTR/EDC.v
+../../src/MAP/FPS.v
+../../src/MAP/KNN.v
+../../src/MAP/INS.v
+../../src/MAP/EDC.v
 ../../src/POL/POL.v
 ../../src/POL/PLC.v
 ../../src/POL/PCC.v
@@ -32,6 +31,7 @@
 ../../src/primitives/Memory/SPSRAM.v
 ../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/PISO/PISO.v
+../../src/primitives/PISO/PISO_NOCACHE.v
 ../../src/primitives/FIFO/FIFO.v
 ../../src/primitives/FIFO/FIFO_FWFT.v
 ../../src/primitives/COUNTER/counter.v
