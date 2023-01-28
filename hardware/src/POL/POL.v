@@ -34,18 +34,26 @@ module POL #(
     input  [CHN_WIDTH                               -1 : 0] CCUPOL_CfgChi, // 64
     input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_AddrMin,
     input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_AddrMax,// Not Included
-    input                                                   GLBPOL_MapVld ,
-    input  [SRAM_WIDTH                              -1 : 0] GLBPOL_Map    ,
-    output                                                  POLGLB_MapRdy ,
-    output [POOL_CORE                               -1 : 0] POLGLB_AddrVld,
-    output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_Addr  ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_AddrRdy,
-    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_Ofm    ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmVld ,
-    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdy  ,
-    output [(ACT_WIDTH*POOL_COMP_CORE)              -1 : 0] POLGLB_Ofm     ,
-    output                                                  POLGLB_OfmVld  ,
-    input                                                   GLBPOL_OfmRdy   
+
+    output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr,   
+    output                                                  POLGLB_MapRdAddrVld, 
+    input                                                   GLBPOL_MapRdAddrRdy,
+
+    input                                                   GLBPOL_MapRdVld ,
+    input  [SRAM_WIDTH                              -1 : 0] GLBPOL_MapRdDat    ,
+    output                                                  POLGLB_MapRdRdy ,
+
+    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld,
+    output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmRdAddr  ,
+    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy,
+    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_OfmRdDat    ,
+    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdVld ,
+    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdRdy ,
+
+    output [IDX_WIDTH                               -1 : 0] POLGLB_OfmWrAddr    ,
+    output [(ACT_WIDTH*POOL_COMP_CORE)              -1 : 0] POLGLB_OfmWrDat    ,
+    output                                                  POLGLB_OfmWrVld ,
+    input                                                   GLBPOL_OfmWrRdy   
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -80,22 +88,24 @@ reg  [IDX_WIDTH                             -1 : 0] CntOfmOut;
 wire [POOL_CORE                             -1 : 0] PLCPOL_Empty;
 
 //=====================================================================================================================
-// Logic Design 
+// Logic Design: s0:  MapRdAddr
 //=====================================================================================================================
 
 reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
+
+// Combination Logic
 always @(*) begin
     case ( state )
         IDLE :  if ( CCUPOL_CfgVld & POLCCU_CfgRdy )
                     next_state <= MAPIN;
                 else
                     next_state <= IDLE;
-        MAPIN:  if ( MapInLast )
+        MAPIN:  if ( overflow_CntCp )
                     next_state <= WAITFNH;
                 else 
                     next_state <= MAPIN;
-        WAITFNH:if ( OfmOutLast )
+        WAITFNH:if (  )
                     next_state <= IDLE;
                 else
                     next_state <= WAITFNH;
@@ -103,6 +113,17 @@ always @(*) begin
         default: next_state <= IDLE;
     endcase
 end
+assign POLCCU_CfgRdy = state == IDLE;
+
+// Handshake
+assign rdy_s0 = GLBPOL_MapRdAddrRdy;
+assign vld_s0 = state == MAPIN;
+
+assign handshake_s0 = rdy_s0 & vld_s0;
+assign ena_s0 = handshake_s0 | ~vld_s0;
+
+
+// Reg Update
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
@@ -114,166 +135,231 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
+counter#(
+    .COUNT_WIDTH ( IDX_WIDTH )
+)u_CntCp(
+    .CLK       ( clk                ),
+    .RESET_N   ( rst_n              ),
+    .CLEAR     ( state == IDLE      ),
+    .DEFAULT   ( {IDX_WIDTH{1'd0}}  ),
+    .INC       ( overflow_CntMapWord & handshake_s0 ),
+    .DEC       ( 1'b0               ),
+    .MIN_COUNT ( {IDX_WIDTH{1'd0}}  ),
+    .MAX_COUNT ( CCUPOL_CfgNip-1    ),
+    .OVERFLOW  ( overflow_CntCp     ),
+    .UNDERFLOW (                    ),
+    .COUNT     ( CntCp              )
+);
+
+parameter MAPWORD_WIDTH = $clog2(IDX_WIDTH*(2**MAP_WIDTH)/SRAM_WIDTH);
+
+counter#(
+    .COUNT_WIDTH ( MAPWORD_WIDTH )
+)u_CntMapWord(
+    .CLK       ( clk                    ),
+    .RESET_N   ( rst_n                  ),
+    .CLEAR     ( state == IDLE          ), // automatically loop by MAX_COUNT
+    .DEFAULT   ( {MAPWORD_WIDTH{1'd0}}  ),
+    .INC       ( handshake_s0           ),
+    .DEC       ( 1'b0                   ),
+    .MIN_COUNT ( {MAPWORD_WIDTH{1'd0}}  ),
+    .MAX_COUNT ( 2**MAPWORD_WIDTH -1    ),
+    .OVERFLOW  ( overflow_CntMapWord    ),
+    .UNDERFLOW (                        ),
+    .COUNT     ( CntMapWord             )
+);
+
 
 //=====================================================================================================================
-// Logic Design 
-//=====================================================================================================================
-assign POLCCU_CfgRdy = state == IDLE;
-
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        CntMapIn <= 0;
-    end else if(state == IDLE) begin
-        CntMapIn <= 0;
-    end else if(GLBPOL_MapVld & POLGLB_MapRdy) begin
-        CntMapIn <= CntMapIn + 1;
-    end
-end
-
-assign MapInLast = CntMapIn >= CCUPOL_CfgK*(CCUPOL_CfgNip%POOL_CORE==0? CCUPOL_CfgNip/POOL_CORE : CCUPOL_CfgNip/POOL_CORE+1);// CntMapIn >= CCUPOL_CfgK*ceil(CCUPOL_CfgNip/POOL_CORE)
-
-
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        CntOfmOut <= 0;
-    end else if(state == IDLE) begin
-        CntOfmOut <= 0;
-    end else if(POLGLB_OfmVld & GLBPOL_OfmRdy) begin
-        CntOfmOut <= CntOfmOut + 1;
-    end
-end
-assign OfmOutLast = CntOfmOut >= CCUPOL_CfgNip;
-
-//=====================================================================================================================
-// Logic Design 
+// Logic Design: s1: Get Map 
 //=====================================================================================================================
 
+// Combinational Logic
+
+assign POLGLB_MapRdAddr = CntCp<<MAPWORD_WIDTH + CntMapWord;
+assign POLGLB_MapRdAddrVld = vld_s0;
+
+// Handshake
+assign rdy_s1 = PISO_IN_RDY;
+assign vld_s1 = GLBPOL_MapRdVld;
+
+assign handshake_s1 = rdy_s1 & vld_s1;
+assign ena_s1 = handshake_s1 | ~vld_s1;
+
+// Reg Update
+
+
+//=====================================================================================================================
+// Logic Design: s2: Write Shape
+//=====================================================================================================================
+
+// Combinational Logic
+assign POLGLB_MapRdRdy = rdy_s1;
+
+PISO_NOCACHE#(
+    .DATA_IN_WIDTH   ( SRAM_WIDTH*NUMMAPWORD*NUM_SORT_CORE  ), // (32+1)*10 /96 = 330 /96 <= 4
+    .DATA_OUT_WIDTH  ( SRAM_WIDTH  )
+)u_PISO_MAP(
+    .CLK       ( clk            ),
+    .RST_N     ( rst_n          ),
+    .IN_VLD    ( GLBPOL_MapRdVld),
+    .IN_LAST   ( 1'b0           ),
+    .IN_DAT    ( GLBPOL_MapRdDat),
+    .IN_RDY    ( PISO_IN_RDY    ),
+    .OUT_DAT   ( PISO_MapOutDat ),
+    .OUT_VLD   ( PISO_MapOutVld ),
+    .OUT_LAST  (                ),
+    .OUT_RDY   ( PISO_MapOutRdy )
+);
+
+
+
+// Handshake
+assign rdy_s2 = &GLBPOL_OfmRdAddrRdy;
+assign vld_s2 = &SYNC_SHAPE_MapOutVld;
+
+assign handshake_s2 = rdy_s2 & vld_s2;
+assign ena_s2 = handshake_s2 | ~vld_s2;
+
+// Reg Update
+SYNC_SHAPE #(
+    .ACT_WIDTH           ( IDX_WIDTH            ),
+    .SRAM_WIDTH          ( 2*POOL_CORE*IDX_WIDTH),
+    .NUM_BANK            ( 1                    ),
+    .NUM_ROW             ( POOL_CORE            )
+) SYNC_SHAPE_U (               
+
+    .clk                 ( clk                  ),
+    .rst_n               ( rst_n                ),
+                        
+    .din_data            ( PISO_MapOutDat       ),
+    .din_data_vld        ( PISO_MapOutVld       ),
+    .din_data_rdy        ( PISO_MapOutRdy       ),
+                        
+    .out_data            ( SYNC_SHAPE_MapOutDat ),
+    .out_data_vld        ( SYNC_SHAPE_MapOutVld ),
+    .out_data_rdy        ( rdy_s2               )
+);
+
+//=====================================================================================================================
+// Logic Design: s3: Get Ofm
+//=====================================================================================================================
 
 genvar i;
-generate
-    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_PLC
-        wire                        POLPLC_IdxVld;
-        wire [IDX_WIDTH     -1 : 0] POLPLC_Idx;
+parameter CHNGRP_WIDTH = CHN_WIDTH - $clog2(POOL_COMP_CORE);
+assign POLGLB_OfmRdAddrVld = {POOL_CORE{handshake_s1}};
 
-        PLC#(
-            .IDX_WIDTH      ( IDX_WIDTH ),
-            .ACT_WIDTH      ( ACT_WIDTH ),
-            .POOL_COMP_CORE ( POOL_COMP_CORE ),
-            .POOL_MAP_DEPTH_WIDTH ( POOL_MAP_DEPTH_WIDTH )
-        )u_PLC(
-            .clk            ( clk            ),
-            .rst_n          ( rst_n          ),
-            .POLPLC_Rst     ( state == IDLE  ),
-            .POLPLC_CfgK    ( CCUPOL_CfgK    ),
-            .POLPLC_IdxVld  ( POLPLC_IdxVld  ),
-            .POLPLC_Idx     ( POLPLC_Idx     ),
-            .PLCPOL_IdxRdy  ( PLCPOL_IdxRdy[i]  ),
-            .PLCPOL_AddrVld ( PLCPOL_AddrVld[i] ),
-            .PLCPOL_Addr    ( PLCPOL_Addr[IDX_WIDTH*i +: IDX_WIDTH]    ),
-            .POLPLC_AddrRdy ( POLPLC_AddrRdy[i] ),
-            .POLPLC_Ofm     ( POLPLC_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]      ),
-            .POLPLC_OfmVld  ( POLPLC_OfmVld[i]   ),
-            .PLCPOL_OfmRdy  ( PLCPOL_OfmRdy[i]   ),
-            .PLCPOL_Ofm     ( PLCPOL_Ofm [(ACT_WIDTH*POOL_COMP_CORE)*i +: ACT_WIDTH*POOL_COMP_CORE]     ),
-            .PLCPOL_OfmVld  ( PLCPOL_OfmVld[i]   ),
-            .POLPLC_OfmRdy  ( POLPLC_OfmRdy[i]   )
-        );
-        assign POLPLC_Idx = GLBPOL_Map[IDX_WIDTH*i +: IDX_WIDTH];
-        assign POLPLC_IdxVld = GLBPOL_MapVld & POLGLB_MapRdy;
+generate
+    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_PCC
+    
+    assign POLGLB_OfmRdAddr[IDX_WIDTH*i +: IDX_WIDTH] = (CCUPOL_CfgChi/POOL_COMP_CORE)*SYNC_SHAPE_MapOutDat[IDX_WIDTH*i +: IDX_WIDTH] + CntChnGrp;
 
     end
 endgenerate
 
-assign POLGLB_MapRdy = state == MAPIN  & (&PLCPOL_IdxRdy);
+// Handshake
+assign rdy_s3 = PCC_DatInRdy;
+assign vld_s3 = GLBPOL_OfmRdVld;
 
-assign POLGLB_OfmVld = |PLCPOL_OfmVld ;
-assign POLGLB_Ofm    = PLCPOL_Ofm[(ACT_WIDTH*POOL_COMP_CORE)*ARBIdx_PLCPOL_OfmVld +: ACT_WIDTH*POOL_COMP_CORE];
-genvar gv_i;
-generate
-    for(gv_i=0; gv_i<POOL_CORE; gv_i=gv_i+1) begin: GEN_POLPLC_OfmRdy
-        assign POLPLC_OfmRdy[gv_i] = gv_i == ARBIdx_PLCPOL_OfmVld? GLBPOL_OfmRdy : 0;
-    end
-endgenerate
+assign handshake_s3 = rdy_s3 & vld_s3;
+assign ena_s3 = handshake_s3 | ~vld_s3;
 
-prior_arb#(
-    .REQ_WIDTH ( POOL_CORE )
-)u_prior_arb_ARBIdx_PLCPOL_OfmVld(
-    .req ( PLCPOL_OfmVld ),
-    .gnt (  ),
-    .arb_port  ( ARBIdx_PLCPOL_OfmVld  )
+// Reg Update
+counter#(
+    .COUNT_WIDTH ( MAP_WIDTH )
+)u_CntChnGrp(
+    .CLK       ( clk                ),
+    .RESET_N   ( rst_n              ),
+    .CLEAR     (                    ),
+    .DEFAULT   ( {IDX_WIDTH{1'd0}}  ),
+    .INC       (                    ),
+    .DEC       ( 1'b0               ),
+    .MIN_COUNT ( {IDX_WIDTH{1'd0}}  ),
+    .MAX_COUNT (                    ),
+    .OVERFLOW  (                    ),
+    .UNDERFLOW (                    ),
+    .COUNT     ( CntChnGrp          )
 );
+
+counter#(
+    .COUNT_WIDTH ( CHNGRP_WIDTH )
+)u_CntNp(
+    .CLK       ( clk                    ),
+    .RESET_N   ( rst_n                  ),
+    .CLEAR     (                        ),
+    .DEFAULT   ( {CHNGRP_WIDTH{1'd0}}   ),
+    .INC       (                        ),
+    .DEC       ( 1'b0                   ),
+    .MIN_COUNT ( {CHNGRP_WIDTH{1'd0}}   ),
+    .MAX_COUNT (                        ),
+    .OVERFLOW  (                        ),
+    .UNDERFLOW (                        ),
+    .COUNT     ( CntNp                  )
+);
+
+assign POLGLB_OfmRdRdy = {POOL_CORE{rdy_s3}};
+
+//=====================================================================================================================
+// Logic Design: s4: Max
+//=====================================================================================================================
+// Combinational Logic  
+
+// Handshake
+assign rdy_s4 = PISO_OFMWR_IN_RDY;
+assign vld_s4 = &PCC_DatOutVld;
+
+assign handshake_s4 = rdy_s4 & vld_s4;
+assign ena_s4 = handshake_s4 | ~vld_s4;
+
+// Reg Update
+ generate
+    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_PCC
+  
+    PCC#(
+        .NUM_MAX    ( POOL_COMP_CORE),
+        .DATA_WIDTH ( ACT_WIDTH     )
+    )U1_PLCC(
+        .clk       ( clk            ),
+        .rst_n     ( rst_n          ),
+        .Rst       ( POLPLC_Rst     ),
+        .DatInVld  ( vld_s3         ),
+        .DatInLast (                ),
+        .DatIn     ( GLBPOL_OfmRdDat[ACT_WIDTH*POOL_COMP_CORE*i +: ACT_WIDTH*POOL_COMP_CORE]),
+        .DatInRdy  ( PCC_DatInRdy   ),
+        .DatOutVld ( PCC_DatOutVld  ),
+        .DatOut    ( PCC_DatOut[ACT_WIDTH*POOL_COMP_CORE*i +: ACT_WIDTH*POOL_COMP_CORE]   ),
+        .DatOutRdy ( rdy_s4         )
+    );
+
+    end
+endgenerate 
+
+
+//=====================================================================================================================
+// Logic Design: Out
+//=====================================================================================================================
+
+PISO_NOCACHE#(
+    .DATA_IN_WIDTH   ( ACT_WIDTH*POOL_COMP_CORE*POOL_CORE  ),
+    .DATA_OUT_WIDTH  ( ACT_WIDTH*POOL_COMP_CORE  )
+)u_PISO_OFMWR(
+    .CLK       ( clk            ),
+    .RST_N     ( rst_n          ),
+    .IN_VLD    ( vld_s4         ),
+    .IN_LAST   ( 1'b0           ),
+    .IN_DAT    ( PCC_DatOut     ),
+    .IN_RDY    ( PISO_OFMWR_IN_RDY),
+    .OUT_DAT   ( POLGLB_OfmWrDat),
+    .OUT_VLD   ( POLGLB_OfmWrVld),
+    .OUT_LAST  (                ),
+    .OUT_RDY   ( GLBPOL_OfmWrRdy)
+);
+
+assign POLGLB_OfmWrAddr = (CCUPOL_CfgChi/POOL_COMP_CORE)*(CntPCCCp_s4*POOL_CORE + u_PISO_OFMWR.count) + CntChnGrp_s4;
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-MIF#(
-    .POOL_CORE      ( POOL_CORE ),
-    .POOL_COMP_CORE ( POOL_COMP_CORE ),
-    .IDX_WIDTH      ( IDX_WIDTH ),
-    .ACT_WIDTH      ( ACT_WIDTH )
-)u_MIF(
-    .clk            ( clk            ),
-    .rst_n          ( rst_n          ),
-    .POLMIF_Rst     ( state== IDLE  ),
-    .CCUMIF_AddrMin ( CCUPOL_AddrMin ),
-    .CCUMIF_AddrMax ( CCUPOL_AddrMax ),
-    .POLMIF_AddrVld ( PLCPOL_AddrVld ),
-    .POLMIF_Addr    ( PLCPOL_Addr    ),
-    .MIFPOL_Rdy     ( POLPLC_AddrRdy ),
-    .MIFGLB_AddrVld ( POLGLB_AddrVld ),
-    .MIFGLB_Addr    ( POLGLB_Addr    ),
-    .GLBMIF_AddrRdy ( GLBPOL_AddrRdy ),
-    .GLBMIF_Ofm      ( GLBPOL_Ofm      ),
-    .GLBMIF_OfmVld   ( GLBPOL_OfmVld   ),
-    .MIFGLB_OfmRdy   ( POLGLB_OfmRdy   ),
-    .MIFPOL_Ofm      ( POLPLC_Ofm      ),
-    .MIFPOL_OfmVld   ( POLPLC_OfmVld   ),
-    .MIFPOL_OfmRdy   ( PLCPOL_OfmRdy   )
-);
-
-
-// Debug
-wire [IDX_WIDTH    -1 : 0] cnt_PLCPOL_Ofm[ 0 : POOL_CORE -1];
-wire [IDX_WIDTH    -1 : 0] cnt_POLPLC_Ofm[ 0 : POOL_CORE -1];
-
-generate
-    for(i=0; i<POOL_CORE; i=i+1) begin: GEN_cnt_PLCPOL_Ofm
-        wire [IDX_WIDTH     -1 : 0] MaxCnt = 2**IDX_WIDTH -1;
-        counter#(
-            .COUNT_WIDTH ( IDX_WIDTH )
-        )u_counter_Debug_RecPOLPLC_Ofm(
-            .CLK       ( clk        ),
-            .RESET_N   ( rst_n      ),
-            .CLEAR     ( state == IDLE ),
-            .DEFAULT   ( {IDX_WIDTH{1'd0}}        ),
-            .INC       ( POLPLC_OfmVld[i] & PLCPOL_OfmRdy[i]   ),
-            .DEC       ( 1'b0       ),
-            .MIN_COUNT ( {IDX_WIDTH{1'd0}}        ),
-            .MAX_COUNT ( MaxCnt      ),
-            .OVERFLOW  (            ),
-            .UNDERFLOW (            ),
-            .COUNT     ( cnt_POLPLC_Ofm[i] )
-        );
-
-        counter#(
-            .COUNT_WIDTH ( IDX_WIDTH )
-        )u_counter_Debug_SendPLCPOL_Ofm(
-            .CLK       ( clk        ),
-            .RESET_N   ( rst_n      ),
-            .CLEAR     ( state == IDLE ),
-            .DEFAULT   ( {IDX_WIDTH{1'd0}} ),
-            .INC       ( PLCPOL_OfmVld[i] & POLPLC_OfmRdy[i]   ),
-            .DEC       ( 1'b0       ),
-            .MIN_COUNT ( {IDX_WIDTH{1'd0}} ),
-            .MAX_COUNT ( MaxCnt  ),
-            .OVERFLOW  (    ),
-            .UNDERFLOW (            ),
-            .COUNT     ( cnt_PLCPOL_Ofm[i]           )
-        );
-
-    end
-endgenerate
-
 
 
 endmodule

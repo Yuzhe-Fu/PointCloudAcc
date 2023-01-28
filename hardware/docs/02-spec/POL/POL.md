@@ -1,10 +1,14 @@
 # [整个模块和所有子模块的硬件框图（实时维护）](pooling-2022-09-08.excalidraw)
 问题
-    - GLBPOL_Map一次读，可以当两次用，PISO转换一下
+    - Loop ChnGrp没实现
+    - 同时生成Ofm，但只输出一组，导致计算阻塞
+
+已解决：
+    - GLBPOL_Map一次读，可以当两次用
+    - 加入了reshape来将SRAM的点整个MAP转换为PLC的多个点的map第一个。
+    - SRAM位宽跟核数不一致用位宽转换模块，暂时是8核，需要SRAM转换为一半
     - POL：当通道不是64时待后面补全，还要适应不同通道数在GLB存多个word时，怎么多次取来比较
-    - POL面积太大，功耗太高: 
-        - 6个MIC的FIFO_OUT太大，深度4x宽度(3+8*64=515)=2kb x 6=12kb，占MIF的70%，暂时深度为2，后面再调整为1
-        - Idx FIFO总容量为：16x32x8=4kb
+        - 先可变通道数配置通道数除以同时数的商为步长和记数器结合点的idx来生成取的地址，内循环是不同点的64通道，外循环是不同通道，要保留32的map，相比于保留通道数个的ifm更加节省
 
 # 文件列表
 | File | Descriptions |
@@ -24,7 +28,7 @@
 | POOL_MAP_DEPTH_WIDTH | 5 | | map的深度的位宽，Ball Query有32个邻近点，位宽为5 |
 | POOL_CMD_DEPTH_WIDTH | 2 | 2, 3 | 每个被读global buffer的指令FIFO深度 |
 | POOL_OUT_DEPTH_WIDTH | 2 | | 每个被读global buffer的输出IFO深度 |
-| POOL_CORE | 6 | |pooling有多个少核，对应多少个读的口 |
+| POOL_CORE | 8 | |pooling有多个少核，对应多少个读的口 |
 | POOL_COMP_CORE | 64 | | pool_core里面有多个做计算的核 |
 
 # 模块详解
@@ -57,6 +61,7 @@
 | GLBPOL_OfmRdy  | input | 1 | 握手协议的ready信号 |
 
 ## 模块陈述
+
 背景：需要做pooling的整块feature map，均匀分为6块，存于global buffer中。
 由于需要满足输出给下一层卷积计算的带宽的需求，pooling模块有6个pooling核(pool_core)，每个pool_core里面有64个取大值核(pool_comp_core), 因此整个pooling的算力为，每周期读取6个点（其中每个点64个通道）并与pool_comp_core的reg中的值比出最大值后更新pool_comp_core的reg最大值；
 运行过程：
