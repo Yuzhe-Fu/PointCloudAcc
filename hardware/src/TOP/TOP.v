@@ -28,14 +28,14 @@ module TOP #(
     parameter GLB_NUM_WRPORT = 9, 
     parameter MAXPAR         = 32,
     parameter NUM_BANK       = 32,
-    parameter POOL_CORE      = 6,
+    parameter POOL_CORE      = 8,
     parameter POOL_COMP_CORE = 64, 
 
     // NetWork Parameters
     parameter IDX_WIDTH      = 16,
     parameter CHN_WIDTH      = 12,
     parameter ACT_WIDTH      = 8,
-    parameter MAP_WIDTH      = 6,
+    parameter MAP_WIDTH      = 5,
 
     parameter CRD_WIDTH      = 16,   
     parameter CRD_DIM        = 3,   
