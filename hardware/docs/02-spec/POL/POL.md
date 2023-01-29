@@ -1,7 +1,12 @@
 # [整个模块和所有子模块的硬件框图（实时维护）](pooling-2022-09-08.excalidraw)
 问题
-    - Loop ChnGrp没实现
-    - 同时生成Ofm，但只输出一组，导致计算阻塞
+    - 点并行转为块并行
+        - 按照分块的原则（）：各PLC完全独立（包含配置、输入和输出SRAM)，负责不同的块，（当然块内也可以并行，但由于需要倍增SRAM甚至copy，先不考虑，还不如倍增POOL_COMP_CORE）
+            - 读的map块，读的ofm块，和PCC，写的ofm都是独立的。问题是PLC的负载不均衡，但由于只有一个ofm读口也不能帮，先不管
+        - 按照流水线原则：各PLC不一定要都完成才算完成，各PLC由CCU独立调度，POL内直接generate多个PLC
+        - 各个PLC共用一个MAP SRAM，分开OFM输入SRAM，分开OFM输出SRAM，输出OFM的位宽在POOL_COMP_CORE的基础上可缩小，以阻塞几个周期为代价
+        - MAP缓存采用reg，因为PLC需要缓存MAP为16*32=512，远未达到reg与uhddpsram的4096bit临界点
+    - Loop ChnGrp没实现：MAP得保持住；
 
 已解决：
     - GLBPOL_Map一次读，可以当两次用
