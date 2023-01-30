@@ -1,55 +1,6 @@
-# 指令集-基本参考Thinker
-包含有
-- Array parameter：提前确定硬件结构，多少层，第一层参数的基址
-- Layer parameter：层参数：控制每层具体的执行
-  - 硬件上：act, wgt的存储地址，网络形状：channel数，点数等
-- :question: PE configuration是什么？: 每个PE的每周期的切换信号（开关选择，也是指令：mode+直接控制状态机4个状态），迁移过来是子模块的控制
-![config](https://user-images.githubusercontent.com/33385095/190861936-6e883bf5-593f-4304-bedb-e5d8686e9021.png)
-![PE_config](https://user-images.githubusercontent.com/33385095/190861939-9f72cfcd-18de-454d-97a1-910ee08c98dc.png)
-![image](https://user-images.githubusercontent.com/33385095/190882888-761b0439-953b-425a-b31b-dac4791b1596.png)
-
-
-| Parameters | default | optional | Descriptions |
-| ---- | ---- | ---- | ---- |
-| Array Parameter |
-| 0         |  3-22       | 23-38        |
-| Mode(1b)  |  Ly_Num(20b)| Base_Addr0(32b) |
-| Layer Parameters |
-| 0-2       | 3-34          | 35-66         | 67-82 | 83-94 |   | 96-107| 108:127   | 128:135       | 136:143           | 144:145           | 146: 161      | 162: 177 | 178: 193 |
-| OpCodeCON| DatAddr(32b)   | WgtAddr(32b)  | Nip   | Chi   | 1b| Cho   |quant_scale| quant_shift   | quant_zero_point  | CCUSYA_CfgMod(2b) | WgtAddrRange  |     DatAddrRange | OfmAddrRange | 
-| 0-2       | 3-34          | 35-50         | 51-62 | 63-68 |
-| OpCodePOL | DatAddr       | Nip           | Chi   |  K    |
-| 0-2       | 2-33          | 34-65         | 66-81 | 82-93 | 94-105|
-| OpCodeFC  | DatAddr       | WgtAddr       | Nip   | Chi   | Cho   | 
-| 0-2       | 3-34          | 35-66         | 67-82 | 
-| OpCodeFPS | Crd_addr      | Ni            | No    | 
-| 0-2       | 3-34          | 35-66         | 67-72 |
-| OpCodeKNN | Map_Idx       |  Ni           | K     | 0:表示没有，1-32 |
-
-
-
-| Array Parameter |
-| 0 | 1-2 | 3-22 | 23-38 |
-| Mode: 1b, Run/Test | CCUSYA_CfgMod: 2b, 2x2, 4x1, 1x4 | Ly_Num: 20b | Base_Addr0: 32b,第一层的参数基址 |
-| Layer Parameters |
-| 0-1 | 2-33 | 34-65 | 66-81 | 82-93 | 94-105 | 106-125 | 126-133 | 134-141 |
-| OpCode: Conv (FC, POOL) | DatAddr: 32b, Base addr of input data | WgtAddr: 32b, Base addr of weights | Nip: 16b, # of input points | Chi: # of input channels | | Cho: # of output channels |  quant_scale | quant_shift | quant_zero_point | 
-| 0-2 | 2-33 |  66-81 | 82-93 | 
-| OpCode:  POOL (Conv,FC),当片上存不下时，就需要从片外拿 | DatAddr: 32b, Base addr of input data |  Nip: 16b, # of input points | Chi: # of input channels |  
-| 0-2 | 2-33 | 34-65 | 66-81 | 82-93 | 94-105 |
-| OpCode: FC (Conv, POOL) | DatAddr: 32b, Base addr of input data | WgtAddr: 32b, Base addr of weights | Nip: 16b, # of input points | Chi: # of input channels | | Cho: # of output channels | 
-| 0-2 | 2-33 |  34-65 | 66-81 | 
-| OpCode: FPS | Crd_addr: 32b, Base addr of coordinates  | Ni: 16b, # of input points | No: 16b, # of output points | 
-| 0-2 | 2-33 |  34-65 | 66-70 |
-| OpCode: KNN | Map_Idx: 32b, Base addr of Index of KNN Map | K: 5b, # of neghbor points |
-
-| Module Parameters |
-| GLB |
-| SYA |
-| POL |
-| CTR |
-
-
+# 问题
+    - 从ISARAM取ISA会堵死：当ISARAM满了，还未取完的指令要等一条新的从DRAM读的指令执行完
+    
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |

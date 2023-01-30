@@ -1,11 +1,17 @@
-**去掉无用的PSS，按照KNN硬件图**
+## 问题
+    - 对KNN每层配置起始CrdIdx地址，Nip, K；生成的Map也要配置写地址
+    - :question: POL中报seq占60%
+    - :question: NUM_SORT_CORE数量是灵活调整的不由SRAM_WIDTH / (Crd+Idx)决定
 
+# 文件列表
+| File | Descriptions |
+| ---- | ---- |
 | KNN.v | 
 | INS.v | 插入排序模块 |
 | EDC.v | 欧式dist_comp欧式距离计算模块 |
 | RAM.v | 通用SRAM模块，直接在primitives调用 |
 
-问题
+## 模块陈述
     - :white_check_mark:KNN.PSS.PISO缩小Reg，其实不需要，它的利用率很低
     - :white_check_mark:INS利用率指数降低:读取第一层Crd时，由于FPS过滤掉一半，不能每次读取都有效，需要链表或压缩
     - :white_check_mark:KNN出来的MAP怎么存，好送到POL，暂时一个SRAM_WIDTH的word存cp_idx和lp_idx，但是同一点不同层同时出来的？
@@ -20,33 +26,8 @@
                     - KNN：
                         - :white_check_mark:先点：一次读取多个点，给8个INS（中心点不同），并行排序。
                         - 先层：一次读取一个点的多层，理想是多个INS并行，（INS7，Ly7)先完成，承担Ly0，但是，由于一次读取所有层，INS之间不能负载均衡
-    - :question: POL中报seq占60%
 
-## PSS 端口列表
-| Ports | Input/Output | Width | Descriptions |
-| ---- | ---- | ---- | ---- |
-| clk | input | 1 | clock |
-| rst_n | input | 1 | reset, 低电平有效 |
-| CTRPSS_LopLast    | input |
-| CTRPSS_Rst        | input |
-| CTRPSS_Mask       | input | IDX_WIDTH | FPS输出给KNN的mask |
-| CTRPSS_MaskVld    | input | 1 | 握手协议的valid信号 |
-| PSSCTR_MaskRdy    | output| 1 | 握手协议的ready信号 |
-| CTRPSS_CpIdx      | input | IDX_WIDTH | KNN中心点的index |
-| CTRPSS_CpIdxVld   | input | 1 | 握手协议的valid信号 |
-| PSSCTR_CpIdxRdy   | output| 1 | 握手协议的ready信号 |
-| CTRPSS_Lp         | input | IDX_WIDTH + DIST_WIDTH | (KNN被遍历(looped)到的点的index, KNN被遍历(l)到的点与中心点的距离，即上述的ed) |
-| CTRPSS_LpVld      | input | 1 | 握手协议的valid信号 |
-| PSSCTR_LpRdy      | output| 1 | 握手协议的ready信号 |
-| PSSCTR_Idx        | output| SRAM_WIDTH | 输出KNN构建的map，即排序好的K个最近的点的idx |
-| PSSCTR_IdxVld     | output| 1 | 握手协议的valid信号 | 
-| PSSCTR_IdxRdy     | input | 1 | 握手协议的ready信号 |
 
-## 模块陈述
-- PSS用于将construct模块输入进来的每个中心点CpIdx的邻近点LopIdx，经FPS传进来的CTRPSS_Mask，逐层过滤后，输入到INS排序。
-- FPS后面接KNN是一个构建组合，在点云网络里，连续有多个这样的组合，因此KNN排序的是经FPS的mask过滤后的点的距离，而每层FPS的mask由顶层construct模块生成后，每层依次输入到GLB的Bank，（注意第一个bit是第一个FPS层的mask，第二个bit是第二个FPS层的mask）。
-- 从construct输入的CTRPSS_Lop包含index和距离，同时输入，lp的index要在GLB的BANK中找对应的bit是否为1，如果为1，说明在这层FPS是保留的，则将其in_lp包含index和距离输入到这个INS里面的参与排序，否则不输入到INS。
-- 从所有INS输出的map（最邻近的K个点的indx组合），与中心点CTRPSS_CpIdx组成新的map （即(cp_idx, lp_idx\*K)），将其转成SRAM_WIDTH位宽后，PISO输出。
 
 ## INS (insert_sort) 端口列表
 | Ports | Input/Output | Width | Descriptions |
