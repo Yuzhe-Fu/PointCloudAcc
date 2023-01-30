@@ -1,3 +1,11 @@
+# 问题
+
+# 陈述
+    - 多核FPS的必要性：1. 分块计算的必然；2. Crd输入SRAM带宽满足5个核，Mask满足256个核，Dist输入满足256/34/2=3.7个核，暂定为4个核并行。
+    - FPS的输出点的Idx是否需要重头编号：输出是给KNN的MAP用于POL，因此是密集排列的，需要重头编号！那就没必要存PntIdx了
+    - 直接加Mask SRAM表示是否需要计算：FPS在一层计算中，需要知道已被筛选出的点，否则导致1/4速度下降（Nop/Nip=1/2)，设计MaskCheck来找出为0的点用来
+    - KNN与FPS的CrdIdx存储方式不一致：FPS是做完所有层，连续存CrdIdx，而KNN是只算一层，考虑到高配置性来适应分块的点数随机性，需要对FPS和KNN每层配置：FPS读起始CrdIdx地址CCUFPS_CfgCrdBaseRdAddr（默认每层从新的SRAM WORD开始写，不存在从WORD中间开始读写)，Nip, Nop，写起始CrdIdx地址CCUFPS_CfgCrdBaseWrAddr，读写Mask起始地址CCUFPS_CfgMaskBaseAddr（考虑到多个FPS核并行共享SRAM带宽，同时算第一层，写的地址不一样，写最后一个WORD不论是否凑够SRAM_WIDTH都要写出去），写使用地址控制Dist读写;
+
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
