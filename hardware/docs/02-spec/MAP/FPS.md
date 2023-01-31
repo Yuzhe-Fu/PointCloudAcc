@@ -1,11 +1,5 @@
 # 问题
 
-# 陈述
-    - 多核FPS的必要性：1. 分块计算的必然；2. Crd输入SRAM带宽满足5个核，Mask满足256个核，Dist输入满足256/34/2=3.7个核，暂定为4个核并行。
-    - FPS的输出点的Idx是否需要重头编号：输出是给KNN的MAP用于POL，因此是密集排列的，需要重头编号！那就没必要存PntIdx了
-    - 直接加Mask SRAM表示是否需要计算：FPS在一层计算中，需要知道已被筛选出的点，否则导致1/4速度下降（Nop/Nip=1/2)，设计MaskCheck来找出为0的点用来
-    - KNN与FPS的CrdIdx存储方式不一致：FPS是做完所有层，连续存CrdIdx，而KNN是只算一层，考虑到高配置性来适应分块的点数随机性，需要对FPS和KNN每层配置：FPS读起始CrdIdx地址CCUFPS_CfgCrdBaseRdAddr（默认每层从新的SRAM WORD开始写，不存在从WORD中间开始读写)，Nip, Nop，写起始CrdIdx地址CCUFPS_CfgCrdBaseWrAddr，读写Mask起始地址CCUFPS_CfgMaskBaseAddr（考虑到多个FPS核并行共享SRAM带宽，同时算第一层，写的地址不一样，写最后一个WORD不论是否凑够SRAM_WIDTH都要写出去），写使用地址控制Dist读写;
-
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
@@ -57,34 +51,17 @@
 
 
 ## 模块陈述
-构建模块是用来将原始点云采样（FPS)后，找出每个点的K邻近点的index（K个index称为这个点的map即映射）。在顶层模块construct硬件图中，FPS和KNN复用部分硬件（黑色），FPS独有的是青色，KNN独有的是蓝色。在子模块中一律用黑色，不作区别，CTR分为FPS模块，KNN模块和共同部分，用流水线顺序分级分块写。
-Mask也使用GLB存储：为了便于KNN一次取所有层的Mask的bit，在GLB中，先按照一个点的所有层从LSB到MSB，再下一个点；向GLB请求的地址是LopIdx与GLB的word存多少个点（SRAM_WIDTH/NUM_SORT_CORE)的取整，一次到的是SRAM_WIDTH，怎么区别是哪NUM_SORT_WIDTH宽的呢？是LopIdx与GLB的word存多少个点的取余
-    - 好处
-        - 面积最小，不占用额外面积，8KB = 0.048
-        - 灵活程度高：Nip=1024->10*16都可以存到1-2个GLB的BANK的不同byte
-        - 可配置：
-            - 当后面修改KNN和FPS分开时，KNN和FPS可单独读写各自的MASK，
-            - 当KNN的核数增加时，需要一次同时读多个MASK时，可？？？
-    - 坏处
-        - 功耗增加：FPS每次只存1bit到GLB，考虑Bank多byte
-    
-- FPS
-    - Stage0: **两个计数器：Cp和Lop** 生成地址
-        - FPS时，Cp计数从0到Nop-1，Lop从0到Nip-CpIdx，但第二层FPS由于Mask需要跳着生成地址？（需要把列为最远点的坐标存到GLB，但暂时不用）直接取GLB中的Mask_Loop（对应取GLB中同一个点的不同层的(GLBFPS_MaskRdDat)，是上一次Mask与本次Mask的非的与，表示当前点经前面层的过滤是否还剩下来Mask_Before，剩下来前面层都是1）来使能计数器生成的Addr的有效(Mask_Before前面位要为均为1)
-    - Stage1: 同时取1. 输入点的坐标LopIdx的GLBCTR_Crd从ITF（经位宽转换（从SRAM_WIDTH转为COORD_WIDTH\*NUM_COORD））和2. Dist_Buffer中取出与上一次FPS点集的距离FPS_LastPsDist，
-    - Stage2: 都同时打一拍后，得(LopCrd_s2,LopIdx_s2)和(FPS_LastPsIdx_s2, FPS_LastPsDist_s2)，必须要打拍
-        - 将LopCrd_s2与FPS_CpCrd（FPS中，FPS_CpCrd是上一次找出的最远点的坐标，KNN中，KNN_CpCrd_s2是当前需要找出邻近点的中心点坐标），计算欧式距离EDC LopDist_s2，比较出LopDist_s2和FPS_LastPsDist_s2的最小值，作为与当前FPS点集的距离FPS_PsDist，当前点FPS_PsDist需要与之前点到点集的距离FPS_MaxDist比较出最大值FPS_UpdMax，
-    - Stage3: 并更新到Dist_Buffer；和更新这个最大值FPS_MaxDist，最大值对应的点的index FPS_MaxIdx，和最大值对应的点的坐标FPS_MaxCrd；
-        - 对于固定的FPS_CpCrd，当所有非点集的点遍历完成LopLast_s2后，这个最大值的点坐标FPS_MaxCrd成为新的FPS_CpCrd，:question:对应的index输出到GLB的FPS_out_buffer，让表示1024个点是否有效的Mask里面对应的bit位置为1并存到GLB相应的bit(FPSGLB_MaskWrDat)
-        - 当FPS选出的点集点数达到所需的点数（Nop）时，state转到FNH，后转到IDLE，发出CfgRdy，配置下一层FPS
-    - :question:
-        - :question:跳过的就无效和等，还会存在读写GLB冲突会等的问题, 还有除法和取余数要用加法循环替换
-        - :question: LopIdx怎么生成？因为每次loop使得GLB随机少一个需要loop的点，LopIdx读取的是除了ps之外的点，是在原始的DistIdx存储上跳着读的
-            - 每次把ps之外的点选入ps后
-                - 方法一：更新GLB的DistIdx使其连续有效；
-                - 方法二：读取有效的地址跳过GLB无效的点
-                    - 有效地址存为一个地址LUT，用LopIdx取，地址LUT怎么去除某个点的地址？
-                    - 采用链表（原理是按顺序读下一个），Linked List(LL)地址是原始点的Idx，存的数据是下一个点的Idex；当某个点x被去掉时，指向x的地址的Idx应当更新为x指向的Idx（也就是直接跳过了x)，关键是怎么找到指向x的地址？
+    - FPS输出有
+        - 给MLP说明原始点中哪些点是保留下来的，即在原始点集中的Index
+        - FPS的输出点的Idx是否需要重头编号：输出是给KNN的MAP用于POL，因此是密集排列的，需要重头编号！那就没必要存PntIdx了
+    - 多核FPS的必要性：1. 分块计算的必然；2. Crd输入SRAM带宽满足5个核，Mask满足256个核，Dist输入满足256/34/2=3.7个核，暂定为4个核并行。
+    - FPS输入有
+        - KNN与FPS的CrdIdx存储方式不一致：FPS是做完所有层，连续存CrdIdx，而KNN是只算一层，考虑到高配置性来适应分块的点数随机性，需要对FPS和KNN每层配置：FPS读起始CrdIdx地址CCUFPS_CfgCrdBaseRdAddr（默认每层从新的SRAM WORD开始写，不存在从WORD中间开始读写)，Nip, Nop，写起始CrdIdx地址CCUFPS_CfgCrdBaseWrAddr，读写Mask起始地址CCUFPS_CfgMaskBaseAddr（考虑到多个FPS核并行共享SRAM带宽，同时算第一层，写的地址不一样，写最后一个WORD不论是否凑够SRAM_WIDTH都要写出去），写使用地址控制Dist读写;
+    - FPS中间缓存有
+        - Mask
+            - 直接加Mask SRAM表示是否需要计算来跳过无效的计算周期：FPS在一层计算中，需要知道已被筛选出的点，否则导致1/4速度下降（Nop/Nip=1/2)，设计MaskCheck来找出为0的点，MaskCheck保留了点的自然顺序，不能用保留下来点的Idx，因为它是随机乱序的。
+            - 取得的Mask需要与CrdRdAddr同周期：取完了需要同时控制CrdRdAddrVld？
+
 
 
 
