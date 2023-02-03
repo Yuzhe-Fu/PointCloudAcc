@@ -18,6 +18,7 @@ module FPS #(
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3,
     parameter NUM_FPC           = 4,
+    parameter NUM_MASK_SRAM     = 16, // process bits at a time
     parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_DIM),
     parameter CRDIDX_WIDTH      = CRD_WIDTH*CRD_DIM+IDX_WIDTH
     )(
@@ -84,8 +85,7 @@ module FPS #(
 //=====================================================================================================================
 localparam NUM_CRD_SRAM = 2**$clog2( SRAM_WIDTH / (CRD_WIDTH*CRD_DIM) );
 localparam NUM_DIST_SRAM = SRAM_WIDTH / DISTSQR_WIDTH;
-localparam NUM_MASK_SRAM = SRAM_WIDTH;
-
+localparam CNTMASK_WIDTH = IDX_WIDTH+$clog2(SRAM_WIDTH/NUM_MASK_SRAM);
 
 //=====================================================================================================================
 // Variable Definition :
@@ -142,147 +142,147 @@ wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCIdxWrIdx_d;
 //=====================================================================================================================
 // Arb MaskRd
 ArbCore#(
-    .NUM_CORE    ( NUM_FPC ),
-    .ADDR_WIDTH  ( IDX_WIDTH ),
-    .DATA_WIDTH  ( SRAM_WIDTH )
+    .NUM_CORE    ( NUM_FPC      ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
 )u_ArbCore_FPCMaskRd(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
     .CoreOutVld  ( FPC_MaskRdAddrVld    ),
     .CoreOutAddr ( FPC_MaskRdAddr       ),
     .CoreOutDat  (                      ),
-    .CoreOutRdy  ( FPC_MaskRdDatRdy        ),
+    .CoreOutRdy  ( FPC_MaskRdDatRdy     ),
     .TopOutVld   ( FPSGLB_MaskRdAddrVld ),
     .TopOutAddr  ( FPSGLB_MaskRdAddr    ),
     .TopOutDat   (                      ),
-    .TopOutRdy   ( FPSGLB_MaskRdDatRdy     ),
+    .TopOutRdy   ( FPSGLB_MaskRdDatRdy  ),
     .TOPInRdy    ( GLBFPS_MaskRdAddrRdy ),
     .ArbCoreIdx  ( ArbFPCMaskRdIdx      ),
-    .ArbCoreIdx_d( ArbFPCMaskRdIdx_d  )
+    .ArbCoreIdx_d( ArbFPCMaskRdIdx_d    )
 );
 
 // Arb CrdRd
 ArbCore#(
-    .NUM_CORE    ( NUM_FPC ),
-    .ADDR_WIDTH  ( IDX_WIDTH ),
-    .DATA_WIDTH  ( SRAM_WIDTH )
+    .NUM_CORE    ( NUM_FPC      ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
 )u_ArbCore_FPCCrdRd(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
-    .CoreOutVld  ( FPC_CrdRdAddrVld),
-    .CoreOutAddr ( FPC_CrdRdAddr   ),
-    .CoreOutDat  (                  ),
-    .CoreOutRdy  ( FPC_CrdRdDatRdy    ),
-    .TopOutVld   ( FPSGLB_CrdRdAddrVld),
-    .TopOutAddr  ( FPSGLB_CrdRdAddr  ),
-    .TopOutDat   (                  ),
-    .TopOutRdy   ( FPSGLB_CrdRdDatRdy ),
-    .TOPInRdy    ( GLBFPS_CrdRdAddrRdy),
-    .ArbCoreIdx  ( ArbFPCCrdRdIdx  ),
-    .ArbCoreIdx_d( ArbFPCCrdRdIdx_d)
+    .CoreOutVld  ( FPC_CrdRdAddrVld     ),
+    .CoreOutAddr ( FPC_CrdRdAddr        ),
+    .CoreOutDat  (                      ),
+    .CoreOutRdy  ( FPC_CrdRdDatRdy      ),
+    .TopOutVld   ( FPSGLB_CrdRdAddrVld  ),
+    .TopOutAddr  ( FPSGLB_CrdRdAddr     ),
+    .TopOutDat   (                      ),
+    .TopOutRdy   ( FPSGLB_CrdRdDatRdy   ),
+    .TOPInRdy    ( GLBFPS_CrdRdAddrRdy  ),
+    .ArbCoreIdx  ( ArbFPCCrdRdIdx       ),
+    .ArbCoreIdx_d( ArbFPCCrdRdIdx_d     )
 );
 
 // Arb DistRd
 ArbCore#(
-    .NUM_CORE    ( NUM_FPC ),
-    .ADDR_WIDTH  ( IDX_WIDTH ),
-    .DATA_WIDTH  ( SRAM_WIDTH )
+    .NUM_CORE    ( NUM_FPC      ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
 )u_ArbCore_FPCDistRd(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
-    .CoreOutVld  ( FPC_DistRdAddrVld),
-    .CoreOutAddr ( FPC_DistRdAddr   ),
-    .CoreOutDat  (                  ),
-    .CoreOutRdy  ( FPC_DistRdDatRdy    ),
-    .TopOutVld   ( FPSGLB_DistRdAddrVld),
-    .TopOutAddr  ( FPSGLB_DistRdAddr  ),
-    .TopOutDat   (                  ),
-    .TopOutRdy   ( FPSGLB_DistRdDatRdy ),
-    .TOPInRdy    ( GLBFPS_DistWrDatRdy),
-    .ArbCoreIdx  ( ArbFPCDistRdIdx  ),
-    .ArbCoreIdx_d( ArbFPCDistRdIdx_d)
+    .CoreOutVld  ( FPC_DistRdAddrVld    ),
+    .CoreOutAddr ( FPC_DistRdAddr       ),
+    .CoreOutDat  (                      ),
+    .CoreOutRdy  ( FPC_DistRdDatRdy     ),
+    .TopOutVld   ( FPSGLB_DistRdAddrVld ),
+    .TopOutAddr  ( FPSGLB_DistRdAddr    ),
+    .TopOutDat   (                      ),
+    .TopOutRdy   ( FPSGLB_DistRdDatRdy  ),
+    .TOPInRdy    ( GLBFPS_DistWrDatRdy  ),
+    .ArbCoreIdx  ( ArbFPCDistRdIdx      ),
+    .ArbCoreIdx_d( ArbFPCDistRdIdx_d    )
 );
 
 
 // Arb MaskWr
 ArbCore#(
-    .NUM_CORE    ( NUM_FPC ),
-    .ADDR_WIDTH  ( IDX_WIDTH ),
-    .DATA_WIDTH  ( SRAM_WIDTH )
+    .NUM_CORE    ( NUM_FPC      ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
 )u_ArbCore_FPCWrMask(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
-    .CoreOutVld  ( FPC_MaskWrDatVld    ),
-    .CoreOutAddr ( FPC_MaskWrAddr   ),
-    .CoreOutDat  ( FPC_MaskWrDat    ),
-    .CoreOutRdy  (                  ),
-    .TopOutVld   ( FPSGLB_MaskWrDatVld),
-    .TopOutAddr  ( FPSGLB_MaskWrAddr),
-    .TopOutDat   ( FPSGLB_MaskWrDat ),
-    .TopOutRdy   (                  ),
-    .TOPInRdy    ( GLBFPS_MaskWrDatRdy),
-    .ArbCoreIdx  ( ArbFPCMaskWrIdx  ),
-    .ArbCoreIdx_d(                  )
+    .CoreOutVld  ( FPC_MaskWrDatVld     ),
+    .CoreOutAddr ( FPC_MaskWrAddr       ),
+    .CoreOutDat  ( FPC_MaskWrDat        ),
+    .CoreOutRdy  (                      ),
+    .TopOutVld   ( FPSGLB_MaskWrDatVld  ),
+    .TopOutAddr  ( FPSGLB_MaskWrAddr    ),
+    .TopOutDat   ( FPSGLB_MaskWrDat     ),
+    .TopOutRdy   (                      ),
+    .TOPInRdy    ( GLBFPS_MaskWrDatRdy  ),
+    .ArbCoreIdx  ( ArbFPCMaskWrIdx      ),
+    .ArbCoreIdx_d(                      )
 );
 
 ArbCore#(
-    .NUM_CORE    ( NUM_FPC ),
-    .ADDR_WIDTH  ( IDX_WIDTH ),
-    .DATA_WIDTH  ( SRAM_WIDTH )
+    .NUM_CORE    ( NUM_FPC      ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
 )u_ArbCore_FPCWrCrd(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
-    .CoreOutVld  ( FPC_CrdWrDatVld    ),
-    .CoreOutAddr ( FPC_CrdWrAddr   ),
-    .CoreOutDat  ( FPC_CrdWrDat    ),
-    .CoreOutRdy  (                  ),
-    .TopOutVld   ( FPSGLB_CrdWrDatVld),
-    .TopOutAddr  ( FPSGLB_CrdWrAddr),
-    .TopOutDat   ( FPSGLB_CrdWrDat ),
-    .TopOutRdy   (                  ),
-    .TOPInRdy    ( GLBFPS_CrdWrDatRdy),
-    .ArbCoreIdx  ( ArbFPCCrdWrIdx  ),
-    .ArbCoreIdx_d(                  )
+    .CoreOutVld  ( FPC_CrdWrDatVld      ),
+    .CoreOutAddr ( FPC_CrdWrAddr        ),
+    .CoreOutDat  ( FPC_CrdWrDat         ),
+    .CoreOutRdy  (                      ),
+    .TopOutVld   ( FPSGLB_CrdWrDatVld   ),
+    .TopOutAddr  ( FPSGLB_CrdWrAddr     ),
+    .TopOutDat   ( FPSGLB_CrdWrDat      ),
+    .TopOutRdy   (                      ),
+    .TOPInRdy    ( GLBFPS_CrdWrDatRdy   ),
+    .ArbCoreIdx  ( ArbFPCCrdWrIdx       ),
+    .ArbCoreIdx_d(                      )
 );
 
 ArbCore#(
-    .NUM_CORE    ( NUM_FPC ),
-    .ADDR_WIDTH  ( IDX_WIDTH ),
-    .DATA_WIDTH  ( SRAM_WIDTH )
+    .NUM_CORE    ( NUM_FPC      ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
 )u_ArbCore_FPCWrDist(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
-    .CoreOutVld  ( FPC_DistWrDatVld    ),
-    .CoreOutAddr ( FPC_DistWrAddr   ),
-    .CoreOutDat  ( FPC_DistWrDat    ),
-    .CoreOutRdy  (                  ),
-    .TopOutVld   ( FPSGLB_DistWrDatVld),
-    .TopOutAddr  ( FPSGLB_DistWrAddr),
-    .TopOutDat   ( FPSGLB_DistWrDat ),
-    .TopOutRdy   (                  ),
-    .TOPInRdy    ( GLBFPS_DistWrDatRdy),
-    .ArbCoreIdx  ( ArbFPCDistWrIdx  ),
-    .ArbCoreIdx_d(                  )
+    .CoreOutVld  ( FPC_DistWrDatVld     ),
+    .CoreOutAddr ( FPC_DistWrAddr       ),
+    .CoreOutDat  ( FPC_DistWrDat        ),
+    .CoreOutRdy  (                      ),
+    .TopOutVld   ( FPSGLB_DistWrDatVld  ),
+    .TopOutAddr  ( FPSGLB_DistWrAddr    ),
+    .TopOutDat   ( FPSGLB_DistWrDat     ),
+    .TopOutRdy   (                      ),
+    .TOPInRdy    ( GLBFPS_DistWrDatRdy  ),
+    .ArbCoreIdx  ( ArbFPCDistWrIdx      ),
+    .ArbCoreIdx_d(                      )
 );
 
 ArbCore#(
-    .NUM_CORE    ( NUM_FPC ),
-    .ADDR_WIDTH  ( IDX_WIDTH ),
-    .DATA_WIDTH  ( SRAM_WIDTH )
+    .NUM_CORE    ( NUM_FPC      ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
 )u_ArbCore_FPCCrdWr(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
-    .CoreOutVld  ( FPC_IdxWrDatVld    ),
-    .CoreOutAddr ( FPC_IdxWrAddr   ),
-    .CoreOutDat  ( FPC_IdxWrDat    ),
-    .CoreOutRdy  (                  ),
-    .TopOutVld   ( FPSGLB_IdxWrDatVld),
-    .TopOutAddr  ( FPSGLB_IdxWrAddr),
-    .TopOutDat   ( FPSGLB_IdxWrDat ),
-    .TopOutRdy   (                  ),
-    .TOPInRdy    ( GLBFPS_IdxWrDatRdy),
-    .ArbCoreIdx  ( ArbFPCIdxWrIdx  ),
-    .ArbCoreIdx_d(                  )
+    .CoreOutVld  ( FPC_IdxWrDatVld      ),
+    .CoreOutAddr ( FPC_IdxWrAddr        ),
+    .CoreOutDat  ( FPC_IdxWrDat         ),
+    .CoreOutRdy  (                      ),
+    .TopOutVld   ( FPSGLB_IdxWrDatVld   ),
+    .TopOutAddr  ( FPSGLB_IdxWrAddr     ),
+    .TopOutDat   ( FPSGLB_IdxWrDat      ),
+    .TopOutRdy   (                      ),
+    .TOPInRdy    ( GLBFPS_IdxWrDatRdy   ),
+    .ArbCoreIdx  ( ArbFPCIdxWrIdx       ),
+    .ArbCoreIdx_d(                      )
 );
 
 //=====================================================================================================================
@@ -295,10 +295,7 @@ generate
         // Constant Definition :
         //=====================================================================================================================
         localparam IDLE   = 3'b000;
-        localparam CP     = 3'b001;
-        localparam LP     = 3'b010;
-        localparam WAITFNH= 3'b011;
-
+        localparam WORK   = 3'b001;
 
         //=====================================================================================================================
         // Variable Definition :
@@ -318,10 +315,12 @@ generate
         wire[DISTSQR_WIDTH      -1 : 0] LopDist;
         reg [DISTSQR_WIDTH      -1 : 0] FPS_LastPsDist_s2; 
         reg [IDX_WIDTH          -1 : 0] FPS_LastPsIdx_s2;
-        reg                             LopCntLast_s2;
         reg                             LopCntLast_s1;
+        reg                             LopCntLast_s2;
         reg                             LopCntLast_s3;
         wire                            LopCntLastMask;
+        wire                            LopCntLastCrd;
+        wire                            LopCntLastDist;
         reg                             LopCntLastMask_s1;
         reg [IDX_WIDTH          -1 : 0] LopPntIdx_s2;
         reg [IDX_WIDTH          -1 : 0] LopPntIdx_s1;
@@ -331,6 +330,9 @@ generate
         reg [CRD_WIDTH*CRD_DIM  -1 : 0] LopPntCrd_s2;
         reg [CRD_WIDTH*CRD_DIM  -1 : 0] LopPntCrd_s3;
         wire                            CpLast;
+        reg                             CpLast_s1;
+        reg                             CpLast_s2;
+        reg                             CpLast_s3;
         wire [IDX_WIDTH         -1 : 0] CntCp;
         reg  [IDX_WIDTH         -1 : 0] CntCp_s1;
         reg  [IDX_WIDTH         -1 : 0] CntCp_s2;
@@ -410,12 +412,17 @@ generate
         wire                            rdy_Crd_Need;
         wire                            rdy_Dist_Need;
 
-        wire [IDX_WIDTH         -1 : 0] CntMaskRdAddr;
+        wire [CNTMASK_WIDTH     -1 : 0] CntMaskRd;
         wire [IDX_WIDTH         -1 : 0] CntDistRdAddr;
         wire [IDX_WIDTH         -1 : 0] CntCrdRdAddr;
-        wire [IDX_WIDTH         -1 : 0] NeedIdx_s1;
+        wire [CNTMASK_WIDTH     -1 : 0] CurIdx_s1;
         wire                            overflow_CntCrdRdAddr;
-
+        wire                            VldArbMask_next;
+        wire                            VldArbCrd      ;
+        wire                            VldArbCrd_next ;
+        wire                            VldArbDist     ;
+        wire                            VldArbDist_next;
+        wire                            vld_Byte_s1    ;
         //=====================================================================================================================
         // Logic Design: Stage0
         //=====================================================================================================================
@@ -425,13 +432,13 @@ generate
         always @(*) begin
             case ( state )
                 IDLE :  if(FPSCCU_CfgRdy[gv_fpc] & CCUFPS_CfgVld[gv_fpc])
-                            next_state <= WAITFNH; //
+                            next_state <= WORK; //
                         else
                             next_state <= IDLE;
-                WAITFNH:if(LopCntLast_s2 & FPC_MaskWrDatVld[gv_fpc] & FPC_DistWrDatVld[gv_fpc] & FPC_CrdWrDatVld[gv_fpc] & FPC_IdxWrDatVld[gv_fpc]) // Last Loop point & no to Write
+                WORK :if(CpLast_s3 & LopCntLast_s3 & FPC_MaskWrDatVld[gv_fpc] & FPC_DistWrDatVld[gv_fpc] & FPC_CrdWrDatVld[gv_fpc] & FPC_IdxWrDatVld[gv_fpc]) // Last Loop point & no to Write
                             next_state <= IDLE;
-                        else 
-                            next_state <= WAITFNH;
+                        else
+                            next_state <= WORK;
                 default: next_state <= IDLE;
             endcase
         end
@@ -446,67 +453,70 @@ generate
         assign FPSCCU_CfgRdy[gv_fpc] = state==IDLE;
 
         // Combinational Logic
-            assign LopCntLastMask = (CntMaskRdAddr+1)*SRAM_WIDTH >= CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH];
+            assign LopCntLastMask = (CntMaskRd+1)*NUM_MASK_SRAM >= CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH];
+            assign LopCntLastCrd  = (CntCrdRdAddr+1)*NUM_CRD_SRAM >= CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH];
+            assign LopCntLastDist = (CntDistRdAddr+1)*NUM_DIST_SRAM >= CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH];
 
         // HandShake
 
-            // 3 Seperate s1-pipelines/HandShakes for Counters of MaskAddr, CrdAddr, DistAddr;
+            // 3 Seperate pipelines/HandShakes forMask, Crd, Dist;
 
-            // Ahead 1 clk enables no idle clk: because 1 ahead clk makeups the 1 idle clk between AddrVld and Dat(NeedIdx)
-            assign rdy_Mask_Need = SRAM_WIDTH*CntMaskRdAddr <= NeedIdx_s1+1;  //Load1's rdy
+            // Ahead 1 clk enables no idle clk: because 1 ahead clk makeups the 1 idle clk between AddrVld and VldArbMask
+            assign rdy_Mask_Need = !VldArbMask_next;  //Load1's rdy
             assign rdy_Mask_s0 = GLBFPS_MaskRdAddrRdy & ArbFPCMaskRdIdx==gv_fpc & rdy_Mask_Need; // Two loads: MaskAddr(Load0) for GLB and Need(Load1);
             assign handshake_Mask_s0 = rdy_Mask_s0 & vld_Mask_s0;
             assign ena_Mask_s0 = handshake_Mask_s0 | ~vld_Mask_s0;
-            assign vld_Mask_s0 = 1'b1;
+            assign vld_Mask_s0 = state == WORK & !(CpLast & LopCntLastMask);
 
-            assign rdy_Crd_Need = NUM_CRD_SRAM*CntCrdRdAddr <= NeedIdx_s1+1;  
+            assign rdy_Crd_Need = !VldArbCrd_next;  
             assign rdy_Crd_s0 = GLBFPS_CrdRdAddrRdy & ArbFPCCrdRdIdx==gv_fpc & rdy_Crd_Need;
             assign handshake_Crd_s0 = rdy_Crd_s0 & vld_Crd_s0;
             assign ena_Crd_s0 = handshake_Crd_s0 | ~vld_Crd_s0;
-            assign vld_Crd_s0 = 1'b1;
+            assign vld_Crd_s0 = state == WORK & !(CpLast & LopCntLastCrd);
 
-            assign rdy_Dist_Need = NUM_DIST_SRAM*CntDistRdAddr <= NeedIdx_s1+1;  
+            assign rdy_Dist_Need = !VldArbDist_next;  
             assign rdy_Dist_s0 = GLBFPS_DistRdAddrRdy & ArbFPCDistRdIdx==gv_fpc & rdy_Dist_Need;
             assign handshake_Dist_s0 = rdy_Dist_s0 & vld_Dist_s0;
             assign ena_Dist_s0 = handshake_Dist_s0 | ~vld_Dist_s0;
-            assign vld_Dist_s0 = 1'b1;
+            assign vld_Dist_s0 = state == WORK & !(CpLast & LopCntLastDist);
 
         // Reg Update
             wire [IDX_WIDTH     -1 : 0] MaxCntCp = CCUFPS_CfgNop[IDX_WIDTH*gv_fpc +: IDX_WIDTH] -1;
             counter#(
                 .COUNT_WIDTH ( IDX_WIDTH )
             )u0_counter_CntCp(
-                .CLK       ( clk            ),
-                .RESET_N   ( rst_n          ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc]     ),
-                .DEFAULT   ( {IDX_WIDTH{1'b0}}),
+                .CLK       ( clk                ),
+                .RESET_N   ( rst_n              ),
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] ),
+                .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( overflow_CntCrdRdAddr & handshake_Crd_s0), // The least bitwidth
-                .DEC       ( 1'b0           ),
-                .MIN_COUNT ( {IDX_WIDTH{1'b0}}),
-                .MAX_COUNT ( MaxCntCp       ),
-                .OVERFLOW  ( CpLast         ),
-                .UNDERFLOW (                ),
-                .COUNT     ( CntCp          )
+                .DEC       ( 1'b0               ),
+                .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
+                .MAX_COUNT ( MaxCntCp           ),
+                .OVERFLOW  ( CpLast             ),
+                .UNDERFLOW (                    ),
+                .COUNT     ( CntCp              )
             );
 
             // Mask Pipeline
-            wire [IDX_WIDTH     -1 : 0] MaxCntMaskRdAddr = CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] % SRAM_WIDTH?  CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / SRAM_WIDTH -1 : CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / SRAM_WIDTH;
-            counter#( // Pipe S0
-                .COUNT_WIDTH ( IDX_WIDTH )
-            )u1_counter_FPC_MaskRdAddr(
+            wire [CNTMASK_WIDTH     -1 : 0] MaxCntMaskRd = CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] % NUM_MASK_SRAM?  CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_MASK_SRAM -1 : CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_MASK_SRAM;
+            counter#(
+                .COUNT_WIDTH ( CNTMASK_WIDTH )
+            )u1_counter_CntMaskRd(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc]), // MaxCntMaskRdAddr also Clears
-                .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
-                .INC       ( handshake_Mask_s0 ),
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] ), // MaxCntMaskRd also Clears
+                .DEFAULT   ( {CNTMASK_WIDTH{1'b0}}  ),
+                .INC       ( handshake_Mask_s0  ),
                 .DEC       ( 1'b0               ),
-                .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
-                .MAX_COUNT ( MaxCntMaskRdAddr ),
+                .MIN_COUNT ( {CNTMASK_WIDTH{1'b0}}  ),
+                .MAX_COUNT ( MaxCntMaskRd   ),
                 .OVERFLOW  (                    ),
                 .UNDERFLOW (                    ),
-                .COUNT     ( CntMaskRdAddr          )
+                .COUNT     ( CntMaskRd      )
             );
 
+            // Crd Pipeline
             wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] % NUM_CRD_SRAM?  CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_CRD_SRAM -1 : CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_CRD_SRAM;
             counter#( // Pipe S0
                 .COUNT_WIDTH ( IDX_WIDTH )
@@ -515,59 +525,62 @@ generate
                 .RESET_N   ( rst_n              ),
                 .CLEAR     ( CCUFPS_Rst[gv_fpc] ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
-                .INC       ( handshake_Crd_s0),
+                .INC       ( handshake_Crd_s0   ),
                 .DEC       ( 1'b0               ),
                 .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
-                .MAX_COUNT ( MaxCntCrdRdAddr       ),
-                .OVERFLOW  ( overflow_CntCrdRdAddr                   ),
+                .MAX_COUNT ( MaxCntCrdRdAddr    ),
+                .OVERFLOW  ( overflow_CntCrdRdAddr),
                 .UNDERFLOW (                    ),
-                .COUNT     ( CntCrdRdAddr           )
+                .COUNT     ( CntCrdRdAddr       )
             );
 
+            // Dist Pipeline
             wire [IDX_WIDTH     -1 : 0] MaxCntDistRdAddr = CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] % NUM_DIST_SRAM?  CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_DIST_SRAM -1 : CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_DIST_SRAM;
             counter#( // Pipe S0
                 .COUNT_WIDTH ( IDX_WIDTH )
-            )u1_counter_LopIdx(
+            )u1_counter_CntDistRdAddr(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc]), 
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] ), 
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
-                .INC       ( handshake_Crd_s0      ),
+                .INC       ( handshake_Crd_s0   ),
                 .DEC       ( 1'b0               ),
                 .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
-                .MAX_COUNT ( MaxCntDistRdAddr      ),
+                .MAX_COUNT ( MaxCntDistRdAddr   ),
                 .OVERFLOW  (                    ),
                 .UNDERFLOW (                    ),
-                .COUNT     ( CntDistRdAddr          )
+                .COUNT     ( CntDistRdAddr      )
             );
 
         //=====================================================================================================================
-        // Logic Design: Stage1: Crd Gen
+        // Logic Design: Stage1
         //=====================================================================================================================
         // Combinational Logic
             assign FPC_MaskRdAddrVld = vld_Mask_s0 & rdy_Mask_Need; // self is valid & load1 is rdy;
             assign FPC_CrdRdAddrVld  = vld_Crd_s0  & rdy_Crd_Need;
             assign FPC_DistRdAddrVld = vld_Dist_s0 & rdy_Dist_Need;
 
-            assign FPC_MaskRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgMaskBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntMaskRdAddr;
+            assign FPC_MaskRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgMaskBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntMaskRd / (SRAM_WIDTH / NUM_MASK_SRAM);
             assign FPC_CrdRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgCrdBaseRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] +CntCrdRdAddr;
             assign FPC_DistRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgDistBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntDistRdAddr;
 
         // HandShake
-            wire vld_Mask_s2_;
-            assign rdy_Mask_s1 = (ena_Mask_s2 & vld_Mask_s2_) & (LopCntLast_s1? GLBFPS_MaskWrDatRdy & ArbFPCMaskWrIdx==gv_fpc : 1'b1); // MaskRdDat is used by s2(load0) and FPC_MaskWr(load1);
+
+            // 1. MaskRdDat drivers s2(load0) and FPC_MaskWr(load1);
+            // 2. Load0: MaskCheck_s2 MUST be invalid, then MaskRdDat can be transferred to MaskCheck_s2
+            assign rdy_Mask_s1 = (ena_Mask_s2 & !vld_Mask_s2) & (LopCntLast_s1? GLBFPS_MaskWrDatRdy & ArbFPCMaskWrIdx==gv_fpc : 1'b1);
             assign handshake_Mask_s1 = rdy_Mask_s1 & vld_Mask_s1;
             assign ena_Mask_s1 = handshake_Mask_s1 | ~vld_Mask_s1;
             assign FPC_MaskRdDatRdy[gv_fpc] = rdy_Mask_s1;
             assign vld_Mask_s1 = GLBFPS_MaskRdDatVld & ArbFPCMaskRdIdx_d == gv_fpc;
 
-            assign rdy_Crd_s1 = ena_Crd_s2; 
+            assign rdy_Crd_s1 = (ena_Crd_s2 & !vld_Crd_s2); 
             assign handshake_Crd_s1 = rdy_Crd_s1 & vld_Crd_s1;
             assign ena_Crd_s1 = handshake_Crd_s1 | ~vld_Crd_s1;
             assign FPC_CrdRdDatRdy[gv_fpc] = rdy_Crd_s1; 
             assign vld_Crd_s1 = GLBFPS_CrdRdDatVld & ArbFPCCrdRdIdx_d == gv_fpc;
 
-            assign rdy_Dist_s1 = ena_Dist_s2; 
+            assign rdy_Dist_s1 = (ena_Dist_s2 & !vld_Dist_s2); 
             assign handshake_Dist_s1 = rdy_Dist_s1 & vld_Dist_s1;
             assign ena_Dist_s1 = handshake_Dist_s1 | ~vld_Dist_s1;
             assign FPC_DistRdDatRdy[gv_fpc] = rdy_Dist_s1; 
@@ -575,14 +588,16 @@ generate
 
         // Reg Update
             reg [IDX_WIDTH      -1 : 0] FPC_MaskRdAddr_s1;
-            reg [IDX_WIDTH      -1 : 0] CntMaskRdAddr_s1;
+            reg [CNTMASK_WIDTH  -1 : 0] CntMaskRd_s1;
             reg [IDX_WIDTH      -1 : 0] CntCrdRdAddr_s1;
+            reg [IDX_WIDTH      -1 : 0] CntCrdRdAddr_s2;
             reg [IDX_WIDTH      -1 : 0] CntDistRdAddr_s1;
+            reg [IDX_WIDTH      -1 : 0] CntDistRdAddr_s2;
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
-                    {FPC_MaskRdAddr_s1, CntMaskRdAddr_s1, LopCntLastMask_s1} <= 0;
+                    {FPC_MaskRdAddr_s1, CntMaskRd_s1, LopCntLastMask_s1} <= 0;
                 end else if (  ena_Mask_s1 ) begin
-                    {FPC_MaskRdAddr_s1, CntMaskRdAddr_s1, LopCntLastMask_s1} <= {FPC_MaskRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH], CntMaskRdAddr, LopCntLastMask};
+                    {FPC_MaskRdAddr_s1, CntMaskRd_s1, LopCntLastMask_s1} <= {FPC_MaskRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH], CntMaskRd, LopCntLastMask};
                 end
             end   
             always @(posedge clk or negedge rst_n) begin
@@ -601,54 +616,63 @@ generate
             end
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
-                    CntCp_s1 <= 0;
+                    {CntCp_s1, CpLast_s1} <= 0;
                 end else if (  ena_Crd_s1 ) begin
-                    CntCp_s1 <= CntCp;
+                    {CntCp_s1, CpLast_s1} <= {CntCp, CpLast};
                 end
             end
 
         //=====================================================================================================================
-        // Logic Design: Stage2: Max Gen
-        //=====================================================================================================================
+        // Logic Design: Stage2
+        //======================================================MaskCheck_s2_next===============================================================
         // Combinational Logic
             // Mask Pipeline
-            wire [SRAM_WIDTH    -1 : 0] Mask_s1;
-            reg  [SRAM_WIDTH    -1 : 0] MaskCheck_s2;
-            reg  [SRAM_WIDTH    -1 : 0] MaskCheck_s2_;
-            wire [$clog2(SRAM_WIDTH)-1:0] VldIdx;
-            wire                           VldArbMask;
+                wire [NUM_MASK_SRAM        -1 : 0] Mask_s1;
+                reg  [NUM_MASK_SRAM        -1 : 0] MaskCheck_s2;
+                reg  [NUM_MASK_SRAM        -1 : 0] MaskCheck_s2_next;
+                wire [$clog2(NUM_MASK_SRAM)-1 : 0] VldIdx;
+                wire [$clog2(NUM_MASK_SRAM)-1 : 0] VldIdx_next;
+                wire                               VldArbMask;
+                // Current
+                    assign Mask_s1 =  handshake_Mask_s1? GLBFPS_MaskRdDat[NUM_MASK_SRAM*(CntMaskRd_s1 % (SRAM_WIDTH /NUM_MASK_SRAM)) +: NUM_MASK_SRAM] : MaskCheck_s2;
+                    prior_arb#(
+                        .REQ_WIDTH ( NUM_MASK_SRAM )
+                    )u_prior_arb_MaskCheck(
+                        .req ( ~Mask_s1     ),
+                        .gnt (              ),
+                        .arb_port ( VldIdx  )
+                    );
+                    assign VldArbMask = !(&Mask_s1); // exist 0
+                    assign CurIdx_s1 = VldArbMask? (NUM_MASK_SRAM*CntMaskRd_s1 + VldIdx) : NUM_MASK_SRAM*(CntMaskRd_s1+1)-1;// exist 0(valid? arbed Idx : last byte of current word
+                // Next (for ahead MaskAddrVld=1)
+                    always@(*) begin // set the arbed "0" to "1"
+                        MaskCheck_s2_next = Mask_s1;
+                        if (VldArbMask)
+                            MaskCheck_s2_next[VldIdx] = 1'b1;
+                    end
+                    prior_arb#(
+                        .REQ_WIDTH ( NUM_MASK_SRAM )
+                    )u_prior_arb_MaskCheck_next(
+                        .req ( ~MaskCheck_s2_next   ),
+                        .gnt (                      ),
+                        .arb_port  ( VldIdx_next    )
+                    ); 
+                    assign VldArbMask_next = !(&MaskCheck_s2_next); // exist 0
+                    assign CurIdx_s1_next = VldArbMask_next? (NUM_MASK_SRAM*CntMaskRd_s1 + VldIdx_next) : NUM_MASK_SRAM*(CntMaskRd_s1+1)-1;
 
-                assign Mask_s1 =  handshake_Mask_s1? GLBFPS_MaskRdDat : MaskCheck_s2;
-                prior_arb#(
-                    .REQ_WIDTH ( SRAM_WIDTH )
-                )u_prior_arb_MaskCheck(
-                    .req ( ~Mask_s1 ),
-                    .gnt (  ),
-                    .arb_port  ( VldIdx  )
-                );
-                assign VldArbMask = !(&Mask_s1); // exist 0
-                assign NeedIdx_s1 = VldArbMask? (SRAM_WIDTH*CntMaskRdAddr_s1 + VldIdx) : SRAM_WIDTH*(CntMaskRdAddr_s1+1);// exist 0(valid? arbed Idx : first idx of next word 
-                always@(*) begin // set the arbed "0" to "1"
-                    MaskCheck_s2_ = Mask_s1;
-                    if (VldArbMask)
-                        MaskCheck_s2_[VldIdx] = 1'b1;
-                end
-                assign vld_Mask_s2_ = !(&MaskCheck_s2_);
-
-            // Mask write back
-                assign FPC_MaskWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = FPC_MaskRdAddr_s1;
-                assign FPC_MaskWrDatVld[gv_fpc] = LopCntLast_s1 & handshake_Mask_s1;
-
-            // Crd
+            // Crd Pipeline
                 wire [SRAM_WIDTH            -1 : 0] Crd_s1;
                 reg  [SRAM_WIDTH            -1 : 0] Crd_s2;
                 wire [SRAM_WIDTH            -1 : 0] Dist_s1;
                 reg  [SRAM_WIDTH            -1 : 0] Dist_s2;
                 assign Crd_s1 = handshake_Crd_s1? GLBFPS_CrdRdDat : Crd_s2;
-            // Dist
+                assign VldArbCrd = (CntCrdRdAddr_s1+1)*NUM_CRD_SRAM > NUM_MASK_SRAM*CurIdx_s1;
+                assign VldArbCrd_next   = (CntCrdRdAddr_s1+1)*NUM_CRD_SRAM > NUM_MASK_SRAM*CurIdx_s1_next;
+            // Dist Pipeline
                 assign Dist_s1 = handshake_Dist_s1? GLBFPS_DistRdDat : Dist_s2;
-
-            // FPS   
+                assign VldArbDist       = (CntDistRdAddr_s1+1)*NUM_DIST_SRAM > NUM_MASK_SRAM*CurIdx_s1;
+                assign VldArbDist_next  = (CntDistRdAddr_s1+1)*NUM_DIST_SRAM > NUM_MASK_SRAM*CurIdx_s1_next;
+            // Max Pipeline  
                 assign LopPntCrd = VldArbMask? Crd_s1[CRD_WIDTH*CRD_DIM*(VldIdx % NUM_CRD_SRAM) +: CRD_WIDTH*CRD_DIM]: 0;   
 
                 EDC#(
@@ -659,15 +683,22 @@ generate
                     .Crd1      ( LopPntCrd  ),
                     .DistSqr   ( LopDist    )
                 );
-                assign FPS_LastPsDist = VldArbMask? Dist_s1[DISTSQR_WIDTH*(NeedIdx_s1 % NUM_DIST_SRAM) +: DISTSQR_WIDTH]: 0; 
+                assign FPS_LastPsDist = VldArbMask? Dist_s1[DISTSQR_WIDTH*(CurIdx_s1 % NUM_DIST_SRAM) +: DISTSQR_WIDTH]: 0; 
                 assign FPS_PsDist = FPS_LastPsDist > LopDist ? LopDist : FPS_LastPsDist;
                 assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
                 assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} = FPS_UpdMax ? {FPS_PsDist, LopPntCrd, LopPntIdx_s1} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
 
-            assign LopCntLast_s1 = LopCntLastMask_s1 & !(&MaskCheck_s2_); // Last mask & no valid bit in the next clk;
+            // Mask write back
+                assign FPC_MaskWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = FPC_MaskRdAddr_s1;
+                assign FPC_MaskWrDatVld[gv_fpc] = LopCntLast_s1 & handshake_Mask_s1;
+
+            assign LopCntLast_s1 = LopCntLastMask_s1 & !VldArbMask_next; // Last mask & no valid bit in the next clk;
 
         // HandShake
-            wire    vld_Byte_s1 = (vld_Mask_s2 & vld_Crd_s2 & vld_Dist_s2);
+
+            // vld_Byte_s1 Must be s1 (s1==s3), becuase s2's load0 is s1
+            assign vld_Byte_s1      = (VldArbMask & VldArbCrd & VldArbDist); 
+
             assign rdy_Max_s2 = (LopCntLast_s2? ena_Max_s3 : 1'b1) & vld_Byte_s1; // Two loads are rdy
             assign handshake_Max_s2 = rdy_Max_s2 & vld_Max_s2;
             assign ena_Max_s2 = handshake_Max_s2 | ~vld_Max_s2;
@@ -675,34 +706,25 @@ generate
             assign rdy_Mask_s2 = vld_Byte_s1;
             assign handshake_Mask_s2 = rdy_Mask_s2 & vld_Mask_s2;
             assign ena_Mask_s2 = handshake_Mask_s2 | ~vld_Mask_s2;
-            assign vld_Mask_s2 = VldArbMask;
+            assign vld_Mask_s2 = !(&MaskCheck_s2); // In s2, whether MashCheck_s2 is valid
 
             assign rdy_Crd_s2 = vld_Byte_s1;
             assign handshake_Crd_s2 = rdy_Crd_s2 & vld_Crd_s2;
             assign ena_Crd_s2 = handshake_Crd_s2 | ~vld_Crd_s2;
-            assign vld_Crd_s2 = CntCrdRdAddr_s1*NUM_CRD_SRAM > NeedIdx_s1;
+            assign vld_Crd_s2 = (CntCrdRdAddr_s2+1)*NUM_CRD_SRAM > NUM_MASK_SRAM*CurIdx_s1;
 
             assign rdy_Dist_s2 = vld_Byte_s1;
             assign handshake_Dist_s2 = rdy_Dist_s2 & vld_Dist_s2;
             assign ena_Dist_s2 = handshake_Dist_s2 | ~vld_Dist_s2;
-            assign vld_Dist_s2 = CntDistRdAddr_s1*NUM_DIST_SRAM > NeedIdx_s1;
+            assign vld_Dist_s2 = (CntDistRdAddr_s2+1)*NUM_DIST_SRAM > NUM_MASK_SRAM*CurIdx_s1;
 
 
         // Reg Updates
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
-                    {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, CntCp_s2, vld_Max_s2} <= 0;
-                end else if (ena_Max_s2) begin
-                    {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2,LopCntLast_s2, CntCp_s2, vld_Max_s2} <= 
-                    {(LopCntLast_s1 | CntCp_s1==0)? FPS_MaxCrd_ : FPS_CpCrd, FPS_MaxCrd_, FPS_MaxIdx_, FPS_PsDist, LopCntLast_s1, CntCp_s1, vld_Byte_s1};
-                end
-            end
-
-            always @(posedge clk or negedge rst_n) begin
-                if(!rst_n) begin
                     MaskCheck_s2 <= 0;
                 end else if (ena_Mask_s2) begin
-                        MaskCheck_s2 <= MaskCheck_s2_;
+                        MaskCheck_s2 <= MaskCheck_s2_next;
                 end
             end
 
@@ -721,7 +743,14 @@ generate
                 end
             end
 
-            
+            always @(posedge clk or negedge rst_n) begin
+                if(!rst_n) begin
+                    {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, CntCp_s2, CpLast_s2, vld_Max_s2} <= 0;
+                end else if (ena_Max_s2) begin
+                    {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2,LopCntLast_s2, CntCp_s2, vld_Max_s2} <= 
+                    {(LopCntLast_s1 | CntCp_s1==0)? FPS_MaxCrd_ : FPS_CpCrd, FPS_MaxCrd_, FPS_MaxIdx_, FPS_PsDist, LopCntLast_s1, CntCp_s1, CpLast_s1, vld_Byte_s1};
+                end
+            end
 
         //=====================================================================================================================
         // Logic Design: S3
@@ -741,63 +770,66 @@ generate
         // Reg Update
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
-                    CntCp_s3 <= 0;
+                    {LopCntLast_s3, CntCp_s3, CpLast_s3} <= 0;
                 end else if (ena_Max_s3) begin
-                    CntCp_s3 <= CntCp_s2;
+                    {LopCntLast_s3, CntCp_s3, CpLast_s3} <= {LopCntLast_s2, CntCp_s2, CpLast_s2};
                 end
             end
 
+            // SIPO Dist
             wire [DISTSQR_WIDTH*NUM_DIST_SRAM   -1 : 0] SIPO_DistOutDat;
             SIPO#(
                 .DATA_IN_WIDTH   ( DISTSQR_WIDTH  ), 
                 .DATA_OUT_WIDTH  ( DISTSQR_WIDTH*NUM_DIST_SRAM  )
             )u_SIPO_DISTWR(
-                .CLK       ( clk                ),
-                .RST_N     ( rst_n              ),
+                .CLK       ( clk                        ),
+                .RST_N     ( rst_n                      ),
                 .IN_VLD    ( vld_Max_s2 & LopCntLast_s2 ),
-                .IN_LAST   (           ),
-                .IN_DAT    ( FPS_PsDist_s2    ),
-                .IN_RDY    ( SIPO_DistInRdy      ),
-                .OUT_DAT   ( SIPO_DistOutDat      ),
-                .OUT_VLD   ( FPC_DistWrDatVld[gv_fpc]     ),
-                .OUT_LAST  (                    ),
+                .IN_LAST   (                            ),
+                .IN_DAT    ( FPS_PsDist_s2              ),
+                .IN_RDY    ( SIPO_DistInRdy             ),
+                .OUT_DAT   ( SIPO_DistOutDat            ),
+                .OUT_VLD   ( FPC_DistWrDatVld[gv_fpc]   ),
+                .OUT_LAST  (                            ),
                 .OUT_RDY   ( GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx )
             );
             assign FPC_DistWrDat[SRAM_WIDTH*gv_fpc +: SRAM_WIDTH] = SIPO_DistOutDat;
             assign FPC_DistWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgDistBaseAddr + CntCp_s3 / NUM_DIST_SRAM;
 
+            // SIPO Crd
             wire [CRD_WIDTH*CRD_DIM*(SRAM_WIDTH/(CRD_WIDTH*CRD_DIM))  -1 : 0] SIPO_CrdOutDat;
             SIPO#(
                 .DATA_IN_WIDTH   ( CRD_WIDTH*CRD_DIM  ), 
                 .DATA_OUT_WIDTH  ( CRD_WIDTH*CRD_DIM*(SRAM_WIDTH/(CRD_WIDTH*CRD_DIM))  )
             )u_SIPO_CRDWR(
-                .CLK       ( clk                ),
-                .RST_N     ( rst_n              ),
+                .CLK       ( clk                    ),
+                .RST_N     ( rst_n                  ),
                 .IN_VLD    ( vld_Max_s2 & LopCntLast_s2 ),
-                .IN_LAST   (           ),
-                .IN_DAT    ( FPS_MaxCrd    ),
-                .IN_RDY    ( SIPO_CrdInRdy      ),
-                .OUT_DAT   ( SIPO_CrdOutDat      ),
-                .OUT_VLD   ( FPC_CrdWrDatVld[gv_fpc]     ),
-                .OUT_LAST  (                    ),
+                .IN_LAST   (                        ),
+                .IN_DAT    ( FPS_MaxCrd             ),
+                .IN_RDY    ( SIPO_CrdInRdy          ),
+                .OUT_DAT   ( SIPO_CrdOutDat         ),
+                .OUT_VLD   ( FPC_CrdWrDatVld[gv_fpc]),
+                .OUT_LAST  (                        ),
                 .OUT_RDY   ( GLBFPS_CrdWrDatRdy & gv_fpc == ArbFPCCrdWrIdx )
             );
             assign FPC_CrdWrDat[SRAM_WIDTH*gv_fpc +: SRAM_WIDTH] = SIPO_CrdOutDat;
             assign FPC_CrdWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgCrdBaseWrAddr + CntCp_s3 / NUM_CRD_SRAM;
 
+            // SIPO Idx
             SIPO#(
-                .DATA_IN_WIDTH   ( IDX_WIDTH  ), 
-                .DATA_OUT_WIDTH  ( SRAM_WIDTH  )
+                .DATA_IN_WIDTH   ( IDX_WIDTH    ), 
+                .DATA_OUT_WIDTH  ( SRAM_WIDTH   )
             )u_SIPO_IdxWr(
-                .CLK       ( clk                ),
-                .RST_N     ( rst_n              ),
+                .CLK       ( clk                        ),
+                .RST_N     ( rst_n                      ),
                 .IN_VLD    ( vld_Max_s2 & LopCntLast_s2 ),
-                .IN_LAST   (           ),
-                .IN_DAT    ( FPS_MaxIdx    ),
-                .IN_RDY    ( SIPO_IdxInRdy      ),
+                .IN_LAST   (                            ),
+                .IN_DAT    ( FPS_MaxIdx                 ),
+                .IN_RDY    ( SIPO_IdxInRdy              ),
                 .OUT_DAT   ( FPC_IdxWrDat[SRAM_WIDTH*gv_fpc +: SRAM_WIDTH]      ),
-                .OUT_VLD   ( FPC_IdxWrDatVld[gv_fpc]     ),
-                .OUT_LAST  (                    ),
+                .OUT_VLD   ( FPC_IdxWrDatVld[gv_fpc]    ),
+                .OUT_LAST  (                            ),
                 .OUT_RDY   ( GLBFPS_IdxWrDatRdy & gv_fpc == ArbFPCIdxWrIdx )
             );
             assign FPC_IdxWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgIdxBaseWrAddr + CntCp_s3 / (SRAM_WIDTH/IDX_WIDTH);

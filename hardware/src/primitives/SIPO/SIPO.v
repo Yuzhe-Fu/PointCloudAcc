@@ -35,8 +35,8 @@ reg                             last;
 
 assign parallel_load    = shift_count == NUM_SHIFTS;
 assign IN_RDY           = !OUT_VLD | (OUT_VLD & OUT_RDY);
-assign OUT_VLD          = parallel_load;
-assign OUT_LAST         = last & parallel_load;
+assign OUT_VLD          = parallel_load | OUT_LAST; // let last data to be scanned out
+assign OUT_LAST         = last;
 assign OUT_DAT          = shift;
 
 always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
@@ -59,11 +59,15 @@ always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
     end else if (IN_VLD & IN_RDY) begin
         last  <= IN_LAST;
         if (DATA_OUT_WIDTH == DATA_IN_WIDTH)
-            shift <={IN_DAT};
-        else
-            shift <= {IN_DAT, shift[DATA_OUT_WIDTH-1:DATA_IN_WIDTH]};
+            shift <=IN_DAT;
+        else begin
+            // shift <= {IN_DAT, shift[DATA_OUT_WIDTH-1:DATA_IN_WIDTH]};
+            if ( !OUT_VLD )
+                shift[DATA_IN_WIDTH*shift_count +: DATA_IN_WIDTH] <= IN_DAT;
+            else if (OUT_VLD & OUT_RDY)
+                shift[DATA_IN_WIDTH*0 +: DATA_IN_WIDTH] <= IN_DAT;
+        end
     end
 end
-
 
 endmodule
