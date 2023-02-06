@@ -1,14 +1,4 @@
 # 问题：
-    - 简洁通用：不要自循环读，因为怎么读本就是读口决定的，由CCU配置给每个模块要读哪些bank，怎么读，而不是配置GLB来提供读的选项，不会增加计数器
-    - 备选方案2：
-        - GLB的功能定义作为中间媒介，一是给每个读写口提供读写信息(总体的读写握手协议)，二是给每个Bank也提供读写握手协议；内部对请求进行仲裁；
-        - 端口定义：每个读写口的握手协议（含口的配置哪个bank的请求）；
-        - 存在的问题：
-            - 满空怎么知道？
-            - 切换到新的Bank读时，怎么知道是否有数？
-            - 只提供握手协议不行，还是需要有判断空满的功能
-
-已解决问题：GLB，怎么避免循环读数时，ReqNum起作用？区分当前是满还是不足？WrAddr与CfgNum，再加上控制是循环读还是边读边写的信号RdLoop
 
 
 
@@ -51,9 +41,22 @@
 | WrPortAddr_Out | output | 实时输出写地址只用于给ITF，用于ITF从DRAM读时，(CCUITF_BaseAddr+WrPortAddr_Out)作为读DRAM的基址 |
 | RdPortAddr_Out | output | 同上 |
 # 模块陈述
-**目标是写成通用的多Bank，多读写口的存储模块。**
-将32块单口SRAM Bank并联，封装成32B*32宽，深为128的整个大的SRAM_GB具备自动SRAM读写功能，GLB的功能应该是完整的，CCU只能配置，不能直接控制，只配置bank的性质，只需要顶层里面addrmax和numbank来控制读完写完的复位（addrmax/numbank是圈数，真实地址是=addr%(numbank\*128)=(addr>>7)%numbank）。读写口统一为多个二维阵列，RdPortDat_Array和WrPortDat_Array，宽度取最大并行度MAXPAR，在综合时会去除掉无用的口。
-FSM控制： IDLE， CFG，WORK; 只有配置好了，进入WORK状态，对于araddrvld和wvalid才有可能有效
+- 设计考量
+    - 简洁通用：不要自循环读，因为怎么读本就是读口决定的，由CCU配置给每个模块要读哪些bank，怎么读，而不是配置GLB来提供读的选项，不会增加计数器
+    - GLB的功能定义作为中间媒介，一是给每个读写口提供读写信息(总体的读写握手协议)，二是给每个Bank也提供读写握手协议；内部对请求进行仲裁；
+    - 满空怎么知道？
+            - 当Port单一时，它的值来自于各自的计数器不变（ITF也要每个数据口单独的计数器，也就是同一块数据的读写口同时打开和释放）
+        - 要加上缓存上次成功读写的地址reg：怎么判定结束？只能根据读写模块的CfgRdy表示完成，此时子模块内的计数器可能提前重置了，导致GLB接受到的地址突然变为0，妨碍空满判断；
+        - IIF只用一个口：需要有bank保持每个bank的地址的功能而不是port，完成时怎么重置为0？下次写这些bank时，自动重置为0或者接着读或写（数据在SRAM不会丢失除非手动盖）。收益是减少约1/3口，ITF完全灵活了，不用穷举数据类型，而且符合实际上多少个口就该是多少个口的原则，再加上应该是配置口来主动读写的原则
+    - 输入
+        - 
+    - 输出
+        - 很纯粹，只是握手协议
+    - 设计过程分为两大块
+        - Port端：负责判断空满和分配给要读写的bank信号
+        - Bank端：负责记录上一次成功读写地址，每次cfg读/写都要重置其初始地址
+
+
 
 - 写口：
     - 0: IF写Act：IF写都是1个SRAM_WIDTH
@@ -97,14 +100,6 @@ localparam GLBRDIDX_CTRFMK = 6; // FPS Read MASK
 localparam GLBRDIDX_CTRKMK = 7; // KNN Read MASK
 localparam GLBRDIDX_POLMAP = 8;
 localparam GLBRDIDX_POLOFM = 9;
-
-- 存的数据类型：
-    - activation
-    - weight
-    - sa_fm
-    - mp_fm
-- Port的读写模式：
-    - 读写都是由远大于深度的AddrMax控制一次还是循环读写
 
 - 配置：
     - **注意要求：口对应的配置Bank是连续的（由于ParBank是直接向上加），Bank深度必须是2的指数（由于地址raddr/waddr直接截取）**
