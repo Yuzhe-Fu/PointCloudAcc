@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 module FPS #(
     parameter SRAM_WIDTH        = 256,
-    parameter IDX_WIDTH         = 10,
+    parameter IDX_WIDTH         = 16,
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3,
     parameter NUM_FPC           = 4,
@@ -145,7 +145,7 @@ ArbCore#(
     .NUM_CORE    ( NUM_FPC      ),
     .ADDR_WIDTH  ( IDX_WIDTH    ),
     .DATA_WIDTH  ( SRAM_WIDTH   )
-)u_ArbCore_FPCMaskRd(
+)u_ArbCore_FPCRdMask(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
     .CoreOutVld  ( FPC_MaskRdAddrVld    ),
@@ -166,7 +166,7 @@ ArbCore#(
     .NUM_CORE    ( NUM_FPC      ),
     .ADDR_WIDTH  ( IDX_WIDTH    ),
     .DATA_WIDTH  ( SRAM_WIDTH   )
-)u_ArbCore_FPCCrdRd(
+)u_ArbCore_FPCRdCrd(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
     .CoreOutVld  ( FPC_CrdRdAddrVld     ),
@@ -187,7 +187,7 @@ ArbCore#(
     .NUM_CORE    ( NUM_FPC      ),
     .ADDR_WIDTH  ( IDX_WIDTH    ),
     .DATA_WIDTH  ( SRAM_WIDTH   )
-)u_ArbCore_FPCDistRd(
+)u_ArbCore_FPCRdDist(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
     .CoreOutVld  ( FPC_DistRdAddrVld    ),
@@ -269,7 +269,7 @@ ArbCore#(
     .NUM_CORE    ( NUM_FPC      ),
     .ADDR_WIDTH  ( IDX_WIDTH    ),
     .DATA_WIDTH  ( SRAM_WIDTH   )
-)u_ArbCore_FPCCrdWr(
+)u_ArbCore_FPCWrCrd(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
     .CoreOutVld  ( FPC_IdxWrDatVld      ),
@@ -781,7 +781,7 @@ generate
             SIPO#(
                 .DATA_IN_WIDTH   ( DISTSQR_WIDTH  ), 
                 .DATA_OUT_WIDTH  ( DISTSQR_WIDTH*NUM_DIST_SRAM  )
-            )u_SIPO_DISTWR(
+            )u_SIPO_DistWr(
                 .CLK       ( clk                        ),
                 .RST_N     ( rst_n                      ),
                 .IN_VLD    ( vld_Max_s2 & LopCntLast_s2 ),
@@ -801,7 +801,7 @@ generate
             SIPO#(
                 .DATA_IN_WIDTH   ( CRD_WIDTH*CRD_DIM  ), 
                 .DATA_OUT_WIDTH  ( CRD_WIDTH*CRD_DIM*(SRAM_WIDTH/(CRD_WIDTH*CRD_DIM))  )
-            )u_SIPO_CRDWR(
+            )u_SIPO_CrdWr(
                 .CLK       ( clk                    ),
                 .RST_N     ( rst_n                  ),
                 .IN_VLD    ( vld_Max_s2 & LopCntLast_s2 ),
@@ -814,7 +814,7 @@ generate
                 .OUT_RDY   ( GLBFPS_CrdWrDatRdy & gv_fpc == ArbFPCCrdWrIdx )
             );
             assign FPC_CrdWrDat[SRAM_WIDTH*gv_fpc +: SRAM_WIDTH] = SIPO_CrdOutDat;
-            assign FPC_CrdWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgCrdBaseWrAddr + CntCp_s3 / NUM_CRD_SRAM;
+            assign FPC_CrdWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgCrdBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / NUM_CRD_SRAM;
 
             // SIPO Idx
             SIPO#(
@@ -832,7 +832,7 @@ generate
                 .OUT_LAST  (                            ),
                 .OUT_RDY   ( GLBFPS_IdxWrDatRdy & gv_fpc == ArbFPCIdxWrIdx )
             );
-            assign FPC_IdxWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgIdxBaseWrAddr + CntCp_s3 / (SRAM_WIDTH/IDX_WIDTH);
+            assign FPC_IdxWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgIdxBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / (SRAM_WIDTH/IDX_WIDTH);
 
     end 
 

@@ -15,16 +15,15 @@
 module TOP #(
     parameter CLOCK_PERIOD   = 10,
 
-    parameter PORT_WIDTH     = 128,
-    parameter SRAM_WIDTH     = 256,
-    parameter SRAM_BYTE_WIDTH= 8,
+    parameter PORT_WIDTH     = 128, 
+    parameter SRAM_WIDTH     = 256, 
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
     parameter DRAM_ADDR_WIDTH= 32,  
     parameter ISA_SRAM_WORD  = 64,
     parameter ITF_NUM_RDPORT = 2,  
-    parameter ITF_NUM_WRPORT = 5, // + CCU
-    parameter GLB_NUM_RDPORT = 16,  // 11 + 5(POOL_CORE)
+    parameter ITF_NUM_WRPORT = 6, 
+    parameter GLB_NUM_RDPORT = 16,
     parameter GLB_NUM_WRPORT = 9, 
     parameter MAXPAR         = 32,
     parameter NUM_BANK       = 32,
@@ -39,7 +38,7 @@ module TOP #(
 
     parameter CRD_WIDTH      = 16,   
     parameter CRD_DIM        = 3,   
-    parameter NUM_SORT_CORE  = 4,// SRAM_WIDTH / (Crd+Idx)
+    parameter NUM_SORT_CORE  = 4,
 
     parameter SYA_NUM_ROW    = 16,
     parameter SYA_NUM_COL    = 16,
@@ -65,6 +64,7 @@ module TOP #(
 //=====================================================================================================================
 localparam GLBWRIDX_ITFACT = 0;
 localparam GLBWRIDX_ITFWGT = 1;
+localparam GLBWRIDX_ITFOFM = 2;
 localparam GLBWRIDX_ITFCRD = 2;
 localparam GLBWRIDX_ITFMAP = 3;
 localparam GLBWRIDX_SYAOFM = 4;
@@ -240,13 +240,13 @@ wire                              KNNGLB_MapVld;
 wire                              GLBKNN_MapRdy; 
 
 // SYA
-wire [SRAM_BYTE_WIDTH*SYA_NUM_ROW*SYA_NUM_COL*SYA_NUM_BANK/16   -1 : 0] SYAGLB_Ofm;
+wire [ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_COL*SYA_NUM_BANK/16         -1 : 0] SYAGLB_Ofm;
 wire [SYA_NUM_BANK                                              -1 : 0] SYAGLB_OfmVld;
 wire [SYA_NUM_BANK                                              -1 : 0] GLBSYA_OfmRdy;
-wire [SRAM_BYTE_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK                  -1 : 0] GLBSYA_Act;
+wire [ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK                        -1 : 0] GLBSYA_Act;
 wire                                                                    GLBSYA_ActVld;
 wire                                                                    SYAGLB_ActRdy ;
-wire [SRAM_BYTE_WIDTH*SYA_NUM_COL*SYA_NUM_BANK                  -1 : 0] GLBSYA_Wgt;
+wire [ACT_WIDTH*SYA_NUM_COL*SYA_NUM_BANK                        -1 : 0] GLBSYA_Wgt;
 wire                                                                    GLBSYA_WgtVld;
 wire                                                                    SYAGLB_WgtRdy ;
 
@@ -257,10 +257,10 @@ wire                                                    POLGLB_MapRdy ;
 wire [POOL_CORE                                 -1 : 0] POLGLB_AddrVld;
 wire [ADDR_WIDTH*POOL_CORE                      -1 : 0] POLGLB_Addr   ;
 wire [POOL_CORE                                 -1 : 0] GLBPOL_AddrRdy;
-wire [SRAM_BYTE_WIDTH*POOL_COMP_CORE*POOL_CORE  -1 : 0] GLBPOL_Ofm     ;
+wire [ACT_WIDTH*POOL_COMP_CORE*POOL_CORE  -1 : 0] GLBPOL_Ofm     ;
 wire [POOL_CORE                                 -1 : 0] GLBPOL_OfmVld  ;
 wire [POOL_CORE                                 -1 : 0] POLGLB_OfmRdy  ;
-wire [SRAM_BYTE_WIDTH*POOL_COMP_CORE            -1 : 0] POLGLB_Ofm     ;
+wire [ACT_WIDTH*POOL_COMP_CORE            -1 : 0] POLGLB_Ofm     ;
 wire                                                    POLGLB_OfmVld  ;
 wire                                                    GLBPOL_OfmRdy  ;
 

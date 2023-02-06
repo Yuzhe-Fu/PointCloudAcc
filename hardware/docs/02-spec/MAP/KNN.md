@@ -1,7 +1,5 @@
 ## 问题
-    - 对KNN每层配置起始CrdIdx地址，Nip, K；生成的Map也要配置写地址
     - :question: POL中报seq占60%
-    - :question: NUM_SORT_CORE数量是灵活调整的不由SRAM_WIDTH / (Crd+Idx)决定
 
 # 文件列表
 | File | Descriptions |
@@ -12,22 +10,17 @@
 | RAM.v | 通用SRAM模块，直接在primitives调用 |
 
 ## 模块陈述
-    - :white_check_mark:KNN.PSS.PISO缩小Reg，其实不需要，它的利用率很低
-    - :white_check_mark:INS利用率指数降低:读取第一层Crd时，由于FPS过滤掉一半，不能每次读取都有效，需要链表或压缩
-    - :white_check_mark:KNN出来的MAP怎么存，好送到POL，暂时一个SRAM_WIDTH的word存cp_idx和lp_idx，但是同一点不同层同时出来的？
-        - 方案：目前采用最简单朴素的压缩的方式，Crd+PntIdx一组SRAM，Dist一组SRAM，按照先点再层的排列，KNN的INS核数是SRAM一次读多少组Crd+PntIdx
-            - 讨论过程
-                - 压缩只需要把LopPntIdx也写入SRAM就行，不需要Mask但需要每一层的Idx
-                    - 根据存储量对比Mask和Idx：Mask：1*8*1024; Idx: 16*512 + 16*256...=16*1024，是两倍
-                    - 但要满足每层同时KNN时，INS利用率100%，必须用压缩或链表，不能用Mask
-                - 关于SRAM中数据的排列问题：:white_check_mark:先点
-                    - SRAM宽度不是问题，大不了两个SRAM并联
-                    - FPS考虑到Dist，要么先层：一行SRAM一个Dist，MSB是每层的Crd和PntIdx。但不是点在每一层都有的效率低，要么先点：来存需要多存Dist。
-                    - KNN：
-                        - :white_check_mark:先点：一次读取多个点，给8个INS（中心点不同），并行排序。
-                        - 先层：一次读取一个点的多层，理想是多个INS并行，（INS7，Ly7)先完成，承担Ly0，但是，由于一次读取所有层，INS之间不能负载均衡
-
-
+    - 设计理念和考量
+        - 多核：KNN天然存在同一块内不同点的并行计算，还能复用取的点；核数由输入输出带宽共同决定：输入是一个SRAM有5个Crd，有几个SRAM决定有多少个核，输出是约2个SRAM WORD/64分配的平均点数 = 1/32，输出带宽足够。是否还有块间KNN并行？暂不需要：只块内并行核数是否够？是够的，通过多个SRAM也能倍增；块间并行的好处？无
+        - 高配置性：每层KNN重新配置
+        - 多个核同时出来的的MAP怎么不阻塞地写入到GLB？是一个加寄存器（缓存输入或输出）和阻塞的选择，选择不加寄存器
+    - KNN输入
+        - Crd：由FPS生成，一个SRAM WORD排5个点
+    - KNN输出
+        - Map：一个点的MAP占2个SRAM WORD，不需要存CpIdx，地址就表示了CpIdx
+    - 计算过程
+        - 对KNN每层都重新配置起始Crd读地址，Nip, K；生成的Map也要配置写地址
+        - 所有核同步取Crd，同步计算，核的输出MAP不需要暂存，占用reg太多了。
 
 ## INS (insert_sort) 端口列表
 | Ports | Input/Output | Width | Descriptions |

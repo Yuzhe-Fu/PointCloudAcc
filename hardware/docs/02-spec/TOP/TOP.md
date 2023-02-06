@@ -31,6 +31,7 @@
     parameter NUM_BANK       = 32,  //
     parameter POOL_CORE      = 8,   // 2的指数
     parameter POOL_COMP_CORE = 64,  // 2的指数
+    parameter NUM_FPC        = 4, // 由FPS的Dist输入带宽决定上限，256/34/2=3.7个核，暂定为4个核并行。
 
     // NetWork Parameters
     parameter IDX_WIDTH      = 16,
