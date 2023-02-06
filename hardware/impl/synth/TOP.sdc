@@ -6,8 +6,8 @@ create_clock -period $period_clk -add -name clock_clk -waveform [list 0 [expr $p
 
 set clock_list [concat clock_clk]
 
-set_clock_uncertainty -setup 0.3  [get_ports $clk]
-set_clock_uncertainty -hold  0.15 [get_ports $clk]
+set_clock_uncertainty -setup 0.15  [get_ports $clk]
+set_clock_uncertainty -hold  0.1 [get_ports $clk]
 
 # set_clock_uncertainty -setup 0.4  [get_pins O_spi_sck_PAD_rd0/DI]
 # set_clock_uncertainty -hold  0.15 [get_pins O_spi_sck_PAD_rd0/DI]
@@ -47,7 +47,7 @@ set_output_delay -clock clock_clk -clock_fall -add_delay [expr 0.2*$period_clk] 
 # set_input_transition -min 0.05 [get_ports IO*]
 # set_input_transition -max 0.5  [get_ports IO*]
 set_input_transition -min 0.05 [all_inputs]
-set_input_transition -max 0.5  [all_inputs]
+set_input_transition -max 0.2  [all_inputs]
 #set_driving_cell -library u055lscspmvbdr_108c125_wc -lib_cell BUFM4TM -pin Z [all_inputs]
 #set_load [expr 8 * [load_of u055lsclpmvbdr_108c125_wc/BUFM4TM/A]] [all_outputs]
 set_load -pin_load -max 1 [all_outputs]
