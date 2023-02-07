@@ -117,8 +117,8 @@ end
 
 assign out_act_right = row_out_act;
 assign out_wgt_below = row_out_wgt[NUM_ROW -1];
-assign out_acc_reset_right = row_out_acc_reset[0];
-assign out_acc_reset_below = row_din_acc_reset_reg[NUM_ROW-1];
+assign out_acc_reset_right = row_out_acc_reset[0]; // reset of PE(0, 15)
+assign out_acc_reset_below = row_din_acc_reset_reg[NUM_ROW-1]; // the row-15
 assign out_fm = row_out_fm;
 
 endmodule
