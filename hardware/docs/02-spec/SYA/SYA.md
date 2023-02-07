@@ -1,8 +1,9 @@
-# [整个模块和所有子模块的硬件框图（实时维护）](PointCloudAccelerator_Design_01_Systolic_Array-2022-09-6.excalidraw)
-**问题**：SYA的reg占用是否过大？
-**问题**：SYACCU_CfgRdy一直是1？因为en_you和en_xia同时为0？可以先不管跑着，但目前SYA都不需要数，也先不管
-**问题**：SYA, bank_acc_cnt用来控制_run, _don, 但是需要Rst来重置，要求是不间断，自动控制重置,手动改了下
-
+# 问题：
+    - 怎么在多个块之间无缝衔接计算：在PE计算中切换配置
+        - 比如32个点要计算完所有的filter，就要求这32个点不间断地输入，但是由于shift菱形，后一个点得重叠下一块的，怎么重叠当前块的呢？由输入格式决定，如果输入格式是shift的，不可能首尾相接(通道为64时，P1C63上面是P0C0），需要把输入转换一下？倒
+        - 不能CfgRdy不能等最后完成了才有效，只要输入完成了就可以
+        - reset不能全局
+        - CCUSYA_CfgOfmWrBaseAddr要跟随ofm计算的数据
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
@@ -57,7 +58,18 @@
 | CCUSYA_AccRstLeft | input | 1 | 不需要，告诉有多少输入通道CCUSYA_CfgChi，传递同in_en_left，高电平时，PE内的累加器不向加法器输出值，给加法器输入0；同时表示累加器已完成累加，累加值是有效的，需要被取走 | -->
 
 ## 模块陈述
-是一个基于OS的脉动阵列，计算一个序列点与多个filter的一维卷积，activation按通道秦顺序输入并从左PE向右PE传，weight从上PE向下PE传，不同行输入不同的点，汪同列输入不同的filter。为了让activation的通道和weight的通道在PE内对应相乘，不同行PE的点的同一个通道，输入相差一个时钟周期。不同列的filter的相同通道输入也相差一个时钟周期。PE内乘加的结果，用MUX选出输出。
+ - 设计考量：
+    - 是一个基于OS的脉动阵列，计算一个序列点与多个filter的一维卷积，
+    - 一块点要不间断计算：配置的Nip不是一层网络的所有点，而是这种Bank配置下，一直计算的点数
+    - 至于多个点块和filter块怎么进行倒，由CCU控制，组合有很多种(>2)，重新配置Nip，ActRdBaseAddr
+ - 输入：
+    -     
+
+ - 输出：
+ - 计算过程
+    - activation按通道秦顺序输入并从左PE向右PE传，weight从上PE向下PE传，不同行输入不同的点，汪同列输入不同的filter。
+    - 为了让activation的通道和weight的通道在PE内对应相乘，不同行PE的点的同一个通道，输入相差一个时钟周期。不同列的filter的相同通道输入也相差一个时钟周期。PE内乘加的结果，用MUX选出输出。
+
 
 
 ## pe 端口列表-包含于pe_array 端口列表（需要额外考虑反压）

@@ -121,6 +121,6 @@ assign out_sum_reg1 = out_sum_qnt8;
 assign out_fm = out_sum_reg1;
 assign out_act_right = row_out_act[NUM_PE -1];
 assign out_wgt_below = row_out_wgt;
-assign out_acc_reset_right = row_out_acc_reset[NUM_PE -1];
+assign out_acc_reset_right = row_out_acc_reset[NUM_PE -1]; // PE (:, 15)
 
 endmodule
