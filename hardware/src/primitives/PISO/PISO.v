@@ -42,13 +42,12 @@ module PISO
         shift_count <= 0;
     else if (IN_VLD & IN_RDY) begin
         if (bypass) // Bypass
-            shift_count <= {shift_count[NUM_SHIFTS-3:0], 1'b1, 1'b0};// ahead shift 1
-        else 
+            shift_count <= {shift_count[NUM_SHIFTS==2? 0 : NUM_SHIFTS - 3 :0], 1'b1, 1'b0};// ahead shift 1
+        else
             shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b1};
-    end else if (OUT_VLD & OUT_RDY) 
+    end else if (OUT_VLD & OUT_RDY)
         shift_count <= {shift_count[NUM_SHIFTS-2:0], 1'b0};
   end
-
 
 always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
     if (!RST_N) begin

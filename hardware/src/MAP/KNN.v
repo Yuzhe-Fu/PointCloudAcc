@@ -80,7 +80,6 @@ reg  [IDX_WIDTH         -1 : 0] CntLopCrdRdAddr_s1;
 wire                            PISO_OUT_LAST;
 wire                            PISO_IN_RDY;
 
-wire [SRAM_WIDTH*NUM_SRAMWORD_MAP*NUM_SORT_CORE   -1 : 0] INSMap;
 wire                           INC_CntCpCrdRdAddr;
 wire                           INC_CntCrdRdAddr;
 
@@ -102,7 +101,7 @@ wire  [NUM_SORT_CORE    -1 : 0] INSKNN_LopRdy;
 wire  [NUM_SORT_CORE    -1 : 0] INSKNN_MapVld;
 wire  [NUM_SORT_CORE    -1 : 0] KNNINS_MapRdy;
 
-wire [(SRAM_WIDTH + IDX_WIDTH)*NUM_SRAMWORD_MAP*NUM_SORT_CORE -1 : 0] PISO_InDat;
+wire [NUM_SORT_CORE     -1 : 0][NUM_SRAMWORD_MAP   -1 : 0][(SRAM_WIDTH + IDX_WIDTH) -1 : 0] PISO_InDat;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -270,7 +269,7 @@ generate
         );
 
         for (gv_wd=0; gv_wd < NUM_SRAMWORD_MAP; gv_wd=gv_wd+1) begin
-            assign PISO_InDat[(SRAM_WIDTH + IDX_WIDTH)*NUM_SRAMWORD_MAP*gv_core + (SRAM_WIDTH + IDX_WIDTH)*gv_wd +: (SRAM_WIDTH + IDX_WIDTH)] = {INSKNN_Map[SRAM_WIDTH*gv_wd +: SRAM_WIDTH], CCUKNN_CfgMapWrAddr + (CpIdx_s2 / NUM_SRAMWORD_MAP == 0? CpIdx_s2 / NUM_SRAMWORD_MAP : CpIdx_s2 / NUM_SRAMWORD_MAP + 1) };
+            assign PISO_InDat[gv_core][gv_wd] = {INSKNN_Map[SRAM_WIDTH*gv_wd +: SRAM_WIDTH], CCUKNN_CfgMapWrAddr + (CpIdx_s2 / NUM_SRAMWORD_MAP == 0? CpIdx_s2 / NUM_SRAMWORD_MAP : CpIdx_s2 / NUM_SRAMWORD_MAP + 1) };
         end
 
         assign KNNINS_MapRdy[gv_core] = handshake_s2;
@@ -313,6 +312,5 @@ PISO_NOCACHE#(
     .OUT_LAST  ( PISO_OUT_LAST  ),
     .OUT_RDY   ( GLBKNN_MapWrDatRdy)
 );
-
 
 endmodule

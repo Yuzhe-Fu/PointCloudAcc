@@ -95,47 +95,47 @@ localparam CNTMASK_WIDTH = IDX_WIDTH+$clog2(SRAM_WIDTH/NUM_MASK_SRAM);
 // Variable Definition :
 //=====================================================================================================================
 
-wire [IDX_WIDTH*NUM_FPC     -1 : 0] FPC_MaskRdAddr;
-wire [NUM_FPC               -1 : 0] FPC_MaskRdAddrVld;
-wire [NUM_FPC               -1 : 0] FPC_MaskRdDatRdy;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCMaskRdIdx;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCMaskRdIdx_d;
+wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_MaskRdAddr;
+wire [NUM_FPC                       -1 : 0] FPC_MaskRdAddrVld;
+wire [NUM_FPC                       -1 : 0] FPC_MaskRdDatRdy;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCMaskRdIdx;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCMaskRdIdx_d;
 
-wire [IDX_WIDTH*NUM_FPC     -1 : 0] FPC_CrdRdAddr;
-wire [NUM_FPC               -1 : 0] FPC_CrdRdAddrVld;
-wire [NUM_FPC               -1 : 0] FPC_CrdRdDatRdy;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCCrdRdIdx;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCCrdRdIdx_d;
+wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_CrdRdAddr;
+wire [NUM_FPC                       -1 : 0] FPC_CrdRdAddrVld;
+wire [NUM_FPC                       -1 : 0] FPC_CrdRdDatRdy;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCCrdRdIdx;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCCrdRdIdx_d;
 
-wire [IDX_WIDTH*NUM_FPC     -1 : 0] FPC_DistRdAddr;
-wire [NUM_FPC               -1 : 0] FPC_DistRdAddrVld;
-wire [NUM_FPC               -1 : 0] FPC_DistRdDatRdy;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCDistRdIdx;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCDistRdIdx_d;
+wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_DistRdAddr;
+wire [NUM_FPC                       -1 : 0] FPC_DistRdAddrVld;
+wire [NUM_FPC                       -1 : 0] FPC_DistRdDatRdy;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCDistRdIdx;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCDistRdIdx_d;
 
-wire [IDX_WIDTH*NUM_FPC     -1 : 0] FPC_MaskWrAddr;
-wire [SRAM_WIDTH*NUM_FPC    -1 : 0] FPC_MaskWrDat;
-wire [NUM_FPC               -1 : 0] FPC_MaskWrDatVld;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCMaskWrIdx;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCMaskWrIdx_d;
+wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_MaskWrAddr;
+reg  [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_MaskWrDat;
+wire [NUM_FPC                       -1 : 0] FPC_MaskWrDatVld;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCMaskWrIdx;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCMaskWrIdx_d;
 
-wire [IDX_WIDTH*NUM_FPC     -1 : 0] FPC_CrdWrAddr;
-wire [SRAM_WIDTH*NUM_FPC    -1 : 0] FPC_CrdWrDat;
-wire [NUM_FPC               -1 : 0] FPC_CrdWrDatVld;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCCrdWrIdx;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCCrdWrIdx_d;
+wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_CrdWrAddr;
+wire [NUM_FPC   -1 : 0][SRAM_WIDTH  -1 : 0] FPC_CrdWrDat;
+wire [NUM_FPC                       -1 : 0] FPC_CrdWrDatVld;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCCrdWrIdx;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCCrdWrIdx_d;
 
-wire [IDX_WIDTH*NUM_FPC     -1 : 0] FPC_DistWrAddr;
-wire [SRAM_WIDTH*NUM_FPC    -1 : 0] FPC_DistWrDat;
-wire [NUM_FPC               -1 : 0] FPC_DistWrDatVld;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCDistWrIdx;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCDistWrIdx_d;
+wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_DistWrAddr;
+wire [NUM_FPC   -1 : 0][SRAM_WIDTH  -1 : 0] FPC_DistWrDat;
+wire [NUM_FPC                       -1 : 0] FPC_DistWrDatVld;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCDistWrIdx;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCDistWrIdx_d;
 
-wire [IDX_WIDTH*NUM_FPC     -1 : 0] FPC_IdxWrAddr;
-wire [SRAM_WIDTH*NUM_FPC    -1 : 0] FPC_IdxWrDat;
-wire [NUM_FPC               -1 : 0] FPC_IdxWrDatVld;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCIdxWrIdx;
-wire [$clog2(NUM_FPC)     -1 : 0] ArbFPCIdxWrIdx_d;
+wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_IdxWrAddr;
+wire [NUM_FPC   -1 : 0][SRAM_WIDTH  -1 : 0] FPC_IdxWrDat;
+wire [NUM_FPC                       -1 : 0] FPC_IdxWrDatVld;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCIdxWrIdx;
+wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCIdxWrIdx_d;
 
 //=====================================================================================================================
 // Logic Design
@@ -560,9 +560,9 @@ generate
             assign FPC_CrdRdAddrVld  = vld_Crd_s0  & rdy_Crd_Need;
             assign FPC_DistRdAddrVld = vld_Dist_s0 & rdy_Dist_Need;
 
-            assign FPC_MaskRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgMaskBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntMaskRd / (SRAM_WIDTH / NUM_MASK_SRAM);
-            assign FPC_CrdRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgCrdBaseRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] +CntCrdRdAddr;
-            assign FPC_DistRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgDistBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntDistRdAddr;
+            assign FPC_MaskRdAddr[gv_fpc] = CCUFPS_CfgMaskBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntMaskRd / (SRAM_WIDTH / NUM_MASK_SRAM);
+            assign FPC_CrdRdAddr[gv_fpc] = CCUFPS_CfgCrdBaseRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] +CntCrdRdAddr;
+            assign FPC_DistRdAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntDistRdAddr;
 
         // HandShake
 
@@ -597,7 +597,7 @@ generate
                 if(!rst_n) begin
                     {FPC_MaskRdAddr_s1, CntMaskRd_s1, LopCntLastMask_s1} <= 0;
                 end else if (  ena_Mask_s1 ) begin
-                    {FPC_MaskRdAddr_s1, CntMaskRd_s1, LopCntLastMask_s1} <= {FPC_MaskRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH], CntMaskRd, LopCntLastMask};
+                    {FPC_MaskRdAddr_s1, CntMaskRd_s1, LopCntLastMask_s1} <= {FPC_MaskRdAddr[gv_fpc], CntMaskRd, LopCntLastMask};
                 end
             end   
             always @(posedge clk or negedge rst_n) begin
@@ -689,7 +689,14 @@ generate
                 assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} = FPS_UpdMax ? {FPS_PsDist, LopPntCrd, LopPntIdx_s1} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
 
             // Mask write back
-                assign FPC_MaskWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = FPC_MaskRdAddr_s1;
+                assign FPC_MaskWrAddr[gv_fpc] = FPC_MaskRdAddr_s1;
+                always(*) begin
+                    if(FPC_MaskWrDatVld[gv_fpc])
+                        FPC_MaskWrDat[gv_fpc] =  GLBFPS_MaskRdDat;
+                        FPC_MaskWrDat[gv_fpc][FPS_MaxIdx_ % NUM_MASK_SRAM] = 1'b1; // set 1
+                    else 
+                        FPC_MaskWrDat[gv_fpc] = 0;
+                end
                 assign FPC_MaskWrDatVld[gv_fpc] = LopCntLast_s1 & handshake_Mask_s1;
 
             assign LopCntLast_s1 = LopCntLastMask_s1 & !VldArbMask_next; // Last mask & no valid bit in the next clk;
@@ -793,8 +800,8 @@ generate
                 .OUT_LAST  (                            ),
                 .OUT_RDY   ( GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx )
             );
-            assign FPC_DistWrDat[SRAM_WIDTH*gv_fpc +: SRAM_WIDTH] = SIPO_DistOutDat;
-            assign FPC_DistWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgDistBaseAddr + CntCp_s3 / NUM_DIST_SRAM;
+            assign FPC_DistWrDat[gv_fpc] = SIPO_DistOutDat;
+            assign FPC_DistWrAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr + CntCp_s3 / NUM_DIST_SRAM;
 
             // SIPO Crd
             wire [CRD_WIDTH*CRD_DIM*(SRAM_WIDTH/(CRD_WIDTH*CRD_DIM))  -1 : 0] SIPO_CrdOutDat;
@@ -813,8 +820,8 @@ generate
                 .OUT_LAST  (                        ),
                 .OUT_RDY   ( GLBFPS_CrdWrDatRdy & gv_fpc == ArbFPCCrdWrIdx )
             );
-            assign FPC_CrdWrDat[SRAM_WIDTH*gv_fpc +: SRAM_WIDTH] = SIPO_CrdOutDat;
-            assign FPC_CrdWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgCrdBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / NUM_CRD_SRAM;
+            assign FPC_CrdWrDat[gv_fpc] = SIPO_CrdOutDat;
+            assign FPC_CrdWrAddr[gv_fpc] = CCUFPS_CfgCrdBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / NUM_CRD_SRAM;
 
             // SIPO Idx
             SIPO#(
@@ -827,12 +834,12 @@ generate
                 .IN_LAST   (                            ),
                 .IN_DAT    ( FPS_MaxIdx                 ),
                 .IN_RDY    ( SIPO_IdxInRdy              ),
-                .OUT_DAT   ( FPC_IdxWrDat[SRAM_WIDTH*gv_fpc +: SRAM_WIDTH]      ),
+                .OUT_DAT   ( FPC_IdxWrDat[gv_fpc]      ),
                 .OUT_VLD   ( FPC_IdxWrDatVld[gv_fpc]    ),
                 .OUT_LAST  (                            ),
                 .OUT_RDY   ( GLBFPS_IdxWrDatRdy & gv_fpc == ArbFPCIdxWrIdx )
             );
-            assign FPC_IdxWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] = CCUFPS_CfgIdxBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / (SRAM_WIDTH/IDX_WIDTH);
+            assign FPC_IdxWrAddr[gv_fpc] = CCUFPS_CfgIdxBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / (SRAM_WIDTH/IDX_WIDTH);
 
     end 
 
