@@ -43,13 +43,14 @@ module CCU #(
     input                               rst_n                   ,
     input                                               TOPCCU_start,
     output                                              CCUTOP_NetFnh,
-    output                                              CCUITF_Empty ,
-    output [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum,
-    output [ADDR_WIDTH                          -1 : 0] CCUITF_Addr  ,
+
         // Configure
-    input   [SRAM_WIDTH                         -1 : 0] ITFCCU_Dat,             
-    input                                               ITFCCU_DatVld,          
-    output                                              CCUITF_DatRdy,
+    output [ADDR_WIDTH                          -1 : 0] ITFGLB_RdAddr    ,
+    output                                              ITFGLB_RdAddrVld ,
+    input                                               GLBITF_RdAddrRdy ,
+    input  [SRAM_WIDTH                          -1 : 0] GLBCCU_ISARdDat,             
+    input                                               GLBCCU_ISARdDatVld,          
+    output                                              CCUGLB_ISARdDatRdy,
 
     output  [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_BaseAddr,
 
@@ -101,7 +102,7 @@ localparam ISA_SRAM_DEPTH_WIDTH = $clog2(ISA_SRAM_WORD);
 
 localparam IDLE     = 4'b0000;
 localparam RD_ISA   = 4'b0001;
-localparam IDLE_CFG = 4'b0010;
+localparam CFG = 4'b0010;
 localparam NETFNH   = 4'b0011;
 
 //=====================================================================================================================
@@ -110,15 +111,14 @@ localparam NETFNH   = 4'b0011;
 wire                                        ISA_Full;
 wire                                        ISA_Empty;
 reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_WrAddr;
-wire [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddr;
-reg [OPNUM -1 : 0][(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)-1 : 0] ISA_RdAddr_Array;
+reg [OPNUM -1 : 0][(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)-1 : 0] CntMduISARdAddr;
 reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddrMin;
 wire                                        ISA_WrEn;
 wire                                        ISA_RdEn;
-wire [ISARDWORD_WIDTH               -1 : 0] ISA_CntRdWord;
+wire [ISARDWORD_WIDTH               -1 : 0] CntISARdWord;
 wire[ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord_d;
 
-wire [PORT_WIDTH                    -1 : 0] ISA_DatOut;
+wire [PORT_WIDTH                    -1 : 0] GLBCCU_ISARdDat;
 reg                                         ISA_DatOutVld;
 
 reg [NUM_LAYER_WIDTH                -1 : 0] CfgNumLy;
@@ -144,7 +144,7 @@ integer                                     int_i;
 wire [OPNUM                         -1 : 0] CfgRdy;
 reg  [OPNUM                         -1 : 0] CfgVld;
 wire [$clog2(OPNUM)                  -1 : 0] ArbCfgRdyIdx;
-reg  [$clog2(OPNUM)                  -1 : 0] ArbCfgRdyIdx_d;
+reg  [$clog2(OPNUM)                  -1 : 0] ArbCfgRdyIdx_s0;
 reg                                         CCUTOP_CfgRdy;   
 wire                                        CCUTOP_CfgVld;   
 //=====================================================================================================================
@@ -152,34 +152,32 @@ wire                                        CCUTOP_CfgVld;
 //=====================================================================================================================
 
 
-reg [OPCODE_WIDTH      -1 : 0] state       ;
-reg [OPCODE_WIDTH      -1 : 0] next_state  ;
+reg [4      -1 : 0] state       ;
+reg [4      -1 : 0] state_s1       ;
+reg [4      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE    :   if( TOPCCU_start)
-                        next_state <= RD_ISA; //
+                        next_state <= IDLE_CFG; //
                     else
                         next_state <= IDLE;
-
-        RD_ISA  :   if( ISA_Full ) // 
-                        next_state <= IDLE_CFG;
-                    else
-                        next_state <= RD_ISA;
-
-        IDLE_CFG:   if (NumLy == CfgNumLy & CfgNumLy != 0)
-                        next_state <= NETFNH;
-                    else if ( ISA_Empty )
-                        next_state <= RD_ISA;
-                    else if ( |CfgRdy ) begin
-                            next_state <= StateCode[ArbCfgRdyIdx];
-                        end
+        IDLE_CFG:   if ( |CfgRdy)
+                        next_state <= CFG;
                     else 
                         next_state <= IDLE_CFG;
 
+        CFG:    if (NumLy == CfgNumLy & CfgNumLy != 0)
+                        next_state <= NETFNH;
+                else if( )
+                        next_state <= IDLE_CFG;
+                else
+                    next_state <= CFG;
+
         NETFNH     :   next_state <= IDLE;
+
         default :   if ( state[7] ) begin
-                        if (CfgRdy[ArbCfgRdyIdx_d] & CfgVld [ArbCfgRdyIdx_d])
-                            next_state <= IDLE_CFG; // Turn back
+                        if (CfgRdy[ArbCfgRdyIdx_s0] & CfgVld [ArbCfgRdyIdx_s0])
+                            next_state <= CFG; // Turn back
                         else 
                             next_state <= state; // Hold
                     end else 
@@ -198,54 +196,25 @@ end
 // Logic Design: TOP
 //=====================================================================================================================
 assign CCUTOP_NetFnh = state == NETFNH;
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
-        NumLy <= 0;
-    end else if(state ==IDLE) begin
-        NumLy <= 0;
-    end else if(state == NETFNH) begin // ???????: transfer to network config
-        NumLy <= NumLy + 1;
-    end
-end
+// always @(posedge clk or negedge rst_n) begin
+//     if(!rst_n) begin
+//         NumLy <= 0;
+//     end else if(state ==IDLE) begin
+//         NumLy <= 0;
+//     end else if(state == NETFNH) begin
+//         NumLy <= NumLy + 1;
+//     end
+// end
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         CCUTOP_CfgRdy <= 1'b1;
     end else if(CCUTOP_CfgVld & CCUTOP_CfgRdy) begin // HS
         CCUTOP_CfgRdy <= 1'b0;
-    end else if(state == IDLE) begin // ???????: transfer to network config
+    end else if(state == IDLE) begin
         CCUTOP_CfgRdy <= 1'b1;
     end
 end
-
-//=====================================================================================================================
-// Logic Design 3: ISA RAM Write
-//=====================================================================================================================
-// Write Path
-assign CCUITF_Empty = ISA_Empty;
-
-// ISA_Empty number (only when PISO is empty indicating ITFCCU_Dat witen into ISA_RAM)
-assign CCUITF_ReqNum = PISO_ISAOutVld ? 0 : ((ISA_SRAM_WORD - (ISA_WrAddr - ISA_RdAddrMin) )>>1)<<1; // make sure 2times
-assign CCUITF_Addr = 0;
-
-assign CCUITF_DatRdy = state == RD_ISA & PISO_ISAInRdy;
-
-assign ISA_WrEn = PISO_ISAOutVld & PISO_ISAOutRdy;
-assign PISO_ISAOutRdy = !ISA_Full;
-
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        ISA_WrAddr <= 0;
-    end else if (state == IDLE ) begin
-        ISA_WrAddr <= 0;
-    end else if (ISA_WrEn ) begin
-        ISA_WrAddr <= ISA_WrAddr + 1;
-    end
-end
-
-assign ISA_Full = ISA_WrAddr - ISA_RdAddrMin == ISA_SRAM_WORD;
-assign ISA_Empty = ISA_WrAddr == ISA_RdAddrMin;
-
 
 //=====================================================================================================================
 // Logic Design 3: Req and Ack of Cfg
@@ -276,73 +245,82 @@ prior_arb#(
     .gnt (  ),
     .arb_port  ( ArbCfgRdyIdx  )
 );
+
+
+// Reg Update
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        ArbCfgRdyIdx_d <= 0;
-    end else if ( state[7] & !next_state[7] ) begin // Turn back IDLE_CFG-> reset
-        ArbCfgRdyIdx_d <= 0;
-    end else if ( !state[7] & next_state[7] ) begin // Turn to CFG-> latch
-        ArbCfgRdyIdx_d <= ArbCfgRdyIdx;
+        ArbCfgRdyIdx_s0 <= 0;
+    end else if ( state == IDLE_CFG & next_state == CFG ) begin
+        ArbCfgRdyIdx_s0 <= ArbCfgRdyIdx;
     end
 end
 
-// CfgVld -> Ack
-genvar i;
-generate
-    for(i=0; i<OPNUM; i=i+1) begin
-        always @(posedge clk or negedge rst_n)  begin
-            if (!rst_n) begin
-                CfgVld[i] <= 0;
-            end else if ( CfgVld[i] & CfgRdy[i] ) begin
-                CfgVld[i] <= 0;
-            end else if ( state == StateCode[i] & ISA_CntRdWord == OpNumWord[i]) begin
-                CfgVld[i] <= 1'b1;
-            end
-        end
-    end
-endgenerate
-
-assign {CCUGLB_CfgVld, CCUKNN_CfgVld, CCUFPS_CfgVld,  CCUPOL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
-
 //=====================================================================================================================
-// Logic Design: ISA_RAM Read
+// Logic Design: s1-ISA_RAM Read
 //=====================================================================================================================
 
 generate
     for(i=0; i<OPNUM; i=i+1) begin
-        always @(posedge clk or negedge rst_n)  begin
-            if (!rst_n) begin
-                ISA_RdAddr_Array[i] <= 0;
-            end else if ( state == IDLE ) begin
-                ISA_RdAddr_Array[i] <= 0;
-            end else if ( ISA_RdEn & state[7] & state[0 +: 7] == i) begin
-                ISA_RdAddr_Array[i] <= ISA_RdAddr_Array[i] + 1;
-            end
-        end
+        wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH -1;
+        counter#(
+            .COUNT_WIDTH ( ADDR_WIDTH )
+        )u_counter_CntMduISARdAddr(
+            .CLK       ( clk            ),
+            .RESET_N   ( rst_n          ),
+            .CLEAR     ( state == IDLE  ),
+            .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+            .INC       ( (ITFGLB_RdAddrVld & GLBITF_RdAddrRdy) & ArbCfgRdyIdx_s0 == i ),
+            .DEC       ( 1'b0           ),
+            .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+            .MAX_COUNT ( MaxCnt         ),
+            .OVERFLOW  (                ),
+            .UNDERFLOW (                ),
+            .COUNT     ( CntMduISARdAddr[i])
+        );
     end
 endgenerate
 
-assign ISA_CntRdWord = state[7] ? ( (ISA_RdEn_d & OpCodeMatch) ? ISA_CntRdWord_d + 1 : ISA_CntRdWord_d ) : 0;
-assign OpCodeMatch = state[7] & OpCode == state;
-assign ISA_RdEn = state[7] & !(ISA_CntRdWord == OpNumWord[state[0 +: 7]] & OpCodeMatch);
-assign ISA_RdAddr = ISA_RdAddr_Array[state[0 +: 7]];
+assign ITFGLB_RdAddr = CntMduISARdAddr[ArbCfgRdyIdx_s0];
+assign ITFGLB_RdAddrVld = state==CFG & !(Ovf_CntISARdWord & OpCodeMatch);
 
+
+// Reg Update
 always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        ISA_DatOutVld <= 0;
-    end else if ( !next_state[7] ) begin // finish CFG
-        ISA_DatOutVld <= 0;
-    end else if (ISA_RdEn ) begin
-        ISA_DatOutVld <= 1;
-    end
+    if(!rst_n)
+        {ArbCfgRdyIdx_s1, state_s1} <= 0;
+    else if (ITFGLB_RdAddrVld & GLBITF_RdAddrRdy)
+        {ArbCfgRdyIdx_s1, state_s1} <= {ArbCfgRdyIdx_s0, state};
 end
 
-
 //=====================================================================================================================
-// Logic Design 3: ISA Decoder
+// Logic Design: s2
 //=====================================================================================================================
-assign OpCode = ISA_DatOutVld ? ISA_DatOut[0 +: 8] : {8{1'b1}};
+assign CCUGLB_ISARdDatRdy = state_s1 == CFG;
+assign handshake_s1 = GLBCCU_ISARdDatVld & CCUGLB_ISARdDatRdy;
+assign OpCode = GLBCCU_ISARdDatVld? GLBCCU_ISARdDat[0 +: 8] : {8{1'b1}};
+assign OpCodeMatch = OpCode == ArbCfgRdyIdx_s1;
 
+wire [ADDR_WIDTH     -1 : 0] MaxCntISARdWord= OpNumWord[ArbCfgRdyIdx_s1] -1;
+
+// Reg Update
+counter#(
+    .COUNT_WIDTH ( ADDR_WIDTH )
+)u_counter_CntISARdWord(
+    .CLK       ( clk            ),
+    .RESET_N   ( rst_n          ),
+    .CLEAR     (                ),
+    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+    .INC       ( handshake_s1 & OpCodeMatch ),
+    .DEC       ( 1'b0           ),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+    .MAX_COUNT ( MaxCntISARdWord   ),
+    .OVERFLOW  ( Ovf_CntISARdWord),
+    .UNDERFLOW (                ),
+    .COUNT     ( CntISARdWord   )
+);
+
+// ISA Decoder
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         CfgNumLy                <= 0;
@@ -372,57 +350,72 @@ always @(posedge clk or negedge rst_n) begin
             // GLB read/write DRAM by ITF
             DramAddr[int_i]     <= 'd0;
         end
-    end else if ( ISA_RdEn_d & OpCodeMatch) begin
+    end else if ( handshake_s1 & OpCodeMatch) begin
         if ( OpCode == 128 + 0) begin
-            {CfgNumLy, Mode} <= ISA_DatOut[PORT_WIDTH -1 : 8];
+            {CfgNumLy, Mode} <= GLBCCU_ISARdDat[PORT_WIDTH -1 : 8];
 
         end else if ( OpCode == 128 + 1) begin
-            if (ISA_CntRdWord == 1) begin
-                CCUSYA_CfgNip   <= ISA_DatOut[8  +: 16];
-                CCUSYA_CfgChi   <= ISA_DatOut[24 +: 16];
-                Cho             <= ISA_DatOut[40 +: 16];       
-                CCUSYA_CfgScale <= ISA_DatOut[56 +: 32];       
-                CCUSYA_CfgShift <= ISA_DatOut[88 +:  8];
-                CCUSYA_CfgZp    <= ISA_DatOut[96 +:  8];
-                CCUSYA_CfgMod   <= ISA_DatOut[104+:  8];
+            if (CntISARdWord == 1) begin
+                CCUSYA_CfgNip   <= GLBCCU_ISARdDat[8  +: 16];
+                CCUSYA_CfgChi   <= GLBCCU_ISARdDat[24 +: 16];
+                Cho             <= GLBCCU_ISARdDat[40 +: 16];       
+                CCUSYA_CfgScale <= GLBCCU_ISARdDat[56 +: 32];       
+                CCUSYA_CfgShift <= GLBCCU_ISARdDat[88 +:  8];
+                CCUSYA_CfgZp    <= GLBCCU_ISARdDat[96 +:  8];
+                CCUSYA_CfgMod   <= GLBCCU_ISARdDat[104+:  8];
             end
 
         end else if (OpCode == 128 + 2) begin
-            if (ISA_CntRdWord == 1) begin
-                CCUPOL_CfgNip   <= ISA_DatOut[8  +: 16];
-                CCUPOL_CfgChi   <= ISA_DatOut[24 +: 16];// 
-                CCUPOL_CfgK     <= ISA_DatOut[40 +: 16];// 
-            end else if(ISA_CntRdWord == 2) begin  
-                CCUPOL_AddrMin  <= ISA_DatOut[PORT_WIDTH-1 : 8]; // Min BUG with 120 bit
-            end else if(ISA_CntRdWord == 3) begin  
-                CCUPOL_AddrMax  <= ISA_DatOut[PORT_WIDTH-1 : 8];
+            if (CntISARdWord == 1) begin
+                CCUPOL_CfgNip   <= GLBCCU_ISARdDat[8  +: 16];
+                CCUPOL_CfgChi   <= GLBCCU_ISARdDat[24 +: 16];// 
+                CCUPOL_CfgK     <= GLBCCU_ISARdDat[40 +: 16];// 
+            end else if(CntISARdWord == 2) begin  
+                CCUPOL_AddrMin  <= GLBCCU_ISARdDat[PORT_WIDTH-1 : 8]; // Min BUG with 120 bit
+            end else if(CntISARdWord == 3) begin  
+                CCUPOL_AddrMax  <= GLBCCU_ISARdDat[PORT_WIDTH-1 : 8];
             end
 
         end else if (OpCode == 128 + 3) begin
-            if(ISA_CntRdWord == 1) begin
-                CCUFPS_CfgNip           <= ISA_DatOut[8  +: 16];
-                CCUFPS_CfgNop           <= ISA_DatOut[24 +: 16];
+            if(CntISARdWord == 1) begin
+                CCUFPS_CfgNip           <= GLBCCU_ISARdDat[8  +: 16];
+                CCUFPS_CfgNop           <= GLBCCU_ISARdDat[24 +: 16];
             end
         end else if (OpCode == 128 + 4) begin
-            if(ISA_CntRdWord == 1) begin
-                CCUKNN_CfgNip           <= ISA_DatOut[8  +: 16];
-                CCUKNN_CfgK             <= ISA_DatOut[24 +: 16];
+            if(CntISARdWord == 1) begin
+                CCUKNN_CfgNip           <= GLBCCU_ISARdDat[8  +: 16];
+                CCUKNN_CfgK             <= GLBCCU_ISARdDat[24 +: 16];
             end
         end else for(int_i = 0; int_i < GLB_NUM_WRPORT + GLB_NUM_RDPORT; int_i=int_i+1) begin
             if ( OpCode == 128 + NUM_MODULE + int_i) begin
                 // GLB Ports
-                CCUGLB_CfgPortBankFlag[NUM_BANK*int_i +: NUM_BANK] <= ISA_DatOut[8  +: 32];
-                CCUGLB_CfgPortNum[ADDR_WIDTH*int_i +: ADDR_WIDTH] <= ISA_DatOut[40 +: 16];
-                CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= ISA_DatOut[56 +: 8];
-                CCUGLB_CfgPortLoop[int_i] <= ISA_DatOut[64 +: 4];
+                CCUGLB_CfgPortBankFlag[NUM_BANK*int_i +: NUM_BANK] <= GLBCCU_ISARdDat[8  +: 32];
+                CCUGLB_CfgPortNum[ADDR_WIDTH*int_i +: ADDR_WIDTH] <= GLBCCU_ISARdDat[40 +: 16];
+                CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= GLBCCU_ISARdDat[56 +: 8];
+                CCUGLB_CfgPortLoop[int_i] <= GLBCCU_ISARdDat[64 +: 4];
                 // GLB read/write DRAM by ITF
-                DramAddr[int_i]     <= ISA_DatOut[68   +: 32];
+                DramAddr[int_i]     <= GLBCCU_ISARdDat[68   +: 32];
                 end
         end
                
     end
 end
+genvar i;
+generate
+    for(i=0; i<OPNUM; i=i+1) begin
+        always @(posedge clk or negedge rst_n)  begin
+            if (!rst_n) begin
+                CfgVld[i] <= 0;
+            end else if ( CfgVld[i] & CfgRdy[i] ) begin
+                CfgVld[i] <= 0;
+            end else if ( state_s1 == CFG & ArbCfgRdyIdx_s1 == i & Ovf_CntISARdWord & handshake_s1 & OpCodeMatch) begin
+                CfgVld[i] <= 1'b1;
+            end
+        end
+    end
+endgenerate
 
+assign {CCUGLB_CfgVld, CCUKNN_CfgVld, CCUFPS_CfgVld,  CCUPOL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
 
 //=====================================================================================================================
 // Logic Design 3: Rst
@@ -449,71 +442,19 @@ assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*6 +: DRAM_ADDR_WIDTH] = DramAddr[10]; // 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-
-
-PISO_NOCACHE #(
-    .DATA_IN_WIDTH ( SRAM_WIDTH ),
-    .DATA_OUT_WIDTH ( PORT_WIDTH )
-)u_PISO_ISAIN(
-    .CLK          ( clk                        ),
-    .RST_N        ( rst_n                      ),
-    .IN_VLD       ( ITFCCU_DatVld & CCUITF_DatRdy ),
-    .IN_LAST      ( 1'b0 ),
-    .IN_DAT       ( ITFCCU_Dat ),
-    .IN_RDY       ( PISO_ISAInRdy                ),
-    .OUT_DAT      ( PISO_ISAOut                     ), // On-chip output to Off-chip 
-    .OUT_VLD      ( PISO_ISAOutVld                  ),
-    .OUT_LAST     (                    ),
-    .OUT_RDY      ( PISO_ISAOutRdy                  )
-);
-
-
-RAM#(
-    .SRAM_BIT     ( PORT_WIDTH   ),
-    .SRAM_BYTE    ( 1            ),
-    .SRAM_WORD    ( ISA_SRAM_WORD),
-    .CLOCK_PERIOD ( CLOCK_PERIOD )
-)u_RAM_ISA(
-    .clk          ( clk          ),
-    .rst_n        ( rst_n        ),
-    .addr_r       ( ISA_RdAddr[0 +: ISA_SRAM_DEPTH_WIDTH]   ),
-    .addr_w       ( ISA_WrAddr[0 +: ISA_SRAM_DEPTH_WIDTH]   ),
-    .read_en      ( ISA_RdEn     ),
-    .write_en     ( ISA_WrEn     ),
-    .data_in      ( PISO_ISAOut   ),
-    .data_out     ( ISA_DatOut     )
-);
-
 MINMAX#(
     .DATA_WIDTH ( (NUM_LAYER_WIDTH+ISARDWORD_WIDTH) ),
     .PORT       ( OPNUM ),
     .MINMAX     ( 0 )
 )u_MINMAX(
-    .IN         ( ISA_RdAddr_Array  ),
+    .IN         ( CntMduISARdAddr  ),
     .IDX        ( AddrRdMinIdx      ),
-    .VALUE      ( ISA_RdAddrMin     )
+    .VALUE      ( ISA_RdAddrMin     )????????????????????????????????
 );
 
-
-DELAY#(
-    .NUM_STAGES ( 1 ),
-    .DATA_WIDTH ( 1 )
-)u_DELAY_read_en_d(
-    .CLK        ( clk        ),
-    .RST_N      ( rst_n      ),
-    .DIN        ( ISA_RdEn        ),
-    .DOUT       ( ISA_RdEn_d       )
-);
-
-DELAY#(
-    .NUM_STAGES ( 1 ),
-    .DATA_WIDTH ( ISARDWORD_WIDTH )
-)u_DELAY_cnt_word_d(
-    .CLK        ( clk        ),
-    .RST_N      ( rst_n      ),
-    .DIN        ( ISA_CntRdWord        ),
-    .DOUT       ( ISA_CntRdWord_d       )
-);
+//=====================================================================================================================
+// Debug :
+//=====================================================================================================================
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)
