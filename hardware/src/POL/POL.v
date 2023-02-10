@@ -144,7 +144,7 @@ generate
     wire                            ena_s4;
 
     wire                            SIPO_MapInRdy;
-    wire [IDX_WIDTH*(2**MAP_WIDTH) -1 : 0] SIPO_MapOutDat; 
+    wire [(2**MAP_WIDTH)-1 : 0][IDX_WIDTH -1 : 0] SIPO_MapOutDat; 
     wire                            SIPO_MapOutVld; 
     wire                            SIPO_MapOutLast;
     wire                            SIPO_MapOutRdy;

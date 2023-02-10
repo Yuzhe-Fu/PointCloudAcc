@@ -35,8 +35,8 @@ module CCU #(
 
     parameter MAXPAR                = 32,
     parameter NUM_BANK              = 32,
-    parameter ITF_NUM_RDPORT        = 2,
-    parameter ITF_NUM_WRPORT        = 4
+    parameter ITF_NUM_RDPORT        = 12,
+    parameter ITF_NUM_WRPORT        = 14
 
     )(
     input                               clk                     ,
@@ -111,8 +111,7 @@ wire                                        ISA_Full;
 wire                                        ISA_Empty;
 reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_WrAddr;
 wire [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddr;
-reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddr_Array [0 : OPNUM -1];
-wire [(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)*OPNUM-1 : 0] ISA_RdAddr1D;
+reg [OPNUM -1 : 0][(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)-1 : 0] ISA_RdAddr_Array;
 reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddrMin;
 wire                                        ISA_WrEn;
 wire                                        ISA_RdEn;
@@ -320,7 +319,6 @@ generate
                 ISA_RdAddr_Array[i] <= ISA_RdAddr_Array[i] + 1;
             end
         end
-        assign ISA_RdAddr1D[(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)*i +: (NUM_LAYER_WIDTH+ISARDWORD_WIDTH)] = ISA_RdAddr_Array[i];
     end
 endgenerate
 
@@ -453,7 +451,7 @@ assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*6 +: DRAM_ADDR_WIDTH] = DramAddr[10]; // 
 //=====================================================================================================================
 
 
-PISO#(
+PISO_NOCACHE #(
     .DATA_IN_WIDTH ( SRAM_WIDTH ),
     .DATA_OUT_WIDTH ( PORT_WIDTH )
 )u_PISO_ISAIN(
@@ -491,9 +489,9 @@ MINMAX#(
     .PORT       ( OPNUM ),
     .MINMAX     ( 0 )
 )u_MINMAX(
-    .IN         ( ISA_RdAddr1D         ),
-    .IDX        ( AddrRdMinIdx        ),
-    .VALUE      ( ISA_RdAddrMin      )
+    .IN         ( ISA_RdAddr_Array  ),
+    .IDX        ( AddrRdMinIdx      ),
+    .VALUE      ( ISA_RdAddrMin     )
 );
 
 
