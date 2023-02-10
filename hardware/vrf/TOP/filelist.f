@@ -37,6 +37,7 @@
 ../../src/primitives/COUNTER/counter.v
 ../../src/primitives/COUNTER/CNT1.v
 ../../src/primitives/ARB/prior_arb.v
+../../src/primitives/ARB/RR_arbiter.v
 ../../src/primitives/ARB/ArbCore.v
 ../../src/primitives/DEBUG/DEC2D.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb128x256m1sso_170a/VERILOG/ts1n28hpcpuhdhvtb128x256m1sso_170a_ssg0p81v125c.v
