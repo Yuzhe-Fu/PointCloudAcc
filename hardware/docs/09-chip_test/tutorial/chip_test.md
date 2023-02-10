@@ -1,5 +1,6 @@
 # Task List
-- HLS实现读写DDR到FIFO或Memory(例如BRAM)
+- 2.17前，HLS实现读写DDR到FIFO或Memory(例如BRAM)
+- 3.15前，实现PS读写PC数据到DDR（一次成功读写即可）
 
 # 功能陈述
 - 从PC读写数据到FPGA的FMC端口（通用引脚）
