@@ -47,8 +47,7 @@ module GLB #(
     output wire [NUM_RDPORT                     -1 : 0] GLBTOP_RdPortAddrRdy,
     output wire [SRAM_WIDTH*MAXPAR*NUM_RDPORT   -1 : 0] GLBTOP_RdPortDat,
     output wire [NUM_RDPORT                     -1 : 0] GLBTOP_RdPortDatVld,
-    input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortDatRdy    
-
+    input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortDatRdy
 );
 
 //=====================================================================================================================
@@ -80,7 +79,6 @@ wire [(NUM_WRPORT+NUM_RDPORT)   -1 : 0] BankPortFlag  [0 : NUM_BANK     -1];
 wire [ADDR_WIDTH                -1 : 0] BankWrAddr_Array[0 : NUM_BANK -1];
 wire [ADDR_WIDTH                -1 : 0] BankWrAddr_Array[0 : NUM_BANK   -1];
 wire [NUM_BANK                  -1 : 0] BankRdEn;
-
 
 genvar      gv_i;
 genvar      gv_j;
