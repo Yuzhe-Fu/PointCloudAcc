@@ -41,48 +41,31 @@
 | WrPortAddr_Out | output | 实时输出写地址只用于给ITF，用于ITF从DRAM读时，(CCUITF_BaseAddr+WrPortAddr_Out)作为读DRAM的基址 |
 | RdPortAddr_Out | output | 同上 |
 # 模块陈述
-- 写口：
-    - 0: IF写Act：IF写都是1个SRAM_WIDTH
-    - 1: IF写Wgt：~
-    - 2：IF写Crd：~
-    - 3: IF写MAP：~
-    - 4: SA写sa_fm SYAGLB_Ofm：2个Bank，64B，固定为两个Bank位宽，不随CCUSYA_CfgMod
-    - 5: POOL写pool_fm POLGLB_Fm: 2个Bank，64个比较器出，就64出，要是channel=128，就两次loop，写两次64
-    - 6: CTR写Dist CTRGLB_DistIdx：固定最少的一个Bank位宽
-    - 7: CTR写MAP CTRGLB_Map：固定最少的一个Bank位宽
-    - 8：CTR的FPS写Mask：固定最少的一个Bank位宽
-- 读口：
-    - 0: IF读MAP：IF读都是1个SRAM_WIDTH
-    - 1: IF读ofm：IF读都是1个SRAM_WIDTH
-    - 2: SA读sa_fm(act/ofm) GLBSYA_Act：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时1，2时4
-    - 3: SA读weight GLBSYA_Wgt：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时4，2时1
-    - 4: CTR读Crd GLBCTR_Crd：固定最少的一个Bank位宽
-    - 5: CTR读Dist GLBCTR_DistIdx：固定最少的一个Bank位宽
-    - 6: CTR的FPS读Mask：固定最少的一个Bank位宽
-    - 7: CTR的KNN读Mask：固定最少的一个Bank位宽
-    - 8: POL读MAP GLBPOL_Map：固定最少的一个Bank
-    - 9-14: POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个Bank位宽
-
-localparam GLBWRIDX_ITFACT = 0;
-localparam GLBWRIDX_ITFWGT = 1;
-localparam GLBWRIDX_ITFCRD = 2;
-localparam GLBWRIDX_ITFMAP = 3;
-localparam GLBWRIDX_SYAOFM = 4;
-localparam GLBWRIDX_POLOFM = 5;
-localparam GLBWRIDX_CTRDST = 6;
-localparam GLBWRIDX_CTRMAP = 7;
-localparam GLBWRIDX_CTRFMK = 8; // FPS Writes Mask
-
-localparam GLBRDIDX_ITFMAP = 0;
-localparam GLBRDIDX_ITFOFM = 1;
-localparam GLBRDIDX_SYAACT = 2;
-localparam GLBRDIDX_SYAWGT = 3;
-localparam GLBRDIDX_CTRCRD = 4;
-localparam GLBRDIDX_CTRDST = 5;
-localparam GLBRDIDX_CTRFMK = 6; // FPS Read MASK
-localparam GLBRDIDX_CTRKMK = 7; // KNN Read MASK
-localparam GLBRDIDX_POLMAP = 8;
-localparam GLBRDIDX_POLOFM = 9;
+localparam GLBWRIDX_ITFISA = 0; 
+localparam GLBWRIDX_ITFCRD = 1; IF写Crd：~
+localparam GLBWRIDX_ITFMAP = 2; IF写MAP：~
+localparam GLBWRIDX_ITFACT = 3; IF写Act：IF写都是1个SRAM_WIDTH
+localparam GLBWRIDX_ITFWGT = 4; IF写Wgt：~
+localparam GLBWRIDX_FPSMSK = 5; FPS写Mask：固定最少的一个Bank位宽
+localparam GLBWRIDX_FPSCRD = 6; 
+localparam GLBWRIDX_FPSDST = 7; 写Dist 
+localparam GLBWRIDX_FPSIDX = 8; 写采样之后的Idx
+localparam GLBWRIDX_KNNMAP = 9;写MAP
+localparam GLBWRIDX_SYAOFM = 10;SA写sa_fm SYAGLB_Ofm：2个Bank，64B，固定为两个Bank位宽，不随CCUSYA_CfgMod
+localparam GLBWRIDX_POLOFM = 11;POOL写pool_fm POLGLB_Fm: 2个Bank，64个比较器出，就64出，要是channel=128，就两次loop，写两次64
+                                        
+localparam GLBRDIDX_ITFMAP = 0; IF读MAP：IF读都是1个SRAM_WIDTH
+localparam GLBRDIDX_ITFOFM = 1; IF读ofm：IF读都是1个SRAM_WIDTH
+localparam GLBRDIDX_ITFIDX = 2; 
+localparam GLBRDIDX_CCUISA = 3; 
+localparam GLBRDIDX_FPSMSK = 4; 的FPS读Mask：固定最少的一个Bank位宽// FPS Read MASK
+localparam GLBRDIDX_FPSCRD = 5; 读Crd GLBCTR_Crd：固定最少的一个Bank位宽
+localparam GLBRDIDX_FPSDST = 6; 读Dist GLBCTR_DistIdx：固定最少的一个Bank位宽
+localparam GLBRDIDX_KNNCRD = 7; 
+localparam GLBRDIDX_SYAACT = 8; SA读sa_fm(act/ofm) GLBSYA_Act：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时1，2时4
+localparam GLBRDIDX_SYAWGT = 9; SA读weight GLBSYA_Wgt：连接位宽是SYA_NUM_BANK，实际位宽是根据CCUSYA_CfgMod：0时2，1时4，2时1
+localparam GLBRDIDX_POLMAP = 10;POL读MAP GLBPOL_Map：固定最少的一个Bank
+localparam GLBRDIDX_POLOFM = 11;POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个Bank位宽
 
 - 设计考量
     - 简洁通用：不要自循环读，因为怎么读本就是读口决定的，由CCU配置给每个模块要读哪些bank，怎么读，而不是配置GLB来提供读的选项，不会增加计数器
@@ -98,6 +81,7 @@ localparam GLBRDIDX_POLOFM = 9;
     - Port端：负责判断空满和分配给要读写的bank信号
     - Bank端：负责记录上一次成功读写地址，每次cfg读/写都要重置其初始地址
     - 配置：
+        - GLB的TOPGLB_CfgVld怎么办？根本就不用CfgVld和CfgRdy，完全由口决定而不是自身决定
         - **注意要求：口对应的配置Bank是连续的（由于ParBank是直接向上加），Bank深度必须是2的指数（由于地址raddr/waddr直接截取）**
         - 由于需要不中断其它口实时动态配置Bank，因此CCU给GLB的所有配置和控制信号需要同一个周期变，
         - 而且给Bank都要是reg信号

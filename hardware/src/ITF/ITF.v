@@ -233,7 +233,7 @@ generate
     end
 endgenerate
 
-PISO#(
+PISO_NOCACHE #(
     .DATA_IN_WIDTH ( SRAM_WIDTH ),
     .DATA_OUT_WIDTH ( PORT_WIDTH )
 )u_PISO_OUT(

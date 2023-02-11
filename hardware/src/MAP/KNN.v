@@ -30,9 +30,9 @@ module KNN #(
     input                               CCUKNN_CfgVld,
     output                              KNNCCU_CfgRdy,
     input [IDX_WIDTH            -1 : 0] CCUKNN_CfgNip,
-    input [MAP_WIDTH            -1 : 0] CCUKNN_CfgK, 
-    input                               CCUKNN_CfgCrdRdAddr,
-    input                               CCUKNN_CfgMapWrAddr,
+    input [(MAP_WIDTH + 1)      -1 : 0] CCUKNN_CfgK, 
+    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgCrdRdAddr,
+    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgMapWrAddr,
 
     // Fetch Crd
     output [IDX_WIDTH           -1 : 0] KNNGLB_CrdRdAddr,   
