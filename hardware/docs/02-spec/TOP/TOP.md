@@ -1,11 +1,8 @@
 # 问题
-    - FPS按硬件图完善无Mask的
-    - 调整parameter顺序CCU, ITF, FPS, KNN, SYA, POL
-    - 增加ITF写OFM到GLB，GLBWRIDX_ITFOFM = 2;
-    - 增加GLBWRIDX_POLOFM为POOL_CORE个
-    - POL 8个核单独工作
-    - MAP_WIDTH定义为5，但CfgK为MAP_WIDTH +1
-
+    - FMC怎么判断传数完成（没有DatLast)
+    - SYA的4个PE_bank输出ofm怎么连GLB？
+    - NOC换成AHB？因为本就是握手协议，而且addr每次读写都需要请求，功耗加倍
+    - 需要整个网络完成的信号
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
