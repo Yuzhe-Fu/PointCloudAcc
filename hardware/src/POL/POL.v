@@ -22,36 +22,35 @@ module POL #(
     parameter CHN_WIDTH             = 12,
     parameter SRAM_WIDTH            = 256
     )(
-    input                                                   clk  ,
-    input                                                   rst_n,
+    input                                                   clk                 ,
+    input                                                   rst_n               ,
 
     // Configure
-    input  [POOL_CORE                               -1 : 0] CCUPOL_Rst,
-    input  [POOL_CORE                               -1 : 0] CCUPOL_CfgVld,
-    output [POOL_CORE                               -1 : 0] POLCCU_CfgRdy,
-    input  [(MAP_WIDTH+1)*POOL_CORE                 -1 : 0] CCUPOL_CfgK  , // 24
-    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_CfgNip, // 1024
-    input  [CHN_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_CfgChi, // 64
+    input  [POOL_CORE                               -1 : 0] CCUPOL_Rst          ,
+    input  [POOL_CORE                               -1 : 0] CCUPOL_CfgVld       ,
+    output [POOL_CORE                               -1 : 0] POLCCU_CfgRdy       ,
+    input  [(MAP_WIDTH+1)*POOL_CORE                 -1 : 0] CCUPOL_CfgK         , // 24
+    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_CfgNip       , // 1024
+    input  [CHN_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_CfgChi       , // 64
 
-    output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr,   
-    output                                                  POLGLB_MapRdAddrVld, 
-    input                                                   GLBPOL_MapRdAddrRdy,
+    output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr    ,   
+    output                                                  POLGLB_MapRdAddrVld , 
+    input                                                   GLBPOL_MapRdAddrRdy ,
+    input                                                   GLBPOL_MapRdDatVld     ,
+    input  [SRAM_WIDTH                              -1 : 0] GLBPOL_MapRdDat     ,
+    output                                                  POLGLB_MapRdDatRdy     ,
 
-    input                                                   GLBPOL_MapRdVld ,
-    input  [SRAM_WIDTH                              -1 : 0] GLBPOL_MapRdDat    ,
-    output                                                  POLGLB_MapRdRdy ,
-
-    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld,
-    output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmRdAddr  ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy,
-    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_OfmRdDat    ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdVld ,
-    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdRdy ,
+    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld ,
+    output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmRdAddr    ,
+    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy ,
+    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_OfmRdDat     ,
+    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld     ,
+    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy     ,
 
     output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmWrAddr    ,
-    output [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] POLGLB_OfmWrDat    ,
-    output [POOL_CORE                               -1 : 0] POLGLB_OfmWrVld ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmWrRdy   
+    output [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] POLGLB_OfmWrDat     ,
+    output [POOL_CORE                               -1 : 0] POLGLB_OfmWrDatVld     ,
+    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmWrDatRdy       
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -88,7 +87,7 @@ prior_arb#(
 assign POLGLB_MapRdAddr     = PLC_MapRdAddr[ArbPLCIdx_MapRd];
 assign POLGLB_MapRdAddrVld  = PLC_MapRdAddrVld[ArbPLCIdx_MapRd];
 
-assign POLGLB_MapRdRdy      = PLC_MapRdRdy[ArbPLCIdx_MapRd_s1];
+assign POLGLB_MapRdDatRdy      = PLC_MapRdRdy[ArbPLCIdx_MapRd_s1];
 
 // s1
 always @ ( posedge clk or negedge rst_n ) begin
@@ -246,7 +245,7 @@ generate
 
     // Handshake
     assign rdy_s1 = SIPO_MapInRdy;
-    assign vld_s1 = GLBPOL_MapRdVld & gv_plc ==ArbPLCIdx_MapRd_s1;
+    assign vld_s1 = GLBPOL_MapRdDatVld & gv_plc ==ArbPLCIdx_MapRd_s1;
 
     assign handshake_s1 = rdy_s1 & vld_s1;
     assign ena_s1 = handshake_s1 | ~vld_s1;
@@ -321,7 +320,7 @@ generate
 
     // Handshake
     assign rdy_s3 = ena_s4;
-    assign vld_s3 = GLBPOL_OfmRdVld[gv_plc];
+    assign vld_s3 = GLBPOL_OfmRdDatVld[gv_plc];
 
     assign handshake_s3 = rdy_s3 & vld_s3;
     assign ena_s3 = handshake_s3 | ~vld_s3;
@@ -361,7 +360,7 @@ generate
         .COUNT     ( CntNp                  )
     );
 
-    assign POLGLB_OfmRdRdy[gv_plc] = {POOL_CORE{rdy_s3}};
+    assign POLGLB_OfmRdDatRdy[gv_plc] = {POOL_CORE{rdy_s3}};
 
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
@@ -378,7 +377,7 @@ generate
 
 
     // Handshake
-    assign rdy_s4 = GLBPOL_OfmWrRdy[gv_plc];
+    assign rdy_s4 = GLBPOL_OfmWrDatRdy[gv_plc];
 
     assign handshake_s4 = rdy_s4 & vld_s4;
     assign ena_s4 = handshake_s4 | ~vld_s4;
@@ -417,7 +416,7 @@ generate
     // Logic Design: Out
     //=====================================================================================================================
     // Combination Logic
-    assign POLGLB_OfmWrVld[gv_plc] = vld_s4;
+    assign POLGLB_OfmWrDatVld[gv_plc] = vld_s4;
     assign POLGLB_OfmWrAddr[IDX_WIDTH*gv_plc +: IDX_WIDTH] = NpIdx_s4;
 
     end

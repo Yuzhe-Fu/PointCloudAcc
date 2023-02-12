@@ -12,54 +12,51 @@
 module SYA #(
     parameter ACT_WIDTH  = 8,
     parameter WGT_WIDTH  = 8,
-    parameter ACC_WIDTH  = ACT_WIDTH+WGT_WIDTH+10, //26
+    parameter ACC_WIDTH  = ACT_WIDTH+ACT_WIDTH+10, //26
     parameter NUM_ROW    = 16,
     parameter NUM_COL    = 16,
     parameter NUM_BANK   = 4,
     parameter SRAM_WIDTH = 256,
     parameter ADDR_WIDTH = 16,
-    parameter QNT_WIDTH  = 8,
-    parameter CHI_WIDTH  = 10,
+    parameter QNTSL_WIDTH= 8,
+    parameter CHN_WIDTH  = 10,
     parameter IDX_WIDTH  = 16,
     parameter NUM_OUT    = NUM_BANK
   )(
-    input                                     clk,
-    input                                     rst_n,
+    input                                       clk                       ,
+    input                                       rst_n                     ,
 
-    input                                     CCUSYA_Rst,
+    input                                       CCUSYA_Rst                ,
+    input                                       CCUSYA_CfgVld             ,
+    output                                      SYACCU_CfgRdy             ,
+    input  [2                           -1 : 0] CCUSYA_CfgMod             ,
+    input  [IDX_WIDTH                   -1 : 0] CCUSYA_CfgNip             ,
+    input  [CHN_WIDTH                   -1 : 0] CCUSYA_CfgChi             ,
+    input  [QNTSL_WIDTH                 -1 : 0] CCUSYA_CfgScale           ,
+    input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgShift           ,
+    input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgZp              ,
+    input  [ADDR_WIDTH                  -1 : 0] CCUSYA_CfgActRdBaseAddr   ,
+    input  [ADDR_WIDTH                  -1 : 0] CCUSYA_CfgWgtRdBaseAddr   ,
+    input  [ADDR_WIDTH                  -1 : 0] CCUSYA_CfgOfmWrBaseAddr   ,
     
-    input                                     CCUSYA_CfgVld,
-    output                                    SYACCU_CfgRdy,
-    
-    input  [2                           -1:0] CCUSYA_CfgMod,
-    input  [IDX_WIDTH                   -1:0] CCUSYA_CfgNip,
-    input  [CHI_WIDTH                   -1:0] CCUSYA_CfgChi,
-    
-    input  [QNT_WIDTH                   -1:0] CCUSYA_CfgScale,
-    input  [ACT_WIDTH                   -1:0] CCUSYA_CfgShift,
-    input  [ACT_WIDTH                   -1:0] CCUSYA_CfgZp,
-    input  [ADDR_WIDTH                  -1:0] CCUSYA_CfgActRdBaseAddr,
-    input  [ADDR_WIDTH                  -1:0] CCUSYA_CfgWgtRdBaseAddr,
-    input  [ADDR_WIDTH                  -1:0] CCUSYA_CfgOfmWrBaseAddr,
-    
-    output [ADDR_WIDTH                  -1:0] GLBSYA_ActRdAddr,
-    output                                    GLBSYA_ActRdAddrVld,
-    input                                     SYAGLB_ActRdAddrRdy,
-    input  [ACT_WIDTH*NUM_ROW*NUM_BANK  -1:0] GLBSYA_ActRdDat,
-    input                                     GLBSYA_ActRdDatVld,
-    output                                    SYAGLB_ActRdDatRdy,
+    output [ADDR_WIDTH                  -1 : 0] GLBSYA_ActRdAddr          ,
+    output                                      GLBSYA_ActRdAddrVld       ,
+    input                                       SYAGLB_ActRdAddrRdy       ,
+    input  [ACT_WIDTH*NUM_ROW*NUM_BANK  -1 : 0] GLBSYA_ActRdDat           ,
+    input                                       GLBSYA_ActRdDatVld        ,
+    output                                      SYAGLB_ActRdDatRdy        ,
 
-    output [ADDR_WIDTH                  -1:0] GLBSYA_WgtRdAddr,
-    output                                    GLBSYA_WgtRdAddrVld,
-    input                                     SYAGLB_WgtRdAddrRdy,
-    input  [WGT_WIDTH*NUM_COL*NUM_BANK  -1:0] GLBSYA_WgtRdDat,
-    input                                     GLBSYA_WgtRdDatVld,
-    output                                    SYAGLB_WgtRdDatRdy,
+    output [ADDR_WIDTH                  -1 : 0] GLBSYA_WgtRdAddr          ,
+    output                                      GLBSYA_WgtRdAddrVld       ,
+    input                                       SYAGLB_WgtRdAddrRdy       ,
+    input  [ACT_WIDTH*NUM_COL*NUM_BANK  -1 : 0] GLBSYA_WgtRdDat           ,
+    input                                       GLBSYA_WgtRdDatVld        ,
+    output                                      SYAGLB_WgtRdDatRdy        ,
 
-    output [ACT_WIDTH*NUM_ROW*NUM_BANK  -1:0] SYAGLB_OfmWrDat,
-    output [ADDR_WIDTH                  -1:0] SYAGLB_OfmWrAddr,
-    output [NUM_OUT                     -1:0] SYAGLB_OfmWrDatVld,
-    input  [NUM_OUT                     -1:0] GLBSYA_OfmWrDatRdy
+    output [ACT_WIDTH*NUM_ROW*NUM_BANK  -1 : 0] SYAGLB_OfmWrDat           ,
+    output [ADDR_WIDTH                  -1 : 0] SYAGLB_OfmWrAddr          ,
+    output [NUM_OUT                     -1 : 0] SYAGLB_OfmWrDatVld        ,
+    input  [NUM_OUT                     -1 : 0] GLBSYA_OfmWrDatRdy         
   );
 //=====================================================================================================================
 // Constant Definition :
@@ -79,11 +76,11 @@ wire cfg_rdy = 'd1;
 
 wire [2         -1:0] cfg_mod;
 wire [IDX_WIDTH -1:0] cfg_nip;
-wire [CHI_WIDTH -1:0] cfg_chi;
+wire [CHN_WIDTH -1:0] cfg_chi;
 // the number of the final PE Column finishes all input channels 
-wire [CHI_WIDTH   :0] cfg_chi_cnt = cfg_chi + NUM_COL-1; //cfg_mod == 'd0 ? cfg_chi + NUM_COL*2 : ( cfg_mod == 'd1 ? cfg_chi + NUM_COL : cfg_chi + NUM_COL*4);
+wire [CHN_WIDTH   :0] cfg_chi_cnt = cfg_chi + NUM_COL-1; //cfg_mod == 'd0 ? cfg_chi + NUM_COL*2 : ( cfg_mod == 'd1 ? cfg_chi + NUM_COL : cfg_chi + NUM_COL*4);
 
-wire [QNT_WIDTH -1:0] quant_scale;
+wire [QNTSL_WIDTH -1:0] quant_scale;
 wire [ACT_WIDTH -1:0] quant_shift;
 wire [ACT_WIDTH -1:0] quant_zerop;
 
@@ -113,18 +110,18 @@ reg  [NUM_BANK -1:0] bank_wgt_rdy_tmp;
 wire pe_idle = ~|{bank_ena_you, bank_ena_xia};
 
 wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1:0] bank_pkg_act = GLBSYA_ActRdDat;
-wire [NUM_BANK -1:0][NUM_ROW -1:0][WGT_WIDTH  -1:0] bank_pkg_wgt = GLBSYA_WgtRdDat;
+wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1:0] bank_pkg_wgt = GLBSYA_WgtRdDat;
 
 reg  [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1:0] bank_din_act;
 wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1:0] bank_out_act;
 
-reg  [NUM_BANK -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] bank_din_wgt;
-wire [NUM_BANK -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] bank_out_wgt;
+reg  [NUM_BANK -1:0][NUM_COL -1:0][ACT_WIDTH  -1:0] bank_din_wgt;
+wire [NUM_BANK -1:0][NUM_COL -1:0][ACT_WIDTH  -1:0] bank_out_wgt;
 
 wire [NUM_BANK -1:0] bank_you_rst;
 wire [NUM_BANK -1:0] bank_xia_rst;
 reg  [NUM_BANK -1:0] bank_din_rst;
-reg  [NUM_BANK -1:0] [CHI_WIDTH  :0] bank_acc_cnt;
+reg  [NUM_BANK -1:0] [CHN_WIDTH  :0] bank_acc_cnt;
 reg  bank_acc_rdy;
 wire [NUM_BANK -1:0] bank_acc_run;
 wire [NUM_BANK -1:0] bank_acc_out;
@@ -218,9 +215,9 @@ assign GLBSYA_WgtRdAddrVld = handshake_Act_s0;
 
 CPM_REG_E #( 2         ) CFG_MODE_REG0 ( clk, rst_n, cfg_en, CCUSYA_CfgMod, cfg_mod);
 CPM_REG_E #( IDX_WIDTH ) CFG_MODE_REG1 ( clk, rst_n, cfg_en, CCUSYA_CfgNip, cfg_nip);
-CPM_REG_E #( CHI_WIDTH ) CFG_MODE_REG2 ( clk, rst_n, cfg_en, CCUSYA_CfgChi, cfg_chi);
+CPM_REG_E #( CHN_WIDTH ) CFG_MODE_REG2 ( clk, rst_n, cfg_en, CCUSYA_CfgChi, cfg_chi);
 
-CPM_REG_E #( QNT_WIDTH ) CFG_MODE_REG3 ( clk, rst_n, cfg_en, CCUSYA_CfgScale, quant_scale);
+CPM_REG_E #( QNTSL_WIDTH ) CFG_MODE_REG3 ( clk, rst_n, cfg_en, CCUSYA_CfgScale, quant_scale);
 CPM_REG_E #( ACT_WIDTH ) CFG_MODE_REG4 ( clk, rst_n, cfg_en, CCUSYA_CfgShift, quant_shift);
 CPM_REG_E #( ACT_WIDTH ) CFG_MODE_REG5 ( clk, rst_n, cfg_en, CCUSYA_CfgZp   , quant_zerop);
 
@@ -390,7 +387,7 @@ end
     PE_BANK #(
       .NUM_ROW             ( NUM_ROW            ),
       .NUM_COL             ( NUM_COL            ),
-      .QNT_WIDTH           ( QNT_WIDTH          ),
+      .QNTSL_WIDTH         ( QNTSL_WIDTH          ),
       .ACT_WIDTH           ( ACT_WIDTH          ),
       .WGT_WIDTH           ( WGT_WIDTH          ),
       .PSUM_WIDTH          ( ACC_WIDTH          ),
