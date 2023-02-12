@@ -101,7 +101,7 @@ always @(*) begin
                     next_state <= FNH;
                 else
                     next_state <= IN;
-        OUT:   if(PortIdx_ != PortIdx )
+        OUT:   if(PortIdx_ != PortIdx & !DatOutVld ) // Rdy->0 & Dat is fetched by Off-chip
                     next_state <= FNH;
                 else
                     next_state <= OUT;
