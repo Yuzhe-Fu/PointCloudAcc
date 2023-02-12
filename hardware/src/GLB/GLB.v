@@ -25,25 +25,25 @@ module GLB #(
     parameter CLOCK_PERIOD = 10
 
     )(
-    input                                               clk  ,
-    input                                               rst_n,
+    input                                               clk                 ,
+    input                                               rst_n               ,
 
     // Configure
     input [NUM_BANK * (NUM_RDPORT + NUM_WRPORT) -1 : 0] TOPGLB_CfgPortBankFlag,
     input [($clog2(MAXPAR) + 1)*(NUM_RDPORT + NUM_WRPORT)-1 : 0] TOPGLB_CfgPortParBank,
 
     // Data
-    input  wire [SRAM_WIDTH*MAXPAR*NUM_WRPORT   -1 : 0] TOPGLB_WrPortDat,
-    input  wire [NUM_WRPORT                     -1 : 0] TOPGLB_WrPortDatVld,
-    output wire [NUM_WRPORT                     -1 : 0] GLBTOP_WrPortDatRdy,
-    input  wire [ADDR_WIDTH*NUM_WRPORT          -1 : 0] TOPGLB_WrPortAddr,
+    input  wire [SRAM_WIDTH*MAXPAR*NUM_WRPORT   -1 : 0] TOPGLB_WrPortDat    ,
+    input  wire [NUM_WRPORT                     -1 : 0] TOPGLB_WrPortDatVld ,
+    output wire [NUM_WRPORT                     -1 : 0] GLBTOP_WrPortDatRdy ,
+    input  wire [ADDR_WIDTH*NUM_WRPORT          -1 : 0] TOPGLB_WrPortAddr   ,
 
-    input  wire [ADDR_WIDTH*NUM_RDPORT          -1 : 0] TOPGLB_RdPortAddr,
+    input  wire [ADDR_WIDTH*NUM_RDPORT          -1 : 0] TOPGLB_RdPortAddr   ,
     input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortAddrVld,
     output wire [NUM_RDPORT                     -1 : 0] GLBTOP_RdPortAddrRdy,
-    output wire [SRAM_WIDTH*MAXPAR*NUM_RDPORT   -1 : 0] GLBTOP_RdPortDat,
-    output wire [NUM_RDPORT                     -1 : 0] GLBTOP_RdPortDatVld,
-    input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortDatRdy
+    output wire [SRAM_WIDTH*MAXPAR*NUM_RDPORT   -1 : 0] GLBTOP_RdPortDat    ,
+    output wire [NUM_RDPORT                     -1 : 0] GLBTOP_RdPortDatVld ,
+    input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortDatRdy 
 );
 
 //=====================================================================================================================
@@ -71,8 +71,6 @@ wire [SRAM_WIDTH                -1 : 0] Bank_rdata_array[0 : NUM_BANK     -1];
 wire [$clog2(NUM_WRPORT)        -1 : 0] BankWrPortIdx [0 : NUM_BANK     -1];
 wire [$clog2(NUM_RDPORT)        -1 : 0] BankRdPortIdx [0 : NUM_BANK     -1];
 wire [(NUM_WRPORT+NUM_RDPORT)   -1 : 0] BankPortFlag  [0 : NUM_BANK     -1];
-
-wire [ADDR_WIDTH                -1 : 0] BankWrAddr_Array[0 : NUM_BANK -1];
 wire [ADDR_WIDTH                -1 : 0] BankWrAddr_Array[0 : NUM_BANK   -1];
 wire [NUM_BANK                  -1 : 0] BankRdEn;
 
@@ -198,8 +196,6 @@ endgenerate
 
 generate
     for(gv_j=0; gv_j<NUM_RDPORT; gv_j=gv_j+1) begin: GEN_RDPORT
-        wire [ADDR_WIDTH            -1 : 0] Cnt_RdPortAddr;
-        wire                                INC;
         wire [$clog2(NUM_BANK)      -1 : 0] PortCur1stBankIdx;
         wire [$clog2(NUM_BANK)      -1 : 0] RdPort1stBankIdx;
         wire                                Empty;
@@ -210,7 +206,7 @@ generate
 
 
         // Map RdPort to Bank
-        assign RdPortAddrVldRange =  (SRAM_WORD*RdPortNumBank/TOPGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)]); // Cut address to a relative(valid) range in NumBank/ParBank
+        assign RdPortAddrVldRange =  RdPortAlloc? (SRAM_WORD*RdPortNumBank/TOPGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)]) : SRAM_WORD; // Cut address to a relative(valid) range in NumBank/ParBank; Default: SRAM_WORD
         assign RdPortAddr_Array[gv_j] = TOPGLB_RdPortAddr[ADDR_WIDTH*gv_j +: ADDR_WIDTH];
         assign PortCur1stBankIdx = RdPort1stBankIdx + (RdPortAddr_Array[gv_j] % RdPortAddrVldRange >> SRAM_DEPTH_WIDTH)*TOPGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(NUM_WRPORT+gv_j) +: ($clog2(MAXPAR) + 1)];
 
@@ -265,7 +261,7 @@ generate
         wire [ADDR_WIDTH        -1 : 0] WrPortAddrVldSpace;
 
         // Map WrPort to Bank
-        assign WrPortAddrVldSpace = (SRAM_WORD*WrPortNumBank/TOPGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(gv_j) +: ($clog2(MAXPAR) + 1)]);// Cut address to a relative(valid) range in NumBank/ParBank
+        assign WrPortAddrVldSpace = WrPortAlloc? (SRAM_WORD*WrPortNumBank/TOPGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*(gv_j) +: ($clog2(MAXPAR) + 1)]) : SRAM_WORD;// Cut address to a relative(valid) range in NumBank/ParBank
         assign PortCur1stBankIdx = WrPort1stBankIdx + (WrPortAddr_Array[gv_j] % WrPortAddrVldSpace  >> SRAM_DEPTH_WIDTH)*TOPGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*gv_j +: ($clog2(MAXPAR) + 1)];
 
         // To Bank
