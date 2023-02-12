@@ -22,32 +22,31 @@ module KNN #(
     parameter NUM_SORT_CORE     = 5,
     parameter MASK_ADDR_WIDTH   = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
     )(
-    input                               clk  ,
-    input                               rst_n,
+    input                               clk                 ,
+    input                               rst_n               ,
 
     // Configure
-    input                               CCUKNN_Rst,
-    input                               CCUKNN_CfgVld,
-    output                              KNNCCU_CfgRdy,
-    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgNip,
-    input [(MAP_WIDTH + 1)      -1 : 0] CCUKNN_CfgK, 
-    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgCrdRdAddr,
-    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgMapWrAddr,
+    input                               CCUKNN_Rst          ,
+    input                               CCUKNN_CfgVld       ,
+    output                              KNNCCU_CfgRdy       ,
+    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgNip       ,
+    input [(MAP_WIDTH + 1)      -1 : 0] CCUKNN_CfgK         , 
+    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgCrdRdAddr ,
+    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgMapWrAddr ,
 
     // Fetch Crd
-    output [IDX_WIDTH           -1 : 0] KNNGLB_CrdRdAddr,   
-    output                              KNNGLB_CrdRdAddrVld, 
-    input                               GLBKNN_CrdRdAddrRdy,
-    input  [SRAM_WIDTH          -1 : 0 ]GLBKNN_CrdRdDat,        
-    input                               GLBKNN_CrdRdDatVld,     
-    output                              KNNGLB_CrdRdDatRdy,
+    output [IDX_WIDTH           -1 : 0] KNNGLB_CrdRdAddr    ,   
+    output                              KNNGLB_CrdRdAddrVld , 
+    input                               GLBKNN_CrdRdAddrRdy ,
+    input  [SRAM_WIDTH          -1 : 0 ]GLBKNN_CrdRdDat     ,        
+    input                               GLBKNN_CrdRdDatVld  ,     
+    output                              KNNGLB_CrdRdDatRdy  ,
 
     // Output Map of KNN
-    output [IDX_WIDTH           -1 : 0] KNNGLB_MapWrAddr,
-    output [SRAM_WIDTH          -1 : 0] KNNGLB_MapWrDat,   
-    output                              KNNGLB_MapWrDatVld,     
-    input                               GLBKNN_MapWrDatRdy     
-
+    output [IDX_WIDTH           -1 : 0] KNNGLB_MapWrAddr    ,
+    output [SRAM_WIDTH          -1 : 0] KNNGLB_MapWrDat     ,   
+    output                              KNNGLB_MapWrDatVld  ,     
+    input                               GLBKNN_MapWrDatRdy        
 );
 //=====================================================================================================================
 // Constant Definition :

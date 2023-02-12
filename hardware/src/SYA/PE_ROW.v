@@ -11,7 +11,7 @@
 //========================================================
 module PE_ROW #(
     parameter NUM_PE     = 16,
-    parameter QNT_WIDTH  = 20,
+    parameter QNTSL_WIDTH  = 20,
     parameter ACT_WIDTH  = 8,
     parameter WGT_WIDTH  = 8,
     parameter PSUM_WIDTH = ACT_WIDTH+WGT_WIDTH+10,
@@ -22,7 +22,7 @@ module PE_ROW #(
 
     input                            rst_reset,
     
-    input  [QNT_WIDTH          -1:0] quant_scale,
+    input  [QNTSL_WIDTH          -1:0] quant_scale,
     input  [ACT_WIDTH          -1:0] quant_shift,
     input  [ACT_WIDTH          -1:0] quant_zero_point,
 
@@ -51,8 +51,8 @@ wire in_ena_left = in_vld_left && in_rdy_left;
 wire [NUM_PE -1:0][PSUM_WIDTH -1:0] row_out_sum;
 reg  [PSUM_WIDTH -1:0] out_sum_pick;
 wire [PSUM_WIDTH -1:0] out_sum_reg0;
-wire [PSUM_WIDTH+QNT_WIDTH -1:0] out_sum_expd = {{QNT_WIDTH{out_sum_reg0[PSUM_WIDTH-1]}}, out_sum_reg0};
-wire [PSUM_WIDTH+QNT_WIDTH -1:0] out_sum_scal = out_sum_expd*quant_scale;
+wire [PSUM_WIDTH+QNTSL_WIDTH -1:0] out_sum_expd = {{QNTSL_WIDTH{out_sum_reg0[PSUM_WIDTH-1]}}, out_sum_reg0};
+wire [PSUM_WIDTH+QNTSL_WIDTH -1:0] out_sum_scal = out_sum_expd*quant_scale;
 
 wire [FM_WIDTH   -1:0] out_sum_rsft = out_sum_scal>>quant_shift;
 wire [FM_WIDTH   -1:0] out_sum_qnt8 = out_sum_rsft +quant_zero_point;

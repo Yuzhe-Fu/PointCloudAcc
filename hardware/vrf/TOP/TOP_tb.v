@@ -24,7 +24,6 @@ wire                            O_NetFnh;
 // TOP Bidirs
 wire  [PORT_WIDTH       -1 : 0] IO_Dat;
 wire                            IO_DatVld ;
-wire                            IO_DatLast;
 wire                            OI_DatRdy ;
 
 reg                             rst_n ;
@@ -83,11 +82,11 @@ always @(*) begin
                         next_state <= IN;
                 end else
                     next_state <= CMD;
-        IN:   if( IO_DatVld & IO_DatLast & OI_DatRdy )
+        IN:   if( IO_DatVld  & OI_DatRdy )
                     next_state <= FNH;
                 else
                     next_state <= IN;
-        OUT:   if(IO_DatVld & IO_DatLast & OI_DatRdy )
+        OUT:   if(IO_DatVld  & OI_DatRdy )
                     next_state <= FNH;
                 else
                     next_state <= OUT;
@@ -173,7 +172,6 @@ TOP #(
     .O_DatOE                 ( O_DatOE        ),
     .IO_Dat                  ( IO_Dat         ),
     .IO_DatVld               ( IO_DatVld      ),
-    .IO_DatLast              ( IO_DatLast     ),
     .OI_DatRdy               ( OI_DatRdy      ),
     .O_NetFnh                ( O_NetFnh       )
 );

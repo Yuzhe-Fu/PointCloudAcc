@@ -58,9 +58,12 @@ DELAY #(
     .DIN     (read_en   ),
     .DOUT    (read_en_d )
 );
-always @ ( posedge clk) begin
-    if( read_en_d)
+always @ ( posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        DO_d <= 0;
+    end else if( read_en_d) begin
         DO_d <= DO;
+    end
 end
 
 

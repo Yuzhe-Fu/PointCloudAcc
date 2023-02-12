@@ -22,61 +22,61 @@ module FPS #(
     parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_DIM),
     parameter CRDIDX_WIDTH      = CRD_WIDTH*CRD_DIM+IDX_WIDTH
     )(
-    input                               clk  ,
-    input                               rst_n,
+    input                               clk                     ,
+    input                               rst_n                   ,
 
     // Configure
-    input  [NUM_FPC             -1 : 0] CCUFPS_Rst,
-    input  [NUM_FPC             -1 : 0] CCUFPS_CfgVld,
-    output [NUM_FPC             -1 : 0] FPSCCU_CfgRdy,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNip,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNop,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseRdAddr,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseWrAddr,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgIdxBaseWrAddr,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgMaskBaseAddr,   
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgDistBaseAddr,
+    input  [NUM_FPC             -1 : 0] CCUFPS_Rst              ,
+    input  [NUM_FPC             -1 : 0] CCUFPS_CfgVld           ,
+    output [NUM_FPC             -1 : 0] FPSCCU_CfgRdy           ,
+    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNip           ,
+    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNop           ,
+    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseRdAddr ,
+    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseWrAddr ,
+    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgIdxBaseWrAddr ,
+    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgMaskBaseAddr  ,   
+    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgDistBaseAddr  ,
 
-    output [IDX_WIDTH           -1 : 0] FPSGLB_MaskRdAddr,
-    output                              FPSGLB_MaskRdAddrVld,
-    input                               GLBFPS_MaskRdAddrRdy,
-    input  [SRAM_WIDTH          -1 : 0] GLBFPS_MaskRdDat,    
-    input                               GLBFPS_MaskRdDatVld,    
-    output                              FPSGLB_MaskRdDatRdy,    
+    output [IDX_WIDTH           -1 : 0] FPSGLB_MaskRdAddr       ,
+    output                              FPSGLB_MaskRdAddrVld    ,
+    input                               GLBFPS_MaskRdAddrRdy    ,
+    input  [SRAM_WIDTH          -1 : 0] GLBFPS_MaskRdDat        ,    
+    input                               GLBFPS_MaskRdDatVld     ,    
+    output                              FPSGLB_MaskRdDatRdy     ,    
 
-    output [IDX_WIDTH           -1 : 0] FPSGLB_MaskWrAddr,
-    output [SRAM_WIDTH          -1 : 0] FPSGLB_MaskWrDat,   
-    output                              FPSGLB_MaskWrDatVld,
-    input                               GLBFPS_MaskWrDatRdy, 
+    output [IDX_WIDTH           -1 : 0] FPSGLB_MaskWrAddr       ,
+    output [SRAM_WIDTH          -1 : 0] FPSGLB_MaskWrDat        ,   
+    output                              FPSGLB_MaskWrDatVld     ,
+    input                               GLBFPS_MaskWrDatRdy     , 
 
-    output [IDX_WIDTH           -1 : 0] FPSGLB_CrdRdAddr,
-    output                              FPSGLB_CrdRdAddrVld,
-    input                               GLBFPS_CrdRdAddrRdy,
-    input  [SRAM_WIDTH          -1 : 0] GLBFPS_CrdRdDat,    
-    input                               GLBFPS_CrdRdDatVld,    
-    output                              FPSGLB_CrdRdDatRdy,    
+    output [IDX_WIDTH           -1 : 0] FPSGLB_CrdRdAddr        ,
+    output                              FPSGLB_CrdRdAddrVld     ,
+    input                               GLBFPS_CrdRdAddrRdy     ,
+    input  [SRAM_WIDTH          -1 : 0] GLBFPS_CrdRdDat         ,    
+    input                               GLBFPS_CrdRdDatVld      ,    
+    output                              FPSGLB_CrdRdDatRdy      ,    
 
-    output [IDX_WIDTH           -1 : 0] FPSGLB_CrdWrAddr,
-    output [SRAM_WIDTH          -1 : 0] FPSGLB_CrdWrDat,   
-    output                              FPSGLB_CrdWrDatVld,
-    input                               GLBFPS_CrdWrDatRdy,  
+    output [IDX_WIDTH           -1 : 0] FPSGLB_CrdWrAddr        ,
+    output [SRAM_WIDTH          -1 : 0] FPSGLB_CrdWrDat         ,   
+    output                              FPSGLB_CrdWrDatVld      ,
+    input                               GLBFPS_CrdWrDatRdy      ,  
 
-    output [IDX_WIDTH           -1 : 0] FPSGLB_DistRdAddr,
-    output                              FPSGLB_DistRdAddrVld,
-    input                               GLBFPS_DistRdAddrRdy,
-    input  [SRAM_WIDTH          -1 : 0] GLBFPS_DistRdDat,    
-    input                               GLBFPS_DistRdDatVld,    
-    output                              FPSGLB_DistRdDatRdy,    
+    output [IDX_WIDTH           -1 : 0] FPSGLB_DistRdAddr       ,
+    output                              FPSGLB_DistRdAddrVld    ,
+    input                               GLBFPS_DistRdAddrRdy    ,
+    input  [SRAM_WIDTH          -1 : 0] GLBFPS_DistRdDat        ,    
+    input                               GLBFPS_DistRdDatVld     ,    
+    output                              FPSGLB_DistRdDatRdy     ,    
 
-    output [IDX_WIDTH           -1 : 0] FPSGLB_DistWrAddr,
-    output [SRAM_WIDTH          -1 : 0] FPSGLB_DistWrDat,   
-    output                              FPSGLB_DistWrDatVld,
-    input                               GLBFPS_DistWrDatRdy,
+    output [IDX_WIDTH           -1 : 0] FPSGLB_DistWrAddr       ,
+    output [SRAM_WIDTH          -1 : 0] FPSGLB_DistWrDat        ,   
+    output                              FPSGLB_DistWrDatVld     ,
+    input                               GLBFPS_DistWrDatRdy     ,
 
-    output [IDX_WIDTH           -1 : 0] FPSGLB_IdxWrAddr,
-    output [SRAM_WIDTH          -1 : 0] FPSGLB_IdxWrDat,   
-    output                              FPSGLB_IdxWrDatVld,
-    input                               GLBFPS_IdxWrDatRdy
+    output [IDX_WIDTH           -1 : 0] FPSGLB_IdxWrAddr        ,
+    output [SRAM_WIDTH          -1 : 0] FPSGLB_IdxWrDat         ,   
+    output                              FPSGLB_IdxWrDatVld      ,
+    input                               GLBFPS_IdxWrDatRdy      
 
 );
 
@@ -114,7 +114,7 @@ wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCDistRdIdx;
 wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCDistRdIdx_d;
 
 wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_MaskWrAddr;
-reg  [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_MaskWrDat;
+reg  [NUM_FPC   -1 : 0][SRAM_WIDTH  -1 : 0] FPC_MaskWrDat;
 wire [NUM_FPC                       -1 : 0] FPC_MaskWrDatVld;
 wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCMaskWrIdx;
 wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCMaskWrIdx_d;
@@ -269,7 +269,7 @@ ArbCore#(
     .NUM_CORE    ( NUM_FPC      ),
     .ADDR_WIDTH  ( IDX_WIDTH    ),
     .DATA_WIDTH  ( SRAM_WIDTH   )
-)u_ArbCore_FPCWrCrd(
+)u_ArbCore_FPCWrIdx(
     .clk         ( clk                  ),
     .rst_n       ( rst_n                ),
     .CoreOutVld  ( FPC_IdxWrDatVld      ),
@@ -290,7 +290,7 @@ ArbCore#(
 //=====================================================================================================================
 genvar  gv_fpc;
 generate
-    for(gv_fpc=0; gv_fpc<NUM_FPC; gv_fpc=gv_fpc+1) begin
+    for(gv_fpc=0; gv_fpc<NUM_FPC; gv_fpc=gv_fpc+1) begin: GEN_FPC
         //=====================================================================================================================
         // Constant Definition :
         //=====================================================================================================================
@@ -690,12 +690,13 @@ generate
 
             // Mask write back
                 assign FPC_MaskWrAddr[gv_fpc] = FPC_MaskRdAddr_s1;
-                always(*) begin
-                    if(FPC_MaskWrDatVld[gv_fpc])
+                always @ (*) begin
+                    if(FPC_MaskWrDatVld[gv_fpc]) begin
                         FPC_MaskWrDat[gv_fpc] =  GLBFPS_MaskRdDat;
                         FPC_MaskWrDat[gv_fpc][FPS_MaxIdx_ % NUM_MASK_SRAM] = 1'b1; // set 1
-                    else 
+                    end else begin
                         FPC_MaskWrDat[gv_fpc] = 0;
+                    end
                 end
                 assign FPC_MaskWrDatVld[gv_fpc] = LopCntLast_s1 & handshake_Mask_s1;
 
@@ -718,7 +719,7 @@ generate
             assign rdy_Crd_s2 = vld_Byte_s1;
             assign handshake_Crd_s2 = rdy_Crd_s2 & vld_Crd_s2;
             assign ena_Crd_s2 = handshake_Crd_s2 | ~vld_Crd_s2;
-            assign vld_Crd_s2 = (CntCrdRdAddr_s2+1)*NUM_CRD_SRAM > NUM_MASK_SRAM*CurIdx_s1;
+            assign vld_Crd_s2 = (CntCrdRdAddr_s2 + 1)*NUM_CRD_SRAM > NUM_MASK_SRAM*CurIdx_s1;
 
             assign rdy_Dist_s2 = vld_Byte_s1;
             assign handshake_Dist_s2 = rdy_Dist_s2 & vld_Dist_s2;
@@ -737,16 +738,16 @@ generate
 
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
-                    Crd_s2 <= 0;
+                    {CntCrdRdAddr_s2, Crd_s2} <= 0;
                 end else if (ena_Crd_s2) begin
-                    Crd_s2 <= Crd_s1;
+                    {CntCrdRdAddr_s2, Crd_s2} <= {CntCrdRdAddr_s1, Crd_s1};
                 end
             end
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
-                    Dist_s2 <= 0;
+                    {CntDistRdAddr_s2, Dist_s2} <= 0;
                 end else if (ena_Dist_s2) begin
-                    Dist_s2 <= Dist_s1;
+                    {CntDistRdAddr_s2, Dist_s2} <= {CntDistRdAddr_s1, Dist_s1};
                 end
             end
 

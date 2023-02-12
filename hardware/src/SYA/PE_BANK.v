@@ -12,7 +12,7 @@
 module PE_BANK #(
     parameter NUM_ROW    = 16,
     parameter NUM_COL    = 16,
-    parameter QNT_WIDTH  = 20,
+    parameter QNTSL_WIDTH  = 20,
     parameter ACT_WIDTH  = 8,
     parameter WGT_WIDTH  = 8,
     parameter PSUM_WIDTH = ACT_WIDTH+WGT_WIDTH+10,
@@ -23,7 +23,7 @@ module PE_BANK #(
     
     input                            rst_reset,
     
-    input  [QNT_WIDTH          -1:0] quant_scale,
+    input  [QNTSL_WIDTH          -1:0] quant_scale,
     input  [ACT_WIDTH          -1:0] quant_shift,
     input  [ACT_WIDTH          -1:0] quant_zero_point,
 
@@ -84,7 +84,7 @@ end
 
     PE_ROW #(
       .NUM_PE               ( NUM_COL           ),
-      .QNT_WIDTH            ( QNT_WIDTH         ),
+      .QNTSL_WIDTH            ( QNTSL_WIDTH         ),
       .ACT_WIDTH            ( ACT_WIDTH         ),
       .WGT_WIDTH            ( WGT_WIDTH         ),
       .PSUM_WIDTH           ( PSUM_WIDTH        ),

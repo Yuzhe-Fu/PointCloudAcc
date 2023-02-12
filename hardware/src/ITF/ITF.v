@@ -22,16 +22,16 @@ module ITF #(
     parameter ITF_NUM_WRPORT    = 4
 
     )(
-    input                                               clk  ,
-    input                                               rst_n,
-    output reg                                          ITFPAD_DatOE,
-    output [PORT_WIDTH                          -1 : 0] ITFPAD_Dat     ,
-    output                                              ITFPAD_DatVld  ,
-    input                                               PADITF_DatRdy  ,
+    input                                               clk             ,
+    input                                               rst_n           ,
+    output reg                                          ITFPAD_DatOE    ,
+    output [PORT_WIDTH                          -1 : 0] ITFPAD_Dat      ,
+    output                                              ITFPAD_DatVld   ,
+    input                                               PADITF_DatRdy   ,
 
-    input  [PORT_WIDTH                          -1 : 0] PADITF_Dat     ,
-    input                                               PADITF_DatVld  ,
-    output                                              ITFPAD_DatRdy  ,
+    input  [PORT_WIDTH                          -1 : 0] PADITF_Dat      ,
+    input                                               PADITF_DatVld   ,
+    output                                              ITFPAD_DatRdy   ,
 
     input  [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)  -1 : 0] CCUITF_DRAMBaseAddr,
 
