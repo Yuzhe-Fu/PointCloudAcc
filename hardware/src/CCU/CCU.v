@@ -13,11 +13,9 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module CCU #(
-    parameter ISA_SRAM_WORD         = 64,
     parameter SRAM_WIDTH            = 256,
     parameter PORT_WIDTH            = 128,
     parameter POOL_CORE             = 6,
-    parameter CLOCK_PERIOD          = 10,
 
     parameter ADDR_WIDTH            = 16,
     parameter DRAM_ADDR_WIDTH       = 32,
@@ -29,72 +27,71 @@ module CCU #(
     parameter ACT_WIDTH             = 8,
     parameter MAP_WIDTH             = 5,
     parameter NUM_LAYER_WIDTH       = 20,
-    parameter ISARDWORD_WIDTH       = 4,
     parameter NUM_MODULE            = 5,
-    parameter OPNUM                 = NUM_MODULE + GLB_NUM_WRPORT + GLB_NUM_RDPORT,
 
     parameter MAXPAR                = 32,
     parameter NUM_BANK              = 32,
     parameter ITF_NUM_RDPORT        = 12,
     parameter ITF_NUM_WRPORT        = 14,
-    parameter NUM_FPC               = 4
+    parameter NUM_FPC               = 4,
+    parameter OPNUM                 = NUM_MODULE + GLB_NUM_WRPORT + GLB_NUM_RDPORT
+
 
     )(
     input                                   clk                     ,
     input                                   rst_n                   ,
-    input                                   TOPCCU_start,
-    output                                  CCUTOP_NetFnh,
+    input                                   TOPCCU_start            ,
+    output                                  CCUTOP_NetFnh           ,
 
         // Configure
-    output [ADDR_WIDTH              -1 : 0] CCUGLB_ISARdAddr    ,
-    output                                  CCUGLB_ISARdAddrVld ,
-    input                                   GLBCCU_ISARdAddrRdy ,
-    input  [SRAM_WIDTH              -1 : 0] GLBCCU_ISARdDat,             
-    input                                   GLBCCU_ISARdDatVld,          
-    output                                  CCUGLB_ISARdDatRdy,
+    output [ADDR_WIDTH              -1 : 0] CCUGLB_ISARdAddr        ,
+    output                                  CCUGLB_ISARdAddrVld     ,
+    input                                   GLBCCU_ISARdAddrRdy     ,
+    input  [SRAM_WIDTH              -1 : 0] GLBCCU_ISARdDat         ,             
+    input                                   GLBCCU_ISARdDatVld      ,          
+    output                                  CCUGLB_ISARdDatRdy      ,
+    output [ADDR_WIDTH              -1 : 0] CCUTOP_MduISARdAddrMin  , // To avoid ITF over-write ISARAM of GLB
+    
+    output reg [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_DRAMBaseAddr,
 
-    output [ADDR_WIDTH              -1 : 0] CCUTOP_MduISARdAddrMin, // To avoid ITF over-write ISARAM of GLB
+    output     [NUM_FPC             -1 : 0] CCUFPS_Rst              ,
+    output     [NUM_FPC             -1 : 0] CCUFPS_CfgVld           ,
+    input      [NUM_FPC             -1 : 0] FPSCCU_CfgRdy           ,        
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNip           ,                    
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNop           , 
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseRdAddr ,
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseWrAddr ,
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgIdxBaseWrAddr ,
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgMaskBaseAddr  ,   
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgDistBaseAddr  ,
 
-    output reg [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_BaseAddr,
+    output                                  CCUKNN_Rst              ,
+    output                                  CCUKNN_CfgVld           ,
+    input                                   KNNCCU_CfgRdy           ,        
+    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgNip           ,                    
+    output  reg [(MAP_WIDTH + 1)    -1 : 0] CCUKNN_CfgK             , 
+    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgCrdRdAddr     ,
+    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgMapWrAddr     ,
 
-    output                                  CCUFPS_Rst   ,
-    output                                  CCUFPS_CfgVld,
-    input                                   FPSCCU_CfgRdy,        
-    output  reg [IDX_WIDTH          -1 : 0] CCUFPS_CfgNip,                    
-    output  reg [IDX_WIDTH          -1 : 0] CCUFPS_CfgNop, 
-    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseRdAddr,
-    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseWrAddr,
-    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgIdxBaseWrAddr,
-    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgMaskBaseAddr,   
-    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgDistBaseAddr,
+    output                                  CCUSYA_Rst              ,  //
+    output                                  CCUSYA_CfgVld           ,
+    input                                   SYACCU_CfgRdy           ,
+    output  reg[2                   -1 : 0] CCUSYA_CfgMod           ,
+    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNip           , 
+    output  reg[CHN_WIDTH           -1 : 0] CCUSYA_CfgChi           ,         
+    output  reg[QNTSL_WIDTH         -1 : 0] CCUSYA_CfgScale         ,        
+    output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgShift         ,        
+    output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgZp            ,
+    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgActRdBaseAddr ,
+    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgWgtRdBaseAddr ,
+    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgOfmWrBaseAddr ,
 
-    output                                  CCUKNN_Rst   ,
-    output                                  CCUKNN_CfgVld,
-    input                                   KNNCCU_CfgRdy,        
-    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgNip,                    
-    output  reg [(MAP_WIDTH + 1)    -1 : 0] CCUKNN_CfgK  , 
-    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgCrdRdAddr,
-    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgMapWrAddr,
-
-    output                                  CCUSYA_Rst,  //
-    output                                  CCUSYA_CfgVld,
-    input                                   SYACCU_CfgRdy,
-    output  reg[2                   -1 : 0] CCUSYA_CfgMod,
-    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNip, 
-    output  reg[CHN_WIDTH           -1 : 0] CCUSYA_CfgChi,         
-    output  reg[QNTSL_WIDTH         -1 : 0] CCUSYA_CfgScale,        
-    output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgShift,        
-    output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgZp,
-    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgActRdBaseAddr,
-    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgWgtRdBaseAddr,
-    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgOfmWrBaseAddr,
-
-    output                                  CCUPOL_Rst,
-    output                                  CCUPOL_CfgVld,
-    input                                   POLCCU_CfgRdy,
-    output  reg [(MAP_WIDTH + 1)    -1 : 0] CCUPOL_CfgK,
-    output  reg [IDX_WIDTH          -1 : 0] CCUPOL_CfgNip,
-    output  reg [CHN_WIDTH          -1 : 0] CCUPOL_CfgChi,
+    output      [POOL_CORE              -1 : 0] CCUPOL_Rst          ,
+    output      [POOL_CORE              -1 : 0] CCUPOL_CfgVld       ,
+    input       [POOL_CORE              -1 : 0] POLCCU_CfgRdy       ,
+    output  reg [(MAP_WIDTH+1)*POOL_CORE-1 : 0] CCUPOL_CfgK         ,
+    output  reg [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip       ,
+    output  reg [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChi       ,
              
     output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK              -1 : 0] CCUTOP_CfgPortBankFlag ,
     output reg [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)    -1 : 0] CCUTOP_CfgPortParBank
@@ -104,7 +101,6 @@ module CCU #(
 // Constant Definition :
 //=====================================================================================================================
 localparam OPCODE_WIDTH = 8;
-localparam ISA_SRAM_DEPTH_WIDTH = $clog2(ISA_SRAM_WORD);
 
 localparam IDLE     = 4'b0000;
 localparam IDLE_CFG = 4'b0001;
@@ -259,12 +255,12 @@ always @(posedge clk or negedge rst_n) begin
         OpNumWord[1] = 3;// localparam OPCODE_FPS             = 1;
         OpNumWord[2] = 1;// localparam OPCODE_KNN             = 2;
         OpNumWord[3] = 1;// localparam OPCODE_SYA             = 3;
-        OpNumWord[4] = 1;// localparam OPCODE_POL             = 4;
+        OpNumWord[4] = 3;// localparam OPCODE_POL             = 4;
     end
 end
 
 // CfgRdy -> Req
-assign CfgRdy = {KNNCCU_CfgRdy, FPSCCU_CfgRdy,  POLCCU_CfgRdy, SYACCU_CfgRdy, CCUTOP_CfgRdy};
+assign CfgRdy = {KNNCCU_CfgRdy, &FPSCCU_CfgRdy,  &POLCCU_CfgRdy, SYACCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
@@ -382,14 +378,14 @@ always @(posedge clk or negedge rst_n) begin
                 CCUTOP_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= 'd1;
             end else begin
                 CCUTOP_CfgPortBankFlag[NUM_BANK*int_i +: NUM_BANK] <= 0; // ISA read bank0
-                CCUTOP_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= 0;     
+                CCUTOP_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= 'd1;   // default  
             end 
         end 
         for(int_i = 0; int_i < ITF_NUM_RDPORT+ITF_NUM_WRPORT; int_i=int_i+1) begin
             if(int_i == GLBWRIDX_ITFISA)
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*int_i +: DRAM_ADDR_WIDTH]    <= 'd0; // ISA read DramAddr = 0
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*int_i +: DRAM_ADDR_WIDTH]    <= 'd0; // ISA read DramAddr = 0
             else 
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*int_i +: DRAM_ADDR_WIDTH]    <= 'd0;
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*int_i +: DRAM_ADDR_WIDTH]    <= 'd0;
         end
 
     end else if ( handshake_s1 & OpCodeMatch) begin
@@ -407,8 +403,8 @@ always @(posedge clk or negedge rst_n) begin
                 CCUFPS_CfgMaskBaseAddr  <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC*2   +: IDX_WIDTH*NUM_FPC];
             end else if(CntISARdWord == 3) begin
                 CCUFPS_CfgDistBaseAddr  <= GLBCCU_ISARdDat[OPCODE_WIDTH                         +: IDX_WIDTH*NUM_FPC];
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFCRD +: DRAM_ADDR_WIDTH] <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC +: DRAM_ADDR_WIDTH];
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*GLBRDIDX_ITFIDX +: DRAM_ADDR_WIDTH] <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC + DRAM_ADDR_WIDTH +: DRAM_ADDR_WIDTH];
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFCRD +: DRAM_ADDR_WIDTH] <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC +: DRAM_ADDR_WIDTH];
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*GLBRDIDX_ITFIDX +: DRAM_ADDR_WIDTH] <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC + DRAM_ADDR_WIDTH +: DRAM_ADDR_WIDTH];
             end
 
         end else if (OpCode == OPCODE_KNN) begin
@@ -417,7 +413,7 @@ always @(posedge clk or negedge rst_n) begin
                 CCUKNN_CfgK             <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH     +: IDX_WIDTH];
                 CCUKNN_CfgCrdRdAddr     <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*2   +: IDX_WIDTH];
                 CCUKNN_CfgMapWrAddr     <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*3   +: IDX_WIDTH];
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*GLBRDIDX_ITFMAP +: DRAM_ADDR_WIDTH] 
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*GLBRDIDX_ITFMAP +: DRAM_ADDR_WIDTH] 
                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*3 + IDX_WIDTH +: DRAM_ADDR_WIDTH];
             end
 
@@ -432,22 +428,24 @@ always @(posedge clk or negedge rst_n) begin
                 CCUSYA_CfgActRdBaseAddr <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2               +: ADDR_WIDTH]; 
                 CCUSYA_CfgWgtRdBaseAddr <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH  +: ADDR_WIDTH]; 
                 CCUSYA_CfgOfmWrBaseAddr <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*2+: ADDR_WIDTH]; 
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFACT +: DRAM_ADDR_WIDTH] 
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFACT +: DRAM_ADDR_WIDTH] 
                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*2 + ADDR_WIDTH +: DRAM_ADDR_WIDTH]; 
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFWGT +: DRAM_ADDR_WIDTH] 
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFWGT +: DRAM_ADDR_WIDTH] 
                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*2 + ADDR_WIDTH + DRAM_ADDR_WIDTH +: DRAM_ADDR_WIDTH]; 
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*GLBRDIDX_ITFOFM +: DRAM_ADDR_WIDTH] 
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*GLBRDIDX_ITFOFM +: DRAM_ADDR_WIDTH] 
                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*2 + ADDR_WIDTH + DRAM_ADDR_WIDTH*2 +: DRAM_ADDR_WIDTH]; 
                                         
             end
 
         end else if (OpCode == OPCODE_POL) begin
             if (CntISARdWord == 1) begin
-                CCUPOL_CfgNip   <= GLBCCU_ISARdDat[OPCODE_WIDTH                                             +: IDX_WIDTH*POOL_CORE];
-                CCUPOL_CfgChi   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*POOL_CORE                       +: CHN_WIDTH*POOL_CORE];
-                CCUPOL_CfgK     <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*POOL_CORE + CHN_WIDTH*POOL_CORE +: OPCODE_WIDTH*POOL_CORE]; // 8bit
-                CCUITF_BaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFMAP +: DRAM_ADDR_WIDTH] 
-                                <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*POOL_CORE + CHN_WIDTH*POOL_CORE + OPCODE_WIDTH*POOL_CORE +: DRAM_ADDR_WIDTH]; // 8bit; 
+                CCUPOL_CfgNip   <= GLBCCU_ISARdDat[OPCODE_WIDTH +: IDX_WIDTH*POOL_CORE];
+            end else if(CntISARdWord == 2) begin 
+                CCUPOL_CfgChi   <= GLBCCU_ISARdDat[OPCODE_WIDTH +: CHN_WIDTH*POOL_CORE];
+            end else if(CntISARdWord == 3) begin
+                CCUPOL_CfgK     <= GLBCCU_ISARdDat[OPCODE_WIDTH +: OPCODE_WIDTH*POOL_CORE]; // 8bit
+                CCUITF_DRAMBaseAddr[DRAM_ADDR_WIDTH*GLBWRIDX_ITFMAP +: DRAM_ADDR_WIDTH] 
+                                <= GLBCCU_ISARdDat[OPCODE_WIDTH + OPCODE_WIDTH*POOL_CORE    +: DRAM_ADDR_WIDTH]; // 8bit; 
             end 
         end
                
@@ -476,14 +474,18 @@ always @(posedge clk or negedge rst_n)  begin
     end
 end
 
-assign {CCUKNN_CfgVld, CCUFPS_CfgVld,  CCUPOL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
+wire FPS_CfgVld;
+wire POL_CfgVld;
 
+assign {CCUKNN_CfgVld, FPS_CfgVld,  POL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
+assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 //=====================================================================================================================
 // Logic Design 3: Rst
 //=====================================================================================================================
 assign CCUSYA_Rst = state == IDLE;
-assign CCUPOL_Rst = state == IDLE;
-assign CCUFPS_Rst = state == IDLE;
+assign CCUPOL_Rst = {POOL_CORE{state == IDLE}};
+assign CCUFPS_Rst = {NUM_FPC{state == IDLE}};
 assign CCUKNN_Rst = state == IDLE;
 
 //=====================================================================================================================
