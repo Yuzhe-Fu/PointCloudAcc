@@ -24,7 +24,8 @@ module TOP #(
 
     // FPS
     parameter NUM_FPC        = 4, 
-    parameter NUM_MASK_SRAM  = 16, // process bits at a time
+    parameter CUT_MASK_WIDTH = 16, 
+    
     // KNN
     parameter NUM_SORT_CORE  = 4,
 
@@ -47,7 +48,6 @@ module TOP #(
     parameter ADDR_WIDTH     = 16,
     parameter GLB_NUM_RDPORT = 12 + POOL_CORE - 1,
     parameter GLB_NUM_WRPORT = 12 + POOL_CORE - 1, 
-    parameter MAXPAR         = 32,
     parameter NUM_BANK       = 32,
 
     // NetWork Parameters
@@ -59,6 +59,8 @@ module TOP #(
     parameter ACT_WIDTH      = 8,
     parameter CHN_WIDTH      = 12,
     parameter QNTSL_WIDTH    = 20,
+
+    parameter MAXPAR         = ACT_WIDTH*(POOL_COMP_CORE > SYA_NUM_ROW*SYA_NUM_BANK ? POOL_COMP_CORE : SYA_NUM_ROW*SYA_NUM_BANK) / SRAM_WIDTH, 
 
     parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
     )(
@@ -263,14 +265,14 @@ wire [SRAM_WIDTH                              -1 : 0] GLBPOL_MapRdDat     ;
 wire                                                  POLGLB_MapRdDatRdy     ;
 
 wire [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld ;
-wire [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmRdAddr    ;
+wire [POOL_CORE -1 : 0][IDX_WIDTH             -1 : 0] POLGLB_OfmRdAddr    ;
 wire [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy ;
-wire [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_OfmRdDat     ;
+wire [POOL_CORE -1 : 0][(ACT_WIDTH*POOL_COMP_CORE) -1 : 0] GLBPOL_OfmRdDat     ;
 wire [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld     ;
 wire [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy     ;
 
-wire [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmWrAddr    ;
-wire [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] POLGLB_OfmWrDat     ;
+wire [POOL_CORE -1 : 0][IDX_WIDTH             -1 : 0] POLGLB_OfmWrAddr    ;
+wire [POOL_CORE -1 : 0][(ACT_WIDTH*POOL_COMP_CORE) -1 : 0] POLGLB_OfmWrDat     ;
 wire [POOL_CORE                               -1 : 0] POLGLB_OfmWrDatVld     ;
 wire [POOL_CORE                               -1 : 0] GLBPOL_OfmWrDatRdy     ;
 
@@ -474,7 +476,7 @@ FPS #(
     .CRD_WIDTH            ( CRD_WIDTH   ),
     .CRD_DIM              ( CRD_DIM     ),
     .NUM_FPC              ( NUM_FPC     ),
-    .NUM_MASK_SRAM        ( NUM_MASK_SRAM)
+    .CUT_MASK_WIDTH       ( CUT_MASK_WIDTH)
 )u_FPS(
     .clk                  ( clk                  ),
     .rst_n                ( rst_n                ),
@@ -653,8 +655,8 @@ assign TOPGLB_RdPortDatRdy[GLBRDIDX_POLMAP]     = POLGLB_MapRdDatRdy;
 // Read Ofm
 generate
     for(gv_i = 0; gv_i < POOL_CORE; gv_i = gv_i + 1) begin
-        assign TOPGLB_RdPortAddr[GLBRDIDX_POLOFM + gv_i]    = POLGLB_OfmRdAddr[IDX_WIDTH*gv_i +: IDX_WIDTH];
-        assign GLBPOL_OfmRdDat[(ACT_WIDTH*POOL_COMP_CORE)*gv_i +: (ACT_WIDTH*POOL_COMP_CORE)] = GLBTOP_RdPortDat[GLBRDIDX_POLOFM + gv_i];
+        assign TOPGLB_RdPortAddr[GLBRDIDX_POLOFM + gv_i]    = POLGLB_OfmRdAddr[gv_i];
+        assign GLBPOL_OfmRdDat[gv_i] = GLBTOP_RdPortDat[GLBRDIDX_POLOFM + gv_i];
     end
 endgenerate
 assign TOPGLB_RdPortAddrVld[GLBRDIDX_POLOFM +: POOL_CORE]   = POLGLB_OfmRdAddrVld;
@@ -664,9 +666,9 @@ assign TOPGLB_RdPortDatRdy[GLBRDIDX_POLOFM +: POOL_CORE]    = POLGLB_OfmRdDatRdy
 
 // Write Ofm
 generate
-    for(gv_i = 0; gv_i < POOL_CORE; gv_i               = gv_i + 1) begin
-        assign TOPGLB_WrPortAddr[GLBWRIDX_POLOFM + gv_i]    = POLGLB_OfmWrAddr[IDX_WIDTH*gv_i +: IDX_WIDTH];
-        assign TOPGLB_WrPortDat[GLBWRIDX_POLOFM + gv_i]     = POLGLB_OfmWrDat[(ACT_WIDTH*POOL_COMP_CORE)*gv_i +: (ACT_WIDTH*POOL_COMP_CORE)];
+    for(gv_i = 0; gv_i < POOL_CORE; gv_i = gv_i + 1) begin
+        assign TOPGLB_WrPortAddr[GLBWRIDX_POLOFM + gv_i]    = POLGLB_OfmWrAddr[gv_i];
+        assign TOPGLB_WrPortDat[GLBWRIDX_POLOFM + gv_i]     = POLGLB_OfmWrDat[gv_i];
     end
 endgenerate
 assign TOPGLB_WrPortDatVld[GLBWRIDX_POLOFM +: POOL_CORE]    = POLGLB_OfmWrDatVld;
