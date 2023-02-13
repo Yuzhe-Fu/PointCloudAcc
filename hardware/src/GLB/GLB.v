@@ -301,12 +301,13 @@ endgenerate
 //=====================================================================================================================
 // Debug
 //=====================================================================================================================
-
-DEC2D #(
-    .WIDTH(NUM_BANK),
-    .DEPTH(NUM_WRPORT+NUM_RDPORT)
-) u_DEC2D_CCUGLB_CfgPortBankFlag(
-    .IN(TOPGLB_CfgPortBankFlag)
-);
+`ifdef SIM
+    DEC2D #(
+        .WIDTH(NUM_BANK),
+        .DEPTH(NUM_WRPORT+NUM_RDPORT)
+    ) u_DEC2D_CCUGLB_CfgPortBankFlag(
+        .IN(TOPGLB_CfgPortBankFlag)
+    );
+`endif
 
 endmodule

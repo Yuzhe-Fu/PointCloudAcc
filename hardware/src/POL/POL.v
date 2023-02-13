@@ -31,7 +31,7 @@ module POL #(
     output [POOL_CORE                               -1 : 0] POLCCU_CfgRdy       ,
     input  [(MAP_WIDTH+1)*POOL_CORE                 -1 : 0] CCUPOL_CfgK         , // 24
     input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_CfgNip       , // 1024
-    input  [CHN_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_CfgChi       , // 64
+    input  [POOL_CORE                     -1 : 0][CHN_WIDTH                     -1 : 0] CCUPOL_CfgChi       , // 64
 
     output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr    ,   
     output                                                  POLGLB_MapRdAddrVld , 
@@ -79,9 +79,9 @@ wire [POOL_CORE         -1 : 0] PLC_MapRdRdy;
 prior_arb#(
     .REQ_WIDTH ( POOL_CORE )
 )u_prior_arb_PLCArbMICIdx(
-    .req ( PLC_MapRdAddrVld ),
-    .gnt (  ),
-    .arb_port  ( ArbPLCIdx_MapRd  )
+    .req ( PLC_MapRdAddrVld     ),
+    .gnt (                      ),
+    .arb_port( ArbPLCIdx_MapRd  )
 );
 
 assign POLGLB_MapRdAddr     = PLC_MapRdAddr[ArbPLCIdx_MapRd];
@@ -315,7 +315,7 @@ generate
     
     // Combination Logic
     assign POLGLB_OfmRdAddrVld[gv_plc] = {POOL_CORE{handshake_s1}};
-    assign NpIdx_s2 = (CCUPOL_CfgChi[CHN_WIDTH*gv_plc +: CHN_WIDTH]/POOL_COMP_CORE)*PISO_MapOutDat + CntChnGrp;
+    assign NpIdx_s2 = (CCUPOL_CfgChi[gv_plc]/POOL_COMP_CORE)*PISO_MapOutDat + CntChnGrp;
     assign POLGLB_OfmRdAddr[IDX_WIDTH*gv_plc +: IDX_WIDTH] = NpIdx_s2;
 
     // Handshake
@@ -326,7 +326,7 @@ generate
     assign ena_s3 = handshake_s3 | ~vld_s3;
 
     // Reg Update
-    wire [CHNGRP_WIDTH      -1 : 0] MaxCntChnGrp = CCUPOL_CfgChi[CHN_WIDTH*gv_plc +: CHN_WIDTH]/POOL_COMP_CORE -1;
+    wire [CHNGRP_WIDTH      -1 : 0] MaxCntChnGrp = CCUPOL_CfgChi[gv_plc]/POOL_COMP_CORE -1;
     counter#(
         .COUNT_WIDTH ( CHNGRP_WIDTH )
     )u_CntChnGrp(

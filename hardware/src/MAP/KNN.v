@@ -158,7 +158,7 @@ assign vld_s0 = state == CP | state == LP;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0 = handshake_s0 | ~vld_s0;
 
-wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = CCUKNN_CfgNip / NUM_SORT_CORE==0?  CCUKNN_CfgNip / NUM_SORT_CORE : CCUKNN_CfgNip / NUM_SORT_CORE + 1;
+wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = CCUKNN_CfgNip % NUM_SORT_CORE==0?  CCUKNN_CfgNip / NUM_SORT_CORE : CCUKNN_CfgNip / NUM_SORT_CORE + 1;
 counter#(
     .COUNT_WIDTH ( IDX_WIDTH )
 )u0_counter_CntCp(
@@ -237,7 +237,7 @@ generate
         reg  [IDX_WIDTH          -1 : 0] CpIdx_s2;
         wire[DISTSQR_WIDTH       -1 : 0] LopDist_s1;
         reg  [CRD_WIDTH*CRD_DIM  -1 : 0] CpCrd_s2;
-        wire [SRAM_WIDTH*NUM_SRAMWORD_MAP -1 : 0] INSKNN_Map;
+        wire [NUM_SRAMWORD_MAP -1 : 0][SRAM_WIDTH -1 : 0] INSKNN_Map;
         
         assign CpIdx_s1 = NUM_SORT_CORE*CntCpCrdRdAddr_s1 + gv_core;
         assign PntIdx_s1 = NUM_SORT_CORE*CntLopCrdRdAddr_s1 + gv_core;
@@ -252,12 +252,13 @@ generate
         );
         assign KNNINS_LopVld[gv_core] = state_s1 == LP & (GLBKNN_CrdRdDatVld & KNNGLB_CrdRdDatRdy);
         INS#(
-            .SORT_LEN_WIDTH   ( MAP_WIDTH ),
-            .IDX_WIDTH       ( IDX_WIDTH ),
-            .DISTSQR_WIDTH      ( DISTSQR_WIDTH )
+            .SORT_LEN_WIDTH     ( MAP_WIDTH     ),
+            .IDX_WIDTH          ( IDX_WIDTH     ),
+            .DATA_WIDTH         ( DISTSQR_WIDTH )
         )u_INS(
             .clk                 ( clk                 ),
             .rst_n               ( rst_n               ),
+            .KNNINS_CfgK         ( CCUKNN_CfgK         ),
             .KNNINS_LopLast      ( CntCpCrdRdAddrLast_s1 ),
             .KNNINS_Lop          ( {LopDist_s1, PntIdx_s1}),
             .KNNINS_LopVld       ( KNNINS_LopVld[gv_core]),
@@ -268,7 +269,7 @@ generate
         );
 
         for (gv_wd=0; gv_wd < NUM_SRAMWORD_MAP; gv_wd=gv_wd+1) begin
-            assign PISO_InDat[gv_core][gv_wd] = {INSKNN_Map[SRAM_WIDTH*gv_wd +: SRAM_WIDTH], CCUKNN_CfgMapWrAddr + (CpIdx_s2 / NUM_SRAMWORD_MAP == 0? CpIdx_s2 / NUM_SRAMWORD_MAP : CpIdx_s2 / NUM_SRAMWORD_MAP + 1) };
+            assign PISO_InDat[gv_core][gv_wd] = {INSKNN_Map[gv_wd], CCUKNN_CfgMapWrAddr + (CpIdx_s2 / NUM_SRAMWORD_MAP == 0? CpIdx_s2 / NUM_SRAMWORD_MAP : CpIdx_s2 / NUM_SRAMWORD_MAP + 1) };
         end
 
         assign KNNINS_MapRdy[gv_core] = handshake_s2;
