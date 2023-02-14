@@ -72,6 +72,7 @@ module TOP #(
     inout                           IO_DatVld     ,
     inout                           OI_DatRdy     , 
     output                          O_DatOE       ,
+    output                          O_CmdVld      ,
     output                          O_NetFnh  
 
 );
@@ -279,6 +280,7 @@ wire                                                GLBPOL_OfmWrDatRdy     ;
 // --------------------------------------------------------------------------------------------------------------------
 // ITF
 wire                                                ITFPAD_DatOE    ;
+wire                                                ITFPAD_CmdVld    ;
 wire [PORT_WIDTH                            -1 : 0] ITFPAD_Dat      ;
 wire                                                ITFPAD_DatVld   ;
 wire                                                PADITF_DatRdy   ;
@@ -715,6 +717,7 @@ assign PADITF_DatRdy                                = OI_DatRdy;
 assign {PADITF_Dat, PADITF_DatVld}  = {IO_Dat, IO_DatVld};
 assign OI_DatRdy                                    = O_DatOE? 1'bz : ITFPAD_DatRdy;
 assign O_DatOE                                      = ITFPAD_DatOE;
+assign O_CmdVld                                      = ITFPAD_CmdVld;
 
 // GLB RdPort
 generate
@@ -755,6 +758,7 @@ ITF#(
     .clk                 ( clk                 ),
     .rst_n               ( rst_n               ),
     .ITFPAD_DatOE        ( ITFPAD_DatOE        ),
+    .ITFPAD_CmdVld       ( ITFPAD_CmdVld       ),
     .ITFPAD_Dat          ( ITFPAD_Dat          ),
     .ITFPAD_DatVld       ( ITFPAD_DatVld       ),
     .PADITF_DatRdy       ( PADITF_DatRdy       ),

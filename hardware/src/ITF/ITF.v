@@ -24,7 +24,8 @@ module ITF #(
     )(
     input                                               clk             ,
     input                                               rst_n           ,
-    output reg                                          ITFPAD_DatOE    ,
+    output                                              ITFPAD_DatOE    ,
+    output reg                                          ITFPAD_CmdVld    ,
     output [PORT_WIDTH                          -1 : 0] ITFPAD_Dat      ,
     output                                              ITFPAD_DatVld   ,
     input                                               PADITF_DatRdy   ,
@@ -53,8 +54,8 @@ module ITF #(
 //=====================================================================================================================
 localparam IDLE = 3'b000;
 localparam CMD  = 3'b001;
-localparam IN   = 3'b010;
-localparam OUT  = 3'b011;
+localparam IN2CHIP   = 3'b010;
+localparam OUT2OFF  = 3'b011;
 localparam FNH  = 3'b100;
 
 localparam NUMPORT_WIDTH = $clog2(ITF_NUM_WRPORT + ITF_NUM_RDPORT);
@@ -92,19 +93,19 @@ always @(*) begin
                     next_state <= IDLE;
         CMD :   if( CmdRdy & CmdVld) begin
                     if ( RdTOP)
-                        next_state <= OUT;
+                        next_state <= OUT2OFF;
                     else
-                        next_state <= IN;
+                        next_state <= IN2CHIP;
                 end else
                     next_state <= CMD;
-        IN:   if( PortIdx_ != PortIdx ) // Change
+        IN2CHIP:   if( PortIdx_ != PortIdx ) // Change
                     next_state <= FNH;
                 else
-                    next_state <= IN;
-        OUT:   if(PortIdx_ != PortIdx & !DatOutVld ) // Rdy->0 & Dat is fetched by Off-chip
+                    next_state <= IN2CHIP;
+        OUT2OFF:   if(PortIdx_ != PortIdx & !DatOutVld ) // Rdy->0 & Dat is fetched by Off-chip
                     next_state <= FNH;
                 else
-                    next_state <= OUT;
+                    next_state <= OUT2OFF;
         FNH:   if( 1'b1 )
                     next_state <= IDLE;
                 else
@@ -150,7 +151,8 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 assign RdTOP = PortIdx >= ITF_NUM_WRPORT;
-assign ITFPAD_DatOE = state == CMD | state == OUT;
+assign ITFPAD_DatOE = state == CMD | state == OUT2OFF;
+assign ITFPAD_CmdVld = state == CMD;
 
 //=====================================================================================================================
 // Logic Design: // Input to on-chip
@@ -162,7 +164,7 @@ SIPO#(
 )u_SIPO_IN(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
-    .IN_VLD       ( PADITF_DatVld & state == IN  ),
+    .IN_VLD       ( PADITF_DatVld & state == IN2CHIP  ),
     .IN_LAST      (                ),
     .IN_DAT       ( PADITF_Dat     ),
     .IN_RDY       ( ITFPAD_DatRdy  ),
@@ -171,14 +173,14 @@ SIPO#(
     .OUT_LAST     (                ),
     .OUT_RDY      ( DatInRdy       )
 );
-assign DatInRdy = state == IN & GLBITF_WrDatRdy[PortIdx];
+assign DatInRdy = state == IN2CHIP & GLBITF_WrDatRdy[PortIdx];
 
 genvar i;
 generate
-    for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin // state ==IN and portidx match
+    for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin // state ==IN2CHIP and portidx match
         wire [ADDR_WIDTH        -1 : 0] CntWrAddr;
-        assign ITFGLB_WrDat[SRAM_WIDTH*i +: SRAM_WIDTH] = (state == IN  && i==PortIdx ? DatIn : 0);
-        assign ITFGLB_WrDatVld[i] = (state == IN  && i==PortIdx ? DatInVld : 0);
+        assign ITFGLB_WrDat[SRAM_WIDTH*i +: SRAM_WIDTH] = (state == IN2CHIP  && i==PortIdx ? DatIn : 0);
+        assign ITFGLB_WrDatVld[i] = (state == IN2CHIP  && i==PortIdx ? DatInVld : 0);
 
         assign ITFGLB_WrAddr[ADDR_WIDTH*i +: ADDR_WIDTH] = CntWrAddr;
 
@@ -210,9 +212,9 @@ generate
     for(gv_i=0; gv_i<ITF_NUM_RDPORT; gv_i=gv_i+1) begin
         wire [ADDR_WIDTH            -1 : 0] CntRdAddr;
         assign ITFGLB_RdAddr[ADDR_WIDTH*gv_i +: ADDR_WIDTH] = CntRdAddr; 
-        assign ITFGLB_RdAddrVld[gv_i] = state == OUT & ( (PortIdx-ITF_NUM_WRPORT) == gv_i ); 
+        assign ITFGLB_RdAddrVld[gv_i] = state == OUT2OFF & ( (PortIdx-ITF_NUM_WRPORT) == gv_i ); 
 
-        assign ITFGLB_RdDatRdy[gv_i]    = (PISO_OUTRdy & state == OUT) & ( (PortIdx-ITF_NUM_WRPORT) == gv_i );
+        assign ITFGLB_RdDatRdy[gv_i]    = (PISO_OUTRdy & state == OUT2OFF) & ( (PortIdx-ITF_NUM_WRPORT) == gv_i );
 
         wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH - 1;
         counter#(
@@ -239,7 +241,7 @@ PISO_NOCACHE #(
 )u_PISO_OUT(
     .CLK          ( clk         ),
     .RST_N        ( rst_n       ),
-    .IN_VLD       ( state == OUT & GLBITF_RdDatVld[PortIdx-ITF_NUM_WRPORT]),
+    .IN_VLD       ( state == OUT2OFF & GLBITF_RdDatVld[PortIdx-ITF_NUM_WRPORT]),
     .IN_LAST      ( ),
     .IN_DAT       ( GLBITF_RdDat[SRAM_WIDTH*(PortIdx-ITF_NUM_WRPORT) +: SRAM_WIDTH]),
     .IN_RDY       ( PISO_OUTRdy ),
