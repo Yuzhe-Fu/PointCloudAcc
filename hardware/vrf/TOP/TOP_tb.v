@@ -19,6 +19,7 @@ reg                             I_BypAsysnFIFO;
 
 // TOP Outputs
 wire                            O_DatOE;
+wire                            O_CmdVld;
 wire                            O_NetFnh;
 
 // TOP Bidirs
@@ -63,37 +64,37 @@ end
 //=====================================================================================================================
 localparam IDLE = 3'b000;
 localparam CMD  = 3'b001;
-localparam IN   = 3'b010;
-localparam OUT  = 3'b011;
+localparam IN2CHIP   = 3'b010;
+localparam OUT2OFF  = 3'b011;
 localparam FNH  = 3'b100;
 
 reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE:   if( 1'b1 )
+        IDLE:   if( O_CmdVld )
                     next_state <= CMD;
                 else
                     next_state <= IDLE;
-        CMD :   if( IO_DatVld & OI_DatRdy) begin
+        CMD :   if( O_DatOE & IO_DatVld & OI_DatRdy) begin
                     if ( IO_Dat[0] )
-                        next_state <= OUT;
+                        next_state <= OUT2OFF;
                     else
-                        next_state <= IN;
+                        next_state <= IN2CHIP;
                 end else
                     next_state <= CMD;
-        IN:   if( IO_DatVld  & OI_DatRdy )
-                    next_state <= FNH;
+        IN2CHIP:   if( O_CmdVld )
+                    next_state <= CMD;
                 else
-                    next_state <= IN;
-        OUT:   if(IO_DatVld  & OI_DatRdy )
-                    next_state <= FNH;
+                    next_state <= IN2CHIP;
+        OUT2OFF:   if( O_CmdVld )
+                    next_state <= CMD;
                 else
-                    next_state <= OUT;
-        FNH:   if( 1'b1 )
-                    next_state <= IDLE;
-                else
-                    next_state <= FNH;
+                    next_state <= OUT2OFF;
+        // FNH:   if( 1'b1 )
+        //             next_state <= IDLE;
+        //         else
+        //             next_state <= FNH;
         default:    next_state <= IDLE;
     endcase
 end
@@ -115,42 +116,22 @@ always @(posedge clk or rst_n) begin
         addr <= 0;
     end else if(state == FNH) begin
         addr <= 0;
-    end else if(state==CMD && IO_DatVld & OI_DatRdy) begin
+    end else if(state==CMD & (next_state == IN2CHIP | next_state == OUT2OFF)) begin
         addr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
-    end else if(state== IN | state == OUT) begin
-        if(IO_DatVld & OI_DatRdy)
-            addr <= addr + 1;
-    end
-end
-
-// Base Address
-always @(posedge clk or rst_n) begin
-    if (!rst_n) begin
-        BaseAddr <= 0;
-    end else if(state==CMD && IO_DatVld & OI_DatRdy) begin
-        BaseAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
-    end
-end
-
-// ReqNum
-always @(posedge clk or rst_n) begin
-    if (!rst_n) begin
-        ReqNum <= 0;
-    end else if(state==CMD && IO_DatVld & OI_DatRdy) begin
-        ReqNum <= IO_Dat[1+DRAM_ADDR_WIDTH +: ADDR_WIDTH];
+    end else if ( (state == IN2CHIP | state == OUT2OFF) & IO_DatVld & OI_DatRdy) begin
+        addr <= addr + 1;
     end
 end
 
 // DRAM READ
-assign IO_DatLast = O_DatOE? 1'bz : (addr == BaseAddr + ReqNum -1) && IO_DatVld;
-assign IO_DatVld  = O_DatOE? 1'bz : state== IN;
+assign IO_DatVld  = O_DatOE? 1'bz : state== IN2CHIP;
 assign IO_Dat = O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr];
 
 // DRAM WRITE
-assign OI_DatRdy = O_DatOE? state==CMD | state==OUT: 1'bz;
+assign OI_DatRdy = O_DatOE? state==CMD | state==OUT2OFF: 1'bz;
 
 always @(posedge clk or rst_n) begin
-    if(state == OUT) begin
+    if(state == OUT2OFF) begin
         if(IO_DatVld & OI_DatRdy)
             Dram[addr] <= IO_Dat;
     end
@@ -165,16 +146,16 @@ TOP #(
     .PORT_WIDTH  (PORT_WIDTH)
 )
     u_TOP (
-    .I_SysRst_n              ( rst_n     ),
-    .I_SysClk                ( clk       ),
+    .I_SysRst_n              ( rst_n          ),
+    .I_SysClk                ( clk            ),
     .I_StartPulse            ( I_StartPulse   ),
     .I_BypAsysnFIFO          ( I_BypAsysnFIFO ),
     .O_DatOE                 ( O_DatOE        ),
+    .O_CmdVld                ( O_CmdVld       ),
     .IO_Dat                  ( IO_Dat         ),
     .IO_DatVld               ( IO_DatVld      ),
     .OI_DatRdy               ( OI_DatRdy      ),
     .O_NetFnh                ( O_NetFnh       )
 );
-
 
 endmodule

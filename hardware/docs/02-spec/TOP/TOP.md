@@ -1,5 +1,4 @@
 # 问题
-    - FMC怎么判断传数完成（没有DatLast)
     - SYA的4个PE_bank输出ofm怎么连GLB？
     - NOC换成AHB？因为本就是握手协议，而且addr每次读写都需要请求，功耗加倍
     - 需要整个网络完成的信号
@@ -24,11 +23,12 @@
     parameter ITF_NUM_WRPORT = 6,   // ACT, WGT, OFM, CRD, MAP, ISA(CCU)
     parameter GLB_NUM_RDPORT = 16,  // 11 + 5(POOL_CORE)
     parameter GLB_NUM_WRPORT = 9, 
-    parameter MAXPAR         = 32,
+    parameter MAXPAR         = 2,   // Max(ACT_WIDTH*POOL_COMP_CORE, ACT_WIDTH*NUM_ROW*NUM_BANK): 2，二者最大值 
     parameter NUM_BANK       = 32,  //
     parameter POOL_CORE      = 8,   // 2的指数
     parameter POOL_COMP_CORE = 64,  // 2的指数
-    parameter NUM_FPC        = 4, // 由FPS的Dist输入带宽决定上限，256/34/2=3.7个核，暂定为4个核并行。
+    parameter NUM_FPC        = 4,   // 由FPS的Dist输入带宽决定上限，256/18/2=7.1个核，暂定为8个核并行。
+    CUT_MASK_WIDTH           = 32,  // FPS一次处理（截取的）多少个bit的Mask，为FPC核的4倍（向上取2的指数），（在一个SRAM带宽的情况下）
 
     // NetWork Parameters
     parameter IDX_WIDTH      = 16,

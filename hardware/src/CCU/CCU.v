@@ -464,22 +464,21 @@ always @(posedge clk or negedge rst_n) begin
                 CCUSYA_CfgOfmWrBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*2    +: ADDR_WIDTH]; 
                 CCU_DRAMBaseAddr   [GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*3    +: DRAM_ADDR_WIDTH]; 
                 CCU_DRAMBaseAddr   [GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*4 + DRAM_ADDR_WIDTH  +: DRAM_ADDR_WIDTH]; 
-                CCU_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*5 + DRAM_ADDR_WIDTH*2+: DRAM_ADDR_WIDTH]; 
-                                        
             end else if(CntISARdWord == 2) begin
-                CCU_CfgPortBankFlag[GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                 +: NUM_BANK];
-                CCU_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK      +: NUM_BANK];
-                CCU_CfgPortBankFlag[GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*2    +: NUM_BANK];
-                CCU_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*3    +: NUM_BANK];
-                CCU_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*4    +: NUM_BANK];
-                CCU_CfgPortBankFlag[GLBWRIDX_SYAOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*5    +: NUM_BANK];
+                CCU_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                                   +: DRAM_ADDR_WIDTH];
+                CCU_CfgPortBankFlag[GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH                 +: NUM_BANK];
+                CCU_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK      +: NUM_BANK];
+                CCU_CfgPortBankFlag[GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*2    +: NUM_BANK];
+                CCU_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*3    +: NUM_BANK];
+                CCU_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*4    +: NUM_BANK];
+                CCU_CfgPortBankFlag[GLBWRIDX_SYAOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*5    +: NUM_BANK];
 
-                CCU_CfgPortParBank [GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*6                    +: MAXPAR_WIDTH];
-                CCU_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH     +: MAXPAR_WIDTH];
-                CCU_CfgPortParBank [GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*2   +: MAXPAR_WIDTH];
-                CCU_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*3   +: MAXPAR_WIDTH];
-                CCU_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*4   +: MAXPAR_WIDTH];
-                CCU_CfgPortParBank [GLBWRIDX_SYAOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*5   +: MAXPAR_WIDTH];
+                CCU_CfgPortParBank [GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6                    +: MAXPAR_WIDTH];
+                CCU_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH     +: MAXPAR_WIDTH];
+                CCU_CfgPortParBank [GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*2   +: MAXPAR_WIDTH];
+                CCU_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*3   +: MAXPAR_WIDTH];
+                CCU_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*4   +: MAXPAR_WIDTH];
+                CCU_CfgPortParBank [GLBWRIDX_SYAOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*5   +: MAXPAR_WIDTH]; // 8+32+192+12=244
             end
 
         end else if (OpCode == OPCODE_POL) begin

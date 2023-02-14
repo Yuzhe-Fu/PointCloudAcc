@@ -47,7 +47,7 @@ module TOP #(
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
     parameter GLB_NUM_RDPORT = 12 + POOL_CORE - 1,
-    parameter GLB_NUM_WRPORT = 12 + POOL_CORE - 1, 
+    parameter GLB_NUM_WRPORT = 12, 
     parameter NUM_BANK       = 32,
 
     // NetWork Parameters
@@ -58,7 +58,7 @@ module TOP #(
     parameter MAP_WIDTH      = 5,
     parameter ACT_WIDTH      = 8,
     parameter CHN_WIDTH      = 12,
-    parameter QNTSL_WIDTH    = 20,
+    parameter QNTSL_WIDTH    = 32,
 
     parameter MAXPAR         = ACT_WIDTH*(POOL_COMP_CORE > SYA_NUM_ROW*SYA_NUM_BANK ? POOL_COMP_CORE : SYA_NUM_ROW*SYA_NUM_BANK) / SRAM_WIDTH, 
 
@@ -72,6 +72,7 @@ module TOP #(
     inout                           IO_DatVld     ,
     inout                           OI_DatRdy     , 
     output                          O_DatOE       ,
+    output                          O_CmdVld      ,
     output                          O_NetFnh  
 
 );
@@ -271,14 +272,15 @@ wire [POOL_CORE -1 : 0][(ACT_WIDTH*POOL_COMP_CORE) -1 : 0] GLBPOL_OfmRdDat     ;
 wire [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld     ;
 wire [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy     ;
 
-wire [POOL_CORE -1 : 0][IDX_WIDTH             -1 : 0] POLGLB_OfmWrAddr    ;
-wire [POOL_CORE -1 : 0][(ACT_WIDTH*POOL_COMP_CORE) -1 : 0] POLGLB_OfmWrDat     ;
-wire [POOL_CORE                               -1 : 0] POLGLB_OfmWrDatVld     ;
-wire [POOL_CORE                               -1 : 0] GLBPOL_OfmWrDatRdy     ;
+wire [IDX_WIDTH                             -1 : 0] POLGLB_OfmWrAddr    ;
+wire [(ACT_WIDTH*POOL_COMP_CORE)            -1 : 0] POLGLB_OfmWrDat     ;
+wire                                                POLGLB_OfmWrDatVld     ;
+wire                                                GLBPOL_OfmWrDatRdy     ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // ITF
 wire                                                ITFPAD_DatOE    ;
+wire                                                ITFPAD_CmdVld    ;
 wire [PORT_WIDTH                            -1 : 0] ITFPAD_Dat      ;
 wire                                                ITFPAD_DatVld   ;
 wire                                                PADITF_DatRdy   ;
@@ -665,14 +667,10 @@ assign GLBPOL_OfmRdDatVld                                   = GLBTOP_RdPortDatVl
 assign TOPGLB_RdPortDatRdy[GLBRDIDX_POLOFM +: POOL_CORE]    = POLGLB_OfmRdDatRdy;
 
 // Write Ofm
-generate
-    for(gv_i = 0; gv_i < POOL_CORE; gv_i = gv_i + 1) begin
-        assign TOPGLB_WrPortAddr[GLBWRIDX_POLOFM + gv_i]    = POLGLB_OfmWrAddr[gv_i];
-        assign TOPGLB_WrPortDat[GLBWRIDX_POLOFM + gv_i]     = POLGLB_OfmWrDat[gv_i];
-    end
-endgenerate
-assign TOPGLB_WrPortDatVld[GLBWRIDX_POLOFM +: POOL_CORE]    = POLGLB_OfmWrDatVld;
-assign GLBPOL_OfmWrDatRdy                                   = GLBTOP_WrPortDatRdy[GLBWRIDX_POLOFM +: POOL_CORE];
+assign TOPGLB_WrPortAddr[GLBWRIDX_POLOFM]   = POLGLB_OfmWrAddr;
+assign TOPGLB_WrPortDat[GLBWRIDX_POLOFM]    = POLGLB_OfmWrDat;
+assign TOPGLB_WrPortDatVld[GLBWRIDX_POLOFM] = POLGLB_OfmWrDatVld;
+assign GLBPOL_OfmWrDatRdy                   = GLBTOP_WrPortDatRdy[GLBWRIDX_POLOFM];
 
 POL#(
     .IDX_WIDTH            ( IDX_WIDTH       ),
@@ -719,6 +717,7 @@ assign PADITF_DatRdy                                = OI_DatRdy;
 assign {PADITF_Dat, PADITF_DatVld}  = {IO_Dat, IO_DatVld};
 assign OI_DatRdy                                    = O_DatOE? 1'bz : ITFPAD_DatRdy;
 assign O_DatOE                                      = ITFPAD_DatOE;
+assign O_CmdVld                                      = ITFPAD_CmdVld;
 
 // GLB RdPort
 generate
@@ -759,6 +758,7 @@ ITF#(
     .clk                 ( clk                 ),
     .rst_n               ( rst_n               ),
     .ITFPAD_DatOE        ( ITFPAD_DatOE        ),
+    .ITFPAD_CmdVld       ( ITFPAD_CmdVld       ),
     .ITFPAD_Dat          ( ITFPAD_Dat          ),
     .ITFPAD_DatVld       ( ITFPAD_DatVld       ),
     .PADITF_DatRdy       ( PADITF_DatRdy       ),
