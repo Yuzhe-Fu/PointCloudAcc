@@ -47,10 +47,10 @@ module POL #(
     input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld     ,
     output [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy     ,
 
-    output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmWrAddr    ,
-    output [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] POLGLB_OfmWrDat     ,
-    output [POOL_CORE                               -1 : 0] POLGLB_OfmWrDatVld     ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmWrDatRdy       
+    output [IDX_WIDTH                               -1 : 0] POLGLB_OfmWrAddr    ,
+    output [(ACT_WIDTH*POOL_COMP_CORE)              -1 : 0] POLGLB_OfmWrDat     ,
+    output                                                  POLGLB_OfmWrDatVld  ,
+    input                                                   GLBPOL_OfmWrDatRdy       
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -66,41 +66,65 @@ parameter MAPWORD_WIDTH = $clog2(IDX_WIDTH*(2**MAP_WIDTH)/SRAM_WIDTH);
 // Variable Definition :
 //=====================================================================================================================
 
-wire [IDX_WIDTH         -1 : 0] PLC_MapRdAddr[0 : POOL_CORE -1];
-wire [$clog2(POOL_CORE) -1 : 0] ArbPLCIdx_MapRd;
-reg  [$clog2(POOL_CORE) -1 : 0] ArbPLCIdx_MapRd_s1;
-wire [POOL_CORE         -1 : 0] PLC_MapRdAddrVld;
-wire [POOL_CORE         -1 : 0] PLC_MapRdRdy;
+wire [POOL_CORE -1 : 0][IDX_WIDTH   -1 : 0] PLC_MapRdAddr;
+wire [$clog2(POOL_CORE)             -1 : 0] ArbPLCIdx_MapRd;
+wire [$clog2(POOL_CORE)             -1 : 0] ArbPLCIdx_MapRd_d;
+wire [POOL_CORE                     -1 : 0] PLC_MapRdAddrVld;
+wire [POOL_CORE                     -1 : 0] PLC_MapRdDatRdy;
 
-//=====================================================================================================================
-// Logic Design
-//=====================================================================================================================
-// s0
-prior_arb#(
-    .REQ_WIDTH ( POOL_CORE )
-)u_prior_arb_PLCArbMICIdx(
-    .req ( PLC_MapRdAddrVld     ),
-    .gnt (                      ),
-    .arb_port( ArbPLCIdx_MapRd  )
-);
-
-assign POLGLB_MapRdAddr     = PLC_MapRdAddr[ArbPLCIdx_MapRd];
-assign POLGLB_MapRdAddrVld  = PLC_MapRdAddrVld[ArbPLCIdx_MapRd];
-
-assign POLGLB_MapRdDatRdy      = PLC_MapRdRdy[ArbPLCIdx_MapRd_s1];
-
-// s1
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        ArbPLCIdx_MapRd_s1 <= 0;
-    end else if(POLGLB_MapRdAddrVld & GLBPOL_MapRdAddrRdy) begin // HandShake
-        ArbPLCIdx_MapRd_s1 <= ArbPLCIdx_MapRd;
-    end
-end
+wire [POOL_CORE   -1 : 0][IDX_WIDTH                 -1 : 0] PLC_OfmWrAddr;
+wire [POOL_CORE   -1 : 0][ACT_WIDTH*POOL_COMP_CORE  -1 : 0] PLC_OfmWrDat;
+wire [POOL_CORE                                     -1 : 0] PLC_OfmWrDatVld;
+wire [$clog2(POOL_CORE)                             -1 : 0] ArbPLCIdxWrOfm;
 
 genvar gv_plc;
 genvar gv_cmp;
+//=====================================================================================================================
+// Logic Design
+//=====================================================================================================================
+// s0 -----------------------------------------------------------------------------------------------------------------
+ArbCore#(
+    .NUM_CORE    ( POOL_CORE    ),
+    .ADDR_WIDTH  ( IDX_WIDTH    ),
+    .DATA_WIDTH  ( SRAM_WIDTH   )
+)u_ArbCore_PLCRdMap(
+    .clk         ( clk                  ),
+    .rst_n       ( rst_n                ),
+    .CoreOutVld  ( PLC_MapRdAddrVld     ),
+    .CoreOutAddr ( PLC_MapRdAddr        ),
+    .CoreOutDat  (                      ),
+    .CoreOutRdy  ( PLC_MapRdDatRdy      ),
+    .TopOutVld   ( POLGLB_MapRdAddrVld  ),
+    .TopOutAddr  ( POLGLB_MapRdAddr     ),
+    .TopOutDat   (                      ),
+    .TopOutRdy   ( POLGLB_MapRdDatRdy   ),
+    .TOPInRdy    ( GLBPOL_MapRdAddrRdy  ),
+    .ArbCoreIdx  ( ArbPLCIdx_MapRd      ),
+    .ArbCoreIdx_d( ArbPLCIdx_MapRd_d    )
+);
 
+//  -----------------------------------------------------------------------------------------------------------------
+ArbCore#(
+    .NUM_CORE    ( POOL_CORE                ),
+    .ADDR_WIDTH  ( IDX_WIDTH                ),
+    .DATA_WIDTH  ( ACT_WIDTH*POOL_COMP_CORE )
+)u_ArbCore_PLCWrOfm(
+    .clk         ( clk                  ),
+    .rst_n       ( rst_n                ),
+    .CoreOutVld  ( PLC_OfmWrDatVld      ),
+    .CoreOutAddr ( PLC_OfmWrAddr        ),
+    .CoreOutDat  ( PLC_OfmWrDat         ),
+    .CoreOutRdy  (                      ),
+    .TopOutVld   ( POLGLB_OfmWrDatVld   ),
+    .TopOutAddr  ( POLGLB_OfmWrAddr     ),
+    .TopOutDat   ( POLGLB_OfmWrDat      ),
+    .TopOutRdy   (                      ),
+    .TOPInRdy    ( GLBPOL_OfmWrDatRdy   ),
+    .ArbCoreIdx  ( ArbPLCIdxWrOfm       ),
+    .ArbCoreIdx_d(                      )
+);
+
+//  -----------------------------------------------------------------------------------------------------------------
 generate
     for(gv_plc=0; gv_plc<POOL_CORE; gv_plc=gv_plc+1) begin: GEN_PLC
 
@@ -245,7 +269,7 @@ generate
 
     // Handshake
     assign rdy_s1 = SIPO_MapInRdy;
-    assign vld_s1 = GLBPOL_MapRdDatVld & gv_plc ==ArbPLCIdx_MapRd_s1;
+    assign vld_s1 = GLBPOL_MapRdDatVld & gv_plc ==ArbPLCIdx_MapRd_d;
 
     assign handshake_s1 = rdy_s1 & vld_s1;
     assign ena_s1 = handshake_s1 | ~vld_s1;
@@ -264,7 +288,7 @@ generate
     //=====================================================================================================================
 
     // Combinational Logic
-    assign PLC_MapRdRdy[gv_plc] = rdy_s1;
+    assign PLC_MapRdDatRdy[gv_plc] = rdy_s1;
 
     // Handshake
     assign rdy_s2 = GLBPOL_OfmRdAddrRdy[gv_plc];
@@ -377,7 +401,7 @@ generate
 
 
     // Handshake
-    assign rdy_s4 = GLBPOL_OfmWrDatRdy[gv_plc];
+    assign rdy_s4 = GLBPOL_OfmWrDatRdy & ArbPLCIdxWrOfm == gv_plc;
 
     assign handshake_s4 = rdy_s4 & vld_s4;
     assign ena_s4 = handshake_s4 | ~vld_s4;
@@ -400,7 +424,7 @@ generate
                 MaxArray[gv_cmp] <= (CMP_DatIn > MaxArray[gv_cmp] )? CMP_DatIn : MaxArray[gv_cmp];
             end
         end
-        assign POLGLB_OfmWrDat[ACT_WIDTH*POOL_COMP_CORE*gv_plc+ ACT_WIDTH*gv_cmp +: ACT_WIDTH] =  MaxArray[gv_cmp];
+        assign PLC_OfmWrDat[gv_plc][ACT_WIDTH*gv_cmp +: ACT_WIDTH] =  MaxArray[gv_cmp];
     end
 
 
@@ -416,8 +440,8 @@ generate
     // Logic Design: Out
     //=====================================================================================================================
     // Combination Logic
-    assign POLGLB_OfmWrDatVld[gv_plc] = vld_s4;
-    assign POLGLB_OfmWrAddr[IDX_WIDTH*gv_plc +: IDX_WIDTH] = NpIdx_s4;
+    assign PLC_OfmWrDatVld[gv_plc] = vld_s4;
+    assign PLC_OfmWrAddr[gv_plc] = NpIdx_s4;
 
     end
 endgenerate

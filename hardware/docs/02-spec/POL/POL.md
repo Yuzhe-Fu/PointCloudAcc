@@ -1,3 +1,4 @@
+# 问题
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
@@ -50,7 +51,11 @@
     - MAP缓存采用reg，因为PLC需要缓存MAP为16*32=512，远未达到reg与uhddpsram的4096bit临界点
 
     - 当通道不是64时，还要适应不同通道数在GLB存多个word时，多次取来比较
-        - 先可变通道数配置通道数除以同时数的商为步长和记数器结合点的idx来生成取的地址，内循环是不同点的64通道，外循环是不同通道，要保留32的map，相比于保留通道数个的ifm更加节省
+        - 计算max: 内循环是不同点的64通道，外循环是不同通道，要保留32的map，相比于保留通道数个的ifm更加节省。先可变通道数配置通道数除以同时数的商为步长和记数器结合点的idx来生成取的地址，
+        - 输出: 输出的循环是外循环是不同的中心点（如P0的MAP K个点，P1的Map的K个点，内循环是不同通道组（如C0-C63, C64-C127): P0(C0-63), P0(C64-127), P1(C0-63).... 
+        - POL写Ofm为2个：
+            - （ACT\*POOL_COMP_CORE)\*POOL_CORE/K=（ACT\*POOL_COMP_CORE)/4，则设计2个（暂定）SRAM_WIDTH的口存输出即可
+            - 而且POL的输出是给MLP的，格式不是ACT*POOL_COMP_CORE并行的，所有PLC的核输出的数据是存到一起的，按照SYA 0模式，两块SRAM， SYA 1模式，一块SRAM
 
 ## prior_arb端口列表
 | Ports | Input/Output | Width | Descriptions |
