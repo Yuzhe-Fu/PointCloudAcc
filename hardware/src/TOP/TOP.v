@@ -131,7 +131,7 @@ wire                                  GLBCCU_ISARdDatVld  ;
 wire                                  CCUGLB_ISARdDatRdy  ;
 
 wire [ADDR_WIDTH              -1 : 0] CCUTOP_MduISARdAddrMin; // To avoid ITF over-write ISARAM of GLB
-
+wire                                 CCUITF_Rst;
 wire [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_DRAMBaseAddr;
 
 wire [NUM_FPC             -1 : 0] CCUFPS_Rst   ;
@@ -295,11 +295,13 @@ wire [ITF_NUM_RDPORT                        -1 : 0] GLBITF_RdAddrRdy ;
 wire [ITF_NUM_RDPORT    -1 : 0][SRAM_WIDTH  -1 : 0] GLBITF_RdDat     ;
 wire [ITF_NUM_RDPORT                        -1 : 0] GLBITF_RdDatVld  ;
 wire [ITF_NUM_RDPORT                        -1 : 0] ITFGLB_RdDatRdy  ;
+wire [ITF_NUM_RDPORT                        -1 : 0] GLBITF_RdEmpty  ;
 
 wire [ITF_NUM_WRPORT    -1 : 0][ADDR_WIDTH  -1 : 0] ITFGLB_WrAddr    ;
 wire [ITF_NUM_WRPORT    -1 : 0][SRAM_WIDTH  -1 : 0] ITFGLB_WrDat     ; 
 wire [ITF_NUM_WRPORT                        -1 : 0] ITFGLB_WrDatVld  ; 
 wire [ITF_NUM_WRPORT                        -1 : 0] GLBITF_WrDatRdy  ;
+wire [ITF_NUM_WRPORT                        -1 : 0] GLBITF_WrFull  ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // GLB
@@ -312,6 +314,7 @@ wire [GLB_NUM_WRPORT    -1 : 0][SRAM_WIDTH*MAXPAR   -1 : 0] TOPGLB_WrPortDat    
 wire [GLB_NUM_WRPORT                                -1 : 0] TOPGLB_WrPortDatVld ;
 wire [GLB_NUM_WRPORT                                -1 : 0] GLBTOP_WrPortDatRdy ;
 wire [GLB_NUM_WRPORT    -1 : 0][ADDR_WIDTH          -1 : 0] TOPGLB_WrPortAddr   ;
+wire [GLB_NUM_WRPORT                                -1 : 0] GLBTOP_WrFull ;
 
 wire [GLB_NUM_RDPORT    -1 : 0][ADDR_WIDTH          -1 : 0] TOPGLB_RdPortAddr   ;
 wire [GLB_NUM_RDPORT                                -1 : 0] TOPGLB_RdPortAddrVld;
@@ -319,6 +322,7 @@ wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdPortAddrRdy
 wire [GLB_NUM_RDPORT    -1 : 0][SRAM_WIDTH*MAXPAR   -1 : 0] GLBTOP_RdPortDat    ;
 wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdPortDatVld ;
 wire [GLB_NUM_RDPORT                                -1 : 0] TOPGLB_RdPortDatRdy ;
+wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdEmpty      ;
 
 //=====================================================================================================================
 // Logic Design： TOP
@@ -379,6 +383,7 @@ CCU#(
     .GLBCCU_ISARdDatVld      ( GLBCCU_ISARdDatVld      ),
     .CCUGLB_ISARdDatRdy      ( CCUGLB_ISARdDatRdy      ),
     .CCUTOP_MduISARdAddrMin  ( CCUTOP_MduISARdAddrMin  ),
+    .CCUITF_Rst              ( CCUITF_Rst              ),
     .CCUITF_DRAMBaseAddr     ( CCUITF_DRAMBaseAddr     ),
     .CCUFPS_Rst              ( CCUFPS_Rst              ),
     .CCUFPS_CfgVld           ( CCUFPS_CfgVld           ),
@@ -728,6 +733,7 @@ generate
         assign GLBITF_RdDat[gv_i]           = GLBTOP_RdPortDat[gv_i];
         assign GLBITF_RdDatVld[gv_i]        = GLBTOP_RdPortDatVld[gv_i];
         assign TOPGLB_RdPortDatRdy[gv_i]    = ITFGLB_RdDatRdy[gv_i];
+        assign GLBITF_RdEmpty[gv_i]         = GLBTOP_RdEmpty[gv_i];
     end
 endgenerate
 
@@ -744,6 +750,13 @@ assign GLBITF_WrDatRdy[GLBWRIDX_ITFCRD] = GLBTOP_WrPortDatRdy[GLBWRIDX_ITFCRD];
 assign GLBITF_WrDatRdy[GLBWRIDX_ITFMAP] = GLBTOP_WrPortDatRdy[GLBWRIDX_ITFMAP];
 assign GLBITF_WrDatRdy[GLBWRIDX_ITFACT] = GLBTOP_WrPortDatRdy[GLBWRIDX_ITFACT];
 assign GLBITF_WrDatRdy[GLBWRIDX_ITFWGT] = GLBTOP_WrPortDatRdy[GLBWRIDX_ITFWGT];
+
+assign GLBITF_WrFull[GLBWRIDX_ITFISA] = !(TOPGLB_WrPortAddr[GLBWRIDX_ITFISA] - CCUTOP_MduISARdAddrMin < SRAM_WORD); 
+assign GLBITF_WrFull[GLBWRIDX_ITFCRD] = GLBTOP_WrFull[GLBWRIDX_ITFCRD];
+assign GLBITF_WrFull[GLBWRIDX_ITFMAP] = GLBTOP_WrFull[GLBWRIDX_ITFMAP];
+assign GLBITF_WrFull[GLBWRIDX_ITFACT] = GLBTOP_WrFull[GLBWRIDX_ITFACT];
+assign GLBITF_WrFull[GLBWRIDX_ITFWGT] = GLBTOP_WrFull[GLBWRIDX_ITFWGT];
+
 // Config 1 bank
 // !Full To avoid ITF over-write ISARAM of GLB
 
@@ -765,6 +778,7 @@ ITF#(
     .PADITF_Dat          ( PADITF_Dat          ),
     .PADITF_DatVld       ( PADITF_DatVld       ),
     .ITFPAD_DatRdy       ( ITFPAD_DatRdy       ),
+    .CCUITF_Rst          ( CCUITF_Rst          ),
     .CCUITF_DRAMBaseAddr ( CCUITF_DRAMBaseAddr ),
     .ITFGLB_RdAddr       ( ITFGLB_RdAddr       ),
     .ITFGLB_RdAddrVld    ( ITFGLB_RdAddrVld    ),
@@ -772,10 +786,12 @@ ITF#(
     .GLBITF_RdDat        ( GLBITF_RdDat        ),
     .GLBITF_RdDatVld     ( GLBITF_RdDatVld     ),
     .ITFGLB_RdDatRdy     ( ITFGLB_RdDatRdy     ),
+    .GLBITF_RdEmpty      ( GLBITF_RdEmpty      ),
     .ITFGLB_WrAddr       ( ITFGLB_WrAddr       ),
     .ITFGLB_WrDat        ( ITFGLB_WrDat        ),
     .ITFGLB_WrDatVld     ( ITFGLB_WrDatVld     ),
-    .GLBITF_WrDatRdy     ( GLBITF_WrDatRdy     )
+    .GLBITF_WrDatRdy     ( GLBITF_WrDatRdy     ),
+    .GLBITF_WrFull       ( GLBITF_WrFull       )
 );
 
 //=====================================================================================================================
@@ -799,12 +815,14 @@ GLB#(
     .TOPGLB_WrPortDatVld    ( TOPGLB_WrPortDatVld    ),
     .GLBTOP_WrPortDatRdy    ( GLBTOP_WrPortDatRdy    ),
     .TOPGLB_WrPortAddr      ( TOPGLB_WrPortAddr      ),
+    .GLBTOP_WrFull          ( GLBTOP_WrFull          ),
     .TOPGLB_RdPortAddr      ( TOPGLB_RdPortAddr      ),
     .TOPGLB_RdPortAddrVld   ( TOPGLB_RdPortAddrVld   ),
     .GLBTOP_RdPortAddrRdy   ( GLBTOP_RdPortAddrRdy   ),
     .GLBTOP_RdPortDat       ( GLBTOP_RdPortDat       ),
     .GLBTOP_RdPortDatVld    ( GLBTOP_RdPortDatVld    ),
-    .TOPGLB_RdPortDatRdy    ( TOPGLB_RdPortDatRdy    )
+    .TOPGLB_RdPortDatRdy    ( TOPGLB_RdPortDatRdy    ),
+    .GLBTOP_RdEmpty         ( GLBTOP_RdEmpty         )
 );
 assign TOPGLB_CfgPortBankFlag = CCUTOP_CfgPortBankFlag;
 assign TOPGLB_CfgPortParBank  = CCUTOP_CfgPortParBank;
