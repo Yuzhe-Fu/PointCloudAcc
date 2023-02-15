@@ -26,7 +26,7 @@ module INS #(
     input [IDX_WIDTH+DATA_WIDTH         -1 : 0] KNNINS_Lop      ,
     input                                       KNNINS_LopVld   ,
     output                                      INSKNN_LopRdy   ,
-    output[IDX_WIDTH*SORT_LEN           -1 : 0] INSKNN_Map      ,   
+    output[SORT_LEN -1 : 0][IDX_WIDTH   -1 : 0] INSKNN_Map      ,   
     output reg                                  INSKNN_MapVld   ,
     input                                       KNNINS_MapRdy
 );
@@ -100,7 +100,7 @@ generate
             end
         assign cur_insert[i]                        = (i < KNNINS_CfgK) ? !last_shift[i] & (DistArray[i] > Dist)    : 1'b0;
         assign last_shift[i+1]                      = (i < KNNINS_CfgK) ? last_shift[i] | cur_insert[i]             : 1'b0;
-        assign INSKNN_Map[IDX_WIDTH*i +: IDX_WIDTH] = (i < KNNINS_CfgK) ? IdxArray[i]                               : 0;
+        assign INSKNN_Map[i]                        = (i < KNNINS_CfgK) ? IdxArray[i]                               : 0;
     end
 
 endgenerate

@@ -29,9 +29,9 @@ module POL #(
     input  [POOL_CORE                               -1 : 0] CCUPOL_Rst          ,
     input  [POOL_CORE                               -1 : 0] CCUPOL_CfgVld       ,
     output [POOL_CORE                               -1 : 0] POLCCU_CfgRdy       ,
-    input  [(MAP_WIDTH+1)*POOL_CORE                 -1 : 0] CCUPOL_CfgK         , // 24
-    input  [IDX_WIDTH*POOL_CORE                     -1 : 0] CCUPOL_CfgNip       , // 1024
-    input  [POOL_CORE                     -1 : 0][CHN_WIDTH                     -1 : 0] CCUPOL_CfgChi       , // 64
+    input  [POOL_CORE   -1 : 0][(MAP_WIDTH+1)       -1 : 0] CCUPOL_CfgK         , // 24
+    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgNip       , // 1024
+    input  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChi       , // 64
 
     output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr    ,   
     output                                                  POLGLB_MapRdAddrVld , 
@@ -41,9 +41,9 @@ module POL #(
     output                                                  POLGLB_MapRdDatRdy     ,
 
     output [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld ,
-    output [IDX_WIDTH*POOL_CORE                     -1 : 0] POLGLB_OfmRdAddr    ,
+    output [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] POLGLB_OfmRdAddr    ,
     input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy ,
-    input  [(ACT_WIDTH*POOL_COMP_CORE)*POOL_CORE    -1 : 0] GLBPOL_OfmRdDat     ,
+    input  [POOL_CORE   -1 : 0][(ACT_WIDTH*POOL_COMP_CORE)-1 : 0] GLBPOL_OfmRdDat     ,
     input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld     ,
     output [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy     ,
 
@@ -224,7 +224,7 @@ generate
         end
     end
 
-    wire [IDX_WIDTH     -1 : 0] MaxCntCp = CCUPOL_CfgNip[IDX_WIDTH*gv_plc +: IDX_WIDTH] -1;
+    wire [IDX_WIDTH     -1 : 0] MaxCntCp = CCUPOL_CfgNip[gv_plc] -1;
     counter#(
         .COUNT_WIDTH ( IDX_WIDTH )
     )u_CntCp(
@@ -340,7 +340,7 @@ generate
     // Combination Logic
     assign POLGLB_OfmRdAddrVld[gv_plc] = {POOL_CORE{handshake_s1}};
     assign NpIdx_s2 = (CCUPOL_CfgChi[gv_plc]/POOL_COMP_CORE)*PISO_MapOutDat + CntChnGrp;
-    assign POLGLB_OfmRdAddr[IDX_WIDTH*gv_plc +: IDX_WIDTH] = NpIdx_s2;
+    assign POLGLB_OfmRdAddr[gv_plc] = NpIdx_s2;
 
     // Handshake
     assign rdy_s3 = ena_s4;
@@ -367,7 +367,7 @@ generate
         .COUNT     ( CntChnGrp          )
     );
 
-    wire [MAP_WIDTH     -1 : 0] MaxCntNp = CCUPOL_CfgK -1;
+    wire [MAP_WIDTH     -1 : 0] MaxCntNp = CCUPOL_CfgK[gv_plc] -1;
     counter#(
         .COUNT_WIDTH ( MAP_WIDTH )
     )u_CntNp(
@@ -412,7 +412,7 @@ generate
         wire [ACT_WIDTH     -1 : 0] CMP_DatIn;
         reg  [ACT_WIDTH     -1 : 0] MaxArray[0 : POOL_COMP_CORE -1];
 
-        assign CMP_DatIn = GLBPOL_OfmRdDat[ACT_WIDTH*POOL_COMP_CORE*gv_plc+ ACT_WIDTH*gv_cmp +: ACT_WIDTH];
+        assign CMP_DatIn = GLBPOL_OfmRdDat[gv_plc][ACT_WIDTH*gv_cmp +: ACT_WIDTH];
         always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
                 MaxArray[gv_cmp] <= 0;

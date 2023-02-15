@@ -34,19 +34,19 @@ module ITF #(
     input                                               PADITF_DatVld   ,
     output                                              ITFPAD_DatRdy   ,
 
-    input  [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_DRAMBaseAddr,
+    input  [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0][DRAM_ADDR_WIDTH-1 : 0] CCUITF_DRAMBaseAddr,
     input                                               CCUITF_Rst,
 
-    output [ADDR_WIDTH*ITF_NUM_RDPORT      -1 : 0] ITFGLB_RdAddr    ,
+    output [ITF_NUM_RDPORT  -1 : 0][ADDR_WIDTH      -1 : 0] ITFGLB_RdAddr    ,
     output [ITF_NUM_RDPORT                          -1 : 0] ITFGLB_RdAddrVld ,
     input  [ITF_NUM_RDPORT                          -1 : 0] GLBITF_RdAddrRdy ,
-    input  [SRAM_WIDTH*ITF_NUM_RDPORT      -1 : 0] GLBITF_RdDat     ,
+    input  [ITF_NUM_RDPORT  -1 : 0][SRAM_WIDTH      -1 : 0] GLBITF_RdDat     ,
     input  [ITF_NUM_RDPORT                          -1 : 0] GLBITF_RdDatVld  ,
     output [ITF_NUM_RDPORT                          -1 : 0] ITFGLB_RdDatRdy  ,
     input  [ITF_NUM_RDPORT                          -1 : 0] GLBITF_RdEmpty   ,
 
-    output [ADDR_WIDTH*ITF_NUM_WRPORT      -1 : 0] ITFGLB_WrAddr    ,
-    output [SRAM_WIDTH*ITF_NUM_WRPORT      -1 : 0] ITFGLB_WrDat     , 
+    output [ITF_NUM_WRPORT  -1 : 0][ADDR_WIDTH      -1 : 0] ITFGLB_WrAddr    ,
+    output [ITF_NUM_WRPORT  -1 : 0][SRAM_WIDTH      -1 : 0] ITFGLB_WrDat     , 
     output [ITF_NUM_WRPORT                          -1 : 0] ITFGLB_WrDatVld  , 
     input  [ITF_NUM_WRPORT                          -1 : 0] GLBITF_WrDatRdy  ,
     input  [ITF_NUM_WRPORT                          -1 : 0] GLBITF_WrFull    
@@ -81,16 +81,6 @@ wire                        PISO_OUTRdy;
 
 wire [(ITF_NUM_WRPORT + ITF_NUM_RDPORT) -1 : 0] gnt;
 
-wire [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0][DRAM_ADDR_WIDTH-1 : 0] CCUITF_DRAMBaseAddr_2D = CCUITF_DRAMBaseAddr;
-wire [ITF_NUM_RDPORT  -1 : 0][SRAM_WIDTH      -1 : 0] GLBITF_RdDat_2D = GLBITF_RdDat;
-
-wire [ITF_NUM_RDPORT  -1 : 0][ADDR_WIDTH      -1 : 0] ITFGLB_RdAddr_2D;
-wire [ITF_NUM_WRPORT  -1 : 0][ADDR_WIDTH      -1 : 0] ITFGLB_WrAddr_2D; 
-wire [ITF_NUM_WRPORT  -1 : 0][SRAM_WIDTH      -1 : 0] ITFGLB_WrDat_2D;  
-
-assign ITFGLB_RdAddr=ITFGLB_RdAddr_2D;
-assign ITFGLB_WrAddr=ITFGLB_WrAddr_2D;
-assign ITFGLB_WrDat =ITFGLB_WrDat_2D ;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -151,14 +141,14 @@ assign CmdVld = state == CMD;
 
 // Reg Update
 wire [(ITF_NUM_RDPORT + ITF_NUM_WRPORT)  -1 : 0][ADDR_WIDTH  -1 : 0] GLBPort_Addr_Array;
-assign GLBPort_Addr_Array = {ITFGLB_RdAddr_2D, ITFGLB_WrAddr_2D};
+assign GLBPort_Addr_Array = {ITFGLB_RdAddr, ITFGLB_WrAddr};
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         {Cmd, PortIdx} <= { {PORT_WIDTH{1'b0}}, { {NUMPORT_WIDTH{1'b1}}} };
     end else if ( CCUITF_Rst )begin 
         {Cmd, PortIdx} <= { {PORT_WIDTH{1'b0}}, { {NUMPORT_WIDTH{1'b1}}} };
     end else if(state == IDLE && next_state == CMD) begin
-        {Cmd, PortIdx} <= { {CCUITF_DRAMBaseAddr_2D[PortIdx_] + GLBPort_Addr_Array[PortIdx_], PortIdx_ >= ITF_NUM_WRPORT}, 
+        {Cmd, PortIdx} <= { {CCUITF_DRAMBaseAddr[PortIdx_] + GLBPort_Addr_Array[PortIdx_], PortIdx_ >= ITF_NUM_WRPORT}, 
         PortIdx_};
     end
 end
@@ -191,10 +181,10 @@ genvar i;
 generate
     for(i=0; i<ITF_NUM_WRPORT; i=i+1) begin: GEN_WRGLB // state ==IN2CHIP and portidx match
         wire [ADDR_WIDTH        -1 : 0] CntWrAddr;
-        assign ITFGLB_WrDat_2D[i] = (state == IN2CHIP  && i==PortIdx ? DatIn : 0);
+        assign ITFGLB_WrDat[i] = (state == IN2CHIP  && i==PortIdx ? DatIn : 0);
         assign ITFGLB_WrDatVld[i] = (state == IN2CHIP  && i==PortIdx ? DatInVld : 0);
 
-        assign ITFGLB_WrAddr_2D[i] = CntWrAddr;
+        assign ITFGLB_WrAddr[i] = CntWrAddr;
 
         wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH - 1;
         counter#(
@@ -223,7 +213,7 @@ genvar gv_i;
 generate
     for(gv_i=0; gv_i<ITF_NUM_RDPORT; gv_i=gv_i+1) begin: GEN_RDGLB
         wire [ADDR_WIDTH            -1 : 0] CntRdAddr;
-        assign ITFGLB_RdAddr_2D[gv_i] = CntRdAddr; 
+        assign ITFGLB_RdAddr[gv_i] = CntRdAddr; 
         assign ITFGLB_RdAddrVld[gv_i] = state == OUT2OFF & ( (PortIdx-ITF_NUM_WRPORT) == gv_i ); 
 
         assign ITFGLB_RdDatRdy[gv_i]    = (PISO_OUTRdy & state == OUT2OFF) & ( (PortIdx-ITF_NUM_WRPORT) == gv_i );
@@ -255,7 +245,7 @@ PISO_NOCACHE #(
     .RST_N        ( rst_n       ),
     .IN_VLD       ( state == OUT2OFF & GLBITF_RdDatVld[PortIdx-ITF_NUM_WRPORT]),
     .IN_LAST      ( 1'b0        ),
-    .IN_DAT       ( GLBITF_RdDat_2D[PortIdx-ITF_NUM_WRPORT]),
+    .IN_DAT       ( GLBITF_RdDat[PortIdx-ITF_NUM_WRPORT]),
     .IN_RDY       ( PISO_OUTRdy ),
     .OUT_DAT      ( DatOut      ), // On-chip output to Off-chip 
     .OUT_VLD      ( DatOutVld   ),
