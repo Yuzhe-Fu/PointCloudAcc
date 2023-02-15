@@ -5,10 +5,10 @@ module TOP_tb();
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-parameter CLOCK_PERIOD   = 10;
-parameter PORT_WIDTH      = 128;
-parameter ADDR_WIDTH      = 16;
-parameter DRAM_ADDR_WIDTH = 32;
+parameter CLOCK_PERIOD      = 10;
+parameter PORT_WIDTH        = 128;
+parameter ADDR_WIDTH        = 16;
+parameter DRAM_ADDR_WIDTH   = 32;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -45,28 +45,26 @@ end
 
 initial
 begin
-    rst_n  =  1;
-    I_StartPulse = 0;
-    I_BypAsysnFIFO = 1;
+    rst_n           =  1;
+    I_StartPulse    = 0;
+    I_BypAsysnFIFO  = 1;
     #(CLOCK_PERIOD*2)  rst_n  =  0;
     #(CLOCK_PERIOD*10) rst_n  =  1;
     #(CLOCK_PERIOD*2)  I_StartPulse = 1;
     #(CLOCK_PERIOD*10) I_StartPulse = 0;
-
-
 end
 
 initial begin
     $readmemh("Dram.txt", Dram);
 end
+
 //=====================================================================================================================
 // Logic Design 1: FSM=ITF
 //=====================================================================================================================
-localparam IDLE = 3'b000;
-localparam CMD  = 3'b001;
-localparam IN2CHIP   = 3'b010;
+localparam IDLE     = 3'b000;
+localparam CMD      = 3'b001;
+localparam IN2CHIP  = 3'b010;
 localparam OUT2OFF  = 3'b011;
-localparam FNH  = 3'b100;
 
 reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
@@ -77,24 +75,20 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CMD :   if( O_DatOE & IO_DatVld & OI_DatRdy) begin
-                    if ( IO_Dat[0] )
+                    if ( IO_Dat[0] ) // 
                         next_state <= OUT2OFF;
                     else
                         next_state <= IN2CHIP;
                 end else
                     next_state <= CMD;
         IN2CHIP:   if( O_CmdVld )
-                    next_state <= CMD;
+                    next_state <= IDLE;
                 else
                     next_state <= IN2CHIP;
         OUT2OFF:   if( O_CmdVld )
-                    next_state <= CMD;
+                    next_state <= IDLE;
                 else
                     next_state <= OUT2OFF;
-        // FNH:   if( 1'b1 )
-        //             next_state <= IDLE;
-        //         else
-        //             next_state <= FNH;
         default:    next_state <= IDLE;
     endcase
 end
@@ -114,7 +108,7 @@ end
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
         addr <= 0;
-    end else if(state == FNH) begin
+    end else if(state == IDLE) begin
         addr <= 0;
     end else if(state==CMD & (next_state == IN2CHIP | next_state == OUT2OFF)) begin
         addr <= IO_Dat[1 +: DRAM_ADDR_WIDTH];
