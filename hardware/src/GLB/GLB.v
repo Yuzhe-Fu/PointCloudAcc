@@ -37,13 +37,15 @@ module GLB #(
     input  wire [NUM_WRPORT                     -1 : 0] TOPGLB_WrPortDatVld ,
     output wire [NUM_WRPORT                     -1 : 0] GLBTOP_WrPortDatRdy ,
     input  wire [ADDR_WIDTH*NUM_WRPORT          -1 : 0] TOPGLB_WrPortAddr   ,
+    output      [NUM_WRPORT                     -1 : 0] GLBTOP_WrFull ,
 
     input  wire [ADDR_WIDTH*NUM_RDPORT          -1 : 0] TOPGLB_RdPortAddr   ,
     input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortAddrVld,
     output wire [NUM_RDPORT                     -1 : 0] GLBTOP_RdPortAddrRdy,
     output wire [SRAM_WIDTH*MAXPAR*NUM_RDPORT   -1 : 0] GLBTOP_RdPortDat    ,
     output wire [NUM_RDPORT                     -1 : 0] GLBTOP_RdPortDatVld ,
-    input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortDatRdy 
+    input  wire [NUM_RDPORT                     -1 : 0] TOPGLB_RdPortDatRdy ,
+    output      [NUM_RDPORT                     -1 : 0] GLBTOP_RdEmpty 
 );
 
 //=====================================================================================================================
@@ -72,6 +74,7 @@ wire [$clog2(NUM_WRPORT)        -1 : 0] BankWrPortIdx [0 : NUM_BANK     -1];
 wire [$clog2(NUM_RDPORT)        -1 : 0] BankRdPortIdx [0 : NUM_BANK     -1];
 wire [(NUM_WRPORT+NUM_RDPORT)   -1 : 0] BankPortFlag  [0 : NUM_BANK     -1];
 wire [ADDR_WIDTH                -1 : 0] BankWrAddr_Array[0 : NUM_BANK   -1];
+wire [ADDR_WIDTH                -1 : 0] BankRdAddr_Array[0 : NUM_BANK   -1];
 wire [NUM_BANK                  -1 : 0] BankRdEn;
 
 genvar      gv_i;
@@ -156,7 +159,7 @@ generate
         assign Bank_rdata_array[gv_i]   = rdata;
 
         // Output
-        assign BankWrAddr_Array[gv_i] = arvalid? RdPortAddr_Array[BankRdPortIdx[gv_i]] : BankRdAddr_d;
+        assign BankRdAddr_Array[gv_i] = arvalid? RdPortAddr_Array[BankRdPortIdx[gv_i]] : BankRdAddr_d;
         assign BankRdEn[gv_i] =  arvalid & arready;
 
         always @(posedge clk or negedge rst_n) begin
@@ -220,6 +223,7 @@ generate
         // To Output
         assign Empty = RdPortAddr_Array[gv_j] >= BankWrAddr_Array[PortCur1stBankIdx];
         assign GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & !Empty & Bank_arready[PortCur1stBankIdx];
+        assign GLBTOP_RdEmpty[gv_j] = Empty;
 
         assign GLBTOP_RdPortDatVld[gv_j] = RdPortAlloc & Bank_rvalid[PortCur1stBankIdx];
         for(gv_i=0; gv_i<MAXPAR; gv_i=gv_i+1) begin
@@ -274,8 +278,9 @@ generate
         assign WrPortBankEn[gv_j] = {NUM_BANK{WrPortEn[gv_j]}} & WrPortHitBank; // 32bits
 
         // To Output
-        assign Full = (WrPortAddr_Array[gv_j] - BankWrAddr_Array[PortCur1stBankIdx]) == WrPortAddrVldSpace ;
-        assign GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & !(BankRdEn[PortCur1stBankIdx]) & !Bank_arready[PortCur1stBankIdx];
+        assign Full = (WrPortAddr_Array[gv_j] - BankRdAddr_Array[PortCur1stBankIdx]) == WrPortAddrVldSpace ;
+        assign GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & !(BankRdEn[PortCur1stBankIdx]) ;
+        assign GLBTOP_WrFull[gv_j] = Full;
 
         assign WrPortAlloc = |TOPGLB_CfgPortBankFlag[NUM_BANK*gv_j +: NUM_BANK];
 
