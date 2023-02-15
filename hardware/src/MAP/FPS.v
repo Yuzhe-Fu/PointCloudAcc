@@ -29,13 +29,13 @@ module FPS #(
     input  [NUM_FPC             -1 : 0] CCUFPS_Rst              ,
     input  [NUM_FPC             -1 : 0] CCUFPS_CfgVld           ,
     output [NUM_FPC             -1 : 0] FPSCCU_CfgRdy           ,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNip           ,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNop           ,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseRdAddr ,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseWrAddr ,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgIdxBaseWrAddr ,
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgMaskBaseAddr  ,   
-    input  [IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgDistBaseAddr  ,
+    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgNip           ,
+    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgNop           ,
+    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgCrdBaseRdAddr ,
+    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgCrdBaseWrAddr ,
+    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgIdxBaseWrAddr ,
+    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgMaskBaseAddr  ,   
+    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgDistBaseAddr  ,
 
     output [IDX_WIDTH           -1 : 0] FPSGLB_MaskRdAddr       ,
     output                              FPSGLB_MaskRdAddrVld    ,
@@ -453,9 +453,9 @@ generate
         assign FPSCCU_CfgRdy[gv_fpc] = state==IDLE;
 
         // Combinational Logic
-            assign LopCntLastMask = (CntMaskRd+1)*CUT_MASK_WIDTH >= CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH];
-            assign LopCntLastCrd  = (CntCrdRdAddr+1)*NUM_CRD_SRAM >= CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH];
-            assign LopCntLastDist = (CntDistRdAddr+1)*NUM_DIST_SRAM >= CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH];
+            assign LopCntLastMask = (CntMaskRd+1)*CUT_MASK_WIDTH >= CCUFPS_CfgNip[gv_fpc];
+            assign LopCntLastCrd  = (CntCrdRdAddr+1)*NUM_CRD_SRAM >= CCUFPS_CfgNip[gv_fpc];
+            assign LopCntLastDist = (CntDistRdAddr+1)*NUM_DIST_SRAM >= CCUFPS_CfgNip[gv_fpc];
 
         // HandShake
 
@@ -481,7 +481,7 @@ generate
             assign vld_Dist_s0 = state == WORK & !(CpLast & LopCntLastDist);
 
         // Reg Update
-            wire [IDX_WIDTH     -1 : 0] MaxCntCp = CCUFPS_CfgNop[IDX_WIDTH*gv_fpc +: IDX_WIDTH] -1;
+            wire [IDX_WIDTH     -1 : 0] MaxCntCp = CCUFPS_CfgNop[gv_fpc] -1;
             counter#(
                 .COUNT_WIDTH ( IDX_WIDTH )
             )u0_counter_CntCp(
@@ -499,7 +499,7 @@ generate
             );
 
             // Mask Pipeline
-            wire [CNTMASK_WIDTH     -1 : 0] MaxCntMaskRd = CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] % CUT_MASK_WIDTH?  CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / CUT_MASK_WIDTH -1 : CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / CUT_MASK_WIDTH;
+            wire [CNTMASK_WIDTH     -1 : 0] MaxCntMaskRd = CCUFPS_CfgNip[gv_fpc] % CUT_MASK_WIDTH?  CCUFPS_CfgNip[gv_fpc] / CUT_MASK_WIDTH -1 : CCUFPS_CfgNip[gv_fpc] / CUT_MASK_WIDTH;
             counter#(
                 .COUNT_WIDTH ( CNTMASK_WIDTH )
             )u1_counter_CntMaskRd(
@@ -517,7 +517,7 @@ generate
             );
 
             // Crd Pipeline
-            wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] % NUM_CRD_SRAM?  CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_CRD_SRAM -1 : CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_CRD_SRAM;
+            wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = CCUFPS_CfgNip[gv_fpc] % NUM_CRD_SRAM?  CCUFPS_CfgNip[gv_fpc] / NUM_CRD_SRAM -1 : CCUFPS_CfgNip[gv_fpc] / NUM_CRD_SRAM;
             counter#( // Pipe S0
                 .COUNT_WIDTH ( IDX_WIDTH )
             )u1_counter_CntCrdRdAddr(
@@ -535,7 +535,7 @@ generate
             );
 
             // Dist Pipeline
-            wire [IDX_WIDTH     -1 : 0] MaxCntDistRdAddr = CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] % NUM_DIST_SRAM?  CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_DIST_SRAM -1 : CCUFPS_CfgNip[IDX_WIDTH*gv_fpc +: IDX_WIDTH] / NUM_DIST_SRAM;
+            wire [IDX_WIDTH     -1 : 0] MaxCntDistRdAddr = CCUFPS_CfgNip[gv_fpc] % NUM_DIST_SRAM?  CCUFPS_CfgNip[gv_fpc] / NUM_DIST_SRAM -1 : CCUFPS_CfgNip[gv_fpc] / NUM_DIST_SRAM;
             counter#( // Pipe S0
                 .COUNT_WIDTH ( IDX_WIDTH )
             )u1_counter_CntDistRdAddr(
@@ -560,9 +560,9 @@ generate
             assign FPC_CrdRdAddrVld  = vld_Crd_s0  & rdy_Crd_Need;
             assign FPC_DistRdAddrVld = vld_Dist_s0 & rdy_Dist_Need;
 
-            assign FPC_MaskRdAddr[gv_fpc] = CCUFPS_CfgMaskBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntMaskRd / (SRAM_WIDTH / CUT_MASK_WIDTH);
-            assign FPC_CrdRdAddr[gv_fpc] = CCUFPS_CfgCrdBaseRdAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] +CntCrdRdAddr;
-            assign FPC_DistRdAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntDistRdAddr;
+            assign FPC_MaskRdAddr[gv_fpc] = CCUFPS_CfgMaskBaseAddr[gv_fpc] + CntMaskRd / (SRAM_WIDTH / CUT_MASK_WIDTH);
+            assign FPC_CrdRdAddr[gv_fpc] = CCUFPS_CfgCrdBaseRdAddr[gv_fpc] +CntCrdRdAddr;
+            assign FPC_DistRdAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr[gv_fpc] + CntDistRdAddr;
 
         // HandShake
 
@@ -822,7 +822,7 @@ generate
                 .OUT_RDY   ( GLBFPS_CrdWrDatRdy & gv_fpc == ArbFPCCrdWrIdx )
             );
             assign FPC_CrdWrDat[gv_fpc] = SIPO_CrdOutDat;
-            assign FPC_CrdWrAddr[gv_fpc] = CCUFPS_CfgCrdBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / NUM_CRD_SRAM;
+            assign FPC_CrdWrAddr[gv_fpc] = CCUFPS_CfgCrdBaseWrAddr[gv_fpc] + CntCp_s3 / NUM_CRD_SRAM;
 
             // SIPO Idx
             SIPO#(
@@ -840,7 +840,7 @@ generate
                 .OUT_LAST  (                            ),
                 .OUT_RDY   ( GLBFPS_IdxWrDatRdy & gv_fpc == ArbFPCIdxWrIdx )
             );
-            assign FPC_IdxWrAddr[gv_fpc] = CCUFPS_CfgIdxBaseWrAddr[IDX_WIDTH*gv_fpc +: IDX_WIDTH] + CntCp_s3 / (SRAM_WIDTH/IDX_WIDTH);
+            assign FPC_IdxWrAddr[gv_fpc] = CCUFPS_CfgIdxBaseWrAddr[gv_fpc] + CntCp_s3 / (SRAM_WIDTH/IDX_WIDTH);
 
     end 
 
