@@ -52,7 +52,7 @@ module CCU #(
     input                                   GLBCCU_ISARdDatVld      ,          
     output                                  CCUGLB_ISARdDatRdy      ,
     output [ADDR_WIDTH              -1 : 0] CCUTOP_MduISARdAddrMin  , // To avoid ITF over-write ISARAM of GLB
-    
+    output                                  CCUITF_Rst              , 
     output [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_DRAMBaseAddr,
 
     output     [NUM_FPC             -1 : 0] CCUFPS_Rst              ,
@@ -537,6 +537,7 @@ assign CCUSYA_Rst = state == IDLE;
 assign CCUPOL_Rst = {POOL_CORE{state == IDLE}};
 assign CCUFPS_Rst = {NUM_FPC{state == IDLE}};
 assign CCUKNN_Rst = state == IDLE;
+assign CCUITF_Rst = state == IDLE;
 
 //=====================================================================================================================
 // Logic Design 4: GLB Control
