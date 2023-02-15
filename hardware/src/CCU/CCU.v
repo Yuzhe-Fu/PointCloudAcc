@@ -188,7 +188,7 @@ reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][MAXPAR_WIDTH-1 : 0] CCU_CfgPortP
 assign CCUTOP_CfgPortBankFlag   = CCU_CfgPortBankFlag;
 assign CCUTOP_CfgPortParBank    = CCU_CfgPortParBank;
 
-reg [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCU_DRAMBaseAddr;
+reg [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0][DRAM_ADDR_WIDTH-1 : 0] CCU_DRAMBaseAddr;
 assign CCUITF_DRAMBaseAddr = CCU_DRAMBaseAddr;
 //=====================================================================================================================
 // Logic Design 1: FSM
