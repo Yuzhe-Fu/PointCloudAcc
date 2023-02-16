@@ -21,6 +21,7 @@
 ../../src/primitives/DEB/DEB.v
 ../../src/primitives/MINMAX/MINMAX.v
 ../../src/primitives/Memory/RAM_HS.v
+../../src/primitives/Memory/SPRAM_HS.v
 ../../src/primitives/Memory/RAM.v
 ../../src/primitives/Memory/SPSRAM.v
 ../../src/primitives/SIPO/SIPO.v
