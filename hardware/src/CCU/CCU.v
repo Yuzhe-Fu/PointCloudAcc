@@ -37,7 +37,6 @@ module CCU #(
     parameter OPNUM                 = NUM_MODULE + GLB_NUM_WRPORT + GLB_NUM_RDPORT,
     parameter MAXPAR_WIDTH          = $clog2(MAXPAR) + 1 // MAXPAR=2 -> 2
 
-
     )(
     input                                   clk                     ,
     input                                   rst_n                   ,
@@ -256,7 +255,7 @@ always @(posedge clk or negedge rst_n) begin
         OpNumWord[1] = 5;// localparam OPCODE_FPS             = 1;
         OpNumWord[2] = 1;// localparam OPCODE_KNN             = 2;
         OpNumWord[3] = 2;// localparam OPCODE_SYA             = 3;
-        OpNumWord[4] = 3;// localparam OPCODE_POL             = 4;
+        OpNumWord[4] = 4;// localparam OPCODE_POL             = 4;
     end
 end
 
@@ -284,7 +283,7 @@ end
 //=====================================================================================================================
 genvar gv_i;
 generate
-    for(gv_i=0; gv_i<OPNUM; gv_i=gv_i+1) begin
+    for(gv_i=0; gv_i<OPNUM; gv_i=gv_i+1) begin: GEN_CntMduISARdAddr
         wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH -1;
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
@@ -485,17 +484,23 @@ always @(posedge clk or negedge rst_n) begin
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK                    +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*2                  +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*3                  +: NUM_BANK];
-                CCUTOP_CfgPortParBank [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*4                  +: MAXPAR_WIDTH];
-                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*4 + MAXPAR_WIDTH   +: MAXPAR_WIDTH];
-                CCUTOP_CfgPortParBank [GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*4 + MAXPAR_WIDTH*2 +: MAXPAR_WIDTH];
-                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*4 + MAXPAR_WIDTH*3 +: MAXPAR_WIDTH];
+            end else if(CntISARdWord == 4) begin
+                for(int_i = 1; int_i < POOL_CORE; int_i = int_i + 1) begin
+                    CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(int_i - 1) +: NUM_BANK];
+                end
+                CCUTOP_CfgPortParBank [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1)                  +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*2 +: MAXPAR_WIDTH];
+                for(int_i = 0; int_i < POOL_CORE; int_i = int_i + 1) begin
+                    CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*(3 + int_i) +: MAXPAR_WIDTH];
+                end
             end 
         end 
     end
 end
 
 generate
-    for(gv_i=0; gv_i<OPNUM; gv_i=gv_i+1) begin
+    for(gv_i=0; gv_i<OPNUM; gv_i=gv_i+1) begin: GEN_CfgVld
         always @(posedge clk or negedge rst_n)  begin
             if (!rst_n) begin
                 CfgVld[gv_i] <= 0;
@@ -511,7 +516,7 @@ endgenerate
 always @(posedge clk or negedge rst_n)  begin
     if (!rst_n) begin
         ArbCfgRdyIdx_s2 <= 0;
-    end else if ( state_s1 == CFG & Ovf_CntISARdWord & handshake_s1 & OpCodeMatch) begin
+    end else if ( state_s1 == CFG & Ovf_CntISARdWord & handshake_s1 & OpCodeMatch)begin
         ArbCfgRdyIdx_s2 <= ArbCfgRdyIdx_s1;
     end
 end

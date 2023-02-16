@@ -265,7 +265,7 @@ generate
 
     // Combinational Logic
     assign PLC_MapRdAddr[gv_plc] = CntCp<<MAPWORD_WIDTH + CntMapWord;
-    assign PLC_MapRdAddrVld = vld_s0;
+    assign PLC_MapRdAddrVld[gv_plc] = vld_s0;
 
     // Handshake
     assign rdy_s1 = SIPO_MapInRdy;

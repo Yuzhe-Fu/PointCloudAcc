@@ -556,9 +556,9 @@ generate
         // Logic Design: Stage1
         //=====================================================================================================================
         // Combinational Logic
-            assign FPC_MaskRdAddrVld = vld_Mask_s0 & rdy_Mask_Need; // self is valid & load1 is rdy;
-            assign FPC_CrdRdAddrVld  = vld_Crd_s0  & rdy_Crd_Need;
-            assign FPC_DistRdAddrVld = vld_Dist_s0 & rdy_Dist_Need;
+            assign FPC_MaskRdAddrVld[gv_fpc] = vld_Mask_s0 & rdy_Mask_Need; // self is valid & load1 is rdy;
+            assign FPC_CrdRdAddrVld[gv_fpc]  = vld_Crd_s0  & rdy_Crd_Need;
+            assign FPC_DistRdAddrVld[gv_fpc] = vld_Dist_s0 & rdy_Dist_Need;
 
             assign FPC_MaskRdAddr[gv_fpc] = CCUFPS_CfgMaskBaseAddr[gv_fpc] + CntMaskRd / (SRAM_WIDTH / CUT_MASK_WIDTH);
             assign FPC_CrdRdAddr[gv_fpc] = CCUFPS_CfgCrdBaseRdAddr[gv_fpc] +CntCrdRdAddr;
@@ -755,7 +755,7 @@ generate
                 if(!rst_n) begin
                     {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, CntCp_s2, CpLast_s2, vld_Max_s2} <= 0;
                 end else if (ena_Max_s2) begin
-                    {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2,LopCntLast_s2, CntCp_s2, vld_Max_s2} <= 
+                    {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, CntCp_s2, CpLast_s2, vld_Max_s2} <= 
                     {(LopCntLast_s1 | CntCp_s1==0)? FPS_MaxCrd_ : FPS_CpCrd, FPS_MaxCrd_, FPS_MaxIdx_, FPS_PsDist, LopCntLast_s1, CntCp_s1, CpLast_s1, vld_Byte_s1};
                 end
             end
