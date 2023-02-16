@@ -435,7 +435,7 @@ generate
                             next_state <= WORK; //
                         else
                             next_state <= IDLE;
-                WORK :if(CpLast_s3 & LopCntLast_s3 & FPC_MaskWrDatVld[gv_fpc] & FPC_DistWrDatVld[gv_fpc] & FPC_CrdWrDatVld[gv_fpc] & FPC_IdxWrDatVld[gv_fpc]) // Last Loop point & no to Write
+                WORK :if(CpLast_s3 & LopCntLast_s3 & !FPC_MaskWrDatVld[gv_fpc] & !FPC_DistWrDatVld[gv_fpc] & !FPC_CrdWrDatVld[gv_fpc] & !FPC_IdxWrDatVld[gv_fpc]) // Last Loop point & no to Write
                             next_state <= IDLE;
                         else
                             next_state <= WORK;
@@ -634,7 +634,7 @@ generate
                 wire [$clog2(CUT_MASK_WIDTH)-1 : 0] VldIdx_next;
                 wire                               VldArbMask;
                 // Current
-                    assign Mask_s1 =  handshake_Mask_s1? GLBFPS_MaskRdDat[CUT_MASK_WIDTH*(CntMaskRd_s1 % (SRAM_WIDTH /CUT_MASK_WIDTH)) +: CUT_MASK_WIDTH] : MaskCheck_s2;
+                    assign Mask_s1 =  vld_Mask_s1? GLBFPS_MaskRdDat[CUT_MASK_WIDTH*(CntMaskRd_s1 % (SRAM_WIDTH /CUT_MASK_WIDTH)) +: CUT_MASK_WIDTH] : MaskCheck_s2;
                     prior_arb#(
                         .REQ_WIDTH ( CUT_MASK_WIDTH )
                     )u_prior_arb_MaskCheck(
@@ -691,14 +691,14 @@ generate
             // Mask write back
                 assign FPC_MaskWrAddr[gv_fpc] = FPC_MaskRdAddr_s1;
                 always @ (*) begin
-                    if(FPC_MaskWrDatVld[gv_fpc]) begin
+                    if(FPC_MaskWrDatVld[gv_fpc] & vld_Mask_s1) begin
                         FPC_MaskWrDat[gv_fpc] =  GLBFPS_MaskRdDat;
                         FPC_MaskWrDat[gv_fpc][FPS_MaxIdx_ % CUT_MASK_WIDTH] = 1'b1; // set 1
                     end else begin
                         FPC_MaskWrDat[gv_fpc] = 0;
                     end
                 end
-                assign FPC_MaskWrDatVld[gv_fpc] = LopCntLast_s1 & handshake_Mask_s1;
+                assign FPC_MaskWrDatVld[gv_fpc] = LopCntLast_s1 & vld_Mask_s1;
 
             assign LopCntLast_s1 = LopCntLastMask_s1 & !VldArbMask_next; // Last mask & no valid bit in the next clk;
 
