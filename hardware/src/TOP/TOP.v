@@ -661,7 +661,7 @@ assign TOPGLB_RdPortDatRdy[GLBRDIDX_POLMAP]     = POLGLB_MapRdDatRdy;
 
 // Read Ofm
 generate
-    for(gv_i = 0; gv_i < POOL_CORE; gv_i = gv_i + 1) begin
+    for(gv_i = 0; gv_i < POOL_CORE; gv_i = gv_i + 1) begin: GEN_Port_GLBPOL_OfmRd
         assign TOPGLB_RdPortAddr[GLBRDIDX_POLOFM + gv_i]    = POLGLB_OfmRdAddr[gv_i];
         assign GLBPOL_OfmRdDat[gv_i] = GLBTOP_RdPortDat[GLBRDIDX_POLOFM + gv_i];
     end
@@ -726,7 +726,7 @@ assign O_CmdVld                                      = ITFPAD_CmdVld;
 
 // GLB RdPort
 generate
-    for(gv_i = 0; gv_i < ITF_NUM_RDPORT; gv_i = gv_i + 1) begin
+    for(gv_i = 0; gv_i < ITF_NUM_RDPORT; gv_i = gv_i + 1) begin: GEN_Port_GLBITF_Rd
         assign TOPGLB_RdPortAddr[gv_i]      = ITFGLB_RdAddr[gv_i];
         assign TOPGLB_RdPortAddrVld[gv_i]   = ITFGLB_RdAddrVld[gv_i];
         assign GLBITF_RdAddrRdy[gv_i]       = GLBTOP_RdPortAddrRdy[gv_i];
@@ -739,7 +739,7 @@ endgenerate
 
 // GLB WrPort
 generate
-    for(gv_i = 0; gv_i < ITF_NUM_WRPORT; gv_i = gv_i + 1) begin
+    for(gv_i = 0; gv_i < ITF_NUM_WRPORT; gv_i = gv_i + 1) begin: GEN_Port_ITFGLB_Wr
         assign TOPGLB_WrPortAddr[gv_i]      = ITFGLB_WrAddr[gv_i];
         assign TOPGLB_WrPortDat[gv_i]       = ITFGLB_WrDat[gv_i];
         assign TOPGLB_WrPortDatVld[gv_i]    = ITFGLB_WrDatVld[gv_i];
