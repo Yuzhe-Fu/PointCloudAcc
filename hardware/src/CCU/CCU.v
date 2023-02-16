@@ -34,7 +34,7 @@ module CCU #(
     parameter ITF_NUM_RDPORT        = 12,
     parameter ITF_NUM_WRPORT        = 14,
     parameter NUM_FPC               = 4,
-    parameter OPNUM                 = NUM_MODULE + GLB_NUM_WRPORT + GLB_NUM_RDPORT,
+    parameter OPNUM                 = NUM_MODULE + (NUM_FPC -1) + (POOL_CORE -1),
     parameter MAXPAR_WIDTH          = $clog2(MAXPAR) + 1 // MAXPAR=2 -> 2
 
     )(
@@ -260,7 +260,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // CfgRdy -> Req
-assign CfgRdy = {KNNCCU_CfgRdy, &FPSCCU_CfgRdy,  &POLCCU_CfgRdy, SYACCU_CfgRdy, CCUTOP_CfgRdy};
+assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
@@ -486,7 +486,7 @@ always @(posedge clk or negedge rst_n) begin
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*3                  +: NUM_BANK];
             end else if(CntISARdWord == 4) begin
                 for(int_i = 1; int_i < POOL_CORE; int_i = int_i + 1) begin
-                    CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(int_i - 1) +: NUM_BANK];
+                    CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(int_i - 1) +: NUM_BANK]; // 1 bank
                 end
                 CCUTOP_CfgPortParBank [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1)                  +: MAXPAR_WIDTH];
                 CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH   +: MAXPAR_WIDTH];
@@ -524,7 +524,7 @@ end
 wire FPS_CfgVld;
 wire POL_CfgVld;
 
-assign {CCUKNN_CfgVld, FPS_CfgVld,  POL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign {POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld, CCUTOP_CfgVld} = CfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
 assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 //=====================================================================================================================
