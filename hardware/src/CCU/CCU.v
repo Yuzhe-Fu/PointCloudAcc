@@ -148,7 +148,7 @@ reg [ADDR_WIDTH                     -1 : 0] ISA_WrAddr;
 reg [OPNUM -1 : 0][(ADDR_WIDTH)     -1 : 0] CntMduISARdAddr;
 wire                                        ISA_WrEn;
 wire                                        ISA_RdEn;
-wire[ADDR_WIDTH                     -1 : 0] CntISARdWord;
+wire[ADDR_WIDTH                     -1 : 0] CntISARdWord_s1;
 wire[ADDR_WIDTH                     -1 : 0] ISA_CntRdWord_d;
 reg                                         ISA_DatOutVld;
 
@@ -178,7 +178,7 @@ reg  [$clog2(OPNUM)                 -1 : 0] ArbCfgRdyIdx_s1;
 reg  [$clog2(OPNUM)                 -1 : 0] ArbCfgRdyIdx_s2;
 reg                                         CCUTOP_CfgRdy;   
 wire                                        CCUTOP_CfgVld;  
-wire                                        Ovf_CntISARdWord;
+wire                                        Ovf_CntISARdWord_s1;
 wire                                        handshake_s1;
 
 //=====================================================================================================================
@@ -304,7 +304,7 @@ generate
 endgenerate
 
 assign CCUGLB_ISARdAddr = CntMduISARdAddr[ArbCfgRdyIdx_s0];
-assign CCUGLB_ISARdAddrVld = state==CFG & !(Ovf_CntISARdWord & OpCodeMatch);
+assign CCUGLB_ISARdAddrVld = state==CFG & !(Ovf_CntISARdWord_s1 & OpCodeMatch & GLBCCU_ISARdDatVld);
 
 // Reg Update
 always @(posedge clk or negedge rst_n) begin
@@ -335,10 +335,10 @@ counter#(
     .INC       ( handshake_s1 & OpCodeMatch ),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
-    .MAX_COUNT ( MaxCntISARdWord   ),
-    .OVERFLOW  ( Ovf_CntISARdWord),
+    .MAX_COUNT ( MaxCntISARdWord),
+    .OVERFLOW  ( Ovf_CntISARdWord_s1),
     .UNDERFLOW (                ),
-    .COUNT     ( CntISARdWord   )
+    .COUNT     ( CntISARdWord_s1)
 );
 
 // ISA Decoder
@@ -393,29 +393,29 @@ always @(posedge clk or negedge rst_n) begin
             {CfgNumLy, Mode} <= GLBCCU_ISARdDat[OPCODE_WIDTH +: OPCODE_WIDTH + NUM_LAYER_WIDTH ];
 
         end else if (OpCode == OPCODE_FPS) begin
-            if(CntISARdWord == 1) begin
+            if(CntISARdWord_s1 == 0) begin
                 CCUFPS_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                         +: IDX_WIDTH*NUM_FPC];
                 CCUFPS_CfgNop                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC                     +: IDX_WIDTH*NUM_FPC];
                 CCUFPS_CfgCrdBaseRdAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC*2                   +: IDX_WIDTH*NUM_FPC];
-            end else if(CntISARdWord == 2) begin
+            end else if(CntISARdWord_s1 == 1) begin
                 CCUFPS_CfgCrdBaseWrAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH                                         +: IDX_WIDTH*NUM_FPC];
                 CCUFPS_CfgIdxBaseWrAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC                     +: IDX_WIDTH*NUM_FPC];
                 CCUFPS_CfgMaskBaseAddr                                  <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC*2                   +: IDX_WIDTH*NUM_FPC];
-            end else if(CntISARdWord == 3) begin
+            end else if(CntISARdWord_s1 == 2) begin
                 CCUFPS_CfgDistBaseAddr                                  <= GLBCCU_ISARdDat[OPCODE_WIDTH                                         +: IDX_WIDTH*NUM_FPC];
                 CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC                     +: DRAM_ADDR_WIDTH];
                 CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFIDX]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC + DRAM_ADDR_WIDTH   +: DRAM_ADDR_WIDTH];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC + DRAM_ADDR_WIDTH*2 +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_FPSCRD]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC + DRAM_ADDR_WIDTH*2 + NUM_BANK  +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSMSK                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*NUM_FPC + DRAM_ADDR_WIDTH*2 + NUM_BANK*2 +: NUM_BANK];
-            end else if(CntISARdWord == 4) begin
+            end else if(CntISARdWord_s1 == 3) begin
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK]   <= GLBCCU_ISARdDat[OPCODE_WIDTH              +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSDST                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK   +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_FPSDST]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*2 +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSIDX                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*3 +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_ITFIDX]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*4 +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*5 +: NUM_BANK];
-            end else if(CntISARdWord == 5) begin
+            end else if(CntISARdWord_s1 == 4) begin
                 CCUTOP_CfgPortParBank [GLBWRIDX_ITFCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                    +: MAXPAR_WIDTH];
                 CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*1   +: MAXPAR_WIDTH];
                 CCUTOP_CfgPortParBank [GLBWRIDX_FPSMSK                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*2   +: MAXPAR_WIDTH];
@@ -428,7 +428,7 @@ always @(posedge clk or negedge rst_n) begin
             end
 
         end else if (OpCode == OPCODE_KNN) begin
-            if(CntISARdWord == 1) begin
+            if(CntISARdWord_s1 == 0) begin
                 CCUKNN_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                                                 +: IDX_WIDTH];
                 CCUKNN_CfgK                                             <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH                                                     +: IDX_WIDTH];
                 CCUKNN_CfgCrdRdAddr                                     <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*2                                                   +: IDX_WIDTH];
@@ -443,7 +443,7 @@ always @(posedge clk or negedge rst_n) begin
             end
 
         end else if ( OpCode == OPCODE_SYA) begin
-            if (CntISARdWord == 1) begin
+            if (CntISARdWord_s1 == 0) begin
                 CCUSYA_CfgMod                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                                                         +: OPCODE_WIDTH];// 8bit
                 CCUSYA_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH*2                                                                       +: IDX_WIDTH];
                 CCUSYA_CfgChi                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH                                                           +: CHN_WIDTH];     
@@ -455,7 +455,7 @@ always @(posedge clk or negedge rst_n) begin
                 CCUSYA_CfgOfmWrBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*2    +: ADDR_WIDTH]; 
                 CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*3    +: DRAM_ADDR_WIDTH]; 
                 CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*4 + DRAM_ADDR_WIDTH  +: DRAM_ADDR_WIDTH]; 
-            end else if(CntISARdWord == 2) begin
+            end else if(CntISARdWord_s1 == 1) begin
                 CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                                   +: DRAM_ADDR_WIDTH];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH                 +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK      +: NUM_BANK];
@@ -473,18 +473,18 @@ always @(posedge clk or negedge rst_n) begin
             end
 
         end else if (OpCode == OPCODE_POL) begin
-            if (CntISARdWord == 1) begin
+            if (CntISARdWord_s1 == 0) begin
                 CCUPOL_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH +: IDX_WIDTH*POOL_CORE];
-            end else if(CntISARdWord == 2) begin 
+            end else if(CntISARdWord_s1 == 1) begin 
                 CCUPOL_CfgChi                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH +: CHN_WIDTH*POOL_CORE];
-            end else if(CntISARdWord == 3) begin
+            end else if(CntISARdWord_s1 == 2) begin
                 CCUPOL_CfgK                                             <= GLBCCU_ISARdDat[OPCODE_WIDTH +: OPCODE_WIDTH*POOL_CORE]; // 8bit
                 CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1)                                                 +: DRAM_ADDR_WIDTH]; // 8bit; 
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH                               +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK                    +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*2                  +: NUM_BANK];
                 CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*3                  +: NUM_BANK];
-            end else if(CntISARdWord == 4) begin
+            end else if(CntISARdWord_s1 == 3) begin
                 for(int_i = 1; int_i < POOL_CORE; int_i = int_i + 1) begin
                     CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(int_i - 1) +: NUM_BANK]; // 1 bank
                 end
@@ -506,7 +506,7 @@ generate
                 CfgVld[gv_i] <= 0;
             end else if ( CfgVld[gv_i] & CfgRdy[gv_i] ) begin
                 CfgVld[gv_i] <= 0;
-            end else if ( state_s1 == CFG & ArbCfgRdyIdx_s1 == gv_i & Ovf_CntISARdWord & handshake_s1 & OpCodeMatch) begin
+            end else if ( state_s1 == CFG & ArbCfgRdyIdx_s1 == gv_i & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch) begin
                 CfgVld[gv_i] <= 1'b1;
             end
         end
@@ -516,7 +516,7 @@ endgenerate
 always @(posedge clk or negedge rst_n)  begin
     if (!rst_n) begin
         ArbCfgRdyIdx_s2 <= 0;
-    end else if ( state_s1 == CFG & Ovf_CntISARdWord & handshake_s1 & OpCodeMatch)begin
+    end else if ( state_s1 == CFG & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch)begin
         ArbCfgRdyIdx_s2 <= ArbCfgRdyIdx_s1;
     end
 end

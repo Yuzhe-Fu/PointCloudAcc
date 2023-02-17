@@ -10,117 +10,91 @@
 // Description :
 //========================================================
 module PE_ROW #(
+    parameter ACT_WIDTH = 8,
+    parameter WGT_WIDTH = 8,
+    parameter CHN_WIDTH = 16,
+    parameter QNTSL_WIDTH = 32,
     parameter NUM_PE     = 16,
-    parameter QNTSL_WIDTH  = 20,
-    parameter ACT_WIDTH  = 8,
-    parameter WGT_WIDTH  = 8,
-    parameter PSUM_WIDTH = ACT_WIDTH+WGT_WIDTH+10,
-    parameter FM_WIDTH   = ACT_WIDTH
+    parameter PSUM_WIDTH = ACT_WIDTH + WGT_WIDTH + CHN_WIDTH
   )(
-    input                            clk,
-    input                            rst_n,
+    input                           clk,
+    input                           rst_n,
+    input                                       CCUSYA_Rst                ,
+    input  [QNTSL_WIDTH                 -1 : 0] CCUSYA_CfgScale           ,
+    input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgShift           ,
+    input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgZp              ,
 
-    input                            rst_reset,
-    
-    input  [QNTSL_WIDTH          -1:0] quant_scale,
-    input  [ACT_WIDTH          -1:0] quant_shift,
-    input  [ACT_WIDTH          -1:0] quant_zero_point,
+    input                           InActVld_W,
+    input                           InActChnLast_W,
+    input [ACT_WIDTH        -1 : 0] InAct_W,
+    output                          OutActRdy_W,
 
-    input                            in_vld_left,
-    input                            in_rdy_left,
+    input [NUM_PE        -1 : 0]    InWgtVld_N,
+    input [NUM_PE        -1 : 0]    InWgtChnLast_N,
+    input [WGT_WIDTH*NUM_PE -1 : 0] InWgt_N,
+    output [NUM_PE        -1 : 0]   OutWgtRdy_N,
 
-    output [FM_WIDTH           -1:0] out_fm,
-    
-    input  [ACT_WIDTH          -1:0] in_act_left,
-    output [ACT_WIDTH          -1:0] out_act_right,
-    
-    input  [WGT_WIDTH*NUM_PE   -1:0] in_wgt_above,
-    output [WGT_WIDTH*NUM_PE   -1:0] out_wgt_below,
+    output                          OutActVld_E,
+    output                          OutActChnLast_E,
+    output [ACT_WIDTH    -1 : 0] OutAct_E,
+    input                           InActRdy_E,
 
-    input                            in_acc_reset_left,
-    output                           out_acc_reset_right
+    output [NUM_PE        -1 : 0]    OutWgtVld_S,
+    output [NUM_PE        -1 : 0]    OutWgtChnLast_S,
+    output [WGT_WIDTH*NUM_PE -1 : 0] OutWgt_S,
+    input   [NUM_PE        -1 : 0]   InWgtRdy_S,
+
+    output                          OutPsumVld,
+    output     [ACT_WIDTH   -1 : 0] OutPsum,
+    input                           InPsumRdy
 
   );
+
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam DMUL_WIDTH = ACT_WIDTH*WGT_WIDTH;
-
-wire in_ena_left = in_vld_left && in_rdy_left;
-
-wire [NUM_PE -1:0][PSUM_WIDTH -1:0] row_out_sum;
-reg  [PSUM_WIDTH -1:0] out_sum_pick;
-wire [PSUM_WIDTH -1:0] out_sum_reg0;
-wire [PSUM_WIDTH+QNTSL_WIDTH -1:0] out_sum_expd = {{QNTSL_WIDTH{out_sum_reg0[PSUM_WIDTH-1]}}, out_sum_reg0};
-wire [PSUM_WIDTH+QNTSL_WIDTH -1:0] out_sum_scal = out_sum_expd*quant_scale;
-
-wire [FM_WIDTH   -1:0] out_sum_rsft = out_sum_scal>>quant_shift;
-wire [FM_WIDTH   -1:0] out_sum_qnt8 = out_sum_rsft +quant_zero_point;
-wire [FM_WIDTH   -1:0] out_sum_reg1;
-
-wire [NUM_PE -1:0][ACT_WIDTH  -1:0] row_out_act;
-wire [NUM_PE -1:0][ACT_WIDTH  -1:0] row_din_act = {row_out_act[NUM_PE-2:0], in_act_left};
-reg  [NUM_PE -1:0] row_din_vld_reg;
-wire [NUM_PE -1:0] row_din_vld = {row_din_vld_reg[NUM_PE -2:0], in_vld_left};
-
-wire [NUM_PE -1:0][WGT_WIDTH  -1:0] row_din_wgt = in_wgt_above;
-wire [NUM_PE -1:0][WGT_WIDTH  -1:0] row_out_wgt;
-
-wire [NUM_PE -1:0] row_out_acc_reset;
-wire [NUM_PE -1:0] row_din_acc_reset = {row_out_acc_reset[NUM_PE-2:0], in_acc_reset_left};
-
-integer i;
-always @ ( * )begin
-  out_sum_pick = 'd0;
-  for( i = 0; i < NUM_PE; i = i + 1 )begin
-    if( row_din_acc_reset[i] )
-      out_sum_pick = row_out_sum[i];
-  end
-end
-
-always @ ( posedge clk or negedge rst_n )begin
-if( ~rst_n )
-  row_din_vld_reg <= 'd0;
-else if( in_rdy_left )
-  row_din_vld_reg <= {row_din_vld_reg[NUM_PE -2:0], in_vld_left};
-end
-
-assign out_sum_reg0 = out_sum_pick;
-assign out_sum_reg1 = out_sum_qnt8;
-
-//CPM_REG_E #( PSUM_WIDTH ) OUT_REG0 ( clk, rst_n, in_ena_left, out_sum_pick, out_sum_reg0);
-//CPM_REG_E #( FM_WIDTH   ) OUT_REG1 ( clk, rst_n, in_ena_left, out_sum_qnt8, out_sum_reg1);
 
 
-    PE #(
-      .ACT_WIDTH           ( ACT_WIDTH         ),
-      .WGT_WIDTH           ( WGT_WIDTH         ),
-      .PSUM_WIDTH          ( PSUM_WIDTH        )
-    ) PE_U_I [NUM_PE -1:0](  
-                           
-      .clk                 ( clk               ),
-      .rst_n               ( rst_n             ),
-      
-      .rst_reset           ( rst_reset         ),
-                                              
-      .in_vld_left         ( row_din_vld       ),
-      .in_rdy_left         ( in_rdy_left       ),
-      
-      .out_sum             ( row_out_sum       ),
-                                              
-      .in_act_left         ( row_din_act       ),
-      .out_act_right       ( row_out_act       ),
-                                              
-      .in_wgt_above        ( row_din_wgt       ),
-      .out_wgt_below       ( row_out_wgt       ),
-                           
-      .in_acc_reset_left   ( row_din_acc_reset ),
-      .out_acc_reset_right ( row_out_acc_reset )
-    );
+PE#(
+    .ACT_WIDTH       ( ACT_WIDTH ),
+    .WGT_WIDTH       ( WGT_WIDTH ),
+    .CHN_WIDTH       ( CHN_WIDTH )
+)u_PE [NUM_PE   -1 : 0](
+    .clk             ( clk             ),
+    .rst_n           ( rst_n           ),
+    .InActVld_W      ( InActVld_W      ),
+    .InActChnLast_W  ( InActChnLast_W  ),
+    .InAct_W         ( InAct_W         ),
+    .OutActRdy_W     ( OutActRdy_W     ),
+    .InWgtVld_N      ( InWgtVld_N      ),
+    .InWgtChnLast_N  ( InWgtChnLast_N  ),
+    .InWgt_N         ( InWgt_N         ),
+    .OutWgtRdy_N     ( OutWgtRdy_N     ),
+    .OutActVld_E     ( OutActVld_E     ),
+    .OutActChnLast_E ( OutActChnLast_E ),
+    .OutAct_E        ( ROW_OutAct        ),
+    .InActRdy_E      ( InActRdy_E      ),
+    .OutWgtVld_S     ( OutWgtVld_S     ),
+    .OutWgtChnLast_S ( OutWgtChnLast_S ),
+    .OutWgt_S        ( OutWgt_S        ),
+    .InWgtRdy_S      ( InWgtRdy_S      ),
+    .OutPsumVld      ( PE_OutPsumVld   ),
+    .OutPsum         ( PE_OutPsum_PE   ),
+    .InPsumRdy       ( PE_InPsumRdy    )
+);
 
-assign out_fm = out_sum_reg1;
-assign out_act_right = row_out_act[NUM_PE -1];
-assign out_wgt_below = row_out_wgt;
-assign out_acc_reset_right = row_out_acc_reset[NUM_PE -1]; // PE (:, 15)
+RR_arbiter #(
+    .REQ_WIDTH ( NUM_PE )
+)u_RR_arbiter_PE(
+    .clk        ( clk       ),
+    .rst_n      ( rst_n     ),
+    .req        ( OutPsumVld ),
+    .gnt        ( gnt       ),
+    .arb_port   ( ArbPEIdx  )
+);
+assign OutPsum = PE_OutPsum_PE[ArbPEIdx];
+assign OutPsumVld = &PE_OutPsumVld;
+assign PE_InPsumRdy = gnt & InPsumRdy;
+
 
 endmodule
