@@ -39,7 +39,7 @@ module PE #(
     input                           InWgtRdy_S,
 
     output                          OutPsumVld,
-    output reg [PSUM_WIDTH  -1 : 0] OutPsum,
+    output reg signed [PSUM_WIDTH  -1 : 0] OutPsum,
     input                           InPsumRdy
 
   );
@@ -56,6 +56,7 @@ assign InVld        = InActVld_W & InWgt_N;
 assign OutActRdy_W  = ena & InVld;
 assign OutWgtRdy_N  = ena & InVld;
 
+wire signed [PSUM_WIDTH     -1 : 0] Signed_Mul = $signed(InAct_W) * $signed(InWgt_N);
 //
 assign rdy          = InActRdy_E & InWgtRdy_S & (OutPsumVld? InPsumRdy : 1'b1);
 assign handshake    = rdy & vld;
@@ -66,7 +67,7 @@ always @ ( posedge clk or negedge rst_n ) begin
         {OutPsum, OutWgt_S, OutAct_E, OutChnLast, vld} <= 0;
     end else if(ena) begin
         {OutPsum, OutAct_E, OutAct_E, OutChnLast, vld} <= {
-            InVld? (OutChnLast? InAct_W * InWgt_N : OutPsum + InAct_W * InWgt_N) : OutPsum, 
+            InVld? (OutChnLast? Signed_Mul : OutPsum + Signed_Mul) : OutPsum, 
             InWgt_N, 
             InAct_W, 
             InVld & (InActChnLast_W & InWgtChnLast_N), 

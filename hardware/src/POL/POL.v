@@ -31,7 +31,7 @@ module POL #(
     output [POOL_CORE                               -1 : 0] POLCCU_CfgRdy       ,
     input  [POOL_CORE   -1 : 0][(MAP_WIDTH+1)       -1 : 0] CCUPOL_CfgK         , // 24
     input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgNip       , // 1024
-    input  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChi       , // 64
+    input  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChn       , // 64
 
     output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr    ,   
     output                                                  POLGLB_MapRdAddrVld , 
@@ -339,7 +339,7 @@ generate
     
     // Combination Logic
     assign POLGLB_OfmRdAddrVld[gv_plc] = {POOL_CORE{handshake_s1}};
-    assign NpIdx_s2 = (CCUPOL_CfgChi[gv_plc]/POOL_COMP_CORE)*PISO_MapOutDat + CntChnGrp;
+    assign NpIdx_s2 = (CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE)*PISO_MapOutDat + CntChnGrp;
     assign POLGLB_OfmRdAddr[gv_plc] = NpIdx_s2;
 
     // Handshake
@@ -350,7 +350,7 @@ generate
     assign ena_s3 = handshake_s3 | ~vld_s3;
 
     // Reg Update
-    wire [CHNGRP_WIDTH      -1 : 0] MaxCntChnGrp = CCUPOL_CfgChi[gv_plc]/POOL_COMP_CORE -1;
+    wire [CHNGRP_WIDTH      -1 : 0] MaxCntChnGrp = CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE -1;
     counter#(
         .COUNT_WIDTH ( CHNGRP_WIDTH )
     )u_CntChnGrp(

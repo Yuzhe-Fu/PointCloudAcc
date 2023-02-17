@@ -57,8 +57,8 @@ module TOP #(
     parameter IDX_WIDTH      = 16,
     parameter MAP_WIDTH      = 5,
     parameter ACT_WIDTH      = 8,
-    parameter CHN_WIDTH      = 12,
-    parameter QNTSL_WIDTH    = 32,
+    parameter CHN_WIDTH      = 16,
+    parameter QNTSL_WIDTH    = 16,
 
     parameter MAXPAR         = ACT_WIDTH*(POOL_COMP_CORE > SYA_NUM_ROW*SYA_NUM_BANK ? POOL_COMP_CORE : SYA_NUM_ROW*SYA_NUM_BANK) / SRAM_WIDTH, 
 
@@ -158,10 +158,14 @@ wire                              CCUSYA_CfgVld           ;
 wire                              SYACCU_CfgRdy           ;
 wire [2                   -1 : 0] CCUSYA_CfgMod           ;
 wire [IDX_WIDTH           -1 : 0] CCUSYA_CfgNip           ; 
-wire [CHN_WIDTH           -1 : 0] CCUSYA_CfgChi           ;         
+wire [CHN_WIDTH           -1 : 0] CCUSYA_CfgChn           ;         
 wire [QNTSL_WIDTH         -1 : 0] CCUSYA_CfgScale         ;        
 wire [ACT_WIDTH           -1 : 0] CCUSYA_CfgShift         ;        
 wire [ACT_WIDTH           -1 : 0] CCUSYA_CfgZp            ;
+wire [IDX_WIDTH           -1 : 0] CCUSYA_CfgNumGrpPerTile;   
+wire [IDX_WIDTH           -1 : 0] CCUSYA_CfgNumTilIfm    ;   
+wire [IDX_WIDTH           -1 : 0] CCUSYA_CfgNumTilFlt    ;   
+wire                              CCUSYA_CfgLopOrd       ;   
 wire [ADDR_WIDTH          -1 : 0] CCUSYA_CfgActRdBaseAddr ;
 wire [ADDR_WIDTH          -1 : 0] CCUSYA_CfgWgtRdBaseAddr ;
 wire [ADDR_WIDTH          -1 : 0] CCUSYA_CfgOfmWrBaseAddr ;
@@ -171,7 +175,7 @@ wire  [POOL_CORE              -1 : 0] CCUPOL_CfgVld           ;
 wire  [POOL_CORE              -1 : 0] POLCCU_CfgRdy           ;
 wire  [(MAP_WIDTH+1)*POOL_CORE-1 : 0] CCUPOL_CfgK             ;
 wire  [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip           ;
-wire  [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChi           ;
+wire  [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn           ;
             
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK              -1 : 0] CCUTOP_CfgPortBankFlag;
 wire [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)    -1 : 0] CCUTOP_CfgPortParBank;
@@ -253,8 +257,8 @@ wire                                    SYAGLB_WgtRdDatRdy        ;
 
 wire [ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK  -1:0] SYAGLB_OfmWrDat           ;
 wire [ADDR_WIDTH                  -1:0] SYAGLB_OfmWrAddr          ;
-wire [SYA_NUM_BANK                     -1:0] SYAGLB_OfmWrDatVld        ;
-wire [SYA_NUM_BANK                     -1:0] GLBSYA_OfmWrDatRdy        ;
+wire                                    SYAGLB_OfmWrDatVld        ;
+wire                                    GLBSYA_OfmWrDatRdy        ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // POL
@@ -407,10 +411,14 @@ CCU#(
     .SYACCU_CfgRdy           ( SYACCU_CfgRdy           ),
     .CCUSYA_CfgMod           ( CCUSYA_CfgMod           ),
     .CCUSYA_CfgNip           ( CCUSYA_CfgNip           ),
-    .CCUSYA_CfgChi           ( CCUSYA_CfgChi           ),
+    .CCUSYA_CfgChn           ( CCUSYA_CfgChn           ),
     .CCUSYA_CfgScale         ( CCUSYA_CfgScale         ),
     .CCUSYA_CfgShift         ( CCUSYA_CfgShift         ),
     .CCUSYA_CfgZp            ( CCUSYA_CfgZp            ),
+    .CCUSYA_CfgNumGrpPerTile ( CCUSYA_CfgNumGrpPerTile ),
+    .CCUSYA_CfgNumTilIfm     ( CCUSYA_CfgNumTilIfm     ),
+    .CCUSYA_CfgNumTilFlt     ( CCUSYA_CfgNumTilFlt     ),
+    .CCUSYA_CfgLopOrd        ( CCUSYA_CfgLopOrd        ),
     .CCUSYA_CfgActRdBaseAddr ( CCUSYA_CfgActRdBaseAddr ),
     .CCUSYA_CfgWgtRdBaseAddr ( CCUSYA_CfgWgtRdBaseAddr ),
     .CCUSYA_CfgOfmWrBaseAddr ( CCUSYA_CfgOfmWrBaseAddr ),
@@ -419,7 +427,7 @@ CCU#(
     .POLCCU_CfgRdy           ( POLCCU_CfgRdy           ),
     .CCUPOL_CfgK             ( CCUPOL_CfgK             ),
     .CCUPOL_CfgNip           ( CCUPOL_CfgNip           ),
-    .CCUPOL_CfgChi           ( CCUPOL_CfgChi           ),   
+    .CCUPOL_CfgChn           ( CCUPOL_CfgChn           ),   
     .CCUTOP_CfgPortBankFlag  ( CCUTOP_CfgPortBankFlag  ),
     .CCUTOP_CfgPortParBank   ( CCUTOP_CfgPortParBank   )
 );
@@ -622,11 +630,13 @@ SYA#(
     .CCUSYA_CfgVld           ( CCUSYA_CfgVld           ),
     .SYACCU_CfgRdy           ( SYACCU_CfgRdy           ),
     .CCUSYA_CfgMod           ( CCUSYA_CfgMod           ),
-    .CCUSYA_CfgNip           ( CCUSYA_CfgNip           ),
-    .CCUSYA_CfgChi           ( CCUSYA_CfgChi           ),
-    .CCUSYA_CfgScale         ( CCUSYA_CfgScale         ),
+    .CCUSYA_CfgChn           ( CCUSYA_CfgChn           ),
     .CCUSYA_CfgShift         ( CCUSYA_CfgShift         ),
     .CCUSYA_CfgZp            ( CCUSYA_CfgZp            ),
+    .CCUSYA_CfgNumGrpPerTile ( CCUSYA_CfgNumGrpPerTile ),
+    .CCUSYA_CfgNumTilIfm     ( CCUSYA_CfgNumTilIfm     ),
+    .CCUSYA_CfgNumTilFlt     ( CCUSYA_CfgNumTilFlt     ),
+    .CCUSYA_CfgLopOrd        ( CCUSYA_CfgLopOrd        ),
     .CCUSYA_CfgActRdBaseAddr ( CCUSYA_CfgActRdBaseAddr ),
     .CCUSYA_CfgWgtRdBaseAddr ( CCUSYA_CfgWgtRdBaseAddr ),
     .CCUSYA_CfgOfmWrBaseAddr ( CCUSYA_CfgOfmWrBaseAddr ),
@@ -693,7 +703,7 @@ POL#(
     .POLCCU_CfgRdy       ( POLCCU_CfgRdy       ),
     .CCUPOL_CfgK         ( CCUPOL_CfgK         ),
     .CCUPOL_CfgNip       ( CCUPOL_CfgNip       ),
-    .CCUPOL_CfgChi       ( CCUPOL_CfgChi       ),
+    .CCUPOL_CfgChn       ( CCUPOL_CfgChn       ),
     .POLGLB_MapRdAddr    ( POLGLB_MapRdAddr    ),
     .POLGLB_MapRdAddrVld ( POLGLB_MapRdAddrVld ),
     .GLBPOL_MapRdAddrRdy ( GLBPOL_MapRdAddrRdy ),

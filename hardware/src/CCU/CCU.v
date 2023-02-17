@@ -78,10 +78,14 @@ module CCU #(
     input                                   SYACCU_CfgRdy           ,
     output  reg[2                   -1 : 0] CCUSYA_CfgMod           ,
     output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNip           , 
-    output  reg[CHN_WIDTH           -1 : 0] CCUSYA_CfgChi           ,         
+    output  reg[CHN_WIDTH           -1 : 0] CCUSYA_CfgChn           ,         
     output  reg[QNTSL_WIDTH         -1 : 0] CCUSYA_CfgScale         ,        
     output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgShift         ,        
     output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgZp            ,
+    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNumGrpPerTile,
+    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNumTilIfm    ,
+    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNumTilFlt    ,
+    output  reg                             CCUSYA_CfgLopOrd       ,
     output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgActRdBaseAddr ,
     output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgWgtRdBaseAddr ,
     output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgOfmWrBaseAddr ,
@@ -91,7 +95,7 @@ module CCU #(
     input       [POOL_CORE              -1 : 0] POLCCU_CfgRdy       ,
     output  reg [(MAP_WIDTH+1)*POOL_CORE-1 : 0] CCUPOL_CfgK         ,
     output  reg [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip       ,
-    output  reg [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChi       ,
+    output  reg [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn       ,
              
     output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][NUM_BANK    -1 : 0] CCUTOP_CfgPortBankFlag ,
     output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][MAXPAR_WIDTH-1 : 0] CCUTOP_CfgPortParBank
@@ -347,13 +351,17 @@ always @(posedge clk or negedge rst_n) begin
         CfgNumLy                <= 0;
         Mode                    <= 0;
         CCUSYA_CfgNip           <= 0;
-        CCUSYA_CfgChi           <= 0;
+        CCUSYA_CfgChn           <= 0;
         CCUSYA_CfgScale         <= 0;
         CCUSYA_CfgShift         <= 0;
         CCUSYA_CfgZp            <= 0;
         CCUSYA_CfgMod           <= 0;
+        CCUSYA_CfgNumGrpPerTile <= 0;
+        CCUSYA_CfgNumTilIfm     <= 0;
+        CCUSYA_CfgNumTilFlt     <= 0;
+        CCUSYA_CfgLopOrd        <= 0;
         CCUPOL_CfgNip           <= 0;
-        CCUPOL_CfgChi           <= 0;
+        CCUPOL_CfgChn           <= 0;
         CCUPOL_CfgK             <= 0;
         CCUFPS_CfgNip           <= 0;
         CCUFPS_CfgNop           <= 0;
@@ -444,17 +452,20 @@ always @(posedge clk or negedge rst_n) begin
 
         end else if ( OpCode == OPCODE_SYA) begin
             if (CntISARdWord_s1 == 0) begin
-                CCUSYA_CfgMod                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                                                         +: OPCODE_WIDTH];// 8bit
-                CCUSYA_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH*2                                                                       +: IDX_WIDTH];
-                CCUSYA_CfgChi                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH                                                           +: CHN_WIDTH];     
-                CCUSYA_CfgScale                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH                                               +: QNTSL_WIDTH];       
-                CCUSYA_CfgShift                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH                                 +: ACT_WIDTH];  
-                CCUSYA_CfgZp                                            <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH                     +: ACT_WIDTH]; 
-                CCUSYA_CfgActRdBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2                   +: ADDR_WIDTH]; 
-                CCUSYA_CfgWgtRdBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH      +: ADDR_WIDTH]; 
-                CCUSYA_CfgOfmWrBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*2    +: ADDR_WIDTH]; 
-                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*3    +: DRAM_ADDR_WIDTH]; 
-                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + QNTSL_WIDTH + ACT_WIDTH*2 + ADDR_WIDTH*4 + DRAM_ADDR_WIDTH  +: DRAM_ADDR_WIDTH]; 
+                CCUSYA_CfgMod                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                                                                     +: OPCODE_WIDTH];// 8bit
+                CCUSYA_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH*2                                                                                   +: IDX_WIDTH];
+                CCUSYA_CfgChn                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH                                                                       +: CHN_WIDTH];           
+                CCUSYA_CfgShift                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH                                                           +: ACT_WIDTH];  
+                CCUSYA_CfgZp                                            <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH                                               +: ACT_WIDTH]; 
+                CCUSYA_CfgNumGrpPerTile                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2                                             +: IDX_WIDTH];
+                CCUSYA_CfgNumTilIfm                                     <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH                                 +: IDX_WIDTH];
+                CCUSYA_CfgNumTilFlt                                     <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH*2                               +: IDX_WIDTH];
+                CCUSYA_CfgLopOrd                                        <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH*3                               +: OPCODE_WIDTH];
+                CCUSYA_CfgActRdBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH*3 + OPCODE_WIDTH                +: ADDR_WIDTH]; 
+                CCUSYA_CfgWgtRdBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH   +: ADDR_WIDTH]; 
+                CCUSYA_CfgOfmWrBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH*2 +: ADDR_WIDTH]; 
+                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFACT                 ]<= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH*3 +: DRAM_ADDR_WIDTH]; 
+                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFWGT                 ]<= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + IDX_WIDTH + CHN_WIDTH + ACT_WIDTH*2 + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH*4 + DRAM_ADDR_WIDTH  +: DRAM_ADDR_WIDTH]; 
             end else if(CntISARdWord_s1 == 1) begin
                 CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                                   +: DRAM_ADDR_WIDTH];
                 CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH                 +: NUM_BANK];
@@ -476,7 +487,7 @@ always @(posedge clk or negedge rst_n) begin
             if (CntISARdWord_s1 == 0) begin
                 CCUPOL_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH +: IDX_WIDTH*POOL_CORE];
             end else if(CntISARdWord_s1 == 1) begin 
-                CCUPOL_CfgChi                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH +: CHN_WIDTH*POOL_CORE];
+                CCUPOL_CfgChn                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH +: CHN_WIDTH*POOL_CORE];
             end else if(CntISARdWord_s1 == 2) begin
                 CCUPOL_CfgK                                             <= GLBCCU_ISARdDat[OPCODE_WIDTH +: OPCODE_WIDTH*POOL_CORE]; // 8bit
                 CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1)                                                 +: DRAM_ADDR_WIDTH]; // 8bit; 

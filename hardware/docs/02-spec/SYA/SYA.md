@@ -1,10 +1,7 @@
 # 问题：
-    - 怎么在多个块之间无缝衔接计算：在PE计算中切换配置
-        - 不能CfgRdy不能等最后完成了才有效，只要输入完成了就可以
-        - reset不能全局
-        - CCUSYA_CfgOfmWrBaseAddr要跟随ofm计算的数据
-    - 优化面积
-        - 看Mux是否太大？实验组是替换为拼接16个output的最高位MSB（保证其它位不会被综合掉）
+- 输出Ofm的地址怎么计算？画图
+- 优化面积
+    - 看Mux是否太大？实验组是替换为拼接16个output的最高位MSB（保证其它位不会被综合掉）
 
 # 文件列表
 | File | Descriptions |
@@ -38,9 +35,9 @@
 | --config-- |
 | CCUSYA_CfgVld | 
 | SYACCU_CfgRdy | 
-| CCUSYA_CfgMod | input | 2 | 0: 4个bank按照2x2排列，1: 按照1x4排列，2: 按照4x1排列 |
+| CCUSYA_CfgMod | input | 2 | 0: 4个bank按照2x2排列(Act在W,Wgt在N)，1: 按照1x4排列(Act在W,Wgt在N)，2: 按照4x1排列 |
 | CCUSYA_CfgNip
-| CCUSYA_CfgChi
+| CCUSYA_CfgChn
 | -- config Quantization-- |
 | CCUSYA_CfgScale | input | 20 | quant_psum = (computed_psum * quant_scale) >> quant_shift + quant_zero_point； 根据量化公式：y_q = y_f * s_y = (x_f\*w_f + b_f)\*s_y = Scale_y * x_q\*w_q + zero_point_y; 其中scale_y是小数，暂时用* quant_scale) >> quant_shift来近似 |
 | CCUSYA_CfgShift | input | ACT_WIDTH | 同quant_scale |
@@ -57,7 +54,7 @@
 | GLBSYA_OfmRdy | input | 1 | 握手协议的ready信号 |
 <!-- | --control-- |
 | CCUSYA_EnLeft | input | 1 | 不需要，只需要千诉有多少个点CCUSYA_CfgNip，整个PE 阵列的使能输入信号，高电平时，执行乘加操作和PE手机拍输出activation, weight, 和in_acc_reset_right，一个PE row的不同PE通过依次打拍第一个PE来获得相应的en，不同pe row，通过依次打拍PE row的第一个PE来获得相应的en; 目前没有反压机制，全靠控制en信号 |
-| CCUSYA_AccRstLeft | input | 1 | 不需要，告诉有多少输入通道CCUSYA_CfgChi，传递同in_en_left，高电平时，PE内的累加器不向加法器输出值，给加法器输入0；同时表示累加器已完成累加，累加值是有效的，需要被取走 | -->
+| CCUSYA_AccRstLeft | input | 1 | 不需要，告诉有多少输入通道CCUSYA_CfgChn，传递同in_en_left，高电平时，PE内的累加器不向加法器输出值，给加法器输入0；同时表示累加器已完成累加，累加值是有效的，需要被取走 | -->
 
 ## 模块陈述
  - 设计考量：
@@ -71,7 +68,16 @@
  - 计算过程
     - activation按通道秦顺序输入并从左PE向右PE传，weight从上PE向下PE传，不同行输入不同的点，汪同列输入不同的filter。
     - 为了让activation的通道和weight的通道在PE内对应相乘，不同行PE的点的同一个通道，输入相差一个时钟周期。不同列的filter的相同通道输入也相差一个时钟周期。PE内乘加的结果，用MUX选出输出。
-
+    -考虑到卷积A和F会tiling，外层循环是块数（最外层次外层是A或F），最内层是A_tile的size多少个组点（以一次输入为一组）和W_tile，还要配置外层IFM的tile数，Filter的tile数，外层的顺序, 每个for循环都是一个计数器
+        - CfgMod
+        - NumGrpPerTile: 左和上的一个Tile的列和行数
+        - NumTilIfm, NumTilFlt
+        - LopOrd: Ifm的几个tile与Filter的tile是怎么loop的，默认是0：先取一个Ifm tile来loop所有的Filter的Tile
+        - for IdxTilIfm in NumTilIfm:
+            for IdxTilFlt in NumTilFlt:
+                for IdxGrp in NumGrpInTile:
+                    for IdxChn in CfgChn:
+                        OFM[NumGrpInTile*IdxTilIfm + IdxGrp][NumTilFlt*IdxTilFlt + IdxGrp] +=  IFM[NumGrpInTile*NumGrpInTile*IdxTilFlt + NumGrpInTile*IdxGrp + IdxChn][]*FLT[][]// [point][channel]
     - shift导致只loop复用一组点（比如32时），PE利用率降低：暂定方案1，下次优化考虑方案3
         - 问题陈述
             - 原因：斜形导致NUM_ROW的周期浪费，利用率是C/(C+NUM_ROW)：比如32个点要计算完所有的filter，就要求这32个点不间断地输入，但是由于shift菱形，后一个点得重叠下一块的，怎么重叠当前块的呢？由输入格式决定，如果输入格式是shift的，不可能首尾相接(通道为64时，P1C63上面是P0C0）
@@ -100,7 +106,7 @@
                     - 
         - 方案1：解决根源在G0左下角会取到G1右上角的是因为存在SRAM的格式是斜形，改为正形存，一个word存多个点的相同通道。但是需要整形延迟模块来转换，浪费大
         - 方案2：复杂一点，按硬件的逻辑而不是理解的逻辑，在最后一轮时，G0左上角填G1右上角，与G0,G1生成的循序相符，但是复杂很多
-        - 方案3：不要用以C为单位进行loop，而是调整策略为多个点比如至少16个点，来降低shift的比重；问题是出来的是一个点的所有输出channel group不连续，间隔点数*Chi后，再次输出这个点的channel group1，要求后期shift一个点的所有通道，始终只有loop复用点这一种模式来得到所有通道，没法处理，除非改变只有loop复用点这一种模式:question:
+        - 方案3：不要用以C为单位进行loop，而是调整策略为多个点比如至少16个点，来降低shift的比重；问题是出来的是一个点的所有输出channel group不连续，间隔点数*Chn后，再次输出这个点的channel group1，要求后期shift一个点的所有通道，始终只有loop复用点这一种模式来得到所有通道，没法处理，除非改变只有loop复用点这一种模式:question:
 
 
 
