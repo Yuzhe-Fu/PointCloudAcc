@@ -717,12 +717,12 @@ POL#(
 //=====================================================================================================================
 
 // PAD
-assign {IO_Dat, IO_DatVld}              = O_DatOE? {ITFPAD_Dat, ITFPAD_DatVld} : { {PORT_WIDTH{1'bz}}, 1'bz};
-assign PADITF_DatRdy                                = OI_DatRdy;
+assign {IO_Dat, IO_DatVld}          = O_DatOE? {ITFPAD_Dat, ITFPAD_DatVld} : { {PORT_WIDTH{1'bz}}, 1'bz};
+assign PADITF_DatRdy                = OI_DatRdy;
 assign {PADITF_Dat, PADITF_DatVld}  = {IO_Dat, IO_DatVld};
-assign OI_DatRdy                                    = O_DatOE? 1'bz : ITFPAD_DatRdy;
-assign O_DatOE                                      = ITFPAD_DatOE;
-assign O_CmdVld                                      = ITFPAD_CmdVld;
+assign OI_DatRdy                    = O_DatOE? 1'bz : ITFPAD_DatRdy;
+assign O_DatOE                      = ITFPAD_DatOE;
+assign O_CmdVld                     = ITFPAD_CmdVld;
 
 // GLB RdPort
 generate

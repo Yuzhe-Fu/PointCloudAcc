@@ -106,7 +106,7 @@ generate
             .SRAM_BYTE    ( 1           ),
             .SRAM_WORD    ( SRAM_WORD   ),
             .CLOCK_PERIOD ( CLOCK_PERIOD)
-        )u_RAM_HS(
+        )u_SPRAM_HS(
             .clk          ( clk          ),
             .rst_n        ( rst_n        ),
             .wvalid       ( wvalid       ),
