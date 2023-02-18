@@ -157,7 +157,6 @@ wire                              CCUSYA_Rst              ;  //
 wire                              CCUSYA_CfgVld           ;
 wire                              SYACCU_CfgRdy           ;
 wire [2                   -1 : 0] CCUSYA_CfgMod           ;
-wire [IDX_WIDTH           -1 : 0] CCUSYA_CfgNip           ; 
 wire [CHN_WIDTH           -1 : 0] CCUSYA_CfgChn           ;         
 wire [QNTSL_WIDTH         -1 : 0] CCUSYA_CfgScale         ;        
 wire [ACT_WIDTH           -1 : 0] CCUSYA_CfgShift         ;        
@@ -241,16 +240,16 @@ wire                              GLBKNN_MapWrDatRdy  ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // SYA
-wire [ADDR_WIDTH                  -1:0] GLBSYA_ActRdAddr          ;
-wire                                    GLBSYA_ActRdAddrVld       ;
-wire                                    SYAGLB_ActRdAddrRdy       ;
+wire [ADDR_WIDTH                  -1:0] SYAGLB_ActRdAddr          ;
+wire                                    SYAGLB_ActRdAddrVld       ;
+wire                                    GLBSYA_ActRdAddrRdy       ;
 wire [ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK  -1:0] GLBSYA_ActRdDat           ;
 wire                                    GLBSYA_ActRdDatVld        ;
 wire                                    SYAGLB_ActRdDatRdy        ;
 
-wire [ADDR_WIDTH                  -1:0] GLBSYA_WgtRdAddr          ;
-wire                                    GLBSYA_WgtRdAddrVld       ;
-wire                                    SYAGLB_WgtRdAddrRdy       ;
+wire [ADDR_WIDTH                  -1:0] SYAGLB_WgtRdAddr          ;
+wire                                    SYAGLB_WgtRdAddrVld       ;
+wire                                    GLBSYA_WgtRdAddrRdy       ;
 wire [ACT_WIDTH*SYA_NUM_COL*SYA_NUM_BANK  -1:0] GLBSYA_WgtRdDat           ;
 wire                                    GLBSYA_WgtRdDatVld        ;
 wire                                    SYAGLB_WgtRdDatRdy        ;
@@ -410,7 +409,6 @@ CCU#(
     .CCUSYA_CfgVld           ( CCUSYA_CfgVld           ),
     .SYACCU_CfgRdy           ( SYACCU_CfgRdy           ),
     .CCUSYA_CfgMod           ( CCUSYA_CfgMod           ),
-    .CCUSYA_CfgNip           ( CCUSYA_CfgNip           ),
     .CCUSYA_CfgChn           ( CCUSYA_CfgChn           ),
     .CCUSYA_CfgScale         ( CCUSYA_CfgScale         ),
     .CCUSYA_CfgShift         ( CCUSYA_CfgShift         ),
@@ -591,17 +589,17 @@ KNN#(
 // Logic Design: SYA
 //=====================================================================================================================
 // Read Act
-assign TOPGLB_RdPortAddrVld[GLBRDIDX_SYAACT]    = GLBSYA_ActRdAddrVld;
-assign TOPGLB_RdPortAddr[GLBRDIDX_SYAACT]       = GLBSYA_ActRdAddr;
-assign SYAGLB_ActRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_SYAACT];
+assign TOPGLB_RdPortAddrVld[GLBRDIDX_SYAACT]    = SYAGLB_ActRdAddrVld;
+assign TOPGLB_RdPortAddr[GLBRDIDX_SYAACT]       = SYAGLB_ActRdAddr;
+assign GLBSYA_ActRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_SYAACT];
 assign GLBSYA_ActRdDat                          = GLBTOP_RdPortDat[GLBRDIDX_SYAACT];
 assign GLBSYA_ActRdDatVld                       = GLBTOP_RdPortDatVld[GLBRDIDX_SYAACT];
 assign TOPGLB_RdPortDatRdy[GLBRDIDX_SYAACT]     = SYAGLB_ActRdDatRdy;
 
 // Read Wgt
-assign TOPGLB_RdPortAddrVld[GLBRDIDX_SYAWGT]    = GLBSYA_WgtRdAddrVld;
-assign TOPGLB_RdPortAddr[GLBRDIDX_SYAWGT]       = GLBSYA_WgtRdAddr;
-assign SYAGLB_WgtRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_SYAWGT];
+assign TOPGLB_RdPortAddrVld[GLBRDIDX_SYAWGT]    = SYAGLB_WgtRdAddrVld;
+assign TOPGLB_RdPortAddr[GLBRDIDX_SYAWGT]       = SYAGLB_WgtRdAddr;
+assign GLBSYA_WgtRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_SYAWGT];
 assign GLBSYA_WgtRdDat                          = GLBTOP_RdPortDat[GLBRDIDX_SYAWGT];
 assign GLBSYA_WgtRdDatVld                       = GLBTOP_RdPortDatVld[GLBRDIDX_SYAWGT];
 assign TOPGLB_RdPortDatRdy[GLBRDIDX_SYAWGT]     = SYAGLB_WgtRdDatRdy;
@@ -640,15 +638,15 @@ SYA#(
     .CCUSYA_CfgActRdBaseAddr ( CCUSYA_CfgActRdBaseAddr ),
     .CCUSYA_CfgWgtRdBaseAddr ( CCUSYA_CfgWgtRdBaseAddr ),
     .CCUSYA_CfgOfmWrBaseAddr ( CCUSYA_CfgOfmWrBaseAddr ),
-    .GLBSYA_ActRdAddr        ( GLBSYA_ActRdAddr        ),
-    .GLBSYA_ActRdAddrVld     ( GLBSYA_ActRdAddrVld     ),
-    .SYAGLB_ActRdAddrRdy     ( SYAGLB_ActRdAddrRdy     ),
+    .SYAGLB_ActRdAddr        ( SYAGLB_ActRdAddr        ),
+    .SYAGLB_ActRdAddrVld     ( SYAGLB_ActRdAddrVld     ),
+    .GLBSYA_ActRdAddrRdy     ( GLBSYA_ActRdAddrRdy     ),
     .GLBSYA_ActRdDat         ( GLBSYA_ActRdDat         ),
     .GLBSYA_ActRdDatVld      ( GLBSYA_ActRdDatVld      ),
     .SYAGLB_ActRdDatRdy      ( SYAGLB_ActRdDatRdy      ),
-    .GLBSYA_WgtRdAddr        ( GLBSYA_WgtRdAddr        ),
-    .GLBSYA_WgtRdAddrVld     ( GLBSYA_WgtRdAddrVld     ),
-    .SYAGLB_WgtRdAddrRdy     ( SYAGLB_WgtRdAddrRdy     ),
+    .SYAGLB_WgtRdAddr        ( SYAGLB_WgtRdAddr        ),
+    .SYAGLB_WgtRdAddrVld     ( SYAGLB_WgtRdAddrVld     ),
+    .GLBSYA_WgtRdAddrRdy     ( GLBSYA_WgtRdAddrRdy     ),
     .GLBSYA_WgtRdDat         ( GLBSYA_WgtRdDat         ),
     .GLBSYA_WgtRdDatVld      ( GLBSYA_WgtRdDatVld      ),
     .SYAGLB_WgtRdDatRdy      ( SYAGLB_WgtRdDatRdy      ),

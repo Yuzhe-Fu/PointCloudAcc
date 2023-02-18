@@ -51,12 +51,15 @@ wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_OutWgtVld_S;
 wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_OutWgtChnLast_S;
 wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_OutWgtRdy_N;
 wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_InWgtRdy_S;
-wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] Bank_OutWgt_S;
+wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH -1 : 0] Bank_OutWgt_S;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_InWgtVld_N;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_InWgtChnLast_N;
+wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH -1 : 0] Bank_InWgt_N;
 
-wire [NUM_ROW -1:0][NUM_COL -1:0] Bank_InWgtVld_N       = {Bank_OutWgtVld_S[NUM_ROW - 2 : 0], InWgtVld_N};
-wire [NUM_ROW -1:0][NUM_COL -1:0] Bank_InWgtChnLast_N   = {Bank_OutWgtChnLast_S[NUM_ROW - 2 : 0], InWgtChnLast_N};
-wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH -1 : 0] Bank_InWgt_N          = {Bank_OutWgt_S[NUM_ROW - 2 : 0], InWgt_N};
-assign {Bank_InWgtRdy_S[NUM_ROW - 2 : 0], OutWgtRdy_N}  = Bank_OutWgtRdy_N;
+assign {OutWgtVld_S, Bank_InWgtVld_N}           = {Bank_OutWgtVld_S, InWgtVld_N};
+assign {OutWgtChnLast_S, Bank_InWgtChnLast_N}   = {Bank_OutWgtChnLast_S, InWgtChnLast_N};
+assign {OutWgt_S, Bank_InWgt_N}                 = {Bank_OutWgt_S, InWgt_N};
+assign {Bank_InWgtRdy_S, OutWgtRdy_N}           = {InWgtRdy_S, Bank_OutWgtRdy_N};
 
 PE_ROW #(
     .ACT_WIDTH       ( ACT_WIDTH ),

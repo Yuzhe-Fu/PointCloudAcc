@@ -270,7 +270,7 @@ generate
         assign PortWrBankVld[gv_j] = {NUM_BANK{TOPGLB_WrPortDatVld[gv_j] & !Full}} & WrPortHitBank; // 32bits
 
         // To Output
-        assign Full = (WrPortAddr_Array[gv_j] - BankRdAddr_d[PortCur1stBankIdx]) == WrPortAddrVldSpace ;
+        assign Full = (WrPortAddr_Array[gv_j] - BankRdAddr_d[PortCur1stBankIdx]) >= WrPortAddrVldSpace ;
         assign  GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & Bank_wready[PortCur1stBankIdx];
         assign  GLBTOP_WrFull[gv_j] = Full;
 

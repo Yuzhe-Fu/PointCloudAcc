@@ -18,6 +18,7 @@ module RR_arbiter #( // round_robin_arbiter
 
 input                                   clk,
 input                                   rst_n,
+input                                   arb_round, // update have been arbed info(port) when arbing sucessfully
 input [REQ_WIDTH                -1 : 0] req,
 output[REQ_WIDTH                -1 : 0] gnt,
 output reg[$clog2(REQ_WIDTH)    -1 : 0] arb_port
@@ -50,7 +51,7 @@ assign gnt = ({REQ_WIDTH{no_req_masked}} & grant_unmasked) | grant_masked;
 always @ (posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         pointer_reg <= {REQ_WIDTH{1'b1}};
-    end else begin
+    end else if(arb_round) begin
         if (|req_masked) begin // Which arbiter was used?
             pointer_reg <= mask_higher_pri_reqs;
         end else begin

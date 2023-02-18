@@ -59,13 +59,14 @@ wire [NUM_PE                    -1 : 0] ROW_InActRdy_E;
 wire [NUM_PE                    -1 : 0] ROW_OutPsumVld;
 wire [NUM_PE -1 : 0][PSUM_WIDTH -1 : 0] ROW_OutPsum;
 wire [NUM_PE                    -1 : 0] ROW_InPsumRdy;
+wire [NUM_PE -1:0] ROW_InActVld_W              ;
+wire [NUM_PE -1:0] ROW_InActChnLast_W          ;
+wire [NUM_PE -1:0][ACT_WIDTH-1 : 0] ROW_InAct_W;
 
-
-wire [NUM_PE -1:0] ROW_InActVld_W               = {ROW_OutActVld_E[NUM_PE -2:0], InActVld_W};
-wire [NUM_PE -1:0] ROW_InActChnLast_W           = {ROW_OutActChnLast_E[NUM_PE -2:0], InActChnLast_W};
-wire [NUM_PE -1:0][ACT_WIDTH-1 : 0] ROW_InAct_W = {ROW_OutAct_E[NUM_PE -2:0], InAct_W};
-assign {ROW_InActRdy_E[NUM_PE -2:0], OutActRdy_W} = ROW_OutActRdy_W;
-
+assign {OutActVld_E, ROW_InActVld_W}        = {ROW_OutActVld_E, InActVld_W};
+assign {OutActChnLast_E, ROW_InActChnLast_W}= {ROW_OutActChnLast_E, InActChnLast_W};
+assign {OutAct_E, ROW_InAct_W}              = {ROW_OutAct_E, InAct_W};
+assign {ROW_InActRdy_E, OutActRdy_W}        = {InActRdy_E, ROW_OutActRdy_W};
 
 PE#(
     .ACT_WIDTH       ( ACT_WIDTH ),
@@ -102,13 +103,14 @@ RR_arbiter #(
 )u_RR_arbiter_PE(
     .clk        ( clk       ),
     .rst_n      ( rst_n     ),
+    .arb_round  ( InPsumRdy & OutPsumVld),
     .req        ( ROW_OutPsumVld ),
     .gnt        ( gnt       ),
     .arb_port   ( ArbPEIdx  )
 );
 assign OutPsum = ROW_OutPsum[ArbPEIdx][PSUM_WIDTH - 1]? 0 : ROW_OutPsum[ArbPEIdx][CCUSYA_CfgShift +: ACT_WIDTH] + CCUSYA_CfgZp; // PE_OutPsum_PE is signed
-assign OutPsumVld = &ROW_OutPsumVld;
-assign ROW_InPsumRdy = gnt & InPsumRdy;
+assign OutPsumVld = |gnt;
+assign ROW_InPsumRdy = gnt & {NUM_PE{InPsumRdy}};
 
 
 endmodule
