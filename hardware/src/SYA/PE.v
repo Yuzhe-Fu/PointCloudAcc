@@ -53,8 +53,8 @@ wire                ena;
 reg                 OutChnLast;
 // 
 assign InVld        = InActVld_W & InWgt_N;
-assign OutActRdy_W  = ena & InVld;
-assign OutWgtRdy_N  = ena & InVld;
+assign OutActRdy_W  = ena;
+assign OutWgtRdy_N  = ena;
 
 wire signed [PSUM_WIDTH     -1 : 0] Signed_Mul = $signed(InAct_W) * $signed(InWgt_N);
 //
