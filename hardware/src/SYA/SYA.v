@@ -42,16 +42,16 @@ module SYA #(
     input  [ADDR_WIDTH                  -1 : 0] CCUSYA_CfgWgtRdBaseAddr   ,
     input  [ADDR_WIDTH                  -1 : 0] CCUSYA_CfgOfmWrBaseAddr   ,
     
-    output [ADDR_WIDTH                  -1 : 0] GLBSYA_ActRdAddr          ,
-    output                                      GLBSYA_ActRdAddrVld       ,
-    input                                       SYAGLB_ActRdAddrRdy       ,
+    output [ADDR_WIDTH                  -1 : 0] SYAGLB_ActRdAddr          ,
+    output                                      SYAGLB_ActRdAddrVld       ,
+    input                                       GLBSYA_ActRdAddrRdy       ,
     input  [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1:0] GLBSYA_ActRdDat ,
     input                                       GLBSYA_ActRdDatVld        ,
     output                                      SYAGLB_ActRdDatRdy        ,
 
-    output [ADDR_WIDTH                  -1 : 0] GLBSYA_WgtRdAddr          ,
-    output                                      GLBSYA_WgtRdAddrVld       ,
-    input                                       SYAGLB_WgtRdAddrRdy       ,
+    output [ADDR_WIDTH                  -1 : 0] SYAGLB_WgtRdAddr          ,
+    output                                      SYAGLB_WgtRdAddrVld       ,
+    input                                       GLBSYA_WgtRdAddrRdy       ,
     input  [NUM_BANK -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] GLBSYA_WgtRdDat ,
     input                                       GLBSYA_WgtRdDatVld        ,
     output                                      SYAGLB_WgtRdDatRdy        ,
@@ -71,6 +71,17 @@ wire                        Overflow_CntTilFlt;
 wire                        Overflow_CntTilIfm;
 wire [CHN_WIDTH     -1 : 0] CntChn;
 wire [IDX_WIDTH     -1 : 0] CntTilIfm;
+wire [CHN_WIDTH     -1 : 0] MaxCntChn;
+wire                        INC_CntChn; 
+wire [IDX_WIDTH     -1 : 0] CntGrp;
+wire [IDX_WIDTH     -1 : 0] MaxCntGrp;
+wire                        INC_CntGrp; 
+wire [CHN_WIDTH     -1 : 0] CntTilFlt;
+wire [CHN_WIDTH     -1 : 0] MaxCntTilFlt;
+wire                        INC_CntTilFlt;
+wire [IDX_WIDTH     -1 : 0] MaxCntTilIfm;
+wire                        INC_CntTilIfm; 
+
 wire        rdy_s0;
 wire        vld_s0;
 wire        ena_s0;
@@ -111,7 +122,7 @@ wire [NUM_BANK  -1 : 0][NUM_ROW                     -1 : 0] SYA_InPsumRdy;
 
 wire [NUM_BANK  -1 : 0] sync_out_vld;
 wire [NUM_BANK  -1 : 0] sync_out_rdy;
-wire [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1 : 0] sync_out;
+wire [NUM_BANK  -1:0][NUM_ROW -1:0][ACT_WIDTH  -1 : 0] sync_out;
 wire [$clog2(NUM_ROW*NUM_BANK) + 1  -1 : 0] SYA_MaxRowCol;
 
 //=====================================================================================================================
@@ -135,11 +146,11 @@ always @(*) begin
                 else
                     next_state <= INREGUL;
         
-        INSHIFT :if( (CntChn == CCUSYA_CfgChn -1 + SYA_MaxRowCol -1) & handshake_s0 ) 
+        INSHIFT :if( (CntChn == (SYA_MaxRowCol -1) -1) & handshake_s0 ) 
                     next_state <= WAITOUT;
                 else
                     next_state <= INSHIFT;
-        WAITOUT     : if(!(|sync_out_vld) )
+        WAITOUT     : if( !(|SYA_OutPsumVld) & !(|sync_out_vld) )
                     next_state <= IDLE;
                 else
                     next_state <= WAITOUT;
@@ -154,18 +165,22 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
+// Combinational Logic
+assign SYACCU_CfgRdy = state == IDLE;
+
 // HandShake
-assign rdy_s0 = SYAGLB_ActRdAddrRdy & SYAGLB_WgtRdAddrRdy;
+assign rdy_s0 = GLBSYA_ActRdAddrRdy & GLBSYA_WgtRdAddrRdy; // 2 loads
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0 = handshake_s0 | ~vld_s0;
-assign vld_s0 = state == INREGUL | state == INSHIFT;
 
 // Reg Update
+assign vld_s0 = state == INREGUL | state == INSHIFT;;
+
 
 assign SYA_MaxRowCol = CCUSYA_CfgMod == 0 ? NUM_ROW*SYA_SIDEBANK : NUM_ROW*SYA_SIDEBANK*2;
 
-wire [CHN_WIDTH     -1 : 0] MaxCntChn  = CCUSYA_CfgChn- 1; 
-wire                        INC_CntChn = handshake_s0;
+assign MaxCntChn  = CCUSYA_CfgChn- 1; 
+assign INC_CntChn = handshake_s0;
 counter#(
     .COUNT_WIDTH ( CHN_WIDTH )
 )u1_counter_CntChn(
@@ -182,9 +197,11 @@ counter#(
     .COUNT     ( CntChn             )
 );
 
-wire [IDX_WIDTH    -1 : 0] CntGrp;
-wire [IDX_WIDTH    -1 : 0] MaxCntGrp  = CCUSYA_CfgNumGrpPerTile - 1; 
-wire                       INC_CntGrp = Overflow_CntChn;
+
+
+assign MaxCntGrp  = CCUSYA_CfgNumGrpPerTile - 1; 
+              
+assign INC_CntGrp = Overflow_CntChn & INC_CntChn;
 counter#(
     .COUNT_WIDTH ( ADDR_WIDTH )
 )u1_counter_CntGrp(
@@ -201,9 +218,10 @@ counter#(
     .COUNT     ( CntGrp           )
 );
 
-wire [CHN_WIDTH    -1 : 0] CntTilFlt;
-wire [CHN_WIDTH    -1 : 0] MaxCntTilFlt  = CCUSYA_CfgNumTilFlt - 1; 
-wire                        INC_CntTilFlt = CCUSYA_CfgLopOrd == 0? Overflow_CntGrp : CntTilIfm;
+
+
+assign MaxCntTilFlt  = CCUSYA_CfgNumTilFlt - 1; 
+assign                        INC_CntTilFlt = CCUSYA_CfgLopOrd == 0? Overflow_CntGrp & INC_CntGrp : Overflow_CntTilIfm & INC_CntTilIfm;
 counter#(
     .COUNT_WIDTH ( CHN_WIDTH )
 )u1_counter_CntTilFlt(
@@ -220,8 +238,10 @@ counter#(
     .COUNT     ( CntTilFlt           )
 );
 
-wire [IDX_WIDTH    -1 : 0] MaxCntTilIfm  = CCUSYA_CfgNumTilIfm - 1; 
-wire                        INC_CntTilIfm = CCUSYA_CfgLopOrd == 0? Overflow_CntTilFlt : Overflow_CntGrp;
+
+
+assign MaxCntTilIfm  = CCUSYA_CfgNumTilIfm - 1;
+assign INC_CntTilIfm = CCUSYA_CfgLopOrd == 0? Overflow_CntTilFlt & INC_CntTilFlt : Overflow_CntGrp & INC_CntGrp;
 counter#(
     .COUNT_WIDTH ( IDX_WIDTH )
 )u1_counter_CntTilIfm(
@@ -238,11 +258,11 @@ counter#(
     .COUNT     ( CntTilIfm           )
 );
 
-assign GLBSYA_ActRdAddr = CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilIfm + CCUSYA_CfgChn*CntGrp + CntChn;
-assign GLBSYA_ActRdAddrVld = vld_s0;
+assign SYAGLB_ActRdAddr = CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilIfm + CCUSYA_CfgChn*CntGrp + CntChn;
+assign SYAGLB_ActRdAddrVld = vld_s0 & GLBSYA_WgtRdAddrRdy; // other load are ready
 
-assign GLBSYA_WgtRdAddr = CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilFlt + CCUSYA_CfgChn*CntGrp + CntChn;
-assign GLBSYA_WgtRdAddrVld = vld_s0;
+assign SYAGLB_WgtRdAddr = CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilFlt + CCUSYA_CfgChn*CntGrp + CntChn;
+assign SYAGLB_WgtRdAddrVld = vld_s0 & GLBSYA_ActRdAddrRdy; // other load are ready
 
 //=====================================================================================================================
 // Logic Design : s1
@@ -252,9 +272,15 @@ assign SYAGLB_ActRdDatRdy   = rdy_s1;
 assign SYAGLB_WgtRdDatRdy   = rdy_s1;
 
 // HandShake
-assign rdy_s1 = 
-                (CCUSYA_CfgMod == 0? (&SYA_OutActRdy_W[0]) & (&SYA_OutActRdy_W[2]) : CCUSYA_CfgMod == 1? (&SYA_OutActRdy_W[0]) : (&SYA_OutActRdy_W[0]) & (&SYA_OutActRdy_W[2]) & (&SYA_OutActRdy_W[1]) & (&SYA_OutActRdy_W[3]) ) & 
-                (CCUSYA_CfgMod == 0? (&SYA_OutWgtRdy_N[0]) & (&SYA_OutWgtRdy_N[1]) : CCUSYA_CfgMod == 1? (&SYA_OutWgtRdy_N[0]) & (&SYA_OutWgtRdy_N[1]) & (&SYA_OutWgtRdy_N[2]) & (&SYA_OutWgtRdy_N[3]) : &SYA_OutWgtRdy_N[0] );
+assign rdy_s1 = (
+                    CCUSYA_CfgMod == 0? ({SYA_OutActRdy_W[2], SYA_OutActRdy_W[0]} & {SYA_InActVld_W[2], SYA_InActVld_W[0]} == {SYA_InActVld_W[2], SYA_InActVld_W[0]}) 
+                    : CCUSYA_CfgMod == 1? (SYA_OutActRdy_W[0] & SYA_InActVld_W[0] == SYA_InActVld_W[0]) 
+                    : ({SYA_OutActRdy_W[0], SYA_OutActRdy_W[2], SYA_OutActRdy_W[1], SYA_OutActRdy_W[3]} & {SYA_InActVld_W[0], SYA_InActVld_W[2], SYA_InActVld_W[1], SYA_InActVld_W[3]} == {SYA_InActVld_W[0], SYA_InActVld_W[2], SYA_InActVld_W[1], SYA_InActVld_W[3]}) 
+                ) & (
+                    CCUSYA_CfgMod == 0? ({SYA_OutWgtRdy_N[0], SYA_OutWgtRdy_N[1]} & {SYA_InActVld_W[0], SYA_InActVld_W[1]} == {SYA_InActVld_W[0], SYA_InActVld_W[1]}) 
+                    : CCUSYA_CfgMod == 1? ({SYA_OutWgtRdy_N[0], SYA_OutWgtRdy_N[1], SYA_OutWgtRdy_N[2], SYA_OutWgtRdy_N[3]} & {SYA_InActVld_W[0], SYA_InActVld_W[1], SYA_InActVld_W[2], SYA_InActVld_W[3]} == {SYA_InActVld_W[0], SYA_InActVld_W[1], SYA_InActVld_W[2], SYA_InActVld_W[3]}) 
+                    : (SYA_OutWgtRdy_N[0] & SYA_InActVld_W[0] == SYA_InActVld_W[0] )
+                );
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1 = handshake_s1 | ~vld_s1;
 assign vld_s1 = GLBSYA_ActRdDatVld & GLBSYA_WgtRdDatVld;
@@ -266,24 +292,24 @@ always @ ( posedge clk or negedge rst_n )begin
     else if( handshake_s1 )
     {AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= {
         {AllBank_InWgtChnLast_N[NUM_ROW*NUM_BANK  -2:0], Overflow_CntChn},
-        {AllBank_InWgtVld_N[NUM_ROW*NUM_BANK  -2:0], GLBSYA_WgtRdDatVld},
+        {AllBank_InWgtVld_N[NUM_ROW*NUM_BANK  -2:0], handshake_s1},
         {AllBank_InActChnLast_W[NUM_ROW*NUM_BANK  -2:0], Overflow_CntChn},
-        {AllBank_InActVld_W[NUM_ROW*NUM_BANK  -2:0], GLBSYA_ActRdDatVld }}; // 
+        {AllBank_InActVld_W[NUM_ROW*NUM_BANK  -2:0], handshake_s1 }}; // 
 end
 
 // Bank[0]
-assign SYA_InActVld_W       [0] = {AllBank_InActVld_W[0 +: NUM_BANK-1], GLBSYA_ActRdDatVld};
+assign SYA_InActVld_W       [0] = {AllBank_InActVld_W[0 +: NUM_BANK-1] & {NUM_ROW{ rdy_s1}}, handshake_s1};
 assign SYA_InActChnLast_W   [0] = {AllBank_InActChnLast_W[0 +: NUM_BANK-1], Overflow_CntChn};
 assign SYA_InAct_W          [0] = GLBSYA_ActRdDat[0];
 assign SYA_InActRdy_E       [0] = CCUSYA_CfgMod == 2? {NUM_ROW{1'b1}} : SYA_OutActRdy_W[1];
 
-assign SYA_InWgtVld_N       [0] = {AllBank_InWgtVld_N[0 +: NUM_BANK-1], GLBSYA_WgtRdDatVld};
+assign SYA_InWgtVld_N       [0] = {AllBank_InWgtVld_N[0 +: NUM_BANK-1] & {NUM_COL{ rdy_s1}}, handshake_s1};
 assign SYA_InWgtChnLast_N   [0] = {AllBank_InWgtChnLast_N[0 +: NUM_BANK-1], Overflow_CntChn};
 assign SYA_InWgt_N          [0] = GLBSYA_WgtRdDat[0];
 assign SYA_InWgtRdy_S       [0] = CCUSYA_CfgMod == 1? {NUM_COL{1'b1}} : SYA_OutWgtRdy_N[2];
 
 // Bank[1]
-assign SYA_InActVld_W       [1] = CCUSYA_CfgMod == 2? AllBank_InActVld_W[NUM_BANK*2 -1 +: NUM_BANK]    : SYA_OutActVld_E[0];
+assign SYA_InActVld_W       [1] = CCUSYA_CfgMod == 2? AllBank_InActVld_W[NUM_BANK*2 -1 +: NUM_BANK] & {NUM_ROW{ rdy_s1}}    : SYA_OutActVld_E[0];
 assign SYA_InActChnLast_W   [1] = CCUSYA_CfgMod == 2? AllBank_InActChnLast_W[NUM_BANK*2 -1 +: NUM_BANK]    : SYA_OutActChnLast_E[0];
 assign SYA_InAct_W          [1] = CCUSYA_CfgMod == 2? GLBSYA_ActRdDat[2]    : SYA_OutAct_E[0];
 assign SYA_InActRdy_E       [1] = CCUSYA_CfgMod == 1? SYA_OutActRdy_W[2]    : {NUM_ROW{1'b1}};
@@ -299,19 +325,19 @@ assign SYA_InActChnLast_W   [2] = CCUSYA_CfgMod == 1? SYA_OutActChnLast_E[1] : A
 assign SYA_InAct_W          [2] = CCUSYA_CfgMod == 1? SYA_OutAct_E[1] : GLBSYA_ActRdDat[1];
 assign SYA_InActRdy_E       [2] = CCUSYA_CfgMod == 2? {NUM_ROW{1'b1}} : SYA_OutActRdy_W[3];
 
-assign SYA_InWgtVld_N       [2] = CCUSYA_CfgMod == 1? AllBank_InWgtVld_N[NUM_BANK*2 -1 +: NUM_BANK]  : SYA_OutWgtVld_S[0];
+assign SYA_InWgtVld_N       [2] = CCUSYA_CfgMod == 1? AllBank_InWgtVld_N[NUM_BANK*2 -1 +: NUM_BANK] & {NUM_COL{ rdy_s1}} : SYA_OutWgtVld_S[0];
 assign SYA_InWgtChnLast_N   [2] = CCUSYA_CfgMod == 1? AllBank_InWgtChnLast_N[NUM_BANK*2 -1 +: NUM_BANK] : SYA_OutWgtChnLast_S[0];
 assign SYA_InWgt_N          [2] = CCUSYA_CfgMod == 1? GLBSYA_WgtRdDat[2] : SYA_OutWgtVld_S[0];
 assign SYA_InWgtRdy_S       [2] = CCUSYA_CfgMod == 2? SYA_OutWgtRdy_N[1]    : {NUM_COL{1'b1}};
 
 // Bank[3]
-assign SYA_InActVld_W       [3] = CCUSYA_CfgMod == 2? AllBank_InActVld_W[NUM_BANK*3 -1 +: NUM_BANK] : SYA_OutActVld_E[2];
+assign SYA_InActVld_W       [3] = CCUSYA_CfgMod == 2? AllBank_InActVld_W[NUM_BANK*3 -1 +: NUM_BANK] & {NUM_ROW{ rdy_s1}} : SYA_OutActVld_E[2];
 assign SYA_InActChnLast_W   [3] = CCUSYA_CfgMod == 2? AllBank_InActChnLast_W[NUM_BANK*3 -1 +: NUM_BANK] : SYA_OutActChnLast_E[2];
 assign SYA_InAct_W          [3] = CCUSYA_CfgMod == 2? GLBSYA_ActRdDat[3] : SYA_OutAct_E[2];
 assign SYA_InActRdy_E       [3] = {NUM_ROW{1'b1}};
 
-assign SYA_InWgtVld_N       [3] = CCUSYA_CfgMod == 1? AllBank_InWgtVld_N[NUM_BANK*3 -1 +: NUM_BANK] : SYA_OutWgtVld_S[1];
-assign SYA_InWgtChnLast_N   [3] = CCUSYA_CfgMod == 1? AllBank_InWgtChnLast_N[NUM_BANK*3 -1 +: NUM_BANK] : SYA_OutWgtChnLast_S[1];
+assign SYA_InWgtVld_N       [3] = CCUSYA_CfgMod == 1? AllBank_InWgtVld_N[NUM_BANK*3 -1 +: NUM_BANK] & {NUM_COL{ rdy_s1}}: SYA_OutWgtVld_S[1];
+assign SYA_InWgtChnLast_N   [3] = CCUSYA_CfgMod == 1? AllBank_InWgtChnLast_N[NUM_BANK*3 -1 +: NUM_BANK]: SYA_OutWgtChnLast_S[1];
 assign SYA_InWgt_N          [3] = CCUSYA_CfgMod == 1? GLBSYA_WgtRdDat[3] : SYA_OutWgt_S[1];
 assign SYA_InWgtRdy_S       [3] = {NUM_COL{1'b1}};
 
