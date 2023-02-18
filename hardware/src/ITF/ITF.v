@@ -80,6 +80,7 @@ wire [NUMPORT_WIDTH -1 : 0] WrPort;
 wire                        PISO_OUTRdy;
 
 wire [(ITF_NUM_WRPORT + ITF_NUM_RDPORT) -1 : 0] gnt;
+wire [(ITF_NUM_WRPORT + ITF_NUM_RDPORT) -1 : 0] req;
 
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -126,12 +127,14 @@ end
 //=====================================================================================================================
 
 // Combinational Logic
+assign req = {GLBITF_RdAddrRdy, GLBITF_WrDatRdy};
 RR_arbiter #(
     .REQ_WIDTH ( ITF_NUM_RDPORT + ITF_NUM_WRPORT )
 )u_RR_arbiter_Port(
     .clk        ( clk       ),
     .rst_n      ( rst_n     ),
-    .req        ( {GLBITF_RdAddrRdy, GLBITF_WrDatRdy} ),
+    .arb_round  ( next_state == CMD && state == IDLE ), // update arbed info(port) when arbing sucessfully
+    .req        ( req       ),
     .gnt        ( gnt       ),
     .arb_port   ( PortIdx_  )
 );
