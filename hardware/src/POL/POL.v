@@ -55,9 +55,6 @@ module POL #(
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam IDLE     = 3'b000;
-localparam MAPIN    = 3'b001;
-localparam WAITFNH  = 3'b011;
 
 parameter CHNGRP_WIDTH  = CHN_WIDTH - $clog2(POOL_COMP_CORE);
 parameter MAPWORD_WIDTH = $clog2(IDX_WIDTH*(2**MAP_WIDTH)/SRAM_WIDTH);
@@ -136,9 +133,25 @@ generate
     wire [CHNGRP_WIDTH      -1 : 0] CntChnGrp;
     wire [MAP_WIDTH         -1 : 0] CntNp;
     wire                            overflow_CntMapWord;
+    reg                             overflow_CntMapWord_s1;
+    reg                             overflow_CntMapWord_s2;
+    reg                             overflow_CntMapWord_s3;
+    reg                             overflow_CntMapWord_s4;
     wire                            overflow_CntCp;
+    reg                             overflow_CntCp_s1;
+    reg                             overflow_CntCp_s2;
+    reg                             overflow_CntCp_s3;
+    reg                             overflow_CntCp_s4;
     wire                            overflow_CntNp;
-    wire                            overflow_CntChnGrp;
+    wire                            overflow_CntNp_s1;
+    reg                             overflow_CntNp_s2;
+    reg                             overflow_CntNp_s3;
+    reg                             overflow_CntNp_s4;
+    reg                             overflow_CntChnGrp;
+    reg                             overflow_CntChnGrp_s1;
+    reg                             overflow_CntChnGrp_s2;
+    reg                             overflow_CntChnGrp_s3;
+    reg                             overflow_CntChnGrp_s4;
 
     reg                             LastCp_s1;
     wire                            LastCpNp_s2;
@@ -181,7 +194,9 @@ generate
     //=====================================================================================================================
     // Logic Design: s0:  MapRdAddr
     //=====================================================================================================================
-
+    localparam IDLE     = 3'b000;
+    localparam MAPIN    = 3'b001;
+    localparam WAITFNH  = 3'b011;
     reg [ 3     -1 : 0] state       ;
     reg [ 3     -1 : 0] next_state  ;
 
@@ -196,7 +211,7 @@ generate
                         next_state <= WAITFNH;
                     else 
                         next_state <= MAPIN;
-            WAITFNH:if ( LastCpNp_s4 & handshake_s4 )
+            WAITFNH:if ( (overflow_CntNp_s4 & overflow_CntChnGrp_s4 &overflow_CntCp_s4) & handshake_s4 )
                         next_state <= IDLE;
                     else
                         next_state <= WAITFNH;
@@ -208,7 +223,7 @@ generate
 
     // Handshake
     assign rdy_s0 = GLBPOL_MapRdAddrRdy & ArbPLCIdx_MapRd == gv_plc;
-    assign vld_s0 = state == MAPIN;
+    assign vld_s0 = state == MAPIN  & (rdy_s1 & !vld_s1);
 
     assign handshake_s0 = rdy_s0 & vld_s0;
     assign ena_s0 = handshake_s0 | ~vld_s0;
@@ -264,8 +279,8 @@ generate
     //=====================================================================================================================
 
     // Combinational Logic
-    assign PLC_MapRdAddr[gv_plc] = CntCp<<MAPWORD_WIDTH + CntMapWord;
-    assign PLC_MapRdAddrVld[gv_plc] = vld_s0;
+    assign PLC_MapRdAddr[gv_plc] = (CntCp<<MAPWORD_WIDTH) + CntMapWord;
+    assign PLC_MapRdAddrVld[gv_plc] = vld_s0;//  & (rdy_s1 & !vld_s1); // ????????
 
     // Handshake
     assign rdy_s1 = SIPO_MapInRdy;
@@ -278,7 +293,7 @@ generate
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
             LastCp_s1 <= 0;
-        end else if(handshake_s0) begin
+        end else if(ena_s1) begin
             LastCp_s1 <= overflow_CntCp & overflow_CntMapWord;
         end
     end
@@ -311,10 +326,10 @@ generate
         .IN_RDY    ( SIPO_MapInRdy      ),
         .OUT_DAT   ( SIPO_MapOutDat     ),
         .OUT_VLD   ( SIPO_MapOutVld     ),
-        .OUT_LAST  ( SIPO_MapOutLast      ),
+        .OUT_LAST  ( SIPO_MapOutLast    ),
         .OUT_RDY   ( SIPO_MapOutRdy     )
     );
-    assign SIPO_MapOutRdy = PISO_MapInRdy & overflow_CntNp;
+    assign SIPO_MapOutRdy = PISO_MapInRdy & overflow_CntNp; // only when map is used up for CntNp(inner loop)
 
     PISO_NOCACHE#(
         .DATA_IN_WIDTH   ( IDX_WIDTH*(2**MAP_WIDTH)),
@@ -325,11 +340,11 @@ generate
         .IN_VLD    ( SIPO_MapOutVld ),
         .IN_LAST   ( SIPO_MapOutLast),
         .IN_DAT    ( SIPO_MapOutDat ),
-        .IN_RDY    ( PISO_MapInRdy  ),
+        .IN_RDY    ( PISO_MapInRdy  ), 
         .OUT_DAT   ( PISO_MapOutDat ),
         .OUT_VLD   ( PISO_MapOutVld ),
         .OUT_LAST  ( LastCpNp_s2    ),
-        .OUT_RDY   ( rdy_s2         )
+        .OUT_RDY   ( rdy_s2         ) // all the time is fetching
     );
 
 
@@ -338,18 +353,40 @@ generate
     //=====================================================================================================================
     
     // Combination Logic
-    assign POLGLB_OfmRdAddrVld[gv_plc] = {POOL_CORE{handshake_s1}};
-    assign NpIdx_s2 = (CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE)*PISO_MapOutDat + CntChnGrp;
+    assign POLGLB_OfmRdAddrVld[gv_plc] = vld_s2;
+    `ifdef PSEUDO_DATA
+        assign NpIdx_s2 = (CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE)*PISO_MapOutDat[0 +: 4] + CntChnGrp;
+    `else
+        assign NpIdx_s2 = (CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE)*PISO_MapOutDat + CntChnGrp;
+    `endif
+
     assign POLGLB_OfmRdAddr[gv_plc] = NpIdx_s2;
+
 
     // Handshake
     assign rdy_s3 = ena_s4;
-    assign vld_s3 = GLBPOL_OfmRdDatVld[gv_plc];
+    assign vld_s3 = GLBPOL_OfmRdDatVld[gv_plc]; 
 
     assign handshake_s3 = rdy_s3 & vld_s3;
-    assign ena_s3 = handshake_s3 | ~vld_s3;
+    assign ena_s3       = handshake_s3 | ~vld_s3;
 
     // Reg Update
+    wire [MAP_WIDTH     -1 : 0] MaxCntNp = CCUPOL_CfgK[gv_plc] -1;
+    counter#(
+        .COUNT_WIDTH ( MAP_WIDTH )
+    )u_CntNp(
+        .CLK       ( clk                    ),
+        .RESET_N   ( rst_n                  ),
+        .CLEAR     ( CCUPOL_Rst[gv_plc]     ),
+        .DEFAULT   ( {MAP_WIDTH{1'd0}}      ),
+        .INC       ( handshake_s2           ),
+        .DEC       ( 1'b0                   ),
+        .MIN_COUNT ( {MAP_WIDTH{1'd0}}      ),
+        .MAX_COUNT ( MaxCntNp               ),
+        .OVERFLOW  ( overflow_CntNp         ), // inner loop
+        .UNDERFLOW (                        ),
+        .COUNT     ( CntNp                  )
+    );
     wire [CHNGRP_WIDTH      -1 : 0] MaxCntChnGrp = CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE -1;
     counter#(
         .COUNT_WIDTH ( CHNGRP_WIDTH )
@@ -362,34 +399,16 @@ generate
         .DEC       ( 1'b0               ),
         .MIN_COUNT ( {CHNGRP_WIDTH{1'd0}}  ),
         .MAX_COUNT ( MaxCntChnGrp       ),
-        .OVERFLOW  ( overflow_CntChnGrp ),
+        .OVERFLOW  ( overflow_CntChnGrp ), // outer loop
         .UNDERFLOW (                    ),
         .COUNT     ( CntChnGrp          )
     );
-
-    wire [MAP_WIDTH     -1 : 0] MaxCntNp = CCUPOL_CfgK[gv_plc] -1;
-    counter#(
-        .COUNT_WIDTH ( MAP_WIDTH )
-    )u_CntNp(
-        .CLK       ( clk                    ),
-        .RESET_N   ( rst_n                  ),
-        .CLEAR     ( CCUPOL_Rst[gv_plc]     ),
-        .DEFAULT   ( {MAP_WIDTH{1'd0}}   ),
-        .INC       ( handshake_s2           ),
-        .DEC       ( 1'b0                   ),
-        .MIN_COUNT ( {MAP_WIDTH{1'd0}}   ),
-        .MAX_COUNT ( MaxCntNp               ),
-        .OVERFLOW  ( overflow_CntNp         ),
-        .UNDERFLOW (                        ),
-        .COUNT     ( CntNp                  )
-    );
-
-    assign POLGLB_OfmRdDatRdy[gv_plc] = {POOL_CORE{rdy_s3}};
+    assign POLGLB_OfmRdDatRdy[gv_plc] = rdy_s3;
 
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
             {NpIdx_s3, LastCpNp_s3} <= 0;
-        end else if(handshake_s2) begin
+        end else if(ena_s3) begin
             {NpIdx_s3, LastCpNp_s3} <= {NpIdx_s2, LastCpNp_s2};
         end
     end
@@ -430,9 +449,9 @@ generate
 
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
-            {NpIdx_s4, LastCpNp_s4, vld_s4} <= 0;
-        end else if(handshake_s3) begin
-            {NpIdx_s4, LastCpNp_s4, vld_s4} <= {NpIdx_s3, LastCpNp_s3, overflow_CntNp};
+            {NpIdx_s4, overflow_CntNp_s4, overflow_CntChnGrp_s4, overflow_CntCp_s4,vld_s4} <= 0;
+        end else if(ena_s4) begin
+            {NpIdx_s4, overflow_CntNp_s4, overflow_CntChnGrp_s4, overflow_CntCp_s4, vld_s4} <= {NpIdx_s3, overflow_CntNp_s3, overflow_CntChnGrp_s3, overflow_CntCp_s3, overflow_CntNp};
         end
     end
 
