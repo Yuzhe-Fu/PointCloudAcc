@@ -117,6 +117,8 @@ wire [NUM_BANK  -1 : 0][NUM_COL -1 : 0][WGT_WIDTH   -1 : 0] SYA_OutWgt_S;
 wire [NUM_BANK  -1 : 0][NUM_COL                     -1 : 0] SYA_InWgtRdy_S;
 
 wire [NUM_BANK  -1 : 0][NUM_ROW                     -1 : 0] SYA_OutPsumVld;
+wire [NUM_BANK  -1 : 0]                                     din_data_vld;
+wire [NUM_BANK  -1 : 0]                                     din_data_rdy;
 wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][ACT_WIDTH   -1 : 0] SYA_OutPsum;
 wire [NUM_BANK  -1 : 0][NUM_ROW                     -1 : 0] SYA_InPsumRdy;
 
@@ -174,8 +176,7 @@ assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0 = handshake_s0 | ~vld_s0;
 
 // Reg Update
-assign vld_s0 = state == INREGUL | state == INSHIFT;;
-
+assign vld_s0 = state == INREGUL | state == INSHIFT;
 
 assign SYA_MaxRowCol = CCUSYA_CfgMod == 0 ? NUM_ROW*SYA_SIDEBANK : NUM_ROW*SYA_SIDEBANK*2;
 
@@ -377,23 +378,26 @@ PE_BANK#(
 
 SYNC_SHAPE #(
     .ACT_WIDTH           ( ACT_WIDTH  ),
-    .SRAM_WIDTH          ( SRAM_WIDTH ),
     .NUM_BANK            ( NUM_BANK   ),
     .NUM_ROW             ( NUM_ROW    ),
-    .NUM_OUT             ( NUM_BANK   )
+    .ADDR_WIDTH          ( 4          )
 ) SYNC_SHAPE_U (               
 
     .clk                 ( clk        ),
     .rst_n               ( rst_n      ),
+    .Rst                 ( state == IDLE),
                         
     .din_data            ( SYA_OutPsum    ),
-    .din_data_vld        ( SYA_OutPsumVld ),
-    .din_data_rdy        ( SYA_InPsumRdy  ),
+    .din_data_vld        ( din_data_vld ),
+    .din_data_rdy        ( din_data_rdy  ),
                         
     .out_data            ( sync_out   ),
     .out_data_vld        ( sync_out_vld),
     .out_data_rdy        ( sync_out_rdy)
 );
+// ?????????? {NUM_ROW*NUM_BANK{SYA_OutPsumVld == ReqVld}}; ofm in specific channels are valid(rhomboid sibianxing)
+assign din_data_vld = {|SYA_OutPsumVld[3], |SYA_OutPsumVld[2], |SYA_OutPsumVld[1], |SYA_OutPsumVld[0]}; 
+assign SYA_InPsumRdy = { {NUM_ROW{din_data_rdy[3]}}, {NUM_ROW{din_data_rdy[3]}}, {NUM_ROW{din_data_rdy[3]}}, {NUM_ROW{din_data_rdy[3]}} };
 
 assign SYAGLB_OfmWrDatVld   = &sync_out_vld;
 assign SYAGLB_OfmWrDat      = sync_out;
