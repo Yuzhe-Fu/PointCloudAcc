@@ -101,10 +101,11 @@ generate
         wire [SRAM_WIDTH        -1 : 0] rdata;
         reg  [$clog2(NUM_BANK)  -1 : 0] CurBankIdxInWrPortPar;
 
-        SPRAM_HS#(
+        RAM_HS#(
             .SRAM_BIT     ( SRAM_WIDTH  ),
             .SRAM_BYTE    ( 1           ),
             .SRAM_WORD    ( SRAM_WORD   ),
+            .DUAL_PORT    ( 0           ),
             .CLOCK_PERIOD ( CLOCK_PERIOD)
         )u_SPRAM_HS(
             .clk          ( clk          ),

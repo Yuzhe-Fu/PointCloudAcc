@@ -3,7 +3,7 @@ module RAM_HS #(
     parameter SRAM_BIT      = 128,
     parameter SRAM_BYTE     = 1,
     parameter SRAM_WORD     = 64,
-    parameter CLOCK_PERIOD  = 10,
+    parameter DUAL_PORT     = 0, // single port or dual port
     
     parameter SRAM_WIDTH    = SRAM_BIT*SRAM_BYTE,
     parameter SRAM_DEPTH_BIT= $clog2(SRAM_WORD)
@@ -38,7 +38,6 @@ wire 					    ram_wenc;
 wire [SRAM_DEPTH_BIT-1 : 0] ram_waddr;
 wire [SRAM_WIDTH    -1 : 0] ram_wdata;
 wire 					    ram_renc;
-// wire 					    ram_renc_d;
 wire [SRAM_DEPTH_BIT-1 : 0] ram_raddr;
 wire [SRAM_WIDTH    -1 : 0] ram_rdata;
 
@@ -46,20 +45,22 @@ wire [SRAM_WIDTH    -1 : 0] ram_rdata;
 //***********************************************
 // write path
 //***********************************************
+// input
 assign ram_wenc  = wvalid && wready;
 assign ram_waddr = waddr;
 assign ram_wdata = wdata;
 
-assign wready   = 1'b1;
+// output
+assign wready   = DUAL_PORT? 1'b1 : !(ram_renc);
+
 //***********************************************
 // read path
 //***********************************************
+// input
 assign ram_renc  = arvalid && arready;
 assign ram_raddr = araddr;
 
-//***********************************************
-//  read out logic
-//***********************************************
+// output
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         rvalid <= 1'b0;
@@ -69,7 +70,6 @@ always @(posedge clk or negedge rst_n) begin
         rvalid <= 1'b0;
     end
 end
-
 assign rdata   = ram_rdata;
 assign arready = rready | !rvalid;
 
@@ -80,7 +80,7 @@ RAM#(
     .SRAM_BIT     ( SRAM_BIT    ),
     .SRAM_BYTE    ( SRAM_BYTE   ),
     .SRAM_WORD    ( SRAM_WORD   ),
-    .CLOCK_PERIOD ( CLOCK_PERIOD)
+    .DUAL_PORT    ( DUAL_PORT   )
 )u_RAM(
     .clk          ( clk          ),
     .rst_n        ( rst_n        ),
@@ -91,16 +91,5 @@ RAM#(
     .data_in      ( ram_wdata    ),
     .data_out     ( ram_rdata    )
 );
-
-// DELAY#(
-//     .NUM_STAGES ( 1 ),
-//     .DATA_WIDTH ( 1 )
-// )u_DELAY_ram_renc_d(
-//     .CLK        ( clk        ),
-//     .RST_N      ( rst_n      ),
-//     .DIN        ( ram_renc        ),
-//     .DOUT       ( ram_renc_d       )
-// );
-
 
 endmodule
