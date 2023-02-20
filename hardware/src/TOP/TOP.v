@@ -13,9 +13,6 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module TOP #(
-    // Sim
-    parameter CLOCK_PERIOD   = 10,
-
     // HW-Modules
     // CCU
     parameter NUM_MODULE     = 5,
@@ -812,8 +809,7 @@ GLB#(
     .ADDR_WIDTH              ( ADDR_WIDTH       ),
     .NUM_WRPORT              ( GLB_NUM_WRPORT   ),
     .NUM_RDPORT              ( GLB_NUM_RDPORT   ),
-    .MAXPAR                  ( MAXPAR           ),
-    .CLOCK_PERIOD            ( CLOCK_PERIOD     ) 
+    .MAXPAR                  ( MAXPAR           )
 )u_GLB(
     .clk                    ( clk                    ),
     .rst_n                  ( rst_n                  ),
