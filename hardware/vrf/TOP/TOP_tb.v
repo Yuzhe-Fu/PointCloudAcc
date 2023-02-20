@@ -1,11 +1,14 @@
 `timescale  1 ns / 100 ps
+
+`define CLOCK_PERIOD 10
 `define SIM
 `define FUNC_SIM
+`define PSEUDO_DATA
+
 module TOP_tb();
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-parameter CLOCK_PERIOD      = 10;
 parameter PORT_WIDTH        = 128;
 parameter ADDR_WIDTH        = 16;
 parameter DRAM_ADDR_WIDTH   = 32;
@@ -40,7 +43,7 @@ reg [ADDR_WIDTH         -1 : 0] ReqNum;
 initial
 begin
     clk= 1;
-    forever #(CLOCK_PERIOD/2)  clk=~clk;
+    forever #(`CLOCK_PERIOD/2)  clk=~clk;
 end
 
 initial
@@ -48,10 +51,10 @@ begin
     rst_n           =  1;
     I_StartPulse    = 0;
     I_BypAsysnFIFO  = 1;
-    #(CLOCK_PERIOD*2)  rst_n  =  0;
-    #(CLOCK_PERIOD*10) rst_n  =  1;
-    #(CLOCK_PERIOD*2)  I_StartPulse = 1;
-    #(CLOCK_PERIOD*10) I_StartPulse = 0;
+    #(`CLOCK_PERIOD*2)  rst_n  =  0;
+    #(`CLOCK_PERIOD*10) rst_n  =  1;
+    #(`CLOCK_PERIOD*2)  I_StartPulse = 1;
+    #(`CLOCK_PERIOD*10) I_StartPulse = 0;
 end
 
 initial begin
@@ -136,7 +139,6 @@ end
 //=====================================================================================================================
 
 TOP #(
-    .CLOCK_PERIOD(CLOCK_PERIOD),
     .PORT_WIDTH  (PORT_WIDTH)
 )
     u_TOP (

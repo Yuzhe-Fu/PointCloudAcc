@@ -52,7 +52,7 @@ reg                 vld;
 wire                ena;
 reg                 OutChnLast;
 // 
-assign InVld        = InActVld_W & InWgt_N;
+assign InVld        = InActVld_W & InWgtVld_N;
 assign OutActRdy_W  = ena;
 assign OutWgtRdy_N  = ena;
 

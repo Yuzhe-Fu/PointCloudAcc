@@ -11,19 +11,14 @@
 ../../src/SYA/SYA.v                     
     ../../src/SYA/PE_BANK.v                 
         ../../src/SYA/PE_ROW.v                 
-            ../../src/SYA/PE.v                 
-                ../../src/SYA/CPM/CPM_FIFO.v                
-                    ../../src/SYA/CPM/CPM_REG_CE.v                 
-                    ../../src/SYA/CPM/CPM_REG_E.v                 
-                ../../src/SYA/CPM/CPM_REG.v                 
+            ../../src/SYA/PE.v                                 
     ../../src/SYA/SYNC_SHAPE.v                 
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DEB/DEB.v
 ../../src/primitives/MINMAX/MINMAX.v
 ../../src/primitives/Memory/RAM_HS.v
-../../src/primitives/Memory/SPRAM_HS.v
 ../../src/primitives/Memory/RAM.v
-../../src/primitives/Memory/SPSRAM.v
+../../src/primitives/Memory/RAM_REG.v
 ../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/PISO/PISO_NOCACHE.v
 ../../src/primitives/COUNTER/counter.v

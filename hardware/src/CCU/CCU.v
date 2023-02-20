@@ -263,7 +263,8 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // CfgRdy -> Req
-assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
+// Test POL
+assign CfgRdy = {&POLCCU_CfgRdy, 1'b0, 1'b0, 1'b0, CCUTOP_CfgRdy}; // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
@@ -379,9 +380,27 @@ always @(posedge clk or negedge rst_n) begin
             if(int_i == GLBWRIDX_ITFISA) begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA write bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd1;
-            end else if(int_i ==  GLB_NUM_WRPORT + GLBRDIDX_CCUISA) begin
+            end else if(int_i == GLB_NUM_WRPORT + GLBRDIDX_CCUISA) begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd1;
+
+            // Test POL
+            end else if(int_i == GLBWRIDX_ITFMAP) begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 32'h0000_0010; // ISA read bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd1;   // default 
+            end else if(int_i == GLB_NUM_WRPORT + GLBRDIDX_POLMAP) begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 32'h0000_0010; // ISA read bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd1;   // default 
+            end else if(int_i == GLBWRIDX_POLOFM) begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 32'h0000_0300; // ISA read bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd2;   // default 
+            end else if(int_i == GLBWRIDX_ITFCRD) begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 32'hFFFF_0000; // ISA read bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd2;   // default  
+            end else if(GLB_NUM_WRPORT + GLBRDIDX_POLOFM <= int_i & int_i < GLB_NUM_WRPORT + GLBRDIDX_POLOFM + POOL_CORE) begin
+                CCUTOP_CfgPortBankFlag[int_i] <= (32'h0003_0000)<<(int_i - (GLB_NUM_WRPORT + GLBRDIDX_POLOFM)); // ISA read bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd2;   // default  
+
             end else begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 0; // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd1;   // default  
@@ -488,20 +507,20 @@ always @(posedge clk or negedge rst_n) begin
             end else if(CntISARdWord_s1 == 2) begin
                 CCUPOL_CfgK                                             <= GLBCCU_ISARdDat[OPCODE_WIDTH +: OPCODE_WIDTH*POOL_CORE]; // 8bit
                 CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1)                                                 +: DRAM_ADDR_WIDTH]; // 8bit; 
-                CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH                               +: NUM_BANK];
-                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK                    +: NUM_BANK];
-                CCUTOP_CfgPortBankFlag[GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*2                  +: NUM_BANK];
-                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*3                  +: NUM_BANK];
-            end else if(CntISARdWord_s1 == 3) begin
-                for(int_i = 1; int_i < POOL_CORE; int_i = int_i + 1) begin
-                    CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(int_i - 1) +: NUM_BANK]; // 1 bank
-                end
-                CCUTOP_CfgPortParBank [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1)                  +: MAXPAR_WIDTH];
-                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH   +: MAXPAR_WIDTH];
-                CCUTOP_CfgPortParBank [GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*2 +: MAXPAR_WIDTH];
-                for(int_i = 0; int_i < POOL_CORE; int_i = int_i + 1) begin
-                    CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*(3 + int_i) +: MAXPAR_WIDTH];
-                end
+            //     CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH                               +: NUM_BANK];
+            //     CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK                    +: NUM_BANK];
+            //     CCUTOP_CfgPortBankFlag[GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*2                  +: NUM_BANK];
+            //     CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*3                  +: NUM_BANK];
+            // end else if(CntISARdWord_s1 == 3) begin
+            //     for(int_i = 1; int_i < POOL_CORE; int_i = int_i + 1) begin
+            //         CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(int_i - 1) +: NUM_BANK]; // 1 bank
+            //     end
+            //     CCUTOP_CfgPortParBank [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1)                  +: MAXPAR_WIDTH];
+            //     CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH   +: MAXPAR_WIDTH];
+            //     CCUTOP_CfgPortParBank [GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*2 +: MAXPAR_WIDTH];
+            //     for(int_i = 0; int_i < POOL_CORE; int_i = int_i + 1) begin
+            //         CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*(3 + int_i) +: MAXPAR_WIDTH];
+            //     end
             end 
         end 
     end
