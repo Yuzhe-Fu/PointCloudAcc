@@ -1,4 +1,6 @@
 # 问题
+- 要减少pool的sram块数，预计到总共6块
+
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
