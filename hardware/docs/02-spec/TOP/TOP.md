@@ -1,7 +1,5 @@
 # 问题
     - SYA的4个PE_bank输出ofm怎么连GLB？
-    - NOC换成AHB？因为本就是握手协议，而且addr每次读写都需要请求，功耗加倍
-    - 需要整个网络完成的信号
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |

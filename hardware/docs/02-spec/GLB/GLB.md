@@ -1,7 +1,8 @@
 # 问题：
-    - GLB打拍
-        - SRAM打拍时不要对每个Wr/RdPort打拍，因为口太多，而是对bank输入输出打拍，但是还是尽量不打拍，寄存器太多了
-    - RAM的DO_d占用太大面积了
+- 减少sram的位宽到128位(因为sya需要的一个单位是128)，加倍深度，块数不变（有pingpongbuffer的需求）
+- GLB打拍
+    - SRAM打拍时不要对每个Wr/RdPort打拍，因为口太多，而是对bank输入输出打拍，但是还是尽量不打拍，寄存器太多了
+- RAM的DO_d占用太大面积了
 
 # 文件列表
 | File          | Descriptions      |

@@ -1,5 +1,4 @@
 ## 问题
-    - :question: POL中报seq占60%
 
 # 文件列表
 | File | Descriptions |
