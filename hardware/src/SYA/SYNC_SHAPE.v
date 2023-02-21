@@ -87,7 +87,7 @@ generate
         end
 
         assign empty = fifo_count < NUM_ROW; // !empty
-        assign full  = fifo_count >= 2*ADDR_WIDTH; // !FULL
+        assign full  = fifo_count >= 2**ADDR_WIDTH; // !FULL
         assign push  = wvalid;
         assign pop   = arvalid;
 
