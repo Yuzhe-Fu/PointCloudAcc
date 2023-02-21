@@ -398,7 +398,7 @@ always @(posedge clk or negedge rst_n) begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 32'hFFFF_0000; // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd2;   // default  
             end else if(GLB_NUM_WRPORT + GLBRDIDX_POLOFM <= int_i & int_i < GLB_NUM_WRPORT + GLBRDIDX_POLOFM + POOL_CORE) begin
-                CCUTOP_CfgPortBankFlag[int_i] <= (32'h0003_0000)<<(int_i - (GLB_NUM_WRPORT + GLBRDIDX_POLOFM)); // ISA read bank0
+                CCUTOP_CfgPortBankFlag[int_i] <= (32'h0003_0000)<<2*(int_i - (GLB_NUM_WRPORT + GLBRDIDX_POLOFM)); // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd2;   // default  
 
             end else begin
