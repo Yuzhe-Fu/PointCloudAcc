@@ -58,15 +58,13 @@ always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
         last  <= 0;
     end else if (IN_VLD & IN_RDY) begin
         last  <= IN_LAST;
-        if (DATA_OUT_WIDTH == DATA_IN_WIDTH)
-            shift <=IN_DAT;
-        else begin
-            // shift <= {IN_DAT, shift[DATA_OUT_WIDTH-1:DATA_IN_WIDTH]};
-            if ( !OUT_VLD )
-                shift[DATA_IN_WIDTH*shift_count +: DATA_IN_WIDTH] <= IN_DAT;
-            else if (OUT_VLD & OUT_RDY)
-                shift[DATA_IN_WIDTH*0 +: DATA_IN_WIDTH] <= IN_DAT;
-        end
+        if ( !OUT_VLD )
+            shift[DATA_IN_WIDTH*shift_count +: DATA_IN_WIDTH] <= IN_DAT;
+        else if (OUT_VLD & OUT_RDY)
+            shift[DATA_IN_WIDTH*0 +: DATA_IN_WIDTH] <= IN_DAT;
+            
+    end else if (OUT_VLD & OUT_RDY ) begin
+        last <= 0;
     end
 end
 
