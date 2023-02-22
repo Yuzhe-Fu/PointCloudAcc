@@ -77,7 +77,7 @@ end
 
 assign OutActVld_E      = vld;
 assign OutWgtVld_S      = vld;
-assign OutPsumVld       = vld & (OutWgtChnLast_S & OutActChnLast_E);
+assign OutPsumVld       = vld & (OutWgtChnLast_S & OutActChnLast_E) & (InActRdy_E & InWgtRdy_S);
 assign OutActChnLast_E  = OutChnLast;
 assign OutWgtChnLast_S  = OutChnLast;
 
