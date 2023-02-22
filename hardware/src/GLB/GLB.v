@@ -48,7 +48,7 @@ module GLB #(
 
 //=====================================================================================================================
 // Constant Definition :
-//=====================================================================================================================
+//integer=====================================================================================================================
 localparam SRAM_DEPTH_WIDTH = $clog2(SRAM_WORD);
 
 //=====================================================================================================================
@@ -197,6 +197,7 @@ generate
         wire                                RdPortAlloc;
         wire [$clog2(NUM_BANK)          : 0] RdPortNumBank;
         wire [ADDR_WIDTH            -1 : 0] RdPortAddrVldRange;
+        reg  [ADDR_WIDTH            -1 : 0] RdPortMthWrAddr;
 
 
         // Map RdPort to Bank
@@ -210,8 +211,14 @@ generate
         end
         assign PortRdBankAddrVld[gv_j] = {NUM_BANK{TOPGLB_RdPortAddrVld[gv_j] & !Empty}} & RdPortHitBank; // 32bits, // addr handshake : enable of (add+1)
 
+        always@(*) begin // Max WrAddr of allocated banks
+            RdPortMthWrAddr = 0;
+            for(int_i = 0; int_i < RdPortNumBank; int_i = int_i + 1) begin
+                RdPortMthWrAddr = RdPortMthWrAddr < BankWrAddr_d[RdPort1stBankIdx + int_i]? BankWrAddr_d[RdPort1stBankIdx + int_i] : RdPortMthWrAddr;
+            end
+        end
         // To Output
-        assign Empty = RdPortAddr_Array[gv_j] >= BankWrAddr_d[PortCur1stBankIdx];
+        assign Empty = RdPortAddr_Array[gv_j] >= RdPortMthWrAddr;// ???? CurWrIdx == 12, PortCur1stBankIdx(decided by rdaddr) == 13
         assign  GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & !Empty & Bank_arready[PortCur1stBankIdx];
         assign  GLBTOP_RdEmpty[gv_j] = Empty;
 
@@ -253,6 +260,7 @@ generate
         wire                            WrPortAlloc;
         wire [$clog2(NUM_BANK)     : 0] WrPortNumBank;
         wire [ADDR_WIDTH        -1 : 0] WrPortAddrVldSpace;
+        reg  [ADDR_WIDTH        -1 : 0] WrPortMthRdAddr;
 
         // Map WrPort to Bank
         assign WrPortAddrVldSpace = WrPortAlloc? (SRAM_WORD*WrPortNumBank/TOPGLB_CfgPortParBank[gv_j]) : SRAM_WORD;// Cut address to a relative(valid) range in NumBank/ParBank
@@ -266,8 +274,15 @@ generate
         end
         assign PortWrBankVld[gv_j] = {NUM_BANK{TOPGLB_WrPortDatVld[gv_j] & !Full}} & WrPortHitBank; // 32bits
 
+        always@(*) begin // Max RdAddr of allocated banks
+            WrPortMthRdAddr = 0;
+            for(int_i = 0; int_i < WrPortNumBank; int_i = int_i + 1) begin
+                WrPortMthRdAddr = WrPortMthRdAddr < BankRdAddr_d[WrPort1stBankIdx + int_i]? BankRdAddr_d[WrPort1stBankIdx + int_i] : WrPortMthRdAddr;
+            end
+        end
+
         // To Output
-        assign Full = (WrPortAddr_Array[gv_j] - BankRdAddr_d[PortCur1stBankIdx]) >= WrPortAddrVldSpace ;
+        assign Full = (WrPortAddr_Array[gv_j] - WrPortMthRdAddr) >= WrPortAddrVldSpace;
         assign  GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & Bank_wready[PortCur1stBankIdx];
         assign  GLBTOP_WrFull[gv_j] = Full;
 

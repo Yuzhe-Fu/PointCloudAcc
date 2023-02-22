@@ -110,7 +110,8 @@ RR_arbiter #(
 );
 assign OutPsum = ROW_OutPsum[ArbPEIdx][PSUM_WIDTH - 1]? 0 : ROW_OutPsum[ArbPEIdx][CCUSYA_CfgShift +: ACT_WIDTH] + CCUSYA_CfgZp; // PE_OutPsum_PE is signed
 assign OutPsumVld = |gnt;
-assign ROW_InPsumRdy = gnt & {NUM_PE{InPsumRdy}};
+// assign ROW_InPsumRdy = gnt & {NUM_PE{InPsumRdy}};
+assign ROW_InPsumRdy = {NUM_PE{InPsumRdy}}; // ????????????
 
 
 endmodule
