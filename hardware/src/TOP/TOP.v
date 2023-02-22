@@ -154,6 +154,7 @@ wire                              CCUSYA_Rst              ;  //
 wire                              CCUSYA_CfgVld           ;
 wire                              SYACCU_CfgRdy           ;
 wire [2                   -1 : 0] CCUSYA_CfgMod           ;
+wire                              CCUSYA_CfgOfmPhaseShift    ;
 wire [CHN_WIDTH           -1 : 0] CCUSYA_CfgChn           ;         
 wire [QNTSL_WIDTH         -1 : 0] CCUSYA_CfgScale         ;        
 wire [ACT_WIDTH           -1 : 0] CCUSYA_CfgShift         ;        
@@ -406,6 +407,7 @@ CCU#(
     .CCUSYA_CfgVld           ( CCUSYA_CfgVld           ),
     .SYACCU_CfgRdy           ( SYACCU_CfgRdy           ),
     .CCUSYA_CfgMod           ( CCUSYA_CfgMod           ),
+    .CCUSYA_CfgOfmPhaseShift           ( CCUSYA_CfgOfmPhaseShift           ),
     .CCUSYA_CfgChn           ( CCUSYA_CfgChn           ),
     .CCUSYA_CfgScale         ( CCUSYA_CfgScale         ),
     .CCUSYA_CfgShift         ( CCUSYA_CfgShift         ),
@@ -625,6 +627,7 @@ SYA#(
     .CCUSYA_CfgVld           ( CCUSYA_CfgVld           ),
     .SYACCU_CfgRdy           ( SYACCU_CfgRdy           ),
     .CCUSYA_CfgMod           ( CCUSYA_CfgMod           ),
+    .CCUSYA_CfgOfmPhaseShift    ( CCUSYA_CfgOfmPhaseShift    ),
     .CCUSYA_CfgChn           ( CCUSYA_CfgChn           ),
     .CCUSYA_CfgShift         ( CCUSYA_CfgShift         ),
     .CCUSYA_CfgZp            ( CCUSYA_CfgZp            ),

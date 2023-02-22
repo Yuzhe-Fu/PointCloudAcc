@@ -78,7 +78,10 @@
                 for IdxGrp in NumGrpInTile:
                     for IdxChn in CfgChn:
                         OFM[NumGrpInTile*IdxTilIfm + IdxGrp][NumTilFlt*IdxTilFlt + IdxGrp] +=  IFM[NumGrpInTile*NumGrpInTile*IdxTilFlt + NumGrpInTile*IdxGrp + IdxChn][]*FLT[][]// [point][channel]
-    - shift导致只loop复用一组点（比如32时），PE利用率降低：暂定方案1，下次优化考虑方案3
+    - 输出整形模块PhaseShift
+        - 只在接mp才有用到，mlp也是shift的连续串行通道(怎么正确得出ofm地址是关键)，直接增加一个CCUSYA_CfgPhaseShift来bypass
+        - pol暂时需要整形模块：考虑修正为读入的也是shift的，这样会有一个sram word里有多个连续的点的问题，可能无法取到需要的指定点的问题
+    - 输入相移(Phase Shift)导致只loop复用一组点（比如32时），PE利用率降低：暂定方案1，下次优化考虑方案3
         - 问题陈述
             - 原因：斜形导致NUM_ROW的周期浪费，利用率是C/(C+NUM_ROW)：比如32个点要计算完所有的filter，就要求这32个点不间断地输入，但是由于shift菱形，后一个点得重叠下一块的，怎么重叠当前块的呢？由输入格式决定，如果输入格式是shift的，不可能首尾相接(通道为64时，P1C63上面是P0C0）
         - 方案1：不管了，由1x4的模式甚至是1x16的模式来减少利用率降低，而且1x1卷积占与filter可以互换

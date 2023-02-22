@@ -20,10 +20,7 @@ module GLB #(
 
     parameter NUM_WRPORT   = 3,
     parameter NUM_RDPORT   = 4,
-    parameter MAXPAR       = 32,
-    
-    parameter CLOCK_PERIOD = 10
-
+    parameter MAXPAR       = 32
     )(
     input                                               clk                 ,
     input                                               rst_n               ,
@@ -105,8 +102,7 @@ generate
             .SRAM_BIT     ( SRAM_WIDTH  ),
             .SRAM_BYTE    ( 1           ),
             .SRAM_WORD    ( SRAM_WORD   ),
-            .DUAL_PORT    ( 0           ),
-            .CLOCK_PERIOD ( CLOCK_PERIOD)
+            .DUAL_PORT    ( 0           )
         )u_SPRAM_HS(
             .clk          ( clk          ),
             .rst_n        ( rst_n        ),
