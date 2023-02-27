@@ -20,8 +20,8 @@ module TOP #(
     parameter ITF_NUM_WRPORT = 5, 
 
     // FPS
-    parameter NUM_FPC        = 4, 
-    parameter CUT_MASK_WIDTH = 16, 
+    parameter NUM_FPC        = 8, 
+    parameter CUT_MASK_WIDTH = 32, 
     
     // KNN
     parameter NUM_SORT_CORE  = 4,
