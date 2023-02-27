@@ -1,4 +1,6 @@
 # 问题
+- 解决POL造成SYA阻塞的问题，固有的顺序问题，考虑SYA算下一个什么？:question:
+- 增加读上层FPS输出的原始Idx组，来选哪些中心点需要算MP的
 - 要减少pool的sram块数，预计到总共6块
 
 # 文件列表
@@ -58,6 +60,7 @@
         - POL写Ofm为2个：
             - （ACT\*POOL_COMP_CORE)\*POOL_CORE/K=（ACT\*POOL_COMP_CORE)/4，则设计2个（暂定）SRAM_WIDTH的口存输出即可
             - 而且POL的输出是给MLP的，格式不是ACT*POOL_COMP_CORE并行的，所有PLC的核输出的数据是存到一起的，按照SYA 0模式，两块SRAM， SYA 1模式，一块SRAM
+    - 暂不增加特征中心化功能：借鉴Mesorasi直接对单点多层卷积OFM减中心点OFM的Delayed-Aggregation方法（基于ReLU可多层嵌套拆）
 
 ## prior_arb端口列表
 | Ports | Input/Output | Width | Descriptions |
