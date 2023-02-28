@@ -1,6 +1,6 @@
 # 问题
-    - ITF一个口怎么知道GLB的哪些WrPort和RdPort是需要响应的？
-        - 还是之前的GLB方案？：GLB一个口只一个作用，不能调换，ITF对这些口仲裁
+- IO不必要太高，占用率低
+
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
@@ -61,7 +61,7 @@ PAD的协议是：借鉴AHB协议，先传首地址（决定是取哪种数据�
 - 陈述功能：ITF是伺服于其它口的，当其它口将读空时，需要ITF写入，当其它口将写满时，需要ITF读出数据，ITF在不同Bank之间不断切换，相当于灵活接来接去的送水接水的水管。**当接上时再配置ITF的CfgInfo**相当于又刷新了一次Cfg打拍，，（CCU不能配置数据类型，因为数据类型可能32或更多，只能配置固定的Port),
 - 与CCU
     - ISA怎么传？为了简化ITF，让ITF和GLB做成统一模块，CCU也通过GLB传ISA
-- 与GLB
+- 与GLB: GLB一个口只一个作用，不能调换，ITF对这些口仲裁
     - ITF读的CCU的ISA就是GLB
         - 好处：逻辑统一，CCU也是读GLB的一个模块；
         - 问题：初始就需要对GLB配置，目前假设Bank0就是专配给ISA的（好处是配置成功后也不需要变，不会出现用读出的ISA改变ISA存储的情况）
@@ -77,4 +77,5 @@ PAD的协议是：借鉴AHB协议，先传首地址（决定是取哪种数据�
         - ITF读片外写到Bank：Bank发出读片外数据请求，经仲裁，生成一个CMD经GLBITF_Dat传到ITF，ITF判断高位0，确认是CMD后，FSM到CMD状态，不再接收GLBITF_Dat，当CMD被片外取走后，进入RESE状态，等待接收，接收到了拉高ITFGLB_DatVld。什么时候完成转到IDLE?: 片外应该给个PADITF_DatLast信号(Last信号与Vld信号方向一致，注意Last信号与个数指令相**自洽**)
         - ITF读Bank写到片外：Bank发出写到片外数据请求，经仲裁，生成一个CMD经GLBITF_Dat传到ITF，ITF判断高位0，确认是CMD后，FSM到CMD状态，不再接收GLBITF_Dat，当CMD被片外取走后（片外准备好接收数据），进入IN状态，拉高ITFGLB_DatRdy，接收Bank的数据。当ITF内容的计数器计数完读数之后，TOPITF_DatLast(是内部信号)拉高，不会存存在多取因为state下周期转向FNH
         - 什么时候释放ITF？没有一个完整的ParBank_Word就释放
+        - FMC怎么判断传数完成（没有DatLast)：增加区分命令和数据的信号O_CmdVld
 

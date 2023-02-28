@@ -16,8 +16,8 @@ module EDC #(
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3 
     )(
-    input       [CRD_WIDTH*CRD_DIM                      -1 : 0] Crd0,
-    input       [CRD_WIDTH*CRD_DIM                      -1 : 0] Crd1,
+    input       [CRD_DIM    -1 : 0][CRD_WIDTH           -1 : 0] Crd0,
+    input       [CRD_DIM    -1 : 0][CRD_WIDTH           -1 : 0] Crd1,
     output reg  [CRD_WIDTH*2+$clog2(CRD_DIM)            -1 : 0] DistSqr
 );
 //=====================================================================================================================
@@ -37,7 +37,7 @@ integer  i;
 always @(*) begin
     DistSqr = 0;
     for(i=0; i<CRD_DIM; i=i+1) begin
-        DistSqr = DistSqr + Crd0[CRD_WIDTH*i +: CRD_WIDTH] *  Crd1[CRD_WIDTH*i +: CRD_WIDTH];
+        DistSqr = DistSqr + Crd0[i] * Crd1[i];
     end
 end
 

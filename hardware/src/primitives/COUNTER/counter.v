@@ -1,3 +1,25 @@
+/* --- INSTANTIATION TEMPLATE BEGIN ---
+
+wire [ADDR_WIDTH     -1 : 0] MaxCnt= ;
+
+counter#(
+    .COUNT_WIDTH ( ADDR_WIDTH )
+)u_counter_Cnt(
+    .CLK       ( clk            ),
+    .RESET_N   ( rst_n          ),
+    .CLEAR     (                ),
+    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+    .INC       (                ),
+    .DEC       ( 1'b0           ),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+    .MAX_COUNT ( MaxCnt         ),
+    .OVERFLOW  ( Overflow       ),
+    .UNDERFLOW (                ),
+    .COUNT     ( Cnt            )
+);
+
+--- INSTANTIATION TEMPLATE END ---*/
+
 
 module counter #(
     // INPUT PARAMETERS

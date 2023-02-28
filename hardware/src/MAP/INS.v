@@ -14,18 +14,19 @@
 // -----------------------------------------------------------------------------
 
 module INS #(
-    SORT_LEN_WIDTH  = 5                 ,
+    SORT_LEN_WIDTH  = 5,
     IDX_WIDTH       = 10,
-    DISTSQR_WIDTH   = 17,
+    DATA_WIDTH      = 17,
     SORT_LEN        = 2**SORT_LEN_WIDTH
     )(
     input                                       clk             ,
     input                                       rst_n           ,
+    input [(SORT_LEN_WIDTH + 1)         -1 : 0] KNNINS_CfgK     ,              
     input                                       KNNINS_LopLast  ,
-    input       [IDX_WIDTH+DISTSQR_WIDTH-1 : 0] KNNINS_Lop      ,
+    input [IDX_WIDTH+DATA_WIDTH         -1 : 0] KNNINS_Lop      ,
     input                                       KNNINS_LopVld   ,
     output                                      INSKNN_LopRdy   ,
-    output       [IDX_WIDTH*SORT_LEN    -1 : 0] INSKNN_Map      ,   
+    output[SORT_LEN -1 : 0][IDX_WIDTH   -1 : 0] INSKNN_Map      ,   
     output reg                                  INSKNN_MapVld   ,
     input                                       KNNINS_MapRdy
 );
@@ -37,11 +38,11 @@ module INS #(
 // Variable Definition :
 //=====================================================================================================================
 wire[SORT_LEN          : 0] last_shift;
-reg [DISTSQR_WIDTH  -1 : 0] DistArray[0: SORT_LEN-1];
+reg [DATA_WIDTH     -1 : 0] DistArray[0: SORT_LEN-1];
 reg [IDX_WIDTH      -1 : 0] IdxArray[0: SORT_LEN-1];
 
 wire [IDX_WIDTH     -1 : 0] Idx;
-wire [DISTSQR_WIDTH -1 : 0] Dist;
+wire [DATA_WIDTH    -1 : 0] Dist;
 wire                        Out_HandShake;
 wire                        In_HandShake;
 wire [SORT_LEN      -1 : 0] cur_insert;
@@ -72,29 +73,34 @@ assign In_HandShake = KNNINS_LopVld & INSKNN_LopRdy;
 genvar i;
 generate 
     for(i=0; i<SORT_LEN; i=i+1) begin
-        always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-                IdxArray[i]  <= 0;
-                DistArray[i] <= -1;
-            end else if (Out_HandShake) begin
-                IdxArray[i]  <= 0;
-                DistArray[i] <= -1;                
-            end else if (last_shift[i] & In_HandShake) begin
-                if(i!=0) begin
-                    IdxArray[i]  <= IdxArray[i-1];
-                    DistArray[i] <= DistArray[i-1];
-                end else if(i==0) begin
-                    IdxArray[i]  <= 0; // Not exist
-                    DistArray[i] <= 0;
+            always @(posedge clk or negedge rst_n) begin
+                if (!rst_n) begin
+                    IdxArray[i]  <= 0;
+                    DistArray[i] <= -1;
+                if (i < KNNINS_CfgK) begin
+                    end else if (Out_HandShake) begin
+                        IdxArray[i]  <= 0;
+                        DistArray[i] <= -1;                
+                    end else if (last_shift[i] & In_HandShake) begin
+                        if(i!=0) begin
+                            IdxArray[i]  <= IdxArray[i-1];
+                            DistArray[i] <= DistArray[i-1];
+                        end else if(i==0) begin
+                            IdxArray[i]  <= 0; // Not exist
+                            DistArray[i] <= 0;
+                        end
+                    end else if (cur_insert[i] & In_HandShake) begin
+                        IdxArray[i]  <= Idx;
+                        DistArray[i] <= Dist;
+                    end
+                end else begin 
+                    IdxArray[i]  <= 0;
+                    DistArray[i] <= -1;
                 end
-            end else if (cur_insert[i] & In_HandShake) begin
-                IdxArray[i]  <= Idx;
-                DistArray[i] <= Dist;
             end
-        end
-        assign cur_insert[i]   = !last_shift[i] & (DistArray[i] > Dist);
-        assign last_shift[i+1] = last_shift[i] | cur_insert[i];
-        assign INSKNN_Map[IDX_WIDTH*i +: IDX_WIDTH] = IdxArray[i];
+        assign cur_insert[i]                        = (i < KNNINS_CfgK) ? !last_shift[i] & (DistArray[i] > Dist)    : 1'b0;
+        assign last_shift[i+1]                      = (i < KNNINS_CfgK) ? last_shift[i] | cur_insert[i]             : 1'b0;
+        assign INSKNN_Map[i]                        = (i < KNNINS_CfgK) ? IdxArray[i]                               : 0;
     end
 
 endgenerate

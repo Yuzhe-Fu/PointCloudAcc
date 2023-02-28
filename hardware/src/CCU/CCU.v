@@ -13,113 +13,147 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module CCU #(
-    parameter ISA_SRAM_WORD         = 64,
     parameter SRAM_WIDTH            = 256,
     parameter PORT_WIDTH            = 128,
     parameter POOL_CORE             = 6,
-    parameter CLOCK_PERIOD          = 10,
 
     parameter ADDR_WIDTH            = 16,
     parameter DRAM_ADDR_WIDTH       = 32,
-    parameter GLB_NUM_RDPORT        = 2,
-    parameter GLB_NUM_WRPORT        = 3,
+    parameter GLB_NUM_RDPORT        = 12,
+    parameter GLB_NUM_WRPORT        = 13,
     parameter IDX_WIDTH             = 16,
     parameter CHN_WIDTH             = 12,
     parameter QNTSL_WIDTH           = 20,
     parameter ACT_WIDTH             = 8,
-    parameter MAP_WIDTH             = 6,
+    parameter MAP_WIDTH             = 5,
     parameter NUM_LAYER_WIDTH       = 20,
-    parameter ISARDWORD_WIDTH       = 4,
     parameter NUM_MODULE            = 5,
-    parameter OPNUM                 = NUM_MODULE + GLB_NUM_WRPORT + GLB_NUM_RDPORT + POOL_CORE-1, // 5(module) + 9(GLBWR) + (11 + 5)(GLBRD(POOL_CORE*6))
 
     parameter MAXPAR                = 32,
     parameter NUM_BANK              = 32,
-    parameter ITF_NUM_RDPORT        = 2,
-    parameter ITF_NUM_WRPORT        = 4
+    parameter ITF_NUM_RDPORT        = 12,
+    parameter ITF_NUM_WRPORT        = 14,
+    parameter NUM_FPC               = 4,
+    parameter OPNUM                 = NUM_MODULE + (NUM_FPC -1) + (POOL_CORE -1),
+    parameter MAXPAR_WIDTH          = $clog2(MAXPAR) + 1 // MAXPAR=2 -> 2
 
     )(
-    input                               clk                     ,
-    input                               rst_n                   ,
-    input                                               TOPCCU_start,
-    output                                              CCUTOP_NetFnh,
-    output                                              CCUITF_Empty ,
-    output [ADDR_WIDTH                          -1 : 0] CCUITF_ReqNum,
-    output [ADDR_WIDTH                          -1 : 0] CCUITF_Addr  ,
+    input                                   clk                     ,
+    input                                   rst_n                   ,
+    input                                   TOPCCU_start            ,
+    output                                  CCUTOP_NetFnh           ,
+
         // Configure
-    input   [SRAM_WIDTH                         -1 : 0] ITFCCU_Dat,             
-    input                                               ITFCCU_DatVld,          
-    output                                              CCUITF_DatRdy,
+    output [ADDR_WIDTH              -1 : 0] CCUGLB_ISARdAddr        ,
+    output                                  CCUGLB_ISARdAddrVld     ,
+    input                                   GLBCCU_ISARdAddrRdy     ,
+    input  [SRAM_WIDTH              -1 : 0] GLBCCU_ISARdDat         ,             
+    input                                   GLBCCU_ISARdDatVld      ,          
+    output                                  CCUGLB_ISARdDatRdy      ,
+    output [ADDR_WIDTH              -1 : 0] CCUTOP_MduISARdAddrMin  , // To avoid ITF over-write ISARAM of GLB
+    output                                  CCUITF_Rst              , 
+    output reg [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0][DRAM_ADDR_WIDTH-1 : 0] CCUITF_DRAMBaseAddr,
 
-    output  [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_BaseAddr,
+    output     [NUM_FPC             -1 : 0] CCUFPS_Rst              ,
+    output     [NUM_FPC             -1 : 0] CCUFPS_CfgVld           ,
+    input      [NUM_FPC             -1 : 0] FPSCCU_CfgRdy           ,        
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNip           ,                    
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgNop           , 
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseRdAddr ,
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgCrdBaseWrAddr ,
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgIdxBaseWrAddr ,
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgMaskBaseAddr  ,   
+    output  reg[IDX_WIDTH*NUM_FPC   -1 : 0] CCUFPS_CfgDistBaseAddr  ,
 
-    output                                              CCUSYA_Rst,  //
-    output                                              CCUSYA_CfgVld,
-    input                                               SYACCU_CfgRdy,
-    output  reg[2                               -1 : 0] CCUSYA_CfgMod,
-    output  reg[IDX_WIDTH                       -1 : 0] CCUSYA_CfgNip, 
-    output  reg[CHN_WIDTH                       -1 : 0] CCUSYA_CfgChi,         
-    output  reg[QNTSL_WIDTH                     -1 : 0] CCUSYA_CfgScale,        
-    output  reg[ACT_WIDTH                       -1 : 0] CCUSYA_CfgShift,        
-    output  reg[ACT_WIDTH                       -1 : 0] CCUSYA_CfgZp,
+    output                                  CCUKNN_Rst              ,
+    output                                  CCUKNN_CfgVld           ,
+    input                                   KNNCCU_CfgRdy           ,        
+    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgNip           ,                    
+    output  reg [(MAP_WIDTH + 1)    -1 : 0] CCUKNN_CfgK             , 
+    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgCrdRdAddr     ,
+    output  reg [IDX_WIDTH          -1 : 0] CCUKNN_CfgMapWrAddr     ,
 
-    output                                              CCUPOL_Rst,
-    output                                              CCUPOL_CfgVld,
-    input                                               POLCCU_CfgRdy,
-    output  reg [MAP_WIDTH                      -1 : 0] CCUPOL_CfgK,
-    output  reg [IDX_WIDTH                      -1 : 0] CCUPOL_CfgNip,
-    output  reg [CHN_WIDTH                      -1 : 0] CCUPOL_CfgChi,
-    output  reg [IDX_WIDTH*POOL_CORE            -1 : 0] CCUPOL_AddrMin,
-    output  reg [IDX_WIDTH*POOL_CORE            -1 : 0] CCUPOL_AddrMax,// Not Included
+    output                                  CCUSYA_Rst              ,  //
+    output                                  CCUSYA_CfgVld           ,
+    input                                   SYACCU_CfgRdy           ,
+    output  reg[2                   -1 : 0] CCUSYA_CfgMod           ,
+    output  reg                             CCUSYA_CfgOfmPhaseShift ,
+    output  reg[CHN_WIDTH           -1 : 0] CCUSYA_CfgChn           ,         
+    output  reg[QNTSL_WIDTH         -1 : 0] CCUSYA_CfgScale         ,        
+    output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgShift         ,        
+    output  reg[ACT_WIDTH           -1 : 0] CCUSYA_CfgZp            ,
+    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNumGrpPerTile,
+    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNumTilIfm    ,
+    output  reg[IDX_WIDTH           -1 : 0] CCUSYA_CfgNumTilFlt    ,
+    output  reg                             CCUSYA_CfgLopOrd       ,
+    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgActRdBaseAddr ,
+    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgWgtRdBaseAddr ,
+    output  reg[ADDR_WIDTH          -1 : 0] CCUSYA_CfgOfmWrBaseAddr ,
 
-    output                                              CCUFPS_Rst   ,
-    output                                              CCUFPS_CfgVld,
-    input                                               FPSCCU_CfgRdy,        
-    output  reg [IDX_WIDTH                      -1 : 0] CCUFPS_CfgNip,                    
-    output  reg [IDX_WIDTH                      -1 : 0] CCUFPS_CfgNop, 
-
-    output                                              CCUKNN_Rst   ,
-    output                                              CCUKNN_CfgVld,
-    input                                               KNNCCU_CfgRdy,        
-    output  reg [IDX_WIDTH                      -1 : 0] CCUKNN_CfgNip,                    
-    output  reg [MAP_WIDTH                      -1 : 0] CCUKNN_CfgK  , 
-
-    output                                              CCUGLB_Rst,
-    output [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] CCUGLB_CfgVld ,         
-    input  [GLB_NUM_RDPORT+GLB_NUM_WRPORT               -1 : 0] GLBCCU_CfgRdy ,         
-    output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK  -1 : 0] CCUGLB_CfgPortBankFlag ,
-    output reg [ADDR_WIDTH*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)  -1 : 0] CCUGLB_CfgPortNum, 
-    output reg [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)     -1 : 0] CCUGLB_CfgPortParBank,  
-    output reg [GLB_NUM_RDPORT+GLB_NUM_WRPORT                  -1 : 0] CCUGLB_CfgPortLoop
+    output      [POOL_CORE              -1 : 0] CCUPOL_Rst          ,
+    output      [POOL_CORE              -1 : 0] CCUPOL_CfgVld       ,
+    input       [POOL_CORE              -1 : 0] POLCCU_CfgRdy       ,
+    output  reg [(MAP_WIDTH+1)*POOL_CORE-1 : 0] CCUPOL_CfgK         ,
+    output  reg [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip       ,
+    output  reg [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn       ,
+             
+    output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][NUM_BANK    -1 : 0] CCUTOP_CfgPortBankFlag ,
+    output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][MAXPAR_WIDTH-1 : 0] CCUTOP_CfgPortParBank
 
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
 localparam OPCODE_WIDTH = 8;
-localparam ISA_SRAM_DEPTH_WIDTH = $clog2(ISA_SRAM_WORD);
 
 localparam IDLE     = 4'b0000;
-localparam RD_ISA   = 4'b0001;
-localparam IDLE_CFG = 4'b0010;
+localparam IDLE_CFG = 4'b0001;
+localparam CFG      = 4'b0010;
 localparam NETFNH   = 4'b0011;
+
+localparam OPCODE_CCU   = 0;
+localparam OPCODE_FPS   = 1;
+localparam OPCODE_KNN   = 2;
+localparam OPCODE_SYA   = 3;
+localparam OPCODE_POL   = 4;
+
+localparam GLBWRIDX_ITFISA = 0; 
+localparam GLBWRIDX_ITFCRD = 1; 
+localparam GLBWRIDX_ITFMAP = 2; 
+localparam GLBWRIDX_ITFACT = 3; 
+localparam GLBWRIDX_ITFWGT = 4; 
+localparam GLBWRIDX_FPSMSK = 5; 
+localparam GLBWRIDX_FPSCRD = 6; 
+localparam GLBWRIDX_FPSDST = 7; 
+localparam GLBWRIDX_FPSIDX = 8; 
+localparam GLBWRIDX_KNNMAP = 9;
+localparam GLBWRIDX_SYAOFM = 10;
+localparam GLBWRIDX_POLOFM = 11;
+                                
+localparam GLBRDIDX_ITFMAP = 0; 
+localparam GLBRDIDX_ITFOFM = 1; 
+localparam GLBRDIDX_ITFIDX = 2; 
+localparam GLBRDIDX_CCUISA = 3; 
+localparam GLBRDIDX_FPSMSK = 4; 
+localparam GLBRDIDX_FPSCRD = 5; 
+localparam GLBRDIDX_FPSDST = 6; 
+localparam GLBRDIDX_KNNCRD = 7; 
+localparam GLBRDIDX_SYAACT = 8; 
+localparam GLBRDIDX_SYAWGT = 9; 
+localparam GLBRDIDX_POLMAP = 10;
+localparam GLBRDIDX_POLOFM = 11;
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
 wire                                        ISA_Full;
 wire                                        ISA_Empty;
-reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_WrAddr;
-wire [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddr;
-reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddr_Array [0 : OPNUM -1];
-wire [(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)*OPNUM-1 : 0] ISA_RdAddr1D;
-reg [NUM_LAYER_WIDTH+ISARDWORD_WIDTH-1 : 0] ISA_RdAddrMin;
+reg [ADDR_WIDTH                     -1 : 0] ISA_WrAddr;
+reg [OPNUM -1 : 0][(ADDR_WIDTH)     -1 : 0] CntMduISARdAddr;
 wire                                        ISA_WrEn;
 wire                                        ISA_RdEn;
-wire [ISARDWORD_WIDTH               -1 : 0] ISA_CntRdWord;
-wire[ISARDWORD_WIDTH                -1 : 0] ISA_CntRdWord_d;
-
-wire [PORT_WIDTH                    -1 : 0] ISA_DatOut;
+wire[ADDR_WIDTH                     -1 : 0] CntISARdWord_s1;
+wire[ADDR_WIDTH                     -1 : 0] ISA_CntRdWord_d;
 reg                                         ISA_DatOutVld;
 
 reg [NUM_LAYER_WIDTH                -1 : 0] CfgNumLy;
@@ -128,13 +162,11 @@ wire [OPCODE_WIDTH                  -1 : 0] OpCode;
 wire                                        OpCodeMatch;
 reg [5                              -1 : 0] OpNumWord[0 : OPNUM -1];
 reg [OPCODE_WIDTH                   -1 : 0] StateCode[0 : OPNUM -1];
-reg [DRAM_ADDR_WIDTH                   -1 : 0] DramAddr[0 : GLB_NUM_WRPORT+GLB_NUM_RDPORT -1];
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramAddr[0 : GLB_NUM_WRPORT+GLB_NUM_RDPORT -1];
 
 reg [NUM_LAYER_WIDTH                -1 : 0] NumLy;
-reg [8                              -1 : 0] Mode;
-
-reg [CHN_WIDTH                      -1 : 0] Cho;
-wire [$clog2(OPNUM)                  -1 : 0] AddrRdMinIdx;
+reg [OPCODE_WIDTH                     -1 : 0] Mode;
+wire [$clog2(OPNUM)                 -1 : 0] AddrRdMinIdx;
 
 wire                                        PISO_ISAInRdy;
 wire [PORT_WIDTH                    -1 : 0] PISO_ISAOut;
@@ -144,47 +176,45 @@ reg                                         Debug_TriggerSYACfgHS;
 integer                                     int_i;
 wire [OPNUM                         -1 : 0] CfgRdy;
 reg  [OPNUM                         -1 : 0] CfgVld;
-wire [$clog2(OPNUM)                  -1 : 0] ArbCfgRdyIdx;
-reg  [$clog2(OPNUM)                  -1 : 0] ArbCfgRdyIdx_d;
+wire [$clog2(OPNUM)                 -1 : 0] ArbCfgRdyIdx;
+reg  [$clog2(OPNUM)                 -1 : 0] ArbCfgRdyIdx_s0;
+reg  [$clog2(OPNUM)                 -1 : 0] ArbCfgRdyIdx_s1;
+reg  [$clog2(OPNUM)                 -1 : 0] ArbCfgRdyIdx_s2;
 reg                                         CCUTOP_CfgRdy;   
-wire                                        CCUTOP_CfgVld;   
+wire                                        CCUTOP_CfgVld;  
+wire                                        Ovf_CntISARdWord_s1;
+wire                                        handshake_s1;
+
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
 
 
-reg [OPCODE_WIDTH      -1 : 0] state       ;
-reg [OPCODE_WIDTH      -1 : 0] next_state  ;
+reg [4      -1 : 0] state       ;
+reg [4      -1 : 0] state_s1       ;
+reg [4      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE    :   if( TOPCCU_start)
-                        next_state <= RD_ISA; //
+                        next_state <= IDLE_CFG; //
                     else
                         next_state <= IDLE;
 
-        RD_ISA  :   if( ISA_Full ) // 
-                        next_state <= IDLE_CFG;
-                    else
-                        next_state <= RD_ISA;
-
-        IDLE_CFG:   if (NumLy == CfgNumLy & CfgNumLy != 0)
-                        next_state <= NETFNH;
-                    else if ( ISA_Empty )
-                        next_state <= RD_ISA;
-                    else if ( |CfgRdy ) begin
-                            next_state <= StateCode[ArbCfgRdyIdx];
-                        end
+        IDLE_CFG:   if ( |CfgRdy)
+                        next_state <= CFG;
                     else 
                         next_state <= IDLE_CFG;
 
-        NETFNH     :   next_state <= IDLE;
-        default :   if ( state[7] ) begin
-                        if (CfgRdy[ArbCfgRdyIdx_d] & CfgVld [ArbCfgRdyIdx_d])
-                            next_state <= IDLE_CFG; // Turn back
-                        else 
-                            next_state <= state; // Hold
-                    end else 
-                        next_state <= IDLE;
+        CFG     :   if (NumLy == CfgNumLy & CfgNumLy != 0)
+                        next_state <= NETFNH;
+                    else if(CfgVld[ArbCfgRdyIdx_s2] & CfgRdy[ArbCfgRdyIdx_s2] )
+                        next_state <= IDLE_CFG;
+                    else
+                        next_state <= CFG;
+
+        NETFNH  :       next_state <= IDLE;
+
+        default :       next_state <= IDLE;
     endcase
 end
 always @ ( posedge clk or negedge rst_n ) begin
@@ -204,8 +234,8 @@ always @(posedge clk or negedge rst_n) begin
         NumLy <= 0;
     end else if(state ==IDLE) begin
         NumLy <= 0;
-    end else if(state == NETFNH) begin // ???????: transfer to network config
-        NumLy <= NumLy + 1;
+    // end else if(state == NETFNH) begin
+    //     NumLy <= NumLy + 1;
     end
 end
 
@@ -214,39 +244,10 @@ always @(posedge clk or negedge rst_n) begin
         CCUTOP_CfgRdy <= 1'b1;
     end else if(CCUTOP_CfgVld & CCUTOP_CfgRdy) begin // HS
         CCUTOP_CfgRdy <= 1'b0;
-    end else if(state == IDLE) begin // ???????: transfer to network config
+    end else if(state == IDLE) begin
         CCUTOP_CfgRdy <= 1'b1;
     end
 end
-
-//=====================================================================================================================
-// Logic Design 3: ISA RAM Write
-//=====================================================================================================================
-// Write Path
-assign CCUITF_Empty = ISA_Empty;
-
-// ISA_Empty number (only when PISO is empty indicating ITFCCU_Dat witen into ISA_RAM)
-assign CCUITF_ReqNum = PISO_ISAOutVld ? 0 : ((ISA_SRAM_WORD - (ISA_WrAddr - ISA_RdAddrMin) )>>1)<<1; // make sure 2times
-assign CCUITF_Addr = 0;
-
-assign CCUITF_DatRdy = state == RD_ISA & PISO_ISAInRdy;
-
-assign ISA_WrEn = PISO_ISAOutVld & PISO_ISAOutRdy;
-assign PISO_ISAOutRdy = !ISA_Full;
-
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        ISA_WrAddr <= 0;
-    end else if (state == IDLE ) begin
-        ISA_WrAddr <= 0;
-    end else if (ISA_WrEn ) begin
-        ISA_WrAddr <= ISA_WrAddr + 1;
-    end
-end
-
-assign ISA_Full = ISA_WrAddr - ISA_RdAddrMin == ISA_SRAM_WORD;
-assign ISA_Empty = ISA_WrAddr == ISA_RdAddrMin;
-
 
 //=====================================================================================================================
 // Logic Design 3: Req and Ack of Cfg
@@ -254,268 +255,326 @@ assign ISA_Empty = ISA_WrAddr == ISA_RdAddrMin;
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        OpNumWord[0] = 1;// localparam TOP = 1;
-        OpNumWord[1] = 1;// localparam SYA = 2;
-        OpNumWord[2] = 3;// localparam POL = 2;
-        OpNumWord[3] = 1;// localparam FPS = 1;
-        OpNumWord[4] = 1;// localparam KNN = 1;
-        for (int_i =0; int_i < OPNUM;int_i = int_i + 1) begin
-            StateCode[int_i] = 8'd128 + int_i; // 8'b1000_0000 + 0
-            if (int_i >= 4)
-                OpNumWord[int_i] <= 1;
-        end
-
+        OpNumWord[0] = 1;// localparam OPCODE_CCU             = 0;
+        OpNumWord[1] = 10;// localparam OPCODE_FPS             = 1;
+        OpNumWord[2] = 1;// localparam OPCODE_KNN             = 2;
+        OpNumWord[3] = 2;// localparam OPCODE_SYA             = 3;
+        OpNumWord[4] = 4;// localparam OPCODE_POL             = 4;
     end
 end
 
 // CfgRdy -> Req
-assign CfgRdy = { GLBCCU_CfgRdy, KNNCCU_CfgRdy, FPSCCU_CfgRdy,  POLCCU_CfgRdy, SYACCU_CfgRdy & !Debug_TriggerSYACfgHS, CCUTOP_CfgRdy};
+// Test POL
+assign CfgRdy = {1'b0, 1'b0, 1'b0, FPSCCU_CfgRdy, CCUTOP_CfgRdy}; // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
-    .req ( CfgRdy ),
-    .gnt (  ),
-    .arb_port  ( ArbCfgRdyIdx  )
+    .req ( CfgRdy               ),
+    .gnt (                      ),
+    .arb_port  ( ArbCfgRdyIdx   )
 );
+
+// Reg Update
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        ArbCfgRdyIdx_d <= 0;
-    end else if ( state[7] & !next_state[7] ) begin // Turn back IDLE_CFG-> reset
-        ArbCfgRdyIdx_d <= 0;
-    end else if ( !state[7] & next_state[7] ) begin // Turn to CFG-> latch
-        ArbCfgRdyIdx_d <= ArbCfgRdyIdx;
+        ArbCfgRdyIdx_s0 <= 0;
+    end else if ( state == IDLE_CFG & next_state == CFG ) begin
+        ArbCfgRdyIdx_s0 <= ArbCfgRdyIdx;
     end
 end
 
-// CfgVld -> Ack
-genvar i;
+//=====================================================================================================================
+// Logic Design: s1-ISA_RAM Read
+//=====================================================================================================================
+genvar gv_i;
 generate
-    for(i=0; i<OPNUM; i=i+1) begin
-        always @(posedge clk or negedge rst_n)  begin
-            if (!rst_n) begin
-                CfgVld[i] <= 0;
-            end else if ( CfgVld[i] & CfgRdy[i] ) begin
-                CfgVld[i] <= 0;
-            end else if ( state == StateCode[i] & ISA_CntRdWord == OpNumWord[i]) begin
-                CfgVld[i] <= 1'b1;
-            end
-        end
+    for(gv_i=0; gv_i<OPNUM; gv_i=gv_i+1) begin: GEN_CntMduISARdAddr
+        wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH -1;
+        counter#(
+            .COUNT_WIDTH ( ADDR_WIDTH )
+        )u_counter_CntMduISARdAddr(
+            .CLK       ( clk            ),
+            .RESET_N   ( rst_n          ),
+            .CLEAR     ( state == IDLE  ),
+            .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+            .INC       ( (CCUGLB_ISARdAddrVld & GLBCCU_ISARdAddrRdy) & ArbCfgRdyIdx_s0 == gv_i ),
+            .DEC       ( 1'b0           ),
+            .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+            .MAX_COUNT ( MaxCnt         ),
+            .OVERFLOW  (                ),
+            .UNDERFLOW (                ),
+            .COUNT     ( CntMduISARdAddr[gv_i])
+        );
     end
 endgenerate
 
-assign {CCUGLB_CfgVld, CCUKNN_CfgVld, CCUFPS_CfgVld,  CCUPOL_CfgVld, CCUSYA_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign CCUGLB_ISARdAddr = CntMduISARdAddr[ArbCfgRdyIdx_s0];
+assign CCUGLB_ISARdAddrVld = state==CFG & !(Ovf_CntISARdWord_s1 & OpCodeMatch & GLBCCU_ISARdDatVld);
 
-//=====================================================================================================================
-// Logic Design: ISA_RAM Read
-//=====================================================================================================================
-
-generate
-    for(i=0; i<OPNUM; i=i+1) begin
-        always @(posedge clk or negedge rst_n)  begin
-            if (!rst_n) begin
-                ISA_RdAddr_Array[i] <= 0;
-            end else if ( state == IDLE ) begin
-                ISA_RdAddr_Array[i] <= 0;
-            end else if ( ISA_RdEn & state[7] & state[0 +: 7] == i) begin
-                ISA_RdAddr_Array[i] <= ISA_RdAddr_Array[i] + 1;
-            end
-        end
-        assign ISA_RdAddr1D[(NUM_LAYER_WIDTH+ISARDWORD_WIDTH)*i +: (NUM_LAYER_WIDTH+ISARDWORD_WIDTH)] = ISA_RdAddr_Array[i];
-    end
-endgenerate
-
-assign ISA_CntRdWord = state[7] ? ( (ISA_RdEn_d & OpCodeMatch) ? ISA_CntRdWord_d + 1 : ISA_CntRdWord_d ) : 0;
-assign OpCodeMatch = state[7] & OpCode == state;
-assign ISA_RdEn = state[7] & !(ISA_CntRdWord == OpNumWord[state[0 +: 7]] & OpCodeMatch);
-assign ISA_RdAddr = ISA_RdAddr_Array[state[0 +: 7]];
-
+// Reg Update
 always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        ISA_DatOutVld <= 0;
-    end else if ( !next_state[7] ) begin // finish CFG
-        ISA_DatOutVld <= 0;
-    end else if (ISA_RdEn ) begin
-        ISA_DatOutVld <= 1;
-    end
+    if(!rst_n)
+        {ArbCfgRdyIdx_s1, state_s1} <= 0;
+    else if (CCUGLB_ISARdAddrVld & GLBCCU_ISARdAddrRdy)
+        {ArbCfgRdyIdx_s1, state_s1} <= {ArbCfgRdyIdx_s0, state};
 end
 
-
 //=====================================================================================================================
-// Logic Design 3: ISA Decoder
+// Logic Design: s2
 //=====================================================================================================================
-assign OpCode = ISA_DatOutVld ? ISA_DatOut[0 +: 8] : {8{1'b1}};
+assign CCUGLB_ISARdDatRdy = state_s1 == CFG;
+assign handshake_s1 = GLBCCU_ISARdDatVld & CCUGLB_ISARdDatRdy;
+assign OpCode = GLBCCU_ISARdDatVld? GLBCCU_ISARdDat[0 +: OPCODE_WIDTH] : {OPCODE_WIDTH{1'b1}};
+assign OpCodeMatch = OpCode == ArbCfgRdyIdx_s1;
 
+wire [ADDR_WIDTH     -1 : 0] MaxCntISARdWord= OpNumWord[ArbCfgRdyIdx_s1] -1;
+
+// Reg Update
+counter#(
+    .COUNT_WIDTH ( ADDR_WIDTH )
+)u_counter_CntISARdWord(
+    .CLK       ( clk            ),
+    .RESET_N   ( rst_n          ),
+    .CLEAR     (                ),
+    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+    .INC       ( handshake_s1 & OpCodeMatch ),
+    .DEC       ( 1'b0           ),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+    .MAX_COUNT ( MaxCntISARdWord),
+    .OVERFLOW  ( Ovf_CntISARdWord_s1),
+    .UNDERFLOW (                ),
+    .COUNT     ( CntISARdWord_s1)
+);
+
+// ISA Decoder
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         CfgNumLy                <= 0;
         Mode                    <= 0;
-        CCUSYA_CfgNip           <= 0;
-        CCUSYA_CfgChi           <= 0;
-        Cho                     <= 0;
+        CCUSYA_CfgChn           <= 0;
         CCUSYA_CfgScale         <= 0;
         CCUSYA_CfgShift         <= 0;
         CCUSYA_CfgZp            <= 0;
         CCUSYA_CfgMod           <= 0;
+        CCUSYA_CfgOfmPhaseShift <= 0;
+        CCUSYA_CfgNumGrpPerTile <= 0;
+        CCUSYA_CfgNumTilIfm     <= 0;
+        CCUSYA_CfgNumTilFlt     <= 0;
+        CCUSYA_CfgLopOrd        <= 0;
         CCUPOL_CfgNip           <= 0;
-        CCUPOL_CfgChi           <= 0;
-        CCUPOL_AddrMin          <= 0;
-        CCUPOL_AddrMax          <= 0;
+        CCUPOL_CfgChn           <= 0;
         CCUPOL_CfgK             <= 0;
         CCUFPS_CfgNip           <= 0;
         CCUFPS_CfgNop           <= 0;
         CCUKNN_CfgNip           <= 0;
         CCUKNN_CfgK             <= 0;
-        for(int_i = 0; int_i < GLB_NUM_WRPORT + GLB_NUM_RDPORT; int_i=int_i+1) begin
-            // GLB Ports
-            CCUGLB_CfgPortBankFlag[NUM_BANK* int_i +: NUM_BANK] <= 'd0;
-            CCUGLB_CfgPortNum[ADDR_WIDTH*int_i +: ADDR_WIDTH] <= 'd0;
-            CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= 'd0;
-            CCUGLB_CfgPortLoop[int_i] <= 0;
-            // GLB read/write DRAM by ITF
-            DramAddr[int_i]     <= 'd0;
+        CCUFPS_CfgCrdBaseRdAddr <= 0;
+        CCUFPS_CfgCrdBaseWrAddr <= 0;
+        CCUFPS_CfgIdxBaseWrAddr <= 0;
+        CCUFPS_CfgMaskBaseAddr  <= 0;
+        CCUFPS_CfgDistBaseAddr  <= 0;
+        CCUKNN_CfgCrdRdAddr     <= 0;
+        CCUKNN_CfgMapWrAddr     <= 0;
+        CCUSYA_CfgActRdBaseAddr <= 0;
+        CCUSYA_CfgWgtRdBaseAddr <= 0;
+        CCUSYA_CfgOfmWrBaseAddr <= 0;
+        for(int_i = 0; int_i < GLB_NUM_RDPORT + GLB_NUM_WRPORT; int_i=int_i+1) begin
+            if(int_i == GLBWRIDX_ITFISA) begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA write bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd1;
+            end else if(int_i == GLB_NUM_WRPORT + GLBRDIDX_CCUISA) begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA read bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd1;
+
+            end else begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 0; // ISA read bank0
+                CCUTOP_CfgPortParBank[int_i] <= 'd1;   // default  
+            end 
+        end 
+        for(int_i = 0; int_i < ITF_NUM_RDPORT+ITF_NUM_WRPORT; int_i=int_i+1) begin
+            if(int_i == GLBWRIDX_ITFISA)
+                CCUITF_DRAMBaseAddr[int_i]    <= 'd0; // ISA read DramAddr = 0
+            else 
+                CCUITF_DRAMBaseAddr[int_i]    <= 'd0;
         end
-    end else if ( ISA_RdEn_d & OpCodeMatch) begin
-        if ( OpCode == 128 + 0) begin
-            {CfgNumLy, Mode} <= ISA_DatOut[PORT_WIDTH -1 : 8];
 
-        end else if ( OpCode == 128 + 1) begin
-            if (ISA_CntRdWord == 1) begin
-                CCUSYA_CfgNip   <= ISA_DatOut[8  +: 16];
-                CCUSYA_CfgChi   <= ISA_DatOut[24 +: 16];
-                Cho             <= ISA_DatOut[40 +: 16];       
-                CCUSYA_CfgScale <= ISA_DatOut[56 +: 32];       
-                CCUSYA_CfgShift <= ISA_DatOut[88 +:  8];
-                CCUSYA_CfgZp    <= ISA_DatOut[96 +:  8];
-                CCUSYA_CfgMod   <= ISA_DatOut[104+:  8];
+    end else if ( handshake_s1 & OpCodeMatch) begin
+        if ( OpCode == OPCODE_CCU) begin
+            {CfgNumLy, Mode} <= GLBCCU_ISARdDat[OPCODE_WIDTH +: OPCODE_WIDTH + NUM_LAYER_WIDTH ];
+
+        end else if (OpCode == OPCODE_FPS) begin
+                     if(CntISARdWord_s1 == 0) begin
+                CCUFPS_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                     +: IDX_WIDTH*NUM_FPC];
+            end else if(CntISARdWord_s1 == 1) begin
+                CCUFPS_CfgNop                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                     +: IDX_WIDTH*NUM_FPC];
+            end else if(CntISARdWord_s1 == 2) begin
+                CCUFPS_CfgCrdBaseRdAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH                                     +: IDX_WIDTH*NUM_FPC];
+            end else if(CntISARdWord_s1 == 3) begin
+                CCUFPS_CfgCrdBaseWrAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH                                     +: IDX_WIDTH*NUM_FPC];
+            end else if(CntISARdWord_s1 == 4) begin
+                CCUFPS_CfgIdxBaseWrAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH                                     +: IDX_WIDTH*NUM_FPC];
+            end else if(CntISARdWord_s1 == 5) begin
+                CCUFPS_CfgMaskBaseAddr                                  <= GLBCCU_ISARdDat[OPCODE_WIDTH                                     +: IDX_WIDTH*NUM_FPC];
+            end else if(CntISARdWord_s1 == 6) begin
+                CCUFPS_CfgDistBaseAddr                                  <= GLBCCU_ISARdDat[OPCODE_WIDTH                                     +: IDX_WIDTH*NUM_FPC];
+            end else if(CntISARdWord_s1 == 7) begin
+                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                                  +: DRAM_ADDR_WIDTH];
+                CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFIDX]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH                +: DRAM_ADDR_WIDTH];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH*2              +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_FPSCRD]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH*2 + NUM_BANK   +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSMSK                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH*2 + NUM_BANK*2 +: NUM_BANK];
+            end else if(CntISARdWord_s1 == 8) begin
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK]   <= GLBCCU_ISARdDat[OPCODE_WIDTH              +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSDST                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK   +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_FPSDST]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*2 +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSIDX                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*3 +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_ITFIDX]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*4 +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_FPSCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*5 +: NUM_BANK];
+            end else if(CntISARdWord_s1 == 9) begin
+                CCUTOP_CfgPortParBank [GLBWRIDX_ITFCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                    +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*1   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_FPSMSK                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*2   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*3   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_FPSDST                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*4   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_FPSDST]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*5   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_FPSIDX                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*6   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_ITFIDX]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*7   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_FPSCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*8   +: MAXPAR_WIDTH];
             end
 
-        end else if (OpCode == 128 + 2) begin
-            if (ISA_CntRdWord == 1) begin
-                CCUPOL_CfgNip   <= ISA_DatOut[8  +: 16];
-                CCUPOL_CfgChi   <= ISA_DatOut[24 +: 16];// 
-                CCUPOL_CfgK     <= ISA_DatOut[40 +: 16];// 
-            end else if(ISA_CntRdWord == 2) begin  
-                CCUPOL_AddrMin  <= ISA_DatOut[PORT_WIDTH-1 : 8]; // Min BUG with 120 bit
-            end else if(ISA_CntRdWord == 3) begin  
-                CCUPOL_AddrMax  <= ISA_DatOut[PORT_WIDTH-1 : 8];
+        end else if (OpCode == OPCODE_KNN) begin
+            if(CntISARdWord_s1 == 0) begin
+                CCUKNN_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH                                                                 +: IDX_WIDTH];
+                CCUKNN_CfgK                                             <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH                                                     +: IDX_WIDTH];
+                CCUKNN_CfgCrdRdAddr                                     <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*2                                                   +: IDX_WIDTH];
+                CCUKNN_CfgMapWrAddr                                     <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*3                                                   +: IDX_WIDTH];
+                CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*4                                                   +: DRAM_ADDR_WIDTH];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_ITFMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*4 + DRAM_ADDR_WIDTH                                 +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_KNNMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*4 + DRAM_ADDR_WIDTH + NUM_BANK                      +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*4 + DRAM_ADDR_WIDTH + NUM_BANK*2                    +: NUM_BANK];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_ITFMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*4 + DRAM_ADDR_WIDTH + NUM_BANK*3                    +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_KNNMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*4 + DRAM_ADDR_WIDTH + NUM_BANK*3 + MAXPAR_WIDTH     +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + IDX_WIDTH*4 + DRAM_ADDR_WIDTH + NUM_BANK*3 + MAXPAR_WIDTH*2   +: MAXPAR_WIDTH];
             end
 
-        end else if (OpCode == 128 + 3) begin
-            if(ISA_CntRdWord == 1) begin
-                CCUFPS_CfgNip           <= ISA_DatOut[8  +: 16];
-                CCUFPS_CfgNop           <= ISA_DatOut[24 +: 16];
+        end else if ( OpCode == OPCODE_SYA) begin
+            if (CntISARdWord_s1 == 0) begin
+                CCUSYA_CfgShift                                         <= GLBCCU_ISARdDat[OPCODE_WIDTH                                                                         +: ACT_WIDTH];  
+                CCUSYA_CfgZp                                            <= GLBCCU_ISARdDat[OPCODE_WIDTH   + ACT_WIDTH                                                           +: ACT_WIDTH]; 
+                CCUSYA_CfgMod                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH   + ACT_WIDTH*2                                                         +: OPCODE_WIDTH/2];// 4bit
+                CCUSYA_CfgOfmPhaseShift                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*3/2+ ACT_WIDTH*2                                                        +: OPCODE_WIDTH/2];// 4bit
+                CCUSYA_CfgChn                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2                                                         +: CHN_WIDTH];           
+                CCUSYA_CfgNumGrpPerTile                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH                                             +: IDX_WIDTH];
+                CCUSYA_CfgNumTilFlt                                     <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH                                 +: IDX_WIDTH];
+                CCUSYA_CfgNumTilIfm                                     <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH*2                               +: IDX_WIDTH];
+                CCUSYA_CfgLopOrd                                        <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH*3                               +: OPCODE_WIDTH];
+                CCUSYA_CfgActRdBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH*3 + OPCODE_WIDTH                +: ADDR_WIDTH]; 
+                CCUSYA_CfgWgtRdBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH   +: ADDR_WIDTH]; 
+                CCUSYA_CfgOfmWrBaseAddr                                 <= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH*2 +: ADDR_WIDTH]; 
+                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFACT                 ]<= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH*3 +: DRAM_ADDR_WIDTH]; 
+                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFWGT                 ]<= GLBCCU_ISARdDat[OPCODE_WIDTH*2 + ACT_WIDTH*2 + CHN_WIDTH + IDX_WIDTH*3 + OPCODE_WIDTH + ADDR_WIDTH*4 + DRAM_ADDR_WIDTH  +: DRAM_ADDR_WIDTH]; 
+            end else if(CntISARdWord_s1 == 1) begin
+                CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH                                   +: DRAM_ADDR_WIDTH];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH                 +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK      +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*2    +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*3    +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*4    +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_SYAOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*5    +: NUM_BANK];
+
+                CCUTOP_CfgPortParBank [GLBWRIDX_ITFACT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6                    +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH     +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_ITFWGT                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*2   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*3   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_ITFOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*4   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_SYAOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + DRAM_ADDR_WIDTH + NUM_BANK*6 + MAXPAR_WIDTH*5   +: MAXPAR_WIDTH]; // 8+32+192+12=244
             end
-        end else if (OpCode == 128 + 4) begin
-            if(ISA_CntRdWord == 1) begin
-                CCUKNN_CfgNip           <= ISA_DatOut[8  +: 16];
-                CCUKNN_CfgK             <= ISA_DatOut[24 +: 16];
-            end
-        end else for(int_i = 0; int_i < GLB_NUM_WRPORT + GLB_NUM_RDPORT; int_i=int_i+1) begin
-            if ( OpCode == 128 + NUM_MODULE + int_i) begin
-                // GLB Ports
-                CCUGLB_CfgPortBankFlag[NUM_BANK*int_i +: NUM_BANK] <= ISA_DatOut[8  +: 32];
-                CCUGLB_CfgPortNum[ADDR_WIDTH*int_i +: ADDR_WIDTH] <= ISA_DatOut[40 +: 16];
-                CCUGLB_CfgPortParBank[($clog2(MAXPAR) + 1)*int_i +: ($clog2(MAXPAR) + 1)] <= ISA_DatOut[56 +: 8];
-                CCUGLB_CfgPortLoop[int_i] <= ISA_DatOut[64 +: 4];
-                // GLB read/write DRAM by ITF
-                DramAddr[int_i]     <= ISA_DatOut[68   +: 32];
+
+        end else if (OpCode == OPCODE_POL) begin
+            if (CntISARdWord_s1 == 0) begin
+                CCUPOL_CfgNip                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH +: IDX_WIDTH*POOL_CORE];
+            end else if(CntISARdWord_s1 == 1) begin 
+                CCUPOL_CfgChn                                           <= GLBCCU_ISARdDat[OPCODE_WIDTH +: CHN_WIDTH*POOL_CORE];
+            end else if(CntISARdWord_s1 == 2) begin
+                CCUPOL_CfgK                                             <= GLBCCU_ISARdDat[OPCODE_WIDTH +: OPCODE_WIDTH*POOL_CORE]; // 8bit
+                CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1)                                                 +: DRAM_ADDR_WIDTH]; // 8bit; 
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH                               +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK                    +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*2                  +: NUM_BANK];
+                CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM]   <= GLBCCU_ISARdDat[OPCODE_WIDTH*(POOL_CORE + 1) + DRAM_ADDR_WIDTH + NUM_BANK*3                  +: NUM_BANK];
+            end else if(CntISARdWord_s1 == 3) begin
+                for(int_i = 1; int_i < POOL_CORE; int_i = int_i + 1) begin
+                    CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(int_i - 1) +: NUM_BANK]; // 1 bank
                 end
-        end
-               
+                CCUTOP_CfgPortParBank [GLBWRIDX_ITFMAP                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1)                  +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortParBank [GLBWRIDX_POLOFM                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*2 +: MAXPAR_WIDTH];
+                for(int_i = 0; int_i < POOL_CORE; int_i = int_i + 1) begin
+                    CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLOFM + int_i]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + NUM_BANK*(POOL_CORE - 1) + MAXPAR_WIDTH*(3 + int_i) +: MAXPAR_WIDTH];
+                end
+            end 
+        end 
     end
 end
 
+generate
+    for(gv_i=0; gv_i<OPNUM; gv_i=gv_i+1) begin: GEN_CfgVld
+        always @(posedge clk or negedge rst_n)  begin
+            if (!rst_n) begin
+                CfgVld[gv_i] <= 0;
+            end else if ( CfgVld[gv_i] & CfgRdy[gv_i] ) begin
+                CfgVld[gv_i] <= 0;
+            end else if ( state_s1 == CFG & ArbCfgRdyIdx_s1 == gv_i & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch) begin
+                CfgVld[gv_i] <= 1'b1;
+            end
+        end
+    end
+endgenerate
 
+always @(posedge clk or negedge rst_n)  begin
+    if (!rst_n) begin
+        ArbCfgRdyIdx_s2 <= 0;
+    end else if ( state_s1 == CFG & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch)begin
+        ArbCfgRdyIdx_s2 <= ArbCfgRdyIdx_s1;
+    end
+end
+
+wire FPS_CfgVld;
+wire POL_CfgVld;
+
+assign {POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
+assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 //=====================================================================================================================
 // Logic Design 3: Rst
 //=====================================================================================================================
 assign CCUSYA_Rst = state == IDLE;
-assign CCUPOL_Rst = state == IDLE;
-assign CCUFPS_Rst = state == IDLE;
+assign CCUPOL_Rst = {POOL_CORE{state == IDLE}};
+assign CCUFPS_Rst = {NUM_FPC{state == IDLE}};
 assign CCUKNN_Rst = state == IDLE;
-assign CCUGLB_Rst = state == IDLE;
-
+assign CCUITF_Rst = state == IDLE;
 
 //=====================================================================================================================
 // Logic Design 4: GLB Control
 //=====================================================================================================================
 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*0 +: DRAM_ADDR_WIDTH] = 0            ; // ISA
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*1 +: DRAM_ADDR_WIDTH] = DramAddr[0]; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*2 +: DRAM_ADDR_WIDTH] = DramAddr[1]; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*3 +: DRAM_ADDR_WIDTH] = DramAddr[2];//
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*4 +: DRAM_ADDR_WIDTH] = DramAddr[3]; // 
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*5 +: DRAM_ADDR_WIDTH] = DramAddr[9]; // Read
-assign CCUITF_BaseAddr[DRAM_ADDR_WIDTH*6 +: DRAM_ADDR_WIDTH] = DramAddr[10]; // Read
 
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-
-
-PISO#(
-    .DATA_IN_WIDTH ( SRAM_WIDTH ),
-    .DATA_OUT_WIDTH ( PORT_WIDTH )
-)u_PISO_ISAIN(
-    .CLK          ( clk                        ),
-    .RST_N        ( rst_n                      ),
-    .IN_VLD       ( ITFCCU_DatVld & CCUITF_DatRdy ),
-    .IN_LAST      ( 1'b0 ),
-    .IN_DAT       ( ITFCCU_Dat ),
-    .IN_RDY       ( PISO_ISAInRdy                ),
-    .OUT_DAT      ( PISO_ISAOut                     ), // On-chip output to Off-chip 
-    .OUT_VLD      ( PISO_ISAOutVld                  ),
-    .OUT_LAST     (                    ),
-    .OUT_RDY      ( PISO_ISAOutRdy                  )
-);
-
-
-RAM#(
-    .SRAM_BIT     ( PORT_WIDTH   ),
-    .SRAM_BYTE    ( 1            ),
-    .SRAM_WORD    ( ISA_SRAM_WORD),
-    .CLOCK_PERIOD ( CLOCK_PERIOD )
-)u_RAM_ISA(
-    .clk          ( clk          ),
-    .rst_n        ( rst_n        ),
-    .addr_r       ( ISA_RdAddr[0 +: ISA_SRAM_DEPTH_WIDTH]   ),
-    .addr_w       ( ISA_WrAddr[0 +: ISA_SRAM_DEPTH_WIDTH]   ),
-    .read_en      ( ISA_RdEn     ),
-    .write_en     ( ISA_WrEn     ),
-    .data_in      ( PISO_ISAOut   ),
-    .data_out     ( ISA_DatOut     )
-);
-
 MINMAX#(
-    .DATA_WIDTH ( (NUM_LAYER_WIDTH+ISARDWORD_WIDTH) ),
-    .PORT       ( OPNUM ),
-    .MINMAX     ( 0 )
+    .DATA_WIDTH ( ADDR_WIDTH            ),
+    .PORT       ( OPNUM                 ),
+    .MINMAX     ( 0                     )
 )u_MINMAX(
-    .IN         ( ISA_RdAddr1D         ),
-    .IDX        ( AddrRdMinIdx        ),
-    .VALUE      ( ISA_RdAddrMin      )
+    .IN         ( CntMduISARdAddr       ),
+    .IDX        (                       ),
+    .VALUE      ( CCUTOP_MduISARdAddrMin)
 );
 
-
-DELAY#(
-    .NUM_STAGES ( 1 ),
-    .DATA_WIDTH ( 1 )
-)u_DELAY_read_en_d(
-    .CLK        ( clk        ),
-    .RST_N      ( rst_n      ),
-    .DIN        ( ISA_RdEn        ),
-    .DOUT       ( ISA_RdEn_d       )
-);
-
-DELAY#(
-    .NUM_STAGES ( 1 ),
-    .DATA_WIDTH ( ISARDWORD_WIDTH )
-)u_DELAY_cnt_word_d(
-    .CLK        ( clk        ),
-    .RST_N      ( rst_n      ),
-    .DIN        ( ISA_CntRdWord        ),
-    .DOUT       ( ISA_CntRdWord_d       )
-);
+//=====================================================================================================================
+// Debug :
+//=====================================================================================================================
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)

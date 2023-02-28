@@ -1,11 +1,5 @@
 # 问题
-    - FPS按硬件图完善无Mask的
-    - 调整parameter顺序CCU, ITF, FPS, KNN, SYA, POL
-    - 增加ITF写OFM到GLB，GLBWRIDX_ITFOFM = 2;
-    - 增加GLBWRIDX_POLOFM为POOL_CORE个
-    - POL 8个核单独工作
-    - MAP_WIDTH定义为5，但CfgK为MAP_WIDTH +1
-
+    - SYA的4个PE_bank输出ofm怎么连GLB？
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
@@ -15,39 +9,40 @@
 # 参数列表
 | Parameters | default | optional | Descriptions |
 | ---- | ---- | ---- | ---- |
-    parameter CLOCK_PERIOD   = 10,
+parameter CLOCK_PERIOD   = 10,
 
-    parameter PORT_WIDTH     = 128, // 是2的指数
-    parameter SRAM_WIDTH     = 256, // *NUM_BANK要满足最大带宽：SYA最多需要8*32*2+16*8*4=1024bit，
-    parameter SRAM_WORD      = 128, // GLB SRAM深度
-    parameter ADDR_WIDTH     = 16,  // GLB
-    parameter DRAM_ADDR_WIDTH= 32,  
-    parameter ISA_SRAM_WORD  = 64,
-    parameter ITF_NUM_RDPORT = 2,   // 目前只需要MAP和OFM输出到片外
-    parameter ITF_NUM_WRPORT = 6,   // ACT, WGT, OFM, CRD, MAP, ISA(CCU)
-    parameter GLB_NUM_RDPORT = 16,  // 11 + 5(POOL_CORE)
-    parameter GLB_NUM_WRPORT = 9, 
-    parameter MAXPAR         = 32,
-    parameter NUM_BANK       = 32,  //
-    parameter POOL_CORE      = 8,   // 2的指数
-    parameter POOL_COMP_CORE = 64,  // 2的指数
-    parameter NUM_FPC        = 4, // 由FPS的Dist输入带宽决定上限，256/34/2=3.7个核，暂定为4个核并行。
+parameter PORT_WIDTH     = 128, // 是2的指数
+parameter SRAM_WIDTH     = 256, // *NUM_BANK要满足最大带宽：SYA最多需要8*32*2+16*8*4=1024bit，
+parameter SRAM_WORD      = 128, // GLB SRAM深度
+parameter ADDR_WIDTH     = 16,  // GLB
+parameter DRAM_ADDR_WIDTH= 32,  
+parameter ISA_SRAM_WORD  = 64,
+parameter ITF_NUM_RDPORT = 2,   // 目前只需要MAP和OFM输出到片外
+parameter ITF_NUM_WRPORT = 6,   // ACT, WGT, OFM, CRD, MAP, ISA(CCU)
+parameter GLB_NUM_RDPORT = 16,  // 11 + 5(POOL_CORE)
+parameter GLB_NUM_WRPORT = 9, 
+parameter MAXPAR         = 2,   // Max(ACT_WIDTH*POOL_COMP_CORE, ACT_WIDTH*NUM_ROW*NUM_BANK): 2，二者最大值 
+parameter NUM_BANK       = 32,  //
+parameter POOL_CORE      = 8,   // 2的指数
+parameter POOL_COMP_CORE = 64,  // 2的指数
+parameter NUM_FPC        = 8,   // 由FPS的Dist输入带宽决定上限，256/18/2=7.1个核，暂定为8个核并行。
+CUT_MASK_WIDTH           = 32,  // FPS一次处理（截取的）多少个bit的Mask，为FPC核的4倍（向上取2的指数），（在一个SRAM带宽256的情况下）
 
-    // NetWork Parameters
-    parameter IDX_WIDTH      = 16,
-    parameter CHN_WIDTH      = 12,
-    parameter ACT_WIDTH      = 8,
-    parameter MAP_WIDTH      = 5,   // MAP Idx的表示，但CfgK位宽是MAP_WIDTH+1，表实际个数
+// NetWork Parameters
+parameter IDX_WIDTH      = 16,
+parameter CHN_WIDTH      = 12,
+parameter ACT_WIDTH      = 8,
+parameter MAP_WIDTH      = 5,   // MAP Idx的表示，但CfgK位宽是MAP_WIDTH+1，表实际个数
 
-    parameter CRD_WIDTH      = 16,   
-    parameter CRD_DIM        = 3,   
-    parameter NUM_SORT_CORE  = 4,   // 数量是灵活调整的，不由SRAM_WIDTH / (Crd+Idx)决定
+parameter CRD_WIDTH      = 16,   
+parameter CRD_DIM        = 3,   
+parameter NUM_SORT_CORE  = 4,   // 数量是灵活调整的，不由SRAM_WIDTH / (Crd+Idx)决定
 
-    parameter SYA_NUM_ROW    = 16,
-    parameter SYA_NUM_COL    = 16,  // 是正方形，必须等于SYA_NUM_ROW
-    parameter SYA_NUM_BANK   = 4,
-    parameter QNTSL_WIDTH    = 20,
-    parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
+parameter SYA_NUM_ROW    = 16,
+parameter SYA_NUM_COL    = 16,  // 是正方形，必须等于SYA_NUM_ROW
+parameter SYA_NUM_BANK   = 4,
+parameter QNTSL_WIDTH    = 20,
+parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH)
 
 
 

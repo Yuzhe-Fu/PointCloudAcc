@@ -10,115 +10,87 @@
 // Description :
 //========================================================
 module PE_BANK #(
-    parameter NUM_ROW    = 16,
-    parameter NUM_COL    = 16,
-    parameter QNT_WIDTH  = 20,
-    parameter ACT_WIDTH  = 8,
-    parameter WGT_WIDTH  = 8,
-    parameter PSUM_WIDTH = ACT_WIDTH+WGT_WIDTH+10,
-    parameter FM_WIDTH   = ACT_WIDTH
+    parameter ACT_WIDTH = 8,
+    parameter WGT_WIDTH = 8,
+    parameter CHN_WIDTH = 16,
+    parameter NUM_ROW   = 16,
+    parameter NUM_COL   = 16
   )(
-    input                            clk,
-    input                            rst_n,
-    
-    input                            rst_reset,
-    
-    input  [QNT_WIDTH          -1:0] quant_scale,
-    input  [ACT_WIDTH          -1:0] quant_shift,
-    input  [ACT_WIDTH          -1:0] quant_zero_point,
+    input                                       clk,
+    input                                       rst_n,
+    input                                       CCUSYA_Rst     ,
+    input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgShift,
+    input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgZp   ,
 
-    input                            in_vld_left,
-    input                            in_rdy_left,
+    input  [NUM_ROW                     -1 : 0] InActVld_W,
+    input  [NUM_ROW                     -1 : 0] InActChnLast_W,
+    input  [NUM_ROW -1 : 0][ACT_WIDTH   -1 : 0] InAct_W,
+    output [NUM_ROW                     -1 : 0] OutActRdy_W,
 
-    output [FM_WIDTH*NUM_ROW  -1:0]  out_fm,
-    
-    input  [ACT_WIDTH*NUM_ROW -1:0]  in_act_left, 
-    output [ACT_WIDTH*NUM_ROW -1:0]  out_act_right,
-    
-    input  [WGT_WIDTH*NUM_COL -1:0]  in_wgt_above, 
-    output [WGT_WIDTH*NUM_COL -1:0]  out_wgt_below,
+    input  [NUM_COL                     -1 : 0] InWgtVld_N,
+    input  [NUM_COL                     -1 : 0] InWgtChnLast_N,
+    input  [NUM_COL -1 : 0][WGT_WIDTH   -1 : 0] InWgt_N,
+    output [NUM_COL                     -1 : 0] OutWgtRdy_N,
 
-    input                            in_acc_reset_left,
-    output                           out_acc_reset_below,
-    output                           out_acc_reset_right
+    output [NUM_ROW                     -1 : 0] OutActVld_E,
+    output [NUM_ROW                     -1 : 0] OutActChnLast_E,
+    output [NUM_ROW -1 : 0][ACT_WIDTH   -1 : 0] OutAct_E,
+    input  [NUM_ROW                     -1 : 0] InActRdy_E,
+
+    output [NUM_COL                     -1 : 0] OutWgtVld_S,
+    output [NUM_COL                     -1 : 0] OutWgtChnLast_S,
+    output [NUM_COL -1 : 0][WGT_WIDTH   -1 : 0] OutWgt_S,
+    input  [NUM_COL                     -1 : 0] InWgtRdy_S,
+
+    output [NUM_ROW                     -1 : 0] OutPsumVld,
+    output [NUM_ROW -1 : 0][ACT_WIDTH   -1 : 0] OutPsum,
+    input  [NUM_ROW                     -1 : 0] InPsumRdy
 
   );
-//=====================================================================================================================
-// Constant Definition :
-//=====================================================================================================================
-localparam DMUL_WIDTH = ACT_WIDTH*WGT_WIDTH;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_OutWgtVld_S;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_OutWgtChnLast_S;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_OutWgtRdy_N;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_InWgtRdy_S;
+wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH -1 : 0] Bank_OutWgt_S;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_InWgtVld_N;
+wire [NUM_ROW -1:0][NUM_COL -1:0]                   Bank_InWgtChnLast_N;
+wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH -1 : 0] Bank_InWgt_N;
 
-wire in_ena_left = in_vld_left && in_rdy_left;
+assign {OutWgtVld_S, Bank_InWgtVld_N}           = {Bank_OutWgtVld_S, InWgtVld_N};
+assign {OutWgtChnLast_S, Bank_InWgtChnLast_N}   = {Bank_OutWgtChnLast_S, InWgtChnLast_N};
+assign {OutWgt_S, Bank_InWgt_N}                 = {Bank_OutWgt_S, InWgt_N};
+assign {Bank_InWgtRdy_S, OutWgtRdy_N}           = {InWgtRdy_S, Bank_OutWgtRdy_N};
 
-wire [NUM_ROW -1:0][FM_WIDTH   -1:0] row_out_fm;
-
-wire [NUM_ROW -1:0][ACT_WIDTH  -1:0] row_out_act;
-wire [NUM_ROW -1:0][ACT_WIDTH  -1:0] row_din_act = in_act_left;
-
-wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] row_out_wgt;
-wire [NUM_ROW -1:0][NUM_COL -1:0][WGT_WIDTH  -1:0] row_din_wgt = {row_out_wgt[NUM_ROW -2:0], in_wgt_above};
-
-reg  [NUM_ROW -1:0] row_din_vld_reg;
-wire [NUM_ROW -1:0] row_din_vld = {row_din_vld_reg[NUM_ROW -2:0], in_vld_left};
-wire [NUM_ROW -1:0] row_din_rdy = {NUM_ROW{in_rdy_left}};
-
-wire [NUM_ROW -1:0] row_out_acc_reset;
-reg  [NUM_ROW -1:0] row_din_acc_reset_reg;
-wire [NUM_ROW -1:0] row_din_acc_reset = {row_din_acc_reset_reg[NUM_ROW-2:0], in_acc_reset_left};
-
-always @ ( posedge clk or negedge rst_n )begin
-  if( ~rst_n )
-    row_din_acc_reset_reg <= 'd0;
-  else if( rst_reset )
-    row_din_acc_reset_reg <= 'd0;
-  else if( in_rdy_left )
-    row_din_acc_reset_reg <= {row_din_acc_reset_reg[NUM_ROW-2:0], in_acc_reset_left};
-end
-
-always @ ( posedge clk or negedge rst_n )begin
-if( ~rst_n )
-  row_din_vld_reg <= 'd0;
-else if( in_rdy_left )
-  row_din_vld_reg <= {row_din_vld_reg[NUM_ROW -2:0], in_vld_left};
-end
-
-    PE_ROW #(
-      .NUM_PE               ( NUM_COL           ),
-      .QNT_WIDTH            ( QNT_WIDTH         ),
-      .ACT_WIDTH            ( ACT_WIDTH         ),
-      .WGT_WIDTH            ( WGT_WIDTH         ),
-      .PSUM_WIDTH           ( PSUM_WIDTH        ),
-      .FM_WIDTH             ( FM_WIDTH          )
-    ) PE_ROW_U_I [NUM_ROW -1:0](
-    
-      .clk                  ( clk               ),
-      .rst_n                ( rst_n             ),
-      
-      .rst_reset            ( rst_reset         ),
-                            
-      .quant_scale          ( quant_scale       ),
-      .quant_shift          ( quant_shift       ),
-      .quant_zero_point     ( quant_zero_point  ),
-                            
-      .in_vld_left          ( row_din_vld       ),
-      .in_rdy_left          ( row_din_rdy       ),
-      
-      .out_fm               ( row_out_fm        ),
-                            
-      .in_act_left          ( row_din_act       ),
-      .out_act_right        ( row_out_act       ),
-                            
-      .in_wgt_above         ( row_din_wgt       ),
-      .out_wgt_below        ( row_out_wgt       ),
-                            
-      .in_acc_reset_left    ( row_din_acc_reset ),
-      .out_acc_reset_right  ( row_out_acc_reset )
-    );
-
-assign out_act_right = row_out_act;
-assign out_wgt_below = row_out_wgt[NUM_ROW -1];
-assign out_acc_reset_right = row_out_acc_reset[0]; // reset of PE(0, 15)
-assign out_acc_reset_below = row_din_acc_reset_reg[NUM_ROW-1]; // the row-15
-assign out_fm = row_out_fm;
+PE_ROW #(
+    .ACT_WIDTH       ( ACT_WIDTH ),
+    .WGT_WIDTH       ( WGT_WIDTH ),
+    .CHN_WIDTH       ( CHN_WIDTH ),
+    .NUM_PE          ( NUM_COL   )
+)u_PE_ROW [NUM_ROW  - 1 : 0](
+    .clk             ( clk             ),
+    .rst_n           ( rst_n           ),
+    .CCUSYA_Rst      ( CCUSYA_Rst      ),
+    .CCUSYA_CfgShift ( CCUSYA_CfgShift ),
+    .CCUSYA_CfgZp    ( CCUSYA_CfgZp    ),
+    .InActVld_W      ( InActVld_W      ),
+    .InActChnLast_W  ( InActChnLast_W  ),
+    .InAct_W         ( InAct_W         ),
+    .OutActRdy_W     ( OutActRdy_W     ),
+    .InWgtVld_N      ( Bank_InWgtVld_N      ),
+    .InWgtChnLast_N  ( Bank_InWgtChnLast_N  ),
+    .InWgt_N         ( Bank_InWgt_N         ),
+    .OutWgtRdy_N     ( Bank_OutWgtRdy_N     ),
+    .OutActVld_E     ( OutActVld_E     ),
+    .OutActChnLast_E ( OutActChnLast_E ),
+    .OutAct_E        ( OutAct_E        ),
+    .InActRdy_E      ( InActRdy_E      ),
+    .OutWgtVld_S     ( Bank_OutWgtVld_S     ),
+    .OutWgtChnLast_S ( Bank_OutWgtChnLast_S ),
+    .OutWgt_S        ( Bank_OutWgt_S        ),
+    .InWgtRdy_S      ( Bank_InWgtRdy_S      ),
+    .OutPsumVld      ( OutPsumVld      ),
+    .OutPsum         ( OutPsum         ),
+    .InPsumRdy       ( InPsumRdy       )
+);
 
 endmodule
