@@ -11,7 +11,7 @@ module FPGA #(
 	input					i_usart_rx,
 	output					o_usart_tx,
 	
-    input            		gtrefclk_p,            // Differential +ve of reference clock for MGT: very high quality.
+    input            		gtrefclk_p, ??????????           // Differential +ve of reference clock for MGT: very high quality.
     input            		gtrefclk_n,            // Differential -ve of reference clock for MGT: very high quality.
     output           		txp,                   // Differential +ve of serial transmission from PMA to PMD.
     output           		txn,                   // Differential -ve of serial transmission from PMA to PMD.
@@ -68,8 +68,8 @@ wire  [PORT_WIDTH       -1 : 0] IO_Dat;
 wire                            IO_DatVld ;
 wire                            OI_DatRdy ;
 
-reg                             rst_n ;
-reg                             clk   ;
+wire                             rst_n ;
+wire                             clk   ;
 reg [PORT_WIDTH         -1 : 0] Dram[0 : 2**18-1];
 reg [DRAM_ADDR_WIDTH    -1 : 0] addr;
 reg [DRAM_ADDR_WIDTH    -1 : 0] BaseAddr;
@@ -229,7 +229,9 @@ pc_recv_send_top#(
     .ahb_hwdata          ( ahb_hwdata          ),
     .ahb_hwrite          ( ahb_hwrite          ),
     .ahb_sel             ( ahb_sel             ),
-    .nul                 ( nul                 )
+    .nul                 ( nul                 ),
+    .i_reset_n           ( rst_n               ),
+    .i_sys_clk           ( clk                 )
 );
 
 //==============================================================================
