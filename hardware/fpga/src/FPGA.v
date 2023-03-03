@@ -11,13 +11,13 @@ module FPGA #(
 	input					i_usart_rx,
 	output					o_usart_tx,
 	
-    input            		gtrefclk_p, ??????????           // Differential +ve of reference clock for MGT: very high quality.
+    input            		gtrefclk_p,           // Differential +ve of reference clock for MGT: very high quality.
     input            		gtrefclk_n,            // Differential -ve of reference clock for MGT: very high quality.
     output           		txp,                   // Differential +ve of serial transmission from PMA to PMD.
     output           		txn,                   // Differential -ve of serial transmission from PMA to PMD.
     input            		rxp,                   // Differential +ve for serial reception from PMD to PMA.
     input            		rxn,                   // Differential -ve for serial reception from PMD to PMA.	
-	output [13:0]		    DDR3_0_addr,
+	output [15:0]		    DDR3_0_addr,
 	output [2:0]		    DDR3_0_ba,
 	output 				    DDR3_0_cas_n,
 	output [0:0]		    DDR3_0_ck_n,
