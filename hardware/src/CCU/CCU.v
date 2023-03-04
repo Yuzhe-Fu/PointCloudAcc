@@ -33,7 +33,7 @@ module CCU #(
     parameter NUM_BANK              = 32,
     parameter ITF_NUM_RDPORT        = 12,
     parameter ITF_NUM_WRPORT        = 14,
-    parameter NUM_FPC               = 4,
+    parameter NUM_FPC               = 8,
     parameter OPNUM                 = NUM_MODULE + (NUM_FPC -1) + (POOL_CORE -1),
     parameter MAXPAR_WIDTH          = $clog2(MAXPAR) + 1 // MAXPAR=2 -> 2
 
