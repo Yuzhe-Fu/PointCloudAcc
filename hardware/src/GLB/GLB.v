@@ -68,11 +68,15 @@ wire [NUM_BANK                  -1 : 0] Bank_rvalid;
 wire [NUM_BANK                  -1 : 0] Bank_arready;
 wire [NUM_BANK                  -1 : 0] Bank_wready;
 wire [SRAM_WIDTH                -1 : 0] Bank_rdata_array[0 : NUM_BANK     -1];
-wire [$clog2(NUM_WRPORT)        -1 : 0] BankWrPortIdx [0 : NUM_BANK     -1];
-wire [$clog2(NUM_RDPORT)        -1 : 0] BankRdPortIdx [0 : NUM_BANK     -1];
+wire [NUM_BANK  -1 : 0][$clog2(NUM_WRPORT) -1 : 0] BankWrPortIdx;
+wire [NUM_BANK  -1 : 0][$clog2(NUM_WRPORT) -1 : 0] BankWrPortIdx_d;
+wire [NUM_BANK  -1 : 0][$clog2(NUM_RDPORT) -1 : 0] BankRdPortIdx;
+wire [NUM_BANK  -1 : 0][$clog2(NUM_RDPORT) -1 : 0] BankRdPortIdx_d;
 wire [(NUM_WRPORT+NUM_RDPORT)   -1 : 0] BankPortFlag  [0 : NUM_BANK     -1];
 reg  [ADDR_WIDTH                -1 : 0] BankWrAddr_d[0 : NUM_BANK   -1];
+reg  [NUM_BANK                  -1 : 0] BankWrtn; // clarify whether data is written >= one time
 reg  [ADDR_WIDTH                -1 : 0] BankRdAddr_d[0 : NUM_BANK   -1];
+reg  [NUM_BANK                  -1 : 0] BankRden; // clarify whether data is read >= one time 
 
 genvar      gv_i;
 genvar      gv_j;
@@ -134,10 +138,16 @@ generate
         assign wdata = WrPortDat_Array[BankWrPortIdx[gv_i]][SRAM_WIDTH*CurBankIdxInWrPortPar +: SRAM_WIDTH];
 
         always @(posedge clk or negedge rst_n) begin
-            if(!rst_n)
-                BankWrAddr_d[gv_i] <= 0;
-            else if (wvalid & wready ) // Handshake
-                BankWrAddr_d[gv_i] <= WrPortAddr_Array[BankWrPortIdx[gv_i]];
+            if(!rst_n) begin
+                BankWrAddr_d[gv_i]  <= 0;
+                BankWrtn[gv_i]      <= 0;
+            end else if (BankWrPortIdx_d[gv_i] != BankWrPortIdx[gv_i] ) begin // Change Port -> Reset
+                BankWrAddr_d[gv_i]  <= 0;
+                BankWrtn[gv_i]      <= 0;            
+            end else if (wvalid & wready ) begin// Handshake
+                BankWrAddr_d[gv_i]  <= WrPortAddr_Array[BankWrPortIdx[gv_i]];
+                BankWrtn[gv_i]      <= 1'b1;
+            end
         end
 
         //=====================================================================================================================
@@ -154,10 +164,16 @@ generate
 
         // Output
         always @(posedge clk or negedge rst_n) begin
-            if(!rst_n)
-                BankRdAddr_d[gv_i] <= 0;
-            else if (arvalid & arready ) // Handshake
-                BankRdAddr_d[gv_i] <= RdPortAddr_Array[BankRdPortIdx[gv_i]];
+            if(!rst_n) begin
+                BankRdAddr_d[gv_i]  <= 0;
+                BankRden[gv_i]      <= 0;
+            end else if(BankRdPortIdx_d[gv_i] != BankRdPortIdx[gv_i]) begin // Change Port -> Reset
+                BankRdAddr_d[gv_i]  <= 0;
+                BankRden[gv_i]      <= 0;
+            end else if (arvalid & arready ) begin// Handshake
+                BankRdAddr_d[gv_i]  <= RdPortAddr_Array[BankRdPortIdx[gv_i]];
+                BankRden[gv_i]      <= 1'b1;
+            end
         end
 
         prior_arb#(
@@ -183,6 +199,16 @@ generate
     end
 endgenerate
 
+DELAY#(
+    .NUM_STAGES ( 1 ),
+    .DATA_WIDTH ( ( $clog2(NUM_RDPORT) + $clog2(NUM_WRPORT) )*NUM_BANK )
+)u_DELAY_BankWrPortIdx(
+    .CLK        ( clk        ),
+    .RST_N      ( rst_n      ),
+    .DIN        ( {BankRdPortIdx  , BankWrPortIdx   }  ),
+    .DOUT       ( {BankRdPortIdx_d, BankWrPortIdx_d })
+);
+
 //=====================================================================================================================
 // Logic Design 4: Read Port
 //=====================================================================================================================
@@ -198,6 +224,7 @@ generate
         wire [$clog2(NUM_BANK)          : 0] RdPortNumBank;
         wire [ADDR_WIDTH            -1 : 0] RdPortAddrVldRange;
         reg  [ADDR_WIDTH            -1 : 0] RdPortMthWrAddr;
+        reg                                 RdPortMthWrtn;
 
 
         // Map RdPort to Bank
@@ -213,12 +240,14 @@ generate
 
         always@(*) begin // Max WrAddr of allocated banks
             RdPortMthWrAddr = 0;
+            RdPortMthWrtn   = 0;
             for(int_i = 0; int_i < RdPortNumBank; int_i = int_i + 1) begin
                 RdPortMthWrAddr = RdPortMthWrAddr < BankWrAddr_d[RdPort1stBankIdx + int_i]? BankWrAddr_d[RdPort1stBankIdx + int_i] : RdPortMthWrAddr;
+                RdPortMthWrtn = RdPortMthWrtn | BankWrtn[RdPort1stBankIdx + int_i];
             end
         end
         // To Output
-        assign Empty = RdPortAddr_Array[gv_j] >= RdPortMthWrAddr;// ???? CurWrIdx == 12, PortCur1stBankIdx(decided by rdaddr) == 13
+        assign Empty = !RdPortMthWrtn | (RdPortAddr_Array[gv_j] > RdPortMthWrAddr);//
         assign  GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & !Empty & Bank_arready[PortCur1stBankIdx];
         assign  GLBTOP_RdEmpty[gv_j] = Empty;
 
@@ -261,6 +290,7 @@ generate
         wire [$clog2(NUM_BANK)     : 0] WrPortNumBank;
         wire [ADDR_WIDTH        -1 : 0] WrPortAddrVldSpace;
         reg  [ADDR_WIDTH        -1 : 0] WrPortMthRdAddr;
+        reg                             WrPortMthRden;
 
         // Map WrPort to Bank
         assign WrPortAddrVldSpace = WrPortAlloc? (SRAM_WORD*WrPortNumBank/TOPGLB_CfgPortParBank[gv_j]) : SRAM_WORD;// Cut address to a relative(valid) range in NumBank/ParBank
@@ -276,13 +306,15 @@ generate
 
         always@(*) begin // Max RdAddr of allocated banks
             WrPortMthRdAddr = 0;
+            WrPortMthRden   = 0;
             for(int_i = 0; int_i < WrPortNumBank; int_i = int_i + 1) begin
                 WrPortMthRdAddr = WrPortMthRdAddr < BankRdAddr_d[WrPort1stBankIdx + int_i]? BankRdAddr_d[WrPort1stBankIdx + int_i] : WrPortMthRdAddr;
+                WrPortMthRden   = WrPortMthRden | BankRden[WrPort1stBankIdx + int_i];
             end
         end
 
         // To Output
-        assign Full = (WrPortAddr_Array[gv_j] - WrPortMthRdAddr) >= WrPortAddrVldSpace;
+        assign Full = (WrPortAddr_Array[gv_j] - WrPortMthRdAddr) >= (WrPortMthRden? WrPortAddrVldSpace + 1 : WrPortAddrVldSpace);
         assign  GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & Bank_wready[PortCur1stBankIdx];
         assign  GLBTOP_WrFull[gv_j] = Full;
 

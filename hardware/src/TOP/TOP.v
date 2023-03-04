@@ -21,7 +21,7 @@ module TOP #(
 
     // FPS
     parameter NUM_FPC        = 8, 
-    parameter CUT_MASK_WIDTH = 32, 
+    parameter CUTMASK_WIDTH  = 32, 
     
     // KNN
     parameter NUM_SORT_CORE  = 4,
@@ -49,7 +49,7 @@ module TOP #(
 
     // NetWork Parameters
     parameter NUM_LAYER_WIDTH= 20,
-    parameter CRD_WIDTH      = 16,   
+    parameter CRD_WIDTH      = 8,   
     parameter CRD_DIM        = 3,  
     parameter IDX_WIDTH      = 16,
     parameter MAP_WIDTH      = 5,
@@ -488,7 +488,7 @@ FPS #(
     .CRD_WIDTH            ( CRD_WIDTH   ),
     .CRD_DIM              ( CRD_DIM     ),
     .NUM_FPC              ( NUM_FPC     ),
-    .CUT_MASK_WIDTH       ( CUT_MASK_WIDTH)
+    .CUTMASK_WIDTH       ( CUTMASK_WIDTH)
 )u_FPS(
     .clk                  ( clk                  ),
     .rst_n                ( rst_n                ),

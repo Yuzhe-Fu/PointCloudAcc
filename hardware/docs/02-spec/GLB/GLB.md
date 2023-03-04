@@ -103,6 +103,8 @@ localparam GLBRDIDX_POLOFM = 11;POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个B
             - 读空写满：
                 - 读：有写入了数才能读：假定读写口分配相同Bank且读写顺序一致，则非空时可以读，即RdEn= !(RdAddr == WrAddr); 且RdAddr=WrAddr，（圈数由CCU通过RdAddr发出CfgRdy知道多少圈了，当Mode0时，WrAddr大于最后一个有效地址，当RdAddr也最后一个有效地址时，发出CfgRdy，然后复位0）
                 - 写：有写满的存在(像FIFO），只当串入串出时，RdAddr相差WrAddr一圈(AddrMax)
+                - Empty当未写时怎么为1？Full当第一个数未读时，怎么置1？
+                    - 增加表示是否写进了至少一个数的标志，Wrtn区分wraddr_d的0是否确实有写了第一个数；同理增加Rden表示是否确实被读了第一个数
             - 有读不能写：单口SRAM
         - 选择：
             - 首先是判断是读/写，读优先
@@ -122,6 +124,8 @@ localparam GLBRDIDX_POLOFM = 11;POOL读sa_fm GLBPOL_Fm：固定为64B*6，12个B
         - = PortDat_Arry[][ParIdx], BankWrPortParIdx, 表示Port并行写时，Port里第几个SRAM_WIDTH的数据的位置，是0, 1,..到WrPortParBank-1的循环，BankWrPortRelIdx是处于第几个循环
     - 多个Bank怎么实现同时读写？
         - 因为同一数据类型，读写分的Bank块组是相同的，可以控制En，使得写完第一块后，**同时读第一块和写第二块。**
+    - bank被分配给新的port时，怎么重置相关信号
+        - 只有bank里面的BankWrAddr_d和BankWrtn之类才是寄存信号，需要被重置，重置的条件是这个bank的口切换了：BankWrPortIdx_d[gv_i] != BankWrPortIdx[gv_i]
 - 接口与ITF
     - 需要：
         - 配置指定：CCU指定哪些子模块侧的GLB口需要ITF来协助读写到DRAM，
