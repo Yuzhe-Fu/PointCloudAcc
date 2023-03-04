@@ -55,18 +55,10 @@ module FPGA #(
 // Variable Definition :
 //=====================================================================================================================
 // TOP Inputs
-reg                             I_StartPulse  ;
-reg                             I_BypAsysnFIFO;
 
 // TOP Outputs
-wire                            O_DatOE;
-wire                            O_CmdVld;
-wire                            O_NetFnh;
 
 // TOP Bidirs
-wire  [PORT_WIDTH       -1 : 0] IO_Dat;
-wire                            IO_DatVld ;
-wire                            OI_DatRdy ;
 
 wire                             rst_n ;
 wire                             clk   ;
