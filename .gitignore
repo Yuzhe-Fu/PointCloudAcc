@@ -45,7 +45,8 @@ software/PointNeXt/HW/Data/
 #      The above part is Yuzhe Fu software part
 #      May Buddha Blesses u~
 #######################################################
-hardware/work/
+/hardware/work/*
+!/hardware/work/fpga/
 hardware/project/
 hardware/vft/
 .*
