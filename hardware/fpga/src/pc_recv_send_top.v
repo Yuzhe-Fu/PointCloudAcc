@@ -290,14 +290,14 @@ bd_ddr_wrapper(
 	.ui_clk							(ui_clk				),
 	.ui_rst							(ui_rst				),
 		
-    .rd_ack_0                       (rd0_ack			),
+    .rd_ack_0                       (rd0_ack			), // output
     .rd_addr_0                      (rd0_addr			),
     .rd_data_0                      (rd0_data			),
-    .rd_data_ready_0                (rd0_data_ready		),
-    .rd_data_valid_0                (rd0_data_valid		),
+    .rd_data_ready_0                (rd0_data_ready		), // input
+    .rd_data_valid_0                (rd0_data_valid		), // output
     .rd_len_0                       (rd0_len			),
-    .rd_req_0                       (rd0_req			),
-    .rd_req_done_0                  (rd0_req_done		),
+    .rd_req_0                       (rd0_req			), // input
+    .rd_req_done_0                  (rd0_req_done		), // output
     .rd_ack_1                       (rd1_ack			),
     .rd_addr_1                      (rd1_addr			),
     .rd_data_1                      (rd1_data			),
@@ -310,14 +310,14 @@ bd_ddr_wrapper(
     .sys_clk_i_0                    (clk_200m			),
     .sys_rst_0                      (i_reset_n			),
 	
-    .wr_ack_0                       (wr0_ack			),
+    .wr_ack_0                       (wr0_ack			), // output
     .wr_addr_0                      (wr0_addr			),
     .wr_data_0                      (wr0_data			),
-    .wr_data_ready_0                (wr0_data_ready		),
-    .wr_data_req_0                  (wr0_data_req		),
+    .wr_data_ready_0                (wr0_data_ready		), // input
+    .wr_data_req_0                  (wr0_data_req		), // output
     .wr_len_0                       (wr0_len			),
-    .wr_req_0                       (wr0_req			),
-    .wr_req_done_0                  (wr0_req_done		),
+    .wr_req_0                       (wr0_req			), // input
+    .wr_req_done_0                  (wr0_req_done		), // output
     .wr_ack_1                       (wr1_ack			),
     .wr_addr_1                      (wr1_addr			),
     .wr_data_1                      (wr1_data			),
