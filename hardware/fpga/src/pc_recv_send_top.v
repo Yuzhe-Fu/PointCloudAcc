@@ -62,20 +62,24 @@ module   pc_recv_send_top #(
 	output				ahb_hresp,
 	input	[2:0]		ahb_hsize,
 	input	[1:0]		ahb_htrans,
-	input	[31:0]		ahb_hwdata,
+	input	[63:0]		ahb_hwdata,
 	input				ahb_hwrite,
 	input				ahb_sel,
-	
-	
-output		nul
+
+    output		        nul,
+    output              i_reset_n,
+    output              clk_10m,
+    output              clk_100m,
+    output              clk_125m,
+    output              clk_200m
 
 );
 
-wire clk_100m;
-wire clk_200m;
-wire clk_125m;
+// wire clk_100m;
+// wire clk_200m;
+// wire clk_125m;
 wire pll_lock;
-wire i_reset_n;
+// wire i_reset_n;
 wire ui_rst;
 wire ui_clk;
 
@@ -83,6 +87,7 @@ clk_wiz_0 u_mmcm(
     // Clock out ports
     .clk_out1	(clk_100m	),     // output clk_out1
     .clk_out2	(clk_200m	),     // output clk_out2
+    .clk_out3	(clk_10m	),     // output clk_out2
    
     .reset		(i_reset	), // input reset
     .locked		(pll_lock	),       // output locked

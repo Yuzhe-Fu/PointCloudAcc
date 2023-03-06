@@ -223,7 +223,7 @@ pc_recv_send_top#(
     .ahb_sel             ( ahb_sel             ),
     .nul                 ( nul                 ),
     .i_reset_n           ( rst_n               ),
-    .i_sys_clk           ( clk                 )
+    .clk_10m             ( clk                 )
 );
 
 //==============================================================================
