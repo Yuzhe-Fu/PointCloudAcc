@@ -46,7 +46,7 @@ software/PointNeXt/HW/Data/
 #      May Buddha Blesses u~
 #######################################################
 /hardware/work/*
-!/hardware/work/fpga/
+!/hardware/work/fpga/UnifiedTestPlatform/UnifiedTestPlatform.srcs/
 hardware/project/
 hardware/vft/
 .*
