@@ -392,9 +392,9 @@ generate
         wire                            ena_Max_s2;
         wire                            ena_Max_s3;
 
-        wire                            rdy_Mask_Need;
-        wire                            rdy_Crd_Need;
-        wire                            rdy_Dist_Need;
+        wire                            req_Mask_s1;
+        wire                            req_Crd_s1;
+        wire                            req_Dist_s1;
 
         wire [CNT_CUTMASK_WIDTH     -1 : 0] CntMaskRd;
         wire [IDX_WIDTH         -1 : 0] CntDistRdAddr;
@@ -449,20 +449,20 @@ generate
             // 3 Seperate pipelines/HandShakes forMask, Crd, Dist;
 
             // Ahead 1 clk enables no idle clk: because 1 ahead clk makeups the 1 idle clk between AddrVld and VldArbMask
-            assign rdy_Mask_Need = !VldArbMask_next;  //Load1's rdy
-            assign rdy_Mask_s0 = (CntCp == 0? 1'b1 : GLBFPS_MaskRdAddrRdy & ArbFPCMaskRdIdx==gv_fpc) & rdy_Mask_Need; // Two loads: MaskAddr(Load0) for GLB and Need(Load1, ahead of ena_Mask_s1);
+            assign req_Mask_s1 = !VldArbMask_next;  //Load1's rdy
+            assign rdy_Mask_s0 = (CntCp == 0? 1'b1 : GLBFPS_MaskRdAddrRdy & ArbFPCMaskRdIdx==gv_fpc) & req_Mask_s1; // Two loads: MaskAddr(Load0) for GLB and Need(Load1, ahead of ena_Mask_s1);
             assign handshake_Mask_s0 = rdy_Mask_s0 & vld_Mask_s0;
             assign ena_Mask_s0 = handshake_Mask_s0 | ~vld_Mask_s0;
             assign vld_Mask_s0 = state == WORK & !(CpLast & LopCntLastMask);
 
-            assign rdy_Crd_Need = !VldArbCrd_next;  
-            assign rdy_Crd_s0 = GLBFPS_CrdRdAddrRdy & ArbFPCCrdRdIdx==gv_fpc & rdy_Crd_Need;
+            assign req_Crd_s1 = !VldArbCrd_next;  
+            assign rdy_Crd_s0 = GLBFPS_CrdRdAddrRdy & ArbFPCCrdRdIdx==gv_fpc & req_Crd_s1;
             assign handshake_Crd_s0 = rdy_Crd_s0 & vld_Crd_s0;
             assign ena_Crd_s0 = handshake_Crd_s0 | ~vld_Crd_s0;
             assign vld_Crd_s0 = state == WORK & !(CpLast & LopCntLastCrd);
 
-            assign rdy_Dist_Need = !VldArbDist_next;  
-            assign rdy_Dist_s0 = (CntCp == 0? 1'b1 : GLBFPS_DistRdAddrRdy & ArbFPCDistRdIdx==gv_fpc) & rdy_Dist_Need;
+            assign req_Dist_s1 = !VldArbDist_next;  
+            assign rdy_Dist_s0 = (CntCp == 0? 1'b1 : GLBFPS_DistRdAddrRdy & ArbFPCDistRdIdx==gv_fpc) & req_Dist_s1;
             assign handshake_Dist_s0 = rdy_Dist_s0 & vld_Dist_s0;
             assign ena_Dist_s0 = handshake_Dist_s0 | ~vld_Dist_s0;
             assign vld_Dist_s0 = state == WORK & !(CpLast & LopCntLastDist);
@@ -530,7 +530,7 @@ generate
                 .RESET_N   ( rst_n              ),
                 .CLEAR     ( CCUFPS_Rst[gv_fpc] ), 
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
-                .INC       ( handshake_Crd_s0   ),
+                .INC       ( handshake_Dist_s0   ),
                 .DEC       ( 1'b0               ),
                 .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
                 .MAX_COUNT ( MaxCntDistRdAddr   ),
@@ -543,9 +543,9 @@ generate
         // Logic Design: Stage1
         //=====================================================================================================================
         // Combinational Logic
-            assign FPC_MaskRdAddrVld[gv_fpc] = vld_Mask_s0 & rdy_Mask_Need; // self is valid & load1 is rdy; To avoid occupying BUS invalidly
-            assign FPC_CrdRdAddrVld[gv_fpc]  = vld_Crd_s0  & rdy_Crd_Need;
-            assign FPC_DistRdAddrVld[gv_fpc] = vld_Dist_s0 & rdy_Dist_Need;
+            assign FPC_MaskRdAddrVld[gv_fpc] = vld_Mask_s0 & req_Mask_s1; // self is valid & load1 is rdy; To avoid occupying BUS invalidly
+            assign FPC_CrdRdAddrVld[gv_fpc]  = vld_Crd_s0  & req_Crd_s1;
+            assign FPC_DistRdAddrVld[gv_fpc] = vld_Dist_s0 & req_Dist_s1;
 
             assign FPC_MaskRdAddr[gv_fpc] = CCUFPS_CfgMaskBaseAddr[gv_fpc] + CntMaskRd / (SRAM_WIDTH / CUTMASK_WIDTH);
             assign FPC_CrdRdAddr[gv_fpc] = CCUFPS_CfgCrdBaseRdAddr[gv_fpc] +CntCrdRdAddr;
@@ -561,13 +561,13 @@ generate
             assign FPC_MaskRdDatRdy[gv_fpc] = rdy_Mask_s1;
             assign vld_Mask_s1 = CntCp_s1 == 0? MaskRdAddrVld_s1 : GLBFPS_MaskRdDatVld & ArbFPCMaskRdIdx_d == gv_fpc;
 
-            assign rdy_Crd_s1 = ena_Crd_s2; // & !VldArbCrd_next);
+            assign rdy_Crd_s1 = !VldArbCrd | (ena_Crd_s2 & !VldArbCrd_next);
             assign handshake_Crd_s1 = rdy_Crd_s1 & vld_Crd_s1;
             assign ena_Crd_s1 = handshake_Crd_s1 | ~vld_Crd_s1;
             assign FPC_CrdRdDatRdy[gv_fpc] = rdy_Crd_s1; 
             assign vld_Crd_s1 = GLBFPS_CrdRdDatVld & ArbFPCCrdRdIdx_d == gv_fpc;
 
-            assign rdy_Dist_s1 = ena_Dist_s2;// & !VldArbDist_next); 
+            assign rdy_Dist_s1 = !VldArbDist | (ena_Dist_s2 & !VldArbDist_next); 
             assign handshake_Dist_s1 = rdy_Dist_s1 & vld_Dist_s1;
             assign ena_Dist_s1 = handshake_Dist_s1 | ~vld_Dist_s1;
             assign FPC_DistRdDatRdy[gv_fpc] = rdy_Dist_s1; 
@@ -585,7 +585,7 @@ generate
                     {FPC_MaskRdAddr_s1, CntMaskRd_s1, LopCntLastMask_s1, MaskRdAddrVld_s1} <= 0;
                 end else if (  ena_Mask_s1 ) begin 
                     {FPC_MaskRdAddr_s1, CntMaskRd_s1, LopCntLastMask_s1, MaskRdAddrVld_s1} <= handshake_Mask_s0? {FPC_MaskRdAddr[gv_fpc], CntMaskRd, LopCntLastMask, vld_Mask_s0} : {FPC_MaskRdAddr_s1, CntMaskRd_s1, 1'b0, 1'b0}; // s0 drives two load; only when handshake_s0 -> s1 update
-                end
+                end // ????????? vld_Mask_s0 -> FPC_MaskRdAddrVld
             end   
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
@@ -598,7 +598,7 @@ generate
                 if(!rst_n) begin
                     {CntDistRdAddr_s1, DistRdAddrVld_s1} <= 0;
                 end else if (  ena_Dist_s1 ) begin
-                    {CntDistRdAddr_s1, DistRdAddrVld_s1} <= handshake_Dist_s0? {CntDistRdAddr, FPC_DistRdAddrVld[gv_fpc], handshake_Dist_s0} : {CntDistRdAddr_s1, 1'b1};
+                    {CntDistRdAddr_s1, DistRdAddrVld_s1} <= handshake_Dist_s0? {CntDistRdAddr, FPC_DistRdAddrVld[gv_fpc]} : {CntDistRdAddr_s1, 1'b1};
                 end
             end
 
@@ -648,12 +648,13 @@ generate
                 wire [SRAM_WIDTH            -1 : 0] Dist_s1;
                 reg  [SRAM_WIDTH            -1 : 0] Dist_s2;
                 assign Crd_s1 = handshake_Crd_s1? GLBFPS_CrdRdDat : Crd_s2;
-                assign VldArbCrd = (vld_Crd_s1 | vld_Crd_s2) & ( (CntCrdRdAddr_s1+1)*NUM_CRD_SRAM > CurIdx_s1);
-                assign VldArbCrd_next   = (vld_Crd_s1 | vld_Crd_s2) & ( (CntCrdRdAddr_s1+1)*NUM_CRD_SRAM > CurIdx_s1_next );
+                // CurIdx is in the Current Crd
+                assign VldArbCrd = (vld_Crd_s1 | vld_Crd_s2) & ( CntCrdRdAddr_s1*NUM_CRD_SRAM <= CurIdx_s1 & CurIdx_s1 < (CntCrdRdAddr_s1 + 1)*NUM_CRD_SRAM );
+                assign VldArbCrd_next   = (vld_Crd_s1 | vld_Crd_s2) & ( CntCrdRdAddr_s1*NUM_CRD_SRAM <= CurIdx_s1_next & CurIdx_s1_next < (CntCrdRdAddr_s1 + 1)*NUM_CRD_SRAM );
             // Dist Pipeline
                 assign Dist_s1 = handshake_Dist_s1? (CntCp_s1 == 0? {SRAM_WIDTH{1'b1}}: GLBFPS_DistRdDat) : Dist_s2; // When CntCp_s1 ==0, Dist is 
-                assign VldArbDist       =  (vld_Dist_s1 | vld_Dist_s2) & ( (CntDistRdAddr_s1+1)*NUM_DIST_SRAM > CurIdx_s1 );
-                assign VldArbDist_next  = (vld_Dist_s1 | vld_Dist_s2) & ( (CntDistRdAddr_s1+1)*NUM_DIST_SRAM > CurIdx_s1_next );
+                assign VldArbDist       =  (vld_Dist_s1 | vld_Dist_s2) & ( CntDistRdAddr_s1*NUM_DIST_SRAM <= CurIdx_s1 & CurIdx_s1 < (CntDistRdAddr_s1 + 1)*NUM_DIST_SRAM );
+                assign VldArbDist_next  = (vld_Dist_s1 | vld_Dist_s2) & ( CntDistRdAddr_s1*NUM_DIST_SRAM <= CurIdx_s1_next & CurIdx_s1_next < (CntDistRdAddr_s1 + 1)*NUM_DIST_SRAM );
             // Max Pipeline  
                 assign LopPntCrd = VldArbMask? Crd_s1[CRD_WIDTH*CRD_DIM*(VldIdx % NUM_CRD_SRAM) +: CRD_WIDTH*CRD_DIM]: 0;   
 
@@ -722,14 +723,14 @@ generate
                 if(!rst_n) begin
                     {CntCrdRdAddr_s2, Crd_s2, vld_Crd_s2} <= 0;
                 end else if (ena_Crd_s2) begin
-                    {CntCrdRdAddr_s2, Crd_s2, vld_Crd_s2} <= { CntCrdRdAddr_s1, Crd_s1, (vld_Crd_s1 | vld_Crd_s2) & ( (CntCrdRdAddr_s1 + 1)*NUM_CRD_SRAM > CurIdx_s1_next ) };
+                    {CntCrdRdAddr_s2, Crd_s2, vld_Crd_s2} <= { CntCrdRdAddr_s1, Crd_s1, VldArbCrd_next };
                 end
             end
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
                     {CntDistRdAddr_s2, Dist_s2, vld_Dist_s2} <= 0;
                 end else if (ena_Dist_s2) begin
-                    {CntDistRdAddr_s2, Dist_s2, vld_Dist_s2} <= {CntDistRdAddr_s1, Dist_s1, (vld_Dist_s1 | vld_Dist_s2) & ( (CntDistRdAddr_s1 + 1)*NUM_DIST_SRAM > CurIdx_s1_next ) };
+                    {CntDistRdAddr_s2, Dist_s2, vld_Dist_s2} <= {CntDistRdAddr_s1, Dist_s1, VldArbDist_next };
                 end
             end
 
