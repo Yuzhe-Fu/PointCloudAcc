@@ -120,7 +120,7 @@ usart_ctrl_v1 #(
 	.USART_BPS			(115200			), 
 	.CHACK_WAY			(0				)  // 0 无校验 1：奇校验 2：偶校验 
 )u_usart_ctrl_v1( 		
-	.i_sys_clk			(clk_125m		),
+	.i_sys_clk			(clk_100m		),
 	.i_reset_n			(i_reset_n		),
 	// TX
 	.i_tx_start			(uart_tx_en		),
@@ -152,7 +152,7 @@ reg 		uart_rxdat_enable;
 reg 		uart_rxdat_done;
 
 user_cmd_pro u_user_cmd_pro( 
-	.i_sys_clk			(clk_125m		),
+	.i_sys_clk			(clk_100m		),
 	.i_reset_n			(i_reset_n 		),
 
 // 数据接收	
@@ -274,7 +274,7 @@ bd_ddr_wrapper(
 uart_dma_top #(
 	.SYS_FRE 						(SYS_FRE			)
 )u_uart_dma_top( 			
-	.i_sys_clk						(clk_125m			),
+	.i_sys_clk						(clk_100m			),
 	.i_reset_n						(i_reset_n			),
 				
 	.i_uart_st						(uart_st			), // 【0】启动  eth_start【1】  0：wr  1：rd		
