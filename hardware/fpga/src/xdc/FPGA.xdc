@@ -384,6 +384,9 @@ set_property IOSTANDARD DIFF_SSTL15 [get_ports DDR3_0_ck_n]
 # set_property PACKAGE_PIN J11 [get_ports VRP_39]
 # set_property IOSTANDARD SSTL15 [get_ports VRP_39]
 
+
+##################################################################
+# CHIP
 ##################################################################
 # Auto Generate 4 pair J by contraint_gen.py 
 
