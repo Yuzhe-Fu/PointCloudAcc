@@ -188,7 +188,7 @@ ArbCore#(
     .TopOutAddr  ( FPSGLB_DistRdAddr    ),
     .TopOutDat   (                      ),
     .TopOutRdy   ( FPSGLB_DistRdDatRdy  ),
-    .TOPInRdy    ( GLBFPS_DistWrDatRdy  ),
+    .TOPInRdy    ( GLBFPS_DistRdAddrRdy  ),
     .ArbCoreIdx  ( ArbFPCDistRdIdx      ),
     .ArbCoreIdx_d( ArbFPCDistRdIdx_d    )
 );
@@ -470,13 +470,13 @@ generate
             assign req_Mask_s1 = !VldArbMask_next;  //Load1's rdy
             assign rdy_Mask_s0 = (CntCpMask == 0? 1'b1 : GLBFPS_MaskRdAddrRdy & ArbFPCMaskRdIdx == gv_fpc) & req_Mask_s1; // Two loads: MaskAddr(Load0) for GLB and Need(Load1, ahead of ena_Mask_s1);
             assign handshake_Mask_s0 = rdy_Mask_s0 & vld_Mask_s0;
-            assign ena_Mask_s0 = handshake_Mask_s0 || ~vld_Mask_s0;
+            assign ena_Mask_s0 = handshake_Mask_s0 | ~vld_Mask_s0;
             assign vld_Mask_s0 = state == WORK & !(overflow_CntCpMask & LopCntLastMask);
 
             assign req_Crd_s1 = !VldArbCrd_next;  
             assign rdy_Crd_s0 = GLBFPS_CrdRdAddrRdy & ArbFPCCrdRdIdx ==gv_fpc & req_Crd_s1;
             assign handshake_Crd_s0 = rdy_Crd_s0 & vld_Crd_s0;
-            assign ena_Crd_s0 = handshake_Crd_s0 || ~vld_Crd_s0;
+            assign ena_Crd_s0 = handshake_Crd_s0 | ~vld_Crd_s0;
             assign vld_Crd_s0 = state == WORK & !(overflow_CntCpCrdRdAddr & LopCntLastCrd);
 
             assign req_Dist_s1 = !VldArbDist_next;  
@@ -664,7 +664,7 @@ generate
                 wire                               VldArbMask;
                 wire [SRAM_WIDTH            -1 : 0] FPC_MaskRdDat;
                 // Current
-                    assign FPC_MaskRdDat = CntCpMask_s1 == 0? {SRAM_WIDTH{1'b0}} : GLBFPS_MaskRdDat;
+                    assign FPC_MaskRdDat = CntCpMask_s1 == 0? {SRAM_WIDTH{1'b0}} : GLBFPS_MaskRdDat; // Default: begin with (0,0,0)
                     assign Mask_s1 =  vld_Mask_s1? FPC_MaskRdDat[CUTMASK_WIDTH*(CntMaskRd_s1 % (SRAM_WIDTH /CUTMASK_WIDTH)) +: CUTMASK_WIDTH] : MaskCheck_s2;
                     prior_arb#(
                         .REQ_WIDTH ( CUTMASK_WIDTH )
@@ -738,15 +738,15 @@ generate
                     FPC_MaskWrDat[gv_fpc] = 0;
                     if ( FPC_MaskWrDatVld[gv_fpc] ) begin
                         FPC_MaskWrDat[gv_fpc]   =  FPC_MaskRdDat;
-                        // if ( MtnPntExt ) begin
+                        if ( CntCpMask_s1 != 0 ) begin // Write 'd0 at First Cp 
                             FPC_MaskWrDat[gv_fpc][FPS_MaxIdx_LastCp % SRAM_WIDTH] = 1'b1; 
                             // set 1
-                        // end
+                        end
                     end
                 end
-                assign FPC_MaskWrDatVld[gv_fpc] = ( MtnPntExt & !FPC_MaskRdDat[FPS_MaxIdx_LastCp % SRAM_WIDTH] & vld_Mask_s1 ) 
-                | (CntCpMask_s1 == 0 & ( (MaxCntMaskRd + 1)*CntCpMask_s1 + CntMaskRd_s1 ) % (SRAM_WIDTH / CUTMASK_WIDTH) == 0 ); 
-                // Need to Update (Write back): The Maintained point is never been set 1 | Initialize when CntCpMask_s1 == 0 and first Mask of SRAM Word
+                assign FPC_MaskWrDatVld[gv_fpc] = ( ( MtnPntExt & !FPC_MaskRdDat[FPS_MaxIdx_LastCp % SRAM_WIDTH] & vld_Mask_s1 ) 
+                | (CntCpMask_s1 == 0) ) & ((MaxCntMaskRd + 1)*CntCpMask_s1 + CntMaskRd_s1 ) % (SRAM_WIDTH / CUTMASK_WIDTH) == 0 ; 
+                // Need to Update (Write back): (The Maintained point is never been set 1 | Initialize when CntCpMask_s1 == 0) and first Mask of SRAM Word
                 
 
             assign LopCntLast_s1 = LopCntLastMask_s1 & !VldArbMask_next; // Last mask & no valid bit in the next clk;

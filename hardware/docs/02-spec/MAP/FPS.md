@@ -1,5 +1,4 @@
 # 问题
-- 其它FPC的DistRdVld没有拉高？
 - 暂不: 写idx和crd不用sipo换成融入读数来写入
 
 # Debug顺序
@@ -63,7 +62,6 @@
 - FPS输入有
     - Crd：每个SRAM5个Crd顺序排列
     - Dist: 每个SRAM有3个Dist顺序排列
-        - - 第二轮：DistWrAddr会出现小于DistRdAddr导致Empty错误拉高：暂时让写读地址都一直往上加
     - Mask: 每个SRAM有256个bit顺序排列，bit=1表示这个点被视为最远点被保留下来，不再参与当前层FPS的计算了
 - FPS输出有
     - Idx: 给MLP说明原始点中哪些点是保留下来的，即在原始点集中的Idx
@@ -79,6 +77,8 @@
         - s2: Mask只有一个load，就是本身参与的s1-s2的逻辑计算，rdy_Mask_s2 = vld_Byte_s1，vld_Byte_s1表示s1-s2的逻辑计算的输入都是有效的，说明准备好了，由三个输入的有效性共同决定(VldArbMask & vldArbCrd & vldArbDist)
             - VldArbMask由当前Mask_s1是否有0决定
             - vldArbCrd和vldArbDist由当前计算需要的CurIdx是否在Addr_s1涵盖的范围内决定
+    - 第一轮：默认从**不存在的(0, 0, 0)点为起点**，每一轮找出一个点
+    - 第二轮：DistWrAddr会出现小于DistRdAddr导致Empty错误拉高：暂时让Mask和Dist的写读地址都一直往上加
 
 
 
