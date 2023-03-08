@@ -406,7 +406,7 @@ generate
         wire                            VldArbCrd_next ;
         wire                            VldArbDist     ;
         wire                            VldArbDist_next;
-        wire                            vld_Byte_s1    ;
+        wire                            rdy_s2    ;
         reg                             MaskRdAddrVld_s1;
         reg                             DistRdAddrVld_s1;
 
@@ -604,9 +604,9 @@ generate
             assign FPC_CrdRdAddrVld[gv_fpc]  = vld_Crd_s0  & req_Crd_s1;
             assign FPC_DistRdAddrVld[gv_fpc] = (vld_Dist_s0 & req_Dist_s1 ) & CntCpDistRdAddr != 0;
 
-            assign FPC_MaskRdAddr[gv_fpc] = CCUFPS_CfgMaskBaseAddr[gv_fpc] + CntMaskRd / (SRAM_WIDTH / CUTMASK_WIDTH);
+            assign FPC_MaskRdAddr[gv_fpc] = CCUFPS_CfgMaskBaseAddr[gv_fpc] + ((MaxCntMaskRd + 1)*(CntCpMask - 1) + CntMaskRd) / (SRAM_WIDTH / CUTMASK_WIDTH); // read is less a loop than write
             assign FPC_CrdRdAddr[gv_fpc] = CCUFPS_CfgCrdBaseRdAddr[gv_fpc] +CntCrdRdAddr;
-            assign FPC_DistRdAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr[gv_fpc] + CntDistRdAddr;
+            assign FPC_DistRdAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr[gv_fpc] + (MaxCntDistRdAddr + 1)*(CntCpDistRdAddr - 1) + CntDistRdAddr;
 
         // HandShake
 
@@ -624,7 +624,7 @@ generate
             assign FPC_CrdRdDatRdy[gv_fpc] = rdy_Crd_s1; 
             assign vld_Crd_s1 = GLBFPS_CrdRdDatVld & ArbFPCCrdRdIdx_d == gv_fpc;
 
-            assign rdy_Dist_s1 = ena_Dist_s2; // !VldArbDist | (ena_Dist_s2 & !VldArbDist_next); 
+            assign rdy_Dist_s1 = !VldArbDist | (ena_Dist_s2 & !VldArbDist_next); // ?????
             assign handshake_Dist_s1 = rdy_Dist_s1 & vld_Dist_s1;
             assign ena_Dist_s1 = handshake_Dist_s1 | ~vld_Dist_s1;
             assign FPC_DistRdDatRdy[gv_fpc] = rdy_Dist_s1; 
@@ -706,12 +706,12 @@ generate
                 reg  [SRAM_WIDTH            -1 : 0] Dist_s2;
                 reg  [SRAM_WIDTH            -1 : 0] Dist_s2_next;
 
-                assign Crd_s1 = handshake_Crd_s1? GLBFPS_CrdRdDat : Crd_s2;
+                assign Crd_s1 = vld_Crd_s1? GLBFPS_CrdRdDat : Crd_s2;
                 // CurIdx is in the Current Crd
                 assign VldArbCrd = (vld_Crd_s1 | vld_Crd_s2) & ( CntCrdRdAddr_s1*NUM_CRD_SRAM <= CurIdx_s1 & CurIdx_s1 < (CntCrdRdAddr_s1 + 1)*NUM_CRD_SRAM );
                 assign VldArbCrd_next   = (vld_Crd_s1 | vld_Crd_s2) & ( CntCrdRdAddr_s1*NUM_CRD_SRAM <= CurIdx_s1_next & CurIdx_s1_next < (CntCrdRdAddr_s1 + 1)*NUM_CRD_SRAM );
             // Dist Pipeline
-                assign Dist_s1 = handshake_Dist_s1? (CntCpDistRdAddr_s1 == 0? {SRAM_WIDTH{1'b1}}: GLBFPS_DistRdDat) : Dist_s2; // When CntCp_s1 ==0, Dist is 
+                assign Dist_s1 = vld_Dist_s1? (CntCpDistRdAddr_s1 == 0? {SRAM_WIDTH{1'b1}}: GLBFPS_DistRdDat) : Dist_s2; // When CntCp_s1 ==0, Dist is 
                 assign VldArbDist       =  (vld_Dist_s1 | vld_Dist_s2) & ( CntDistRdAddr_s1*NUM_DIST_SRAM <= CurIdx_s1 & CurIdx_s1 < (CntDistRdAddr_s1 + 1)*NUM_DIST_SRAM );
                 assign VldArbDist_next  = (vld_Dist_s1 | vld_Dist_s2) & ( CntDistRdAddr_s1*NUM_DIST_SRAM <= CurIdx_s1_next & CurIdx_s1_next < (CntDistRdAddr_s1 + 1)*NUM_DIST_SRAM );
                 // Ahead Update Dist_s2 (array) with FPS_PsDist
@@ -737,7 +737,7 @@ generate
                 assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} = FPS_UpdMax ? {FPS_PsDist, LopPntCrd, LopPntIdx_s1} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
 
             // Mask write back
-                assign FPC_MaskWrAddr[gv_fpc] = FPC_MaskRdAddr_s1;
+                assign FPC_MaskWrAddr[gv_fpc] = (MaxCntDistRdAddr + 1)*CntCpDistRdAddr_s1 + CntDistRdAddr_s1;
                 always @ (*) begin
                     if(FPC_MaskWrDatVld[gv_fpc] & vld_Mask_s1) begin
                         FPC_MaskWrDat[gv_fpc] =  FPC_MaskRdDat;
@@ -754,23 +754,23 @@ generate
 
         // HandShake
 
-            // vld_Byte_s1 Must be s1 (s1==s3), becuase s2's load0 is s1
-            assign vld_Byte_s1      = (VldArbMask & VldArbCrd & VldArbDist) & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1); 
+            // rdy_s2 Must be s1 (s1==s3), becuase s2's load0 is s1
+            assign rdy_s2      = (VldArbMask & VldArbCrd & VldArbDist) & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1); 
 
-            assign rdy_Max_s2 = (LopCntLast_s2? rdy_Max_s3 : 1'b1) & vld_Byte_s1; // Two loads are rdy
+            assign rdy_Max_s2 = (LopCntLast_s2? rdy_Max_s3 : 1'b1) & rdy_s2; // other loads are rdy
             assign handshake_Max_s2 = rdy_Max_s2 & vld_Max_s2;
             assign ena_Max_s2 = handshake_Max_s2 | ~vld_Max_s2;
 
-            assign rdy_Mask_s2 = vld_Byte_s1;
+            assign rdy_Mask_s2 = (VldArbCrd & VldArbDist) & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1);
             assign handshake_Mask_s2 = rdy_Mask_s2 & vld_Mask_s2;
             assign ena_Mask_s2 = handshake_Mask_s2 | ~vld_Mask_s2;
             assign vld_Mask_s2 = !(&MaskCheck_s2); // In s2, whether MashCheck_s2 is valid
 
-            assign rdy_Crd_s2 = vld_Byte_s1;
+            assign rdy_Crd_s2 = (VldArbMask & VldArbDist) & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1);
             assign handshake_Crd_s2 = rdy_Crd_s2 & vld_Crd_s2;
             assign ena_Crd_s2 = handshake_Crd_s2 | ~vld_Crd_s2;
 
-            assign rdy_Dist_s2 = vld_Byte_s1;
+            assign rdy_Dist_s2 = (VldArbMask & VldArbCrd); 
             assign handshake_Dist_s2 = rdy_Dist_s2 & vld_Dist_s2;
             assign ena_Dist_s2 = handshake_Dist_s2 | ~vld_Dist_s2;
 
@@ -808,7 +808,7 @@ generate
                     {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx_LastCp, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, vld_Max_s2} <= 0;
                 end else if (ena_Max_s2) begin
                     {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx_LastCp, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, vld_Max_s2} <= 
-                    {(LopCntLast_s1 | CntCpMask_s1==0)? FPS_MaxCrd_ : FPS_CpCrd, FPS_MaxCrd_, LopCntLast_s1? FPS_MaxIdx_ : FPS_MaxIdx_LastCp, FPS_MaxIdx_, FPS_PsDist, LopCntLast_s1, vld_Byte_s1};
+                    {(LopCntLast_s1 | CntCpMask_s1==0)? FPS_MaxCrd_ : FPS_CpCrd, FPS_MaxCrd_, LopCntLast_s1? FPS_MaxIdx_ : FPS_MaxIdx_LastCp, FPS_MaxIdx_, FPS_PsDist, LopCntLast_s1, rdy_s2};
                 end
             end
 
@@ -817,8 +817,8 @@ generate
         //=====================================================================================================================
 
         // Combinational Logic
-        assign FPC_DistWrDatVld[gv_fpc] = vld_Dist_s1 & ena_Dist_s2; // when s1 is valid to update Dist_s2 next clk
-        assign FPC_DistWrAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr + CntDistRdAddr_s2;
+        assign FPC_DistWrDatVld[gv_fpc] = vld_Dist_s1 & (VldArbMask & VldArbCrd); // When others is ready to update Dist_s2 next clk
+        assign FPC_DistWrAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr + (MaxCntDistRdAddr + 1)*CntCpDistRdAddr_s2 + CntDistRdAddr_s2;
         assign FPC_DistWrDat[gv_fpc] = Dist_s2;
 
         // HandShake
