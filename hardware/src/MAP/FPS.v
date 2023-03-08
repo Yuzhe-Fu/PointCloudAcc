@@ -468,15 +468,15 @@ generate
 
             // Ahead 1 clk enables no idle clk: because 1 ahead clk makeups the 1 idle clk between AddrVld and VldArbMask
             assign req_Mask_s1 = !VldArbMask_next;  //Load1's rdy
-            assign rdy_Mask_s0 = (CntCpMask == 0? 1'b1 : GLBFPS_MaskRdAddrRdy & ArbFPCMaskRdIdx==gv_fpc) & req_Mask_s1; // Two loads: MaskAddr(Load0) for GLB and Need(Load1, ahead of ena_Mask_s1);
+            assign rdy_Mask_s0 = (CntCpMask == 0? 1'b1 : GLBFPS_MaskRdAddrRdy & ArbFPCMaskRdIdx == gv_fpc) & req_Mask_s1; // Two loads: MaskAddr(Load0) for GLB and Need(Load1, ahead of ena_Mask_s1);
             assign handshake_Mask_s0 = rdy_Mask_s0 & vld_Mask_s0;
-            assign ena_Mask_s0 = handshake_Mask_s0 | ~vld_Mask_s0;
+            assign ena_Mask_s0 = handshake_Mask_s0 || ~vld_Mask_s0;
             assign vld_Mask_s0 = state == WORK & !(overflow_CntCpMask & LopCntLastMask);
 
             assign req_Crd_s1 = !VldArbCrd_next;  
-            assign rdy_Crd_s0 = GLBFPS_CrdRdAddrRdy & ArbFPCCrdRdIdx==gv_fpc & req_Crd_s1;
+            assign rdy_Crd_s0 = GLBFPS_CrdRdAddrRdy & ArbFPCCrdRdIdx ==gv_fpc & req_Crd_s1;
             assign handshake_Crd_s0 = rdy_Crd_s0 & vld_Crd_s0;
-            assign ena_Crd_s0 = handshake_Crd_s0 | ~vld_Crd_s0;
+            assign ena_Crd_s0 = handshake_Crd_s0 || ~vld_Crd_s0;
             assign vld_Crd_s0 = state == WORK & !(overflow_CntCpCrdRdAddr & LopCntLastCrd);
 
             assign req_Dist_s1 = !VldArbDist_next;  
@@ -608,19 +608,19 @@ generate
             assign handshake_Mask_s1 = rdy_Mask_s1 & vld_Mask_s1;
             assign ena_Mask_s1 = handshake_Mask_s1 | ~vld_Mask_s1;
             assign FPC_MaskRdDatRdy[gv_fpc] = rdy_Mask_s1;
-            assign vld_Mask_s1 = CntCpMask_s1 == 0? MaskRdAddrVld_s1 : GLBFPS_MaskRdDatVld & ArbFPCMaskRdIdx_d == gv_fpc;
+            assign vld_Mask_s1 = CntCpMask_s1 == 0? MaskRdAddrVld_s1 : GLBFPS_MaskRdDatVld & (ArbFPCMaskRdIdx_d == gv_fpc);
 
             assign rdy_Crd_s1 = ena_Crd_s2; // !VldArbCrd | (ena_Crd_s2 & !VldArbCrd_next);
             assign handshake_Crd_s1 = rdy_Crd_s1 & vld_Crd_s1;
             assign ena_Crd_s1 = handshake_Crd_s1 | ~vld_Crd_s1;
             assign FPC_CrdRdDatRdy[gv_fpc] = rdy_Crd_s1; 
-            assign vld_Crd_s1 = GLBFPS_CrdRdDatVld & ArbFPCCrdRdIdx_d == gv_fpc;
+            assign vld_Crd_s1 = GLBFPS_CrdRdDatVld & (ArbFPCCrdRdIdx_d == gv_fpc);
 
             assign rdy_Dist_s1 = ena_Dist_s2; // !VldArbDist | (ena_Dist_s2 & !VldArbDist_next); // ?????
             assign handshake_Dist_s1 = rdy_Dist_s1 & vld_Dist_s1;
             assign ena_Dist_s1 = handshake_Dist_s1 | ~vld_Dist_s1;
             assign FPC_DistRdDatRdy[gv_fpc] = rdy_Dist_s1; 
-            assign vld_Dist_s1 = CntCpDistRdAddr_s1 == 0? DistRdAddrVld_s1 : GLBFPS_DistRdDatVld & ArbFPCDistRdIdx_d == gv_fpc;
+            assign vld_Dist_s1 = CntCpDistRdAddr_s1 == 0? DistRdAddrVld_s1 : GLBFPS_DistRdDatVld & (ArbFPCDistRdIdx_d == gv_fpc);
 
         // Reg Update
             reg [IDX_WIDTH      -1 : 0] FPC_MaskRdAddr_s1;
@@ -754,22 +754,22 @@ generate
         // HandShake
 
             // rdy_s2 Must be s1 (s1==s3), becuase s2's load0 is s1
-            assign rdy_s2      = VldArbMask & VldArbCrd & (VldArbDist & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1) ); // Three loads: Mask, Crd, Dist;
+            assign rdy_s2      = VldArbMask & VldArbCrd & (VldArbDist & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx) : 1'b1) ); // Three loads: Mask, Crd, Dist;
 
             assign rdy_Max_s2 = (LopCntLast_s2? rdy_Max_s3 : 1'b1) & rdy_s2; // other loads are rdy
             assign handshake_Max_s2 = rdy_Max_s2 & vld_Max_s2;
             assign ena_Max_s2 = handshake_Max_s2 | ~vld_Max_s2;
 
-            assign rdy_Mask_s2 = VldArbCrd & (VldArbDist & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1) );
+            assign rdy_Mask_s2 = VldArbCrd & (VldArbDist & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx) : 1'b1) );
             assign handshake_Mask_s2 = rdy_Mask_s2 & vld_Mask_s2;
             assign ena_Mask_s2 = handshake_Mask_s2 | ~vld_Mask_s2;
             assign vld_Mask_s2 = !(&MaskCheck_s2); // In s2, whether MashCheck_s2 is valid
 
-            assign rdy_Crd_s2 = VldArbMask & ( VldArbDist & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1) );
+            assign rdy_Crd_s2 = VldArbMask & ( VldArbDist & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx) : 1'b1) );
             assign handshake_Crd_s2 = rdy_Crd_s2 & vld_Crd_s2;
             assign ena_Crd_s2 = handshake_Crd_s2 | ~vld_Crd_s2;
 
-            assign rdy_Dist_s2 = VldArbMask & VldArbCrd & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & gv_fpc == ArbFPCDistWrIdx : 1'b1); // 3 loads: Mask, Crd, GLB
+            assign rdy_Dist_s2 = VldArbMask & VldArbCrd & (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx) : 1'b1); // 3 loads: Mask, Crd, GLB
             assign handshake_Dist_s2 = rdy_Dist_s2 & vld_Dist_s2;
             assign ena_Dist_s2 = handshake_Dist_s2 | ~vld_Dist_s2;
 
@@ -842,7 +842,7 @@ generate
                 .OUT_DAT   ( SIPO_CrdOutDat         ),
                 .OUT_VLD   ( FPC_CrdWrDatVld[gv_fpc]),
                 .OUT_LAST  (                        ),
-                .OUT_RDY   ( GLBFPS_CrdWrDatRdy & gv_fpc == ArbFPCCrdWrIdx )
+                .OUT_RDY   ( GLBFPS_CrdWrDatRdy & (gv_fpc == ArbFPCCrdWrIdx) )
             );
             assign FPC_CrdWrDat[gv_fpc] = SIPO_CrdOutDat;
             assign FPC_CrdWrAddr[gv_fpc] = CCUFPS_CfgCrdBaseWrAddr[gv_fpc] + ( CntCpMask_s2 - (SRAM_WIDTH/(CRD_WIDTH*CRD_DIM)) ) / NUM_CRD_SRAM;
@@ -861,7 +861,7 @@ generate
                 .OUT_DAT   ( FPC_IdxWrDat[gv_fpc]       ),
                 .OUT_VLD   ( FPC_IdxWrDatVld[gv_fpc]    ),
                 .OUT_LAST  (                            ),
-                .OUT_RDY   ( GLBFPS_IdxWrDatRdy & gv_fpc == ArbFPCIdxWrIdx )
+                .OUT_RDY   ( GLBFPS_IdxWrDatRdy & (gv_fpc == ArbFPCIdxWrIdx) )
             );
             assign FPC_IdxWrAddr[gv_fpc] = CCUFPS_CfgIdxBaseWrAddr[gv_fpc] + ( CntCpMask_s2 - SRAM_WIDTH / IDX_WIDTH) / (SRAM_WIDTH/IDX_WIDTH);
 

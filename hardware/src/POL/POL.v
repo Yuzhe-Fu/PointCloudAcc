@@ -203,7 +203,7 @@ generate
     assign POLCCU_CfgRdy[gv_plc] = state == IDLE;
 
     // Handshake
-    assign rdy_s0 = GLBPOL_MapRdAddrRdy & ArbPLCIdx_MapRd == gv_plc;
+    assign rdy_s0 = GLBPOL_MapRdAddrRdy & (ArbPLCIdx_MapRd == gv_plc);
     assign vld_s0 = state == MAPIN  & (rdy_s1 & !vld_s1);
     assign handshake_s0 = rdy_s0 & vld_s0;
     assign ena_s0 = handshake_s0 | ~vld_s0;
@@ -376,7 +376,7 @@ generate
     assign POLGLB_OfmRdDatRdy[gv_plc] = rdy_s3;
 
     // Handshake
-    assign rdy_s4       = GLBPOL_OfmWrDatRdy & ArbPLCIdxWrOfm == gv_plc;
+    assign rdy_s4       = GLBPOL_OfmWrDatRdy & (ArbPLCIdxWrOfm == gv_plc);
     assign handshake_s4 = rdy_s4 & vld_s4;
     assign ena_s4       = handshake_s4 | ~vld_s4;
 

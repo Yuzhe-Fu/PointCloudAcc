@@ -297,7 +297,7 @@ generate
             .RESET_N   ( rst_n          ),
             .CLEAR     ( state == IDLE  ),
             .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
-            .INC       ( (CCUGLB_ISARdAddrVld & GLBCCU_ISARdAddrRdy) & ArbCfgRdyIdx_s0 == gv_i ),
+            .INC       ( (CCUGLB_ISARdAddrVld & GLBCCU_ISARdAddrRdy) & (ArbCfgRdyIdx_s0 == gv_i) ),
             .DEC       ( 1'b0           ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
             .MAX_COUNT ( MaxCnt         ),
@@ -524,7 +524,7 @@ generate
                 CfgVld[gv_i] <= 0;
             end else if ( CfgVld[gv_i] & CfgRdy[gv_i] ) begin
                 CfgVld[gv_i] <= 0;
-            end else if ( state_s1 == CFG & ArbCfgRdyIdx_s1 == gv_i & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch) begin
+            end else if ( state_s1 == CFG & (ArbCfgRdyIdx_s1 == gv_i) & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch) begin
                 CfgVld[gv_i] <= 1'b1;
             end
         end
