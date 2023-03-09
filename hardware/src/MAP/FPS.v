@@ -697,6 +697,7 @@ generate
                 wire [SRAM_WIDTH            -1 : 0] Dist_s1;
                 reg  [SRAM_WIDTH            -1 : 0] Dist_s2;
                 reg  [SRAM_WIDTH            -1 : 0] Dist_s2_next;
+                wire [DISTSQR_WIDTH         -1 : 0] FPS_LastPsDist;
 
                 assign Crd_s1 = vld_Crd_s1? GLBFPS_CrdRdDat : Crd_s2;
                 // CurIdx is in the Current Crd
@@ -723,7 +724,7 @@ generate
                     .Crd1      ( LopPntCrd  ),
                     .DistSqr   ( LopDist    )
                 );
-                assign FPS_LastPsDist = VldArbMask? Dist_s1[DISTSQR_WIDTH*(CurIdx_s1 % NUM_DIST_SRAM) +: DISTSQR_WIDTH]: 0; 
+                assign FPS_LastPsDist = VldArbDist? Dist_s1[DISTSQR_WIDTH*(CurIdx_s1 % NUM_DIST_SRAM) +: DISTSQR_WIDTH] : 0; // [0 +: DISTSQR_WIDTH]; //  : 0; // 
                 assign FPS_PsDist = FPS_LastPsDist > LopDist ? LopDist : FPS_LastPsDist;
                 assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
                 assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} = FPS_UpdMax ? {FPS_PsDist, LopPntCrd, LopPntIdx_s1} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
