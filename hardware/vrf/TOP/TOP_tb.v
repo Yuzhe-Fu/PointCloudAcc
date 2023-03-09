@@ -4,6 +4,7 @@
 `define SIM
 `define FUNC_SIM
 `define PSEUDO_DATA
+`define ASSERTION_ON
 
 module TOP_tb();
 //=====================================================================================================================

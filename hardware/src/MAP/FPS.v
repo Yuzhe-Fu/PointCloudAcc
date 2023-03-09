@@ -727,7 +727,7 @@ generate
                 assign FPS_LastPsDist = VldArbDist? Dist_s1[DISTSQR_WIDTH*(CurIdx_s1 % NUM_DIST_SRAM) +: DISTSQR_WIDTH] : 0; // [0 +: DISTSQR_WIDTH]; //  : 0; // 
                 assign FPS_PsDist = FPS_LastPsDist > LopDist ? LopDist : FPS_LastPsDist;
                 assign FPS_UpdMax = FPS_MaxDist < FPS_PsDist;
-                assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} = FPS_UpdMax ? {FPS_PsDist, LopPntCrd, LopPntIdx_s1} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
+                assign {FPS_MaxDist_, FPS_MaxCrd_, FPS_MaxIdx_} = FPS_UpdMax ? {FPS_PsDist, LopPntCrd, CurIdx_s1} : {FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx};
 
             // Mask write back
                 assign FPC_MaskWrAddr[gv_fpc] = ( (MaxCntMaskRd + 1)*CntCpMask_s1 + CntMaskRd_s1 ) / (SRAM_WIDTH / CUTMASK_WIDTH);
@@ -774,7 +774,6 @@ generate
             assign handshake_Dist_s2 = rdy_Dist_s2 & vld_Dist_s2;
             assign ena_Dist_s2 = handshake_Dist_s2 | ~vld_Dist_s2;
 
-
         // Reg Updates
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
@@ -817,7 +816,7 @@ generate
         //=====================================================================================================================
 
         // Combinational Logic
-        assign FPC_DistWrDatVld[gv_fpc] = !vld_Dist_s2 & (VldArbMask & VldArbCrd); // When Dist_s2=0(finishes Current Dist) & others is ready to update Dist_s2 next clk
+        assign FPC_DistWrDatVld[gv_fpc] = !vld_Dist_s2 & (VldArbMask & VldArbCrd);// When Dist_s2=0(finishes Current Dist) & others is ready to update Dist_s2 next clk
         assign FPC_DistWrAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr + (MaxCntDistRdAddr + 1)*CntCpDistRdAddr_s2 + CntDistRdAddr_s2;
         assign FPC_DistWrDat[gv_fpc] = Dist_s2;
 
@@ -866,10 +865,56 @@ generate
             );
             assign FPC_IdxWrAddr[gv_fpc] = CCUFPS_CfgIdxBaseWrAddr[gv_fpc] + ( CntCpMask_s2 - SRAM_WIDTH / IDX_WIDTH) / (SRAM_WIDTH/IDX_WIDTH);
 
+        //=====================================================================================================================
+        // Assertion
+        //=====================================================================================================================
+
     end 
 
 endgenerate
 
+//=====================================================================================================================
+// Assertion
+//=====================================================================================================================
+`ifdef ASSERTION_ON
+    parameter delay = 10000;
+    property p_high(a, b);
+        disable iff (!rst_n)
+        @(posedge clk) 
+            a |-> ##delay b;
+    endproperty
+
+
+    a_GLBFPS_MaskRdAddrRdy: assert property (p_high(FPC_MaskRdAddrVld[ArbFPCMaskRdIdx] & FPC_MaskRdDatRdy[ArbFPCMaskRdIdx], GLBFPS_MaskRdAddrRdy))
+    else 
+        $display("GLBFPS_MaskRdAddrRdy fails to pull up at %t, #FPC = %d\n", $time, ArbFPCMaskRdIdx);
+
+    a_GLBFPS_DistRdAddrRdy: assert property (p_high(FPC_DistRdAddrVld[ArbFPCDistRdIdx] & FPC_DistRdDatRdy[ArbFPCDistRdIdx], GLBFPS_DistRdAddrRdy))
+    else 
+        $display("GLBFPS_DistRdAddrRdy fails to pull up at %t, #FPC = %d\n", $time, ArbFPCDistRdIdx);
+
+    a_GLBFPS_CrdRdAddrRdy: assert property (p_high(FPC_CrdRdAddrVld[ArbFPCCrdRdIdx] & FPC_CrdRdDatRdy[ArbFPCCrdRdIdx], GLBFPS_CrdRdAddrRdy))
+    else 
+        $display("GLBFPS_CrdRdAddrRdy fails to pull up at %t, #FPC = %d\n", $time, ArbFPCCrdRdIdx);
+
+    a_GLBFPS_MaskWrDatRdy: assert property (p_high(FPC_MaskWrDatVld[ArbFPCMaskWrIdx], GLBFPS_MaskWrDatRdy))
+    else 
+        $display("GLBFPS_MaskWrDatRdy fails to pull up at %t, #FPC = %d\n", $time, ArbFPCMaskWrIdx);
+
+    a_GLBFPS_DistWrDatRdy: assert property (p_high(FPC_DistWrDatVld[ArbFPCDistWrIdx], GLBFPS_DistWrDatRdy))
+    else 
+        $display("GLBFPS_DistWrDatRdy fails to pull up at %t, #FPC = %d\n", $time, ArbFPCDistWrIdx);
+
+    a_GLBFPS_CrdWrDatRdy: assert property (p_high(FPC_CrdWrDatVld[ArbFPCCrdWrIdx], GLBFPS_CrdWrDatRdy))
+    else 
+        $display("GLBFPS_CrdWrDatRdy fails to pull up at %t, #FPC = %d\n", $time, ArbFPCCrdWrIdx);
+
+    a_GLBFPS_IdxWrDatRdy: assert property (p_high(FPC_IdxWrDatVld[ArbFPCIdxWrIdx], GLBFPS_IdxWrDatRdy))
+    else 
+        $display("GLBFPS_IdxWrDatRdy fails to pull up at %t, #FPC = %d\n", $time, ArbFPCIdxWrIdx);
+
+
+`endif
 
 //=====================================================================================================================
 // Sub-Module :
