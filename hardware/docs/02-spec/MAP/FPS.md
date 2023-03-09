@@ -1,4 +1,5 @@
 # 问题
+- Dist_s2有两个负载：一个是给s1比较距离（vld_dist_s2有效），一个是写回GLB（vld_dist_s2无效且其它（Mask, Crd)准备好更新的rdy），问题是当vld_dist_s2为0时，会无视是写回rdy，来更新Dist_s2；那么vld_dist_s2需要区别：原vld_dist_s2=0时，
 - 暂不: 写idx和crd不用sipo换成融入读数来写入
 
 # Debug顺序
@@ -70,7 +71,7 @@
         - 加Mask的必要性：直接加Mask SRAM表示是否需要计算来跳过无效的计算周期：FPS在一层计算中，需要知道已被筛选出的点，否则导致1/4速度下降（Nop/Nip=1/2)，设计MaskCheck来找出为0的点，MaskCheck保留了点的自然顺序，不能用保留下来点的Idx，因为它是随机乱序的。
     - 输入输出均无独有，全是共享，因此核的输出要仲裁，输入要分配，体现在ArbCore的ArbCoreIdx
 - 单核内
-    - 总体采用流水线，而且Mask, Crd, Dist, Max分别流水线, 且三条路独立，只在需要交互的地方交互; 有严格的反压机制 
+    - 总体采用流水线，而且Mask, Crd, Dist, Max分别流水线, 且**三条路独立**，只在需要交互的地方交互; 有严格的反压机制 
     - Mask流水线：Mask是控制的核心，s1-s2按照Mask选取数据跳着计算
         - s0：Mask的load有两个，一个是给GLB，一个是给s1，因此rdy_Mask_s0由两部分的与：load1给出的是rdy_Mask_Need = !VldArbMask_next，利用VldArbMask_next提前预测即将没有有效mask来保证取到的MaskDat刚好是Mask_s2无效时，没有额外增加一个周期延迟。
         - s1: Mask的load也有两个：写回和给s2更新，因此rdy_Mask_s1需要(ena_Mask_s2 & !vld_Mask_s2)表示可以更新并且Mask_s2无效。
