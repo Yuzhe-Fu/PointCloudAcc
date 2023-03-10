@@ -1,5 +1,10 @@
 # 问题
-- Dist_s2有两个负载：一个是给s1比较距离（vld_dist_s2有效），一个是写回GLB（vld_dist_s2无效且其它（Mask, Crd)准备好更新的rdy），问题是当vld_dist_s2为0时，会无视是写回rdy，来更新Dist_s2；那么vld_dist_s2需要区别：原vld_dist_s2=0时，
+- 8核共享GLB SRAM，空满判断需要区别！！！
+    - 比如FPC0写了2， FPC7再写1，FPC0读2就为空了
+    - GLB：不需要GLB来判断空满，需要空满豁免，GLB增加一个豁免信号，TOPGLB_OffEmptyFull
+    - FPS：侧则需要自己控制空满，暂时由于写永远大于读，不考虑
+    - CCU：配置每个核不同的初始地址
+    
 - 暂不: 写idx和crd不用sipo换成融入读数来写入
 
 # Debug顺序
