@@ -18,9 +18,9 @@ module GLB #(
     parameter SRAM_WORD    = 128, // MUST 2**
     parameter ADDR_WIDTH   = 16,
 
-    parameter NUM_WRPORT   = 3,
-    parameter NUM_RDPORT   = 4,
-    parameter MAXPAR       = 32
+    parameter NUM_WRPORT   = 12,
+    parameter NUM_RDPORT   = 19,
+    parameter MAXPAR       = 2
     )(
     input                                               clk                 ,
     input                                               rst_n               ,
@@ -28,12 +28,13 @@ module GLB #(
     // Configure
     input [(NUM_RDPORT + NUM_WRPORT)-1 : 0][NUM_BANK            -1 : 0] TOPGLB_CfgPortBankFlag,
     input [(NUM_RDPORT + NUM_WRPORT)-1 : 0][($clog2(MAXPAR) + 1)-1 : 0] TOPGLB_CfgPortParBank,
+    input [(NUM_RDPORT + NUM_WRPORT)                            -1 : 0] TOPGLB_CfgPortOffEmptyFull,
 
     // Data
     input  [NUM_WRPORT              -1 : 0][SRAM_WIDTH*MAXPAR   -1 : 0] TOPGLB_WrPortDat    ,
     input  [NUM_WRPORT                                          -1 : 0] TOPGLB_WrPortDatVld ,
     output [NUM_WRPORT                                          -1 : 0] GLBTOP_WrPortDatRdy ,
-    input  [NUM_WRPORT              -1 : 0][ADDR_WIDTH          -1 : 0] TOPGLB_WrPortAddr   ,
+    input  [NUM_WRPORT              -1 : 0][ADDR_WIDTH          -1 : 0] TOPGLB_WrPortAddr   , 
     output [NUM_WRPORT                                          -1 : 0] GLBTOP_WrFull       ,   
 
 
@@ -247,7 +248,7 @@ generate
             end
         end
         // To Output
-        assign Empty = !RdPortMthWrtn | (RdPortAddr_Array[gv_j] > RdPortMthWrAddr);//
+        assign Empty = !TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + gv_j] & ( !RdPortMthWrtn | (RdPortAddr_Array[gv_j] > RdPortMthWrAddr) );//
         assign  GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & !Empty & Bank_arready[PortCur1stBankIdx];
         assign  GLBTOP_RdEmpty[gv_j] = Empty;
 
@@ -314,9 +315,9 @@ generate
         end
 
         // To Output
-        assign Full = (WrPortAddr_Array[gv_j] - WrPortMthRdAddr) >= (WrPortMthRden? WrPortAddrVldSpace + 1 : WrPortAddrVldSpace);
-        assign  GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & Bank_wready[PortCur1stBankIdx];
-        assign  GLBTOP_WrFull[gv_j] = Full;
+        assign Full = !TOPGLB_CfgPortOffEmptyFull[gv_j] & (WrPortAddr_Array[gv_j] - WrPortMthRdAddr) >= (WrPortMthRden? WrPortAddrVldSpace + 1 : WrPortAddrVldSpace);
+        assign GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & Bank_wready[PortCur1stBankIdx];
+        assign GLBTOP_WrFull[gv_j] = Full;
 
         assign WrPortAlloc = |TOPGLB_CfgPortBankFlag[gv_j];
 

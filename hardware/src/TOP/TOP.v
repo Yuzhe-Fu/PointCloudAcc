@@ -176,7 +176,7 @@ wire  [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn           ;
             
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK              -1 : 0] CCUTOP_CfgPortBankFlag;
 wire [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)    -1 : 0] CCUTOP_CfgPortParBank;
-
+wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] CCUTOP_CfgPortOffEmptyFull;
 // --------------------------------------------------------------------------------------------------------------------
 // FPS
 wire [IDX_WIDTH           -1 : 0] FPSGLB_MaskRdAddr       ;
@@ -309,7 +309,7 @@ wire [ITF_NUM_WRPORT                        -1 : 0] GLBITF_WrFull  ;
 // Configure
 wire [NUM_BANK * (GLB_NUM_RDPORT + GLB_NUM_WRPORT)      -1 : 0] TOPGLB_CfgPortBankFlag;
 wire [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT + GLB_NUM_WRPORT)-1 : 0] TOPGLB_CfgPortParBank;
-
+wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] TOPGLB_CfgPortOffEmptyFull;
 // Data
 wire [GLB_NUM_WRPORT    -1 : 0][SRAM_WIDTH*MAXPAR   -1 : 0] TOPGLB_WrPortDat    ;
 wire [GLB_NUM_WRPORT                                -1 : 0] TOPGLB_WrPortDatVld ;
@@ -426,7 +426,8 @@ CCU#(
     .CCUPOL_CfgNip           ( CCUPOL_CfgNip           ),
     .CCUPOL_CfgChn           ( CCUPOL_CfgChn           ),   
     .CCUTOP_CfgPortBankFlag  ( CCUTOP_CfgPortBankFlag  ),
-    .CCUTOP_CfgPortParBank   ( CCUTOP_CfgPortParBank   )
+    .CCUTOP_CfgPortParBank   ( CCUTOP_CfgPortParBank   ),
+    .CCUTOP_CfgPortOffEmptyFull( CCUTOP_CfgPortOffEmptyFull)
 );
 
 //=====================================================================================================================
@@ -818,6 +819,7 @@ GLB#(
     .rst_n                  ( rst_n                  ),
     .TOPGLB_CfgPortBankFlag ( TOPGLB_CfgPortBankFlag ),
     .TOPGLB_CfgPortParBank  ( TOPGLB_CfgPortParBank  ),
+    .TOPGLB_CfgPortOffEmptyFull(TOPGLB_CfgPortOffEmptyFull),
     .TOPGLB_WrPortDat       ( TOPGLB_WrPortDat       ),
     .TOPGLB_WrPortDatVld    ( TOPGLB_WrPortDatVld    ),
     .GLBTOP_WrPortDatRdy    ( GLBTOP_WrPortDatRdy    ),
@@ -833,6 +835,7 @@ GLB#(
 );
 assign TOPGLB_CfgPortBankFlag = CCUTOP_CfgPortBankFlag;
 assign TOPGLB_CfgPortParBank  = CCUTOP_CfgPortParBank;
+assign TOPGLB_CfgPortOffEmptyFull  = CCUTOP_CfgPortOffEmptyFull;
 //=====================================================================================================================
 // Logic Design: Debug
 //=====================================================================================================================

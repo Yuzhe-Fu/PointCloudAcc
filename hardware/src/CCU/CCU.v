@@ -98,7 +98,8 @@ module CCU #(
     output  reg [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn       ,
              
     output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][NUM_BANK    -1 : 0] CCUTOP_CfgPortBankFlag ,
-    output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][MAXPAR_WIDTH-1 : 0] CCUTOP_CfgPortParBank
+    output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][MAXPAR_WIDTH-1 : 0] CCUTOP_CfgPortParBank,
+    output reg [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                   -1 : 0] CCUTOP_CfgPortOffEmptyFull
 
 );
 //=====================================================================================================================
@@ -378,6 +379,7 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgActRdBaseAddr <= 0;
         CCUSYA_CfgWgtRdBaseAddr <= 0;
         CCUSYA_CfgOfmWrBaseAddr <= 0;
+        CCUTOP_CfgPortOffEmptyFull <= 0;
         for(int_i = 0; int_i < GLB_NUM_RDPORT + GLB_NUM_WRPORT; int_i=int_i+1) begin
             if(int_i == GLBWRIDX_ITFISA) begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA write bank0
@@ -440,6 +442,11 @@ always @(posedge clk or negedge rst_n) begin
                 CCUTOP_CfgPortParBank [GLBWRIDX_FPSIDX                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*6   +: MAXPAR_WIDTH];
                 CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_ITFIDX]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*7   +: MAXPAR_WIDTH];
                 CCUTOP_CfgPortParBank [GLBWRIDX_FPSCRD                 ]   <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*8   +: MAXPAR_WIDTH];
+                CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSMSK]                <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9         +: 1];
+                CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK]<= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9     +1 +: 1];
+                CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                 ]    <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9 +2 +: 1];
+                CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST]    <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9 +3 +: 1];
+
             end
 
         end else if (OpCode == OPCODE_KNN) begin
