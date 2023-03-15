@@ -429,6 +429,15 @@ generate
         wire [IDX_WIDTH         -1 : 0] CntCpDistRdAddr;
         reg  [IDX_WIDTH         -1 : 0] CntCpDistRdAddr_s1;
         reg  [IDX_WIDTH         -1 : 0] CntCpDistRdAddr_s2;
+
+        wire [CUTMASK_WIDTH        -1 : 0] Mask_s1;
+        reg  [CUTMASK_WIDTH        -1 : 0] MaskCheck_s2;
+        reg  [CUTMASK_WIDTH        -1 : 0] MaskCheck_s2_next;
+        wire [$clog2(CUTMASK_WIDTH)-1 : 0] VldIdx;
+        wire [$clog2(CUTMASK_WIDTH)-1 : 0] VldIdx_next;
+        wire                               VldArbMask;
+        wire [SRAM_WIDTH            -1 : 0] FPC_MaskRdDat;
+
         //=====================================================================================================================
         // Logic Design: Stage0
         //=====================================================================================================================
@@ -605,19 +614,27 @@ generate
 
             // 1. MaskRdDat drivers s2(load0) and FPC_MaskWr(load1);
             // 2. Load0: MaskCheck_s2 MUST be invalid, then MaskRdDat can be transferred to MaskCheck_s2
-            assign rdy_Mask_s1 = (ena_Mask_s2) & (LopCntLast_s1? GLBFPS_MaskWrDatRdy & ArbFPCMaskWrIdx==gv_fpc : 1'b1);
+            wire MaskWrRdy;
+            wire MaskRxRdy;
+            wire vld_Mask_s1_arb;
+
+            assign MaskWrRdy = !FPC_MaskWrDatVld[gv_fpc]; // Real: (FPC_MaskWrDatVld[gv_fpc]? GLBFPS_MaskWrDatRdy & (ArbFPCMaskWrIdx == gv_fpc) : 1'b1); but Combination Loop: GLBFPS_MaskWrDatRdy=1 -> FPC_MaskRdDatRdy=1 ->GLBFPS_MaskWrDatRdy=0
+            assign MaskRxRdy = !vld_Mask_s2 | !VldArbMask;
+
+            assign rdy_Mask_s1 = MaskRxRdy & MaskWrRdy;
             assign handshake_Mask_s1 = rdy_Mask_s1 & vld_Mask_s1;
             assign ena_Mask_s1 = handshake_Mask_s1 | ~vld_Mask_s1;
-            assign FPC_MaskRdDatRdy[gv_fpc] = rdy_Mask_s1;
+            assign FPC_MaskRdDatRdy[gv_fpc] = rdy_Mask_s1; // 
             assign vld_Mask_s1 = CntCpMask_s1 == 0? MaskRdAddrVld_s1 : GLBFPS_MaskRdDatVld & (ArbFPCMaskRdIdx_d == gv_fpc);
+            assign vld_Mask_s1_arb = vld_Mask_s1 & MaskWrRdy;
 
-            assign rdy_Crd_s1 = !(vld_Crd_s2 & VldArbCrd) & ena_Crd_s2; // back pressure
+            assign rdy_Crd_s1 = !vld_Crd_s2 | !VldArbCrd; // back pressure
             assign handshake_Crd_s1 = rdy_Crd_s1 & vld_Crd_s1;
             assign ena_Crd_s1 = handshake_Crd_s1 | ~vld_Crd_s1;
             assign FPC_CrdRdDatRdy[gv_fpc] = rdy_Crd_s1; 
             assign vld_Crd_s1 = GLBFPS_CrdRdDatVld & (ArbFPCCrdRdIdx_d == gv_fpc);
 
-            assign rdy_Dist_s1 = !(vld_Dist_s2 & VldArbDist) & ena_Dist_s2; // 
+            assign rdy_Dist_s1 = !vld_Dist_s2 | !VldArbDist; // 
             assign handshake_Dist_s1 = rdy_Dist_s1 & vld_Dist_s1;
             assign ena_Dist_s1 = handshake_Dist_s1 | ~vld_Dist_s1;
             assign FPC_DistRdDatRdy[gv_fpc] = rdy_Dist_s1; 
@@ -626,6 +643,8 @@ generate
         // Reg Update
             reg [IDX_WIDTH      -1 : 0] FPC_MaskRdAddr_s1;
             reg [CNT_CUTMASK_WIDTH  -1 : 0] CntMaskRd_s1;
+            wire[CNT_CUTMASK_WIDTH  -1 : 0] CntMaskRd_s1_arb;
+            reg [CNT_CUTMASK_WIDTH  -1 : 0] CntMaskRd_s2;
             reg [IDX_WIDTH      -1 : 0] CntCrdRdAddr_s1;
             wire [IDX_WIDTH      -1 : 0] CntCrdRdAddr_s1_arb;
             reg [IDX_WIDTH      -1 : 0] CntCrdRdAddr_s2;
@@ -661,16 +680,11 @@ generate
             assign LopCntLast_s1 = LopCntLastMask_s1 & !VldArbMask_next; // Last mask & no valid bit in the next clk;
 
             // Mask Pipeline
-                wire [CUTMASK_WIDTH        -1 : 0] Mask_s1;
-                reg  [CUTMASK_WIDTH        -1 : 0] MaskCheck_s2;
-                reg  [CUTMASK_WIDTH        -1 : 0] MaskCheck_s2_next;
-                wire [$clog2(CUTMASK_WIDTH)-1 : 0] VldIdx;
-                wire [$clog2(CUTMASK_WIDTH)-1 : 0] VldIdx_next;
-                wire                               VldArbMask;
-                wire [SRAM_WIDTH            -1 : 0] FPC_MaskRdDat;
                 // Current
                     assign FPC_MaskRdDat = CntCpMask_s1 == 0? {SRAM_WIDTH{1'b0}} : GLBFPS_MaskRdDat; // Default: begin with (0,0,0)
-                    assign Mask_s1 =  vld_Mask_s1? FPC_MaskRdDat[CUTMASK_WIDTH*(CntMaskRd_s1 % (SRAM_WIDTH /CUTMASK_WIDTH)) +: CUTMASK_WIDTH] : MaskCheck_s2;
+                    assign Mask_s1 =  vld_Mask_s2? MaskCheck_s2 : FPC_MaskRdDat[CUTMASK_WIDTH*(CntMaskRd_s1 % (SRAM_WIDTH /CUTMASK_WIDTH)) +: CUTMASK_WIDTH];
+
+                    assign CntMaskRd_s1_arb = vld_Mask_s2? CntMaskRd_s2 : CntMaskRd_s1;
                     prior_arb#(
                         .REQ_WIDTH ( CUTMASK_WIDTH )
                     )u_prior_arb_MaskCheck(
@@ -678,8 +692,8 @@ generate
                         .gnt (              ),
                         .arb_port ( VldIdx  )
                     );
-                    assign VldArbMask = !(&Mask_s1); // exist 0
-                    assign CurIdx_s1 = VldArbMask? (CUTMASK_WIDTH*CntMaskRd_s1 + VldIdx) : CUTMASK_WIDTH*(CntMaskRd_s1+1)-1;// exist 0(valid? arbed Idx : last byte of current word
+                    assign VldArbMask = (vld_Mask_s1_arb | vld_Mask_s2) & !(&Mask_s1); // exist 0
+                    assign CurIdx_s1 = VldArbMask? (CUTMASK_WIDTH*CntMaskRd_s1_arb + VldIdx) : CUTMASK_WIDTH*(CntMaskRd_s1_arb+1)-1;// exist 0(valid? arbed Idx : last byte of current word
                 // Next (for ahead MaskAddrVld=1)
                     always@(*) begin // set the arbed "0" to "1"
                         MaskCheck_s2_next = Mask_s1;
@@ -693,8 +707,8 @@ generate
                         .gnt (                      ),
                         .arb_port  ( VldIdx_next    )
                     ); 
-                    assign VldArbMask_next = !(&MaskCheck_s2_next); // exist 0
-                    assign CurIdx_s1_next = VldArbMask_next? (CUTMASK_WIDTH*CntMaskRd_s1 + VldIdx_next) : CUTMASK_WIDTH*(CntMaskRd_s1+1)-1;
+                    assign VldArbMask_next = (vld_Mask_s1_arb | vld_Mask_s2) & !(&MaskCheck_s2_next); // exist 0
+                    assign CurIdx_s1_next = VldArbMask_next? (CUTMASK_WIDTH*CntMaskRd_s1_arb + VldIdx_next) : CUTMASK_WIDTH*(CntMaskRd_s1_arb+1)-1;
 
                 // Mask write back
                     assign FPC_MaskWrAddr[gv_fpc] = ( (MaxCntMaskRd + 1)*CntCpMask_s1 + CntMaskRd_s1 ) / (SRAM_WIDTH / CUTMASK_WIDTH);
@@ -715,7 +729,7 @@ generate
                     assign FPC_MaskWrDatVld[gv_fpc] = 
                         (   (MtnPntExt & !FPC_MaskRdDat[FPS_MaxIdx_LastCp % SRAM_WIDTH]) 
                             | ((MaxCntMaskRd + 1)*CntCpMask_s1 + CntMaskRd_s1 ) % (SRAM_WIDTH / CUTMASK_WIDTH) == 0 
-                        ) & vld_Mask_s1; 
+                        ) & vld_Mask_s1 & MaskRxRdy;
                     // Need to Update (Write back): (The Maintained point is never been set 1 | Initialize when CntCpMask_s1 == 0) and first Mask of SRAM Word
 
             // Crd Pipeline
@@ -785,9 +799,9 @@ generate
             assign ena_Max_s2 = handshake_Max_s2 | ~vld_Max_s2;
 
             assign rdy_Mask_s2 = VldArbCrd & VldArbDist & DistWrRdy;
-            assign handshake_Mask_s2 = rdy_Mask_s2 & vld_Mask_s2;
-            assign ena_Mask_s2 = handshake_Mask_s2 | ~vld_Mask_s2;
-            assign vld_Mask_s2 = !(&MaskCheck_s2); // In s2, whether MashCheck_s2 is valid
+            assign handshake_Mask_s2 = rdy_Mask_s2 & (vld_Mask_s2 & VldArbMask);
+            assign ena_Mask_s2 = handshake_Mask_s2 | ~(vld_Mask_s2 & VldArbMask);
+            // assign vld_Mask_s2 = !(&MaskCheck_s2); // In s2, whether MashCheck_s2 is valid
 
             assign rdy_Crd_s2 = VldArbMask & VldArbDist & DistWrRdy;
             assign handshake_Crd_s2 = rdy_Crd_s2 & (vld_Crd_s2 & VldArbCrd); // vld_Crd_s2 & real valid for CurIdx
@@ -803,10 +817,14 @@ generate
                     MaskCheck_s2 <= {CUTMASK_WIDTH{1'b1}}; // Not exist 0
                     CntCpMask_s2 <= 0;
                     overflow_CntCpMask_s2 <= 0;
+                    vld_Mask_s2 <= 0;
+                    CntMaskRd_s2 <= 0;
                 end else if (ena_Mask_s2) begin
                     MaskCheck_s2 <= MaskCheck_s2_next;
                     CntCpMask_s2 <= CntCpMask_s1;
                     overflow_CntCpMask_s2 <= overflow_CntCpMask_s1;
+                    vld_Mask_s2 <= VldArbCrd_next;
+                    CntMaskRd_s2 <= CntMaskRd_s1_arb;
                 end
             end
 
