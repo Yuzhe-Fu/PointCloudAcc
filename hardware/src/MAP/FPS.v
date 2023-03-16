@@ -437,6 +437,7 @@ generate
         wire [$clog2(CUTMASK_WIDTH)-1 : 0] VldIdx_next;
         wire                               VldArbMask;
         wire [SRAM_WIDTH            -1 : 0] FPC_MaskRdDat;
+        reg [SRAM_WIDTH            -1 : 0] FPC_MaskRdDat_s2;
 
         //=====================================================================================================================
         // Logic Design: Stage0
@@ -618,15 +619,12 @@ generate
             wire MaskRxRdy;
             wire vld_Mask_s1_arb;
 
-            assign MaskWrRdy = !FPC_MaskWrDatVld[gv_fpc]; // Real: (FPC_MaskWrDatVld[gv_fpc]? GLBFPS_MaskWrDatRdy & (ArbFPCMaskWrIdx == gv_fpc) : 1'b1); but Combination Loop: GLBFPS_MaskWrDatRdy=1 -> FPC_MaskRdDatRdy=1 ->GLBFPS_MaskWrDatRdy=0
-            assign MaskRxRdy = !vld_Mask_s2 | !VldArbMask;
-
-            assign rdy_Mask_s1 = MaskRxRdy & MaskWrRdy;
+            assign rdy_Mask_s1 = !vld_Mask_s2 | !VldArbMask;
             assign handshake_Mask_s1 = rdy_Mask_s1 & vld_Mask_s1;
             assign ena_Mask_s1 = handshake_Mask_s1 | ~vld_Mask_s1;
             assign FPC_MaskRdDatRdy[gv_fpc] = rdy_Mask_s1; // 
             assign vld_Mask_s1 = CntCpMask_s1 == 0? MaskRdAddrVld_s1 : GLBFPS_MaskRdDatVld & (ArbFPCMaskRdIdx_d == gv_fpc);
-            assign vld_Mask_s1_arb = vld_Mask_s1 & MaskWrRdy;
+            assign vld_Mask_s1_arb = vld_Mask_s1;
 
             assign rdy_Crd_s1 = !vld_Crd_s2 | !VldArbCrd; // back pressure
             assign handshake_Crd_s1 = rdy_Crd_s1 & vld_Crd_s1;
@@ -710,28 +708,6 @@ generate
                     assign VldArbMask_next = (vld_Mask_s1_arb | vld_Mask_s2) & !(&MaskCheck_s2_next); // exist 0
                     assign CurIdx_s1_next = VldArbMask_next? (CUTMASK_WIDTH*CntMaskRd_s1_arb + VldIdx_next) : CUTMASK_WIDTH*(CntMaskRd_s1_arb+1)-1;
 
-                // Mask write back
-                    assign FPC_MaskWrAddr[gv_fpc] = ( (MaxCntMaskRd + 1)*CntCpMask_s1 + CntMaskRd_s1 ) / (SRAM_WIDTH / CUTMASK_WIDTH);
-                    wire MtnPntExt = (SRAM_WIDTH*(CntMaskRd_s1 / (SRAM_WIDTH / CUTMASK_WIDTH) )) <= FPS_MaxIdx_LastCp 
-                            & FPS_MaxIdx_LastCp < (SRAM_WIDTH*(CntMaskRd_s1 / (SRAM_WIDTH / CUTMASK_WIDTH) + 1))
-                            & CntCpMask_s1 != 0;
-                            // Maintained point of LastCp is At current SRAM WORD (FPC_MaskRdDat)
-                    always @ (*) begin
-                        FPC_MaskWrDat[gv_fpc] = 0;
-                        if ( FPC_MaskWrDatVld[gv_fpc] ) begin
-                            FPC_MaskWrDat[gv_fpc]   =  FPC_MaskRdDat;
-                            if ( CntCpMask_s1 != 0 ) begin // Write 'd0 at First Cp 
-                                FPC_MaskWrDat[gv_fpc][FPS_MaxIdx_LastCp % SRAM_WIDTH] = 1'b1; 
-                                // set 1
-                            end
-                        end
-                    end
-                    assign FPC_MaskWrDatVld[gv_fpc] = 
-                        (   (MtnPntExt & !FPC_MaskRdDat[FPS_MaxIdx_LastCp % SRAM_WIDTH]) 
-                            | ((MaxCntMaskRd + 1)*CntCpMask_s1 + CntMaskRd_s1 ) % (SRAM_WIDTH / CUTMASK_WIDTH) == 0 
-                        ) & vld_Mask_s1 & MaskRxRdy;
-                    // Need to Update (Write back): (The Maintained point is never been set 1 | Initialize when CntCpMask_s1 == 0) and first Mask of SRAM Word
-
             // Crd Pipeline
                 wire [SRAM_WIDTH            -1 : 0] Crd_s1;
                 reg  [SRAM_WIDTH            -1 : 0] Crd_s2;
@@ -792,26 +768,29 @@ generate
         // HandShake
 
             // rdy_s2 Must be s1 (s1==s3), becuase s2's load0 is s1
-            assign rdy_s2      = VldArbMask & VldArbCrd & (VldArbDist & DistWrRdy ); // Three loads: Mask, Crd, Dist;
+            assign rdy_s2      = VldArbMask & VldArbCrd & (VldArbDist & DistWrRdy ) & MaskWrRdy; // Three loads: Mask, Crd, Dist;
 
             assign rdy_Max_s2 = (LopCntLast_s2? rdy_Max_s3 : 1'b1) & rdy_s2; // other loads are rdy
             assign handshake_Max_s2 = rdy_Max_s2 & vld_Max_s2;
             assign ena_Max_s2 = handshake_Max_s2 | ~vld_Max_s2;
 
-            assign rdy_Mask_s2 = VldArbCrd & VldArbDist & DistWrRdy;
+            assign MaskWrRdy = (FPC_MaskWrDatVld[gv_fpc]? GLBFPS_MaskWrDatRdy & (ArbFPCMaskWrIdx == gv_fpc) : 1'b1);// but Combination Loop: GLBFPS_MaskWrDatRdy=1 -> FPC_MaskRdDatRdy=1 ->GLBFPS_MaskWrDatRdy=0
+
+            assign rdy_Mask_s2 = VldArbCrd & VldArbDist & DistWrRdy & MaskWrRdy;
             assign handshake_Mask_s2 = rdy_Mask_s2 & (vld_Mask_s2 & VldArbMask);
             assign ena_Mask_s2 = handshake_Mask_s2 | ~(vld_Mask_s2 & VldArbMask);
             // assign vld_Mask_s2 = !(&MaskCheck_s2); // In s2, whether MashCheck_s2 is valid
 
-            assign rdy_Crd_s2 = VldArbMask & VldArbDist & DistWrRdy;
+            assign rdy_Crd_s2 = VldArbMask & VldArbDist & DistWrRdy & MaskWrRdy;
             assign handshake_Crd_s2 = rdy_Crd_s2 & (vld_Crd_s2 & VldArbCrd); // vld_Crd_s2 & real valid for CurIdx
             assign ena_Crd_s2 = handshake_Crd_s2 | ~(vld_Crd_s2 & VldArbCrd);
 
-            assign rdy_Dist_s2 = VldArbMask & VldArbCrd & DistWrRdy; // 3 loads: Mask, Crd, GLB
+            assign rdy_Dist_s2 = VldArbMask & VldArbCrd & DistWrRdy & MaskWrRdy; // 3 loads: Mask, Crd, GLB
             assign handshake_Dist_s2 = rdy_Dist_s2 & (vld_Dist_s2 & VldArbDist);
             assign ena_Dist_s2 = handshake_Dist_s2 | ~(vld_Dist_s2 & VldArbDist);
 
         // Reg Updates
+        reg vld_MaskRdDat_s2;
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
                     MaskCheck_s2 <= {CUTMASK_WIDTH{1'b1}}; // Not exist 0
@@ -819,14 +798,40 @@ generate
                     overflow_CntCpMask_s2 <= 0;
                     vld_Mask_s2 <= 0;
                     CntMaskRd_s2 <= 0;
+                    FPC_MaskRdDat_s2 <= 0;
+                    vld_MaskRdDat_s2 <= 0;
                 end else if (ena_Mask_s2) begin
-                    MaskCheck_s2 <= MaskCheck_s2_next;
-                    CntCpMask_s2 <= CntCpMask_s1;
-                    overflow_CntCpMask_s2 <= overflow_CntCpMask_s1;
-                    vld_Mask_s2 <= VldArbCrd_next;
-                    CntMaskRd_s2 <= CntMaskRd_s1_arb;
+                    MaskCheck_s2            <= MaskCheck_s2_next;
+                    CntCpMask_s2            <= CntCpMask_s1;
+                    overflow_CntCpMask_s2   <= overflow_CntCpMask_s1;
+                    vld_Mask_s2             <= VldArbMask_next;
+                    CntMaskRd_s2            <= CntMaskRd_s1_arb;
+                    FPC_MaskRdDat_s2 <= FPC_MaskRdDat;
+                    vld_MaskRdDat_s2 <= vld_Mask_s1;
                 end
             end
+
+            // Mask write back
+                assign FPC_MaskWrAddr[gv_fpc] = ( (MaxCntMaskRd + 1)*CntCpMask_s2 + CntMaskRd_s2 ) / (SRAM_WIDTH / CUTMASK_WIDTH);
+                wire MtnPntExt = (SRAM_WIDTH*(CntMaskRd_s2 / (SRAM_WIDTH / CUTMASK_WIDTH) )) <= FPS_MaxIdx_LastCp 
+                        & FPS_MaxIdx_LastCp < (SRAM_WIDTH*(CntMaskRd_s2 / (SRAM_WIDTH / CUTMASK_WIDTH) + 1))
+                        & CntCpMask_s2 != 0;
+                        // Maintained point of LastCp is At current SRAM WORD (FPC_MaskRdDat)
+                always @ (*) begin
+                    FPC_MaskWrDat[gv_fpc] = 0;
+                    if ( FPC_MaskWrDatVld[gv_fpc] ) begin
+                        FPC_MaskWrDat[gv_fpc]   =  FPC_MaskRdDat_s2;
+                        if ( CntCpMask_s2 != 0 ) begin // Write 'd0 at First Cp 
+                            FPC_MaskWrDat[gv_fpc][FPS_MaxIdx_LastCp % SRAM_WIDTH] = 1'b1; 
+                            // set 1
+                        end
+                    end
+                end
+                assign FPC_MaskWrDatVld[gv_fpc] = 
+                    (   (MtnPntExt & !FPC_MaskRdDat_s2[FPS_MaxIdx_LastCp % SRAM_WIDTH]) 
+                        | ((MaxCntMaskRd + 1)*CntCpMask_s2 + CntMaskRd_s2 ) % (SRAM_WIDTH / CUTMASK_WIDTH) == 0 
+                    ) & vld_MaskRdDat_s2 & (VldArbCrd & VldArbDist & DistWrRdy);
+                // Need to Update (Write back): (The Maintained point is never been set 1 | Initialize when CntCpMask_s1 == 0) and first Mask of SRAM Word
 
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
