@@ -388,6 +388,11 @@ always @(posedge clk or negedge rst_n) begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd1;
 
+            // Test KNN -----------------------------------------------------
+            end else if(int_i == GLBWRIDX_ITFCRD )begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 32'h0000_0004;
+                CCUTOP_CfgPortParBank[int_i] <= 'd1; 
+
             end else begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 0; // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd1;   // default  
