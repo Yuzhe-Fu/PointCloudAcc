@@ -266,7 +266,7 @@ end
 
 // CfgRdy -> Req
 // Test POL
-assign CfgRdy = {1'b0, 1'b0, 1'b0, FPSCCU_CfgRdy, CCUTOP_CfgRdy}; // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
+assign CfgRdy = {1'b0, 1'b0, KNNCCU_CfgRdy, 1'b0, CCUTOP_CfgRdy}; // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
@@ -387,6 +387,11 @@ always @(posedge clk or negedge rst_n) begin
             end else if(int_i == GLB_NUM_WRPORT + GLBRDIDX_CCUISA) begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd1;
+
+            // Test KNN -----------------------------------------------------
+            end else if(int_i == GLBWRIDX_ITFCRD )begin
+                CCUTOP_CfgPortBankFlag[int_i] <= 32'h0000_0004;
+                CCUTOP_CfgPortParBank[int_i] <= 'd1; 
 
             end else begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 0; // ISA read bank0

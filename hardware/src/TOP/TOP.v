@@ -24,7 +24,7 @@ module TOP #(
     parameter CUTMASK_WIDTH  = 32, 
     
     // KNN
-    parameter NUM_SORT_CORE  = 4,
+    parameter NUM_SORT_CORE  = 10, // ???
 
     // SYA
     parameter SYA_NUM_ROW    = 16,
