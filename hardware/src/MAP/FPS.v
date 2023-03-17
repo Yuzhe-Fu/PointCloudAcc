@@ -750,7 +750,7 @@ generate
 
             // Dist Pipeline
                 // Current
-                    assign Dist_s1 = vld_Dist_s2? Dist_s2 : (CntCpDistRdAddr_s1 == 0? {SRAM_WIDTH{1'b1}}: GLBFPS_DistRdDat) ; // Dist_s2 is prior; When CntCp_s1 ==0, Dist is 
+                    assign Dist_s1 = vld_Dist_s2? Dist_s2 : (CntCpDistRdAddr_s1 == 0? {SRAM_WIDTH{1'b1}}: state == IDLE? GLBFPS_DistRdDat : 10) ; // ???????? Dist_s2 is prior; When CntCp_s1 ==0, Dist is 
                     assign CntDistRdAddr_s1_arb = vld_Dist_s2? CntDistRdAddr_s2 : CntDistRdAddr_s1;
 
                     assign VldArbDist       =  (vld_Dist_s1 | vld_Dist_s2) & ( CntDistRdAddr_s1_arb*NUM_DIST_SRAM <= CurIdx_s1 & CurIdx_s1 < (CntDistRdAddr_s1_arb + 1)*NUM_DIST_SRAM );
@@ -861,14 +861,13 @@ generate
                 if(!rst_n) begin
                     {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= 0;
                 end else if (ena_Dist_s2) begin
-                    {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= {Dist_s2_next, CntDistRdAddr_s1_arb, Dist_s2_next, CntCpDistRdAddr_s1, handshake_Dist_s2 ? VldArbDist_next : VldArbDist };
+                    {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= {Dist_s2_next, CntDistRdAddr_s1_arb, Dist_s2_next, CntCpDistRdAddr_s1, handshake_Dist_s2? VldArbDist_next : VldArbDist };
                 end
             end
 
             // Write Back
-                assign FPC_DistWrDatVld[gv_fpc] = (!vld_Dist_s2) & (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld); // With assign wready   = !rvalid;  in RAM
-                // When vld_Dist_s2=0(finishes Current Dist) & other three loads is ready to update
-                assign DistWrRdy = vld_Dist_s2 | (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld) & (GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx)); 
+                assign FPC_DistWrDatVld[gv_fpc] = !vld_Dist_s2 & (VldArbMask & VldArbCrd);// & MaskWrRdy);// When VldArbDist_next=0(finishes Current Dist) & other three loads is ready to update
+                assign DistWrRdy = (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx) : 1'b1);
                 assign FPC_DistWrAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr + (MaxCntDistRdAddr + 1)*CntCpDistRdAddr_s2 + CntDistRdAddr_s2;
                 assign FPC_DistWrDat[gv_fpc] = FPC_DistWrDat_s2;
 
