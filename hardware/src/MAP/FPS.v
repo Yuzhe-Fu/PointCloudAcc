@@ -861,13 +861,13 @@ generate
                 if(!rst_n) begin
                     {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= 0;
                 end else if (ena_Dist_s2) begin
-                    {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= {Dist_s2_next, CntDistRdAddr_s1_arb, Dist_s2_next, CntCpDistRdAddr_s1, handshake_Dist_s2? VldArbDist_next : VldArbDist };
+                    {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= {Dist_s2_next, CntDistRdAddr_s1_arb, Dist_s2_next, CntCpDistRdAddr_s1, handshake_Dist_s2 ? VldArbDist_next : VldArbDist };
                 end
             end
 
             // Write Back
-                assign FPC_DistWrDatVld[gv_fpc] = !vld_Dist_s2 & (VldArbMask & VldArbCrd);// & MaskWrRdy);// When VldArbDist_next=0(finishes Current Dist) & other three loads is ready to update
-                assign DistWrRdy = (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx) : 1'b1);
+                assign FPC_DistWrDatVld[gv_fpc] = (!vld_Dist_s2) & (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld);// When vld_Dist_s2=0(finishes Current Dist) & other three loads is ready to update
+                assign DistWrRdy = vld_Dist_s2 | (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld) & (GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx));
                 assign FPC_DistWrAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr + (MaxCntDistRdAddr + 1)*CntCpDistRdAddr_s2 + CntDistRdAddr_s2;
                 assign FPC_DistWrDat[gv_fpc] = FPC_DistWrDat_s2;
 
