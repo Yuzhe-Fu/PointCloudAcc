@@ -750,7 +750,12 @@ generate
 
             // Dist Pipeline
                 // Current
-                    assign Dist_s1 = vld_Dist_s2? Dist_s2 : (CntCpDistRdAddr_s1 == 0? {SRAM_WIDTH{1'b1}}: state == IDLE? GLBFPS_DistRdDat : 10) ; // ???????? Dist_s2 is prior; When CntCp_s1 ==0, Dist is 
+                    `ifdef PSEUDO_DATA
+                        assign Dist_s1 = vld_Dist_s2? Dist_s2 : (CntCpDistRdAddr_s1 == 0? {SRAM_WIDTH{1'b1}}: state == IDLE? GLBFPS_DistRdDat : 10) ; // ???????? Dist_s2 is prior; When CntCp_s1 ==0, Dist is 
+                    `else
+                        assign Dist_s1 = vld_Dist_s2? Dist_s2 : (CntCpDistRdAddr_s1 == 0? {SRAM_WIDTH{1'b1}}: GLBFPS_DistRdDat) ; // ???????? Dist_s2 is prior; When CntCp_s1 ==0, Dist is 
+                    `endif
+
                     assign CntDistRdAddr_s1_arb = vld_Dist_s2? CntDistRdAddr_s2 : CntDistRdAddr_s1;
 
                     assign VldArbDist       =  (vld_Dist_s1 | vld_Dist_s2) & ( CntDistRdAddr_s1_arb*NUM_DIST_SRAM <= CurIdx_s1 & CurIdx_s1 < (CntDistRdAddr_s1_arb + 1)*NUM_DIST_SRAM );
