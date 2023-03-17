@@ -866,8 +866,9 @@ generate
             end
 
             // Write Back
-                assign FPC_DistWrDatVld[gv_fpc] = (!vld_Dist_s2) & (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld);// When vld_Dist_s2=0(finishes Current Dist) & other three loads is ready to update
-                assign DistWrRdy = vld_Dist_s2 | (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld) & (GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx));
+                assign FPC_DistWrDatVld[gv_fpc] = (!vld_Dist_s2) & (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld); // With assign wready   = !rvalid;  in RAM
+                // When vld_Dist_s2=0(finishes Current Dist) & other three loads is ready to update
+                assign DistWrRdy = vld_Dist_s2 | (VldArbMask & VldArbCrd & MaskWrRdy & (LopCntLast_s2? rdy_Max_s3 : 1'b1) & !FPC_DistRdAddrVld) & (GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx)); 
                 assign FPC_DistWrAddr[gv_fpc] = CCUFPS_CfgDistBaseAddr + (MaxCntDistRdAddr + 1)*CntCpDistRdAddr_s2 + CntDistRdAddr_s2;
                 assign FPC_DistWrDat[gv_fpc] = FPC_DistWrDat_s2;
 
