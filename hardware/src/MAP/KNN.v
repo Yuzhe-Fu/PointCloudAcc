@@ -101,6 +101,8 @@ wire  [NUM_SORT_CORE    -1 : 0] INSKNN_MapVld;
 wire  [NUM_SORT_CORE    -1 : 0] KNNINS_MapRdy;
 
 wire [NUM_SORT_CORE     -1 : 0][NUM_SRAMWORD_MAP   -1 : 0][(SRAM_WIDTH + IDX_WIDTH) -1 : 0] PISO_InDat;
+reg                             Pseudo_CrdRdVld;
+
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -152,7 +154,12 @@ assign INC_CntCpCrdRdAddr    = state == CP & ena_s0;
 assign INC_CntCrdRdAddr   = state == LP & ena_s0;
 
 // HandShake
-assign rdy_s0 = GLBKNN_CrdRdAddrRdy;
+`ifdef PSEUDO_DATA
+    assign rdy_s0 = 1'b1;
+`else
+    assign rdy_s0 = GLBKNN_CrdRdAddrRdy;
+`endif
+
 assign vld_s0 = state == CP | state == LP;
 
 assign handshake_s0 = rdy_s0 & vld_s0;
@@ -200,7 +207,12 @@ assign KNNGLB_CrdRdAddrVld = vld_s0;
 
 // HandShake
 assign rdy_s1 = KNNGLB_CrdRdDatRdy;
-assign vld_s1 = GLBKNN_CrdRdDatVld;
+`ifdef PSEUDO_DATA
+    assign vld_s1 = Pseudo_CrdRdVld;
+`else
+    assign vld_s1 = GLBKNN_CrdRdDatVld;
+`endif
+
 
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1 = handshake_s1 | ~vld_s1;
@@ -241,7 +253,12 @@ generate
         
         assign CpIdx_s1 = NUM_SORT_CORE*CntCpCrdRdAddr_s1 + gv_core;
         assign PntIdx_s1 = NUM_SORT_CORE*CntLopCrdRdAddr_s1 + gv_core;
-        assign Crd_s1 = GLBKNN_CrdRdDat[CRD_WIDTH*CRD_DIM*gv_core +: CRD_WIDTH*CRD_DIM];
+        `ifdef PSEUDO_DATA
+            assign Crd_s1 = state == IDLE? GLBKNN_CrdRdDat[CRD_WIDTH*CRD_DIM*gv_core +: CRD_WIDTH*CRD_DIM] : KNNGLB_CrdRdAddr;
+        `else
+            assign Crd_s1 = GLBKNN_CrdRdDat[CRD_WIDTH*CRD_DIM*gv_core +: CRD_WIDTH*CRD_DIM];
+        `endif
+        
         EDC#(
             .CRD_WIDTH ( CRD_WIDTH  ),
             .CRD_DIM   ( CRD_DIM    )
@@ -250,7 +267,12 @@ generate
             .Crd1      ( Crd_s1     ),
             .DistSqr   ( LopDist_s1    )
         );
-        assign KNNINS_LopVld[gv_core] = state_s1 == LP & (GLBKNN_CrdRdDatVld & KNNGLB_CrdRdDatRdy);
+        `ifdef PSEUDO_DATA
+            assign KNNINS_LopVld[gv_core] = state_s1 == LP & (Pseudo_CrdRdVld & KNNGLB_CrdRdDatRdy);
+        `else
+            assign KNNINS_LopVld[gv_core] = state_s1 == LP & (GLBKNN_CrdRdDatVld & KNNGLB_CrdRdDatRdy);
+        `endif
+        
         INS#(
             .SORT_LEN_WIDTH     ( MAP_WIDTH     ),
             .IDX_WIDTH          ( IDX_WIDTH     ),
@@ -312,5 +334,16 @@ PISO_NOCACHE#(
     .OUT_LAST  ( PISO_OUT_LAST  ),
     .OUT_RDY   ( GLBKNN_MapWrDatRdy)
 );
+
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        Pseudo_CrdRdVld <= 0;
+    end else if(KNNGLB_CrdRdAddrVld & GLBKNN_CrdRdAddrRdy) begin
+        Pseudo_CrdRdVld <= 1'b1;
+    end else if(GLBKNN_CrdRdDatVld & KNNGLB_CrdRdDatRdy) begin
+        Pseudo_CrdRdVld <= 1'b0;
+    end
+end
+
 
 endmodule

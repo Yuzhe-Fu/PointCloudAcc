@@ -266,7 +266,7 @@ end
 
 // CfgRdy -> Req
 // Test POL
-assign CfgRdy = {1'b0, 1'b0, 1'b0, FPSCCU_CfgRdy, CCUTOP_CfgRdy}; // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
+assign CfgRdy = {1'b0, 1'b0, KNNCCU_CfgRdy, 1'b0, CCUTOP_CfgRdy}; // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
