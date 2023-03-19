@@ -1,4 +1,8 @@
 # 问题：
+- 为了避免组合逻辑环
+    - 考虑直接去掉ramhs的rdrdy到wrrdy，变成伪双口ram，
+    - 使用时控制wrvld和rdvld不同时存在,而不通过rdy来控制
+    - 反正，下游写上游读同一块就有组合逻辑环，下游写rdy到上游读rdy到ram的不能写rdy的环路
 - 减少sram的位宽到128位(因为sya需要的一个单位是128)，加倍深度，块数不变（有pingpongbuffer的需求）
 - GLB打拍
     - SRAM打拍时不要对每个Wr/RdPort打拍，因为口太多，而是对bank输入输出打拍，但是还是尽量不打拍，寄存器太多了

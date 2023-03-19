@@ -1,5 +1,8 @@
 # 问题
-    - SYA的4个PE_bank输出ofm怎么连GLB？
+- 给所有模块加断言：
+    - CCU的cfgrdy高了，cfgvld没拉高；CCU的ISA RAM满堵塞满了；
+    - GLB的空满，同时读写
+- SYA的4个PE_bank输出ofm怎么连GLB？
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
@@ -36,7 +39,7 @@ parameter MAP_WIDTH      = 5,   // MAP Idx的表示，但CfgK位宽是MAP_WIDTH+
 
 parameter CRD_WIDTH      = 16,   
 parameter CRD_DIM        = 3,   
-parameter NUM_SORT_CORE  = 4,   // 数量是灵活调整的，不由SRAM_WIDTH / (Crd+Idx)决定
+parameter NUM_SORT_CORE  = 4,   // 数量是灵活调整的，但由于期望SRAM一次给所有KNN的Cp点赋初值，所以暂定10个核
 
 parameter SYA_NUM_ROW    = 16,
 parameter SYA_NUM_COL    = 16,  // 是正方形，必须等于SYA_NUM_ROW
