@@ -132,7 +132,7 @@ assign IO_DatVld  = O_DatOE? 1'bz : state== IN2CHIP;
 assign IO_Dat = O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr];
 
 // DRAM WRITE
-assign OI_DatRdy = O_DatOE? state==CMD | state==OUT2OFF: 1'bz;
+assign OI_DatRdy = O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz;
 
 always @(posedge clk or rst_n) begin
     if(state == OUT2OFF) begin
