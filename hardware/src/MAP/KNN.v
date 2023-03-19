@@ -130,7 +130,7 @@ always @(*) begin
                 else
                     next_state <= CP;
         LP:     if ( CntCrdRdAddrLast & KNNGLB_CrdRdAddrVld & GLBKNN_CrdRdAddrRdy ) begin
-                    if ( CntCpCrdRdAddrLast )
+                    if ( CntCpCrdRdAddr == 0 )
                         next_state <= WAITFNH;
                     else //
                         next_state <= CP;
@@ -180,7 +180,7 @@ counter#(
 )u0_counter_CntCp(
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
-    .CLEAR     ( CCUKNN_Rst     ),
+    .CLEAR     ( CCUKNN_Rst | state == IDLE    ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}),
     .INC       ( INC_CntCpCrdRdAddr),
     .DEC       ( 1'b0           ),
@@ -196,7 +196,7 @@ counter#(
 )u1_counter_CntCrdRdAddr(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( INC_CntCpCrdRdAddr | CCUKNN_Rst   ),
+    .CLEAR     ( INC_CntCpCrdRdAddr | CCUKNN_Rst | state == IDLE   ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
     .INC       ( INC_CntCrdRdAddr   ),
     .DEC       ( 1'b0               ),
@@ -215,7 +215,7 @@ assign KNNGLB_CrdRdAddr = CCUKNN_CfgCrdRdAddr + (state == CP ? CntCpCrdRdAddr : 
 assign KNNGLB_CrdRdAddrVld = vld_s0;
 
 // HandShake
-assign rdy_s1 = KNNGLB_CrdRdDatRdy;
+assign rdy_s1 = state_s1 == CP | PISO_InRdy_CrdRd;
 // `ifdef PSEUDO_DATA
 //     assign vld_s1 = Pseudo_CrdRdVld;
 // `else
@@ -230,11 +230,13 @@ assign ena_s1 = handshake_s1 | ~vld_s1;
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         {CntLopCrdRdAddr_s1, CntLopCrdRdAddrLast_s1, CntCpCrdRdAddr_s1, CntCpCrdRdAddrLast_s1, state_s1} <= 0;
+    end else if ( state == IDLE ) begin
+        {CntLopCrdRdAddr_s1, CntLopCrdRdAddrLast_s1, CntCpCrdRdAddr_s1, CntCpCrdRdAddrLast_s1, state_s1} <= 0;
     end else if(ena_s1) begin
         CntLopCrdRdAddr_s1      <= CntLopCrdRdAddr;
         CntLopCrdRdAddrLast_s1  <= CntCrdRdAddrLast;
-        CntCpCrdRdAddr_s1       <= CntCpCrdRdAddr;
-        CntCpCrdRdAddrLast_s1   <= CntCpCrdRdAddrLast;
+        CntCpCrdRdAddr_s1       <= state == CP | state == WAITFNH? CntCpCrdRdAddr : CntCpCrdRdAddr_s1;
+        CntCpCrdRdAddrLast_s1   <= state == CP | state == WAITFNH? CntCpCrdRdAddrLast : CntCpCrdRdAddrLast_s1;
         state_s1                <= state;
 
     end
@@ -250,8 +252,7 @@ end
     assign CrdRdDat_s1 = GLBKNN_CrdRdDat;
 // `endif
 
-
-assign KNNGLB_CrdRdDatRdy = state_s1 == LP & PISO_InRdy_CrdRd | state_s1 == CP & 1'b1;
+assign KNNGLB_CrdRdDatRdy = rdy_s1; //state_s1 == LP & PISO_InRdy_CrdRd | state_s1 == CP & 1'b1;
 
 PISO_NOCACHE#(
     .DATA_IN_WIDTH   ( SRAM_WIDTH       ), 
@@ -276,7 +277,7 @@ counter#(
 )u1_counter_CrdByte(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( INC_CntCrdRdAddr | CCUKNN_Rst   ),
+    .CLEAR     ( INC_CntCrdRdAddr | CCUKNN_Rst | state == IDLE  ),
     .DEFAULT   ( {CRDBYTE_WIDTH{1'b0}}  ),
     .INC       ( PISO_OutVld_CrdRd & PISO_OutRdy_CrdRd   ),
     .DEC       ( 1'b0               ),
@@ -353,7 +354,7 @@ generate
             // `ifdef PSEUDO_DATA
             //     assign MapWrAddr = (NUM_SRAMWORD_MAP*(MaxCntCrdRdAddr + 1))*CntCpCrdRdAddr_s1 + NUM_SRAMWORD_MAP*CntLopCrdRdAddr_s1 + gv_wd;
             // `else
-                assign MapWrAddr = CCUKNN_CfgMapWrAddr + (CpIdx_s2 / NUM_SRAMWORD_MAP == 0? CpIdx_s2 / NUM_SRAMWORD_MAP : CpIdx_s2 / NUM_SRAMWORD_MAP + 1) + gv_wd;
+                assign MapWrAddr = CCUKNN_CfgMapWrAddr + NUM_SRAMWORD_MAP*CpIdx_s2 + gv_wd;
             // `endif
 
             assign PISO_InDat[gv_core][gv_wd] = {INSKNN_Map[gv_wd], MapWrAddr };
@@ -364,17 +365,31 @@ generate
         // Reg Update
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
-                {CpCrd_s2, CpIdx_s2} <= 0;
-            end else if(ena_s2) begin
-                {CpCrd_s2, CpIdx_s2} <= state_s1 == CP? {CrdRdDat_s1[CRD_WIDTH*CRD_DIM*gv_core +: CRD_WIDTH*CRD_DIM], CpIdx_s1} : {CpCrd_s2, CpIdx_s2};
+                CpIdx_s2 <= 0;
+            end else if ( state == IDLE ) begin
+                CpIdx_s2 <= 0;
+            end else if(KNNINS_LopVld[gv_core] & INSKNN_LopRdy[gv_core]) begin
+                CpIdx_s2 <= CpIdx_s1;
             end 
         end
+
+        always @(posedge clk or negedge rst_n) begin
+            if(!rst_n) begin
+                CpCrd_s2 <= 0;
+            end else if ( state == IDLE ) begin
+                CpCrd_s2 <= 0;
+            end else if(state_s1 == CP) begin
+                CpCrd_s2 <= CrdRdDat_s1[CRD_WIDTH*CRD_DIM*gv_core +: CRD_WIDTH*CRD_DIM];
+            end 
+        end 
 
     end
 endgenerate
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
+        {CntLopCrdRdAddrLast_s2, CntCpCrdRdAddrLast_s2} <= 0;
+    end else if ( state == IDLE ) begin
         {CntLopCrdRdAddrLast_s2, CntCpCrdRdAddrLast_s2} <= 0;
     end else if(ena_s2) begin
         {CntLopCrdRdAddrLast_s2, CntCpCrdRdAddrLast_s2}  <= {CntLopCrdRdAddrLast_s1, CntCpCrdRdAddrLast_s1};

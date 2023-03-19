@@ -310,7 +310,7 @@ generate
 endgenerate
 
 assign CCUGLB_ISARdAddr = CntMduISARdAddr[ArbCfgRdyIdx_s0];
-assign CCUGLB_ISARdAddrVld = state==CFG & !(Ovf_CntISARdWord_s1 & OpCodeMatch & GLBCCU_ISARdDatVld);
+assign CCUGLB_ISARdAddrVld = state==CFG & !(Ovf_CntISARdWord_s1 & (CfgVld[ArbCfgRdyIdx_s2] + OpCodeMatch) ); // current code is match or cfg is valid
 
 // Reg Update
 always @(posedge clk or negedge rst_n) begin
