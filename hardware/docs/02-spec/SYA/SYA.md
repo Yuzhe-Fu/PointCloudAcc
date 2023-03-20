@@ -1,6 +1,15 @@
 # 问题：
+- 无x态
 - 适应将多层直切分块：也是MLP融合：
-    - CCU具备控制SYA无缝切换下一层的Wgt和一块Act的读取， 还有输出OFM存的地址  CCU控制需要流水线跟随计算结果
+    - CCU具备控制SYA无缝切换下一层的Wgt和一块Act的读取， 还有输出OFM存的地址  由CCU控制需要流水线跟随计算结果
+    - 当少filter且浅通道时，如filter剪枝之后的均少至16个，以16个FLT和2个chn为例
+        - 先不管shift，直接默认按chn grp tileifm 有shift在SRAM密集排列不变
+        - 而SYA算2个chn就直接取2个WORD的IFM和Flt，boost进BANK就行
+        - 然后，IFM的SRAM连续继续取，FLT的SRAM倒回来重复取2个WORD
+        - OFM的地址计算还是按照哪一个grp tileifm和tileflt计算
+        - 需要修改的地方？目前无
+    - GLB需要支持重复读取，不要读一个就把这个写盖了；还支持乱序写，而不是跳回写的时候发现没写的已经被读了
+
 - 输出Ofm的地址怎么计算？画图
 - 考虑增加方案2的整形模块来适应剪枝后的少filter（<16)，少通道(<16) 
 - 优化面积
