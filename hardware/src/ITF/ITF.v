@@ -36,6 +36,7 @@ module ITF #(
 
     input  [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0][DRAM_ADDR_WIDTH-1 : 0] CCUITF_DRAMBaseAddr,
     input                                               CCUITF_Rst,
+    input  [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)         -1 : 0] CCUITF_RstPort,
 
     output [ITF_NUM_RDPORT  -1 : 0][ADDR_WIDTH      -1 : 0] ITFGLB_RdAddr    ,
     output [ITF_NUM_RDPORT                          -1 : 0] ITFGLB_RdAddrVld ,
@@ -195,7 +196,7 @@ generate
         )u_counter_CntWrAddr(
             .CLK       ( clk            ),
             .RESET_N   ( rst_n          ),
-            .CLEAR     ( CCUITF_Rst     ),
+            .CLEAR     ( CCUITF_RstPort[i] ),
             .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
             .INC       ( ITFGLB_WrDatVld[i] & GLBITF_WrDatRdy[i] ),
             .DEC       ( 1'b0           ),
@@ -227,7 +228,7 @@ generate
         )u_counter_CntRdAddr(
             .CLK       ( clk            ),
             .RESET_N   ( rst_n          ),
-            .CLEAR     ( CCUITF_Rst     ),
+            .CLEAR     ( CCUITF_RstPort[ITF_NUM_RDPORT + gv_i] ),
             .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
             .INC       ( ITFGLB_RdAddrVld[gv_i] & GLBITF_RdAddrRdy[gv_i] ),
             .DEC       ( 1'b0           ),

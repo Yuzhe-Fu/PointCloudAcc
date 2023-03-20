@@ -130,7 +130,7 @@ wire                                  CCUGLB_ISARdDatRdy  ;
 wire [ADDR_WIDTH              -1 : 0] CCUTOP_MduISARdAddrMin; // To avoid ITF over-write ISARAM of GLB
 wire                                 CCUITF_Rst;
 wire [DRAM_ADDR_WIDTH*(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0] CCUITF_DRAMBaseAddr;
-
+wire [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)                -1 : 0] CCUITF_RstPort;
 wire [NUM_FPC             -1 : 0] CCUFPS_Rst   ;
 wire [NUM_FPC             -1 : 0] CCUFPS_CfgVld;
 wire [NUM_FPC             -1 : 0] FPSCCU_CfgRdy;        
@@ -386,6 +386,7 @@ CCU#(
     .CCUTOP_MduISARdAddrMin  ( CCUTOP_MduISARdAddrMin  ),
     .CCUITF_Rst              ( CCUITF_Rst              ),
     .CCUITF_DRAMBaseAddr     ( CCUITF_DRAMBaseAddr     ),
+    .CCUITF_RstPort          ( CCUITF_RstPort          ),
     .CCUFPS_Rst              ( CCUFPS_Rst              ),
     .CCUFPS_CfgVld           ( CCUFPS_CfgVld           ),
     .FPSCCU_CfgRdy           ( FPSCCU_CfgRdy           ),
@@ -789,6 +790,7 @@ ITF#(
     .ITFPAD_DatRdy       ( ITFPAD_DatRdy       ),
     .CCUITF_Rst          ( CCUITF_Rst          ),
     .CCUITF_DRAMBaseAddr ( CCUITF_DRAMBaseAddr ),
+    .CCUITF_RstPort      ( CCUITF_RstPort      ),
     .ITFGLB_RdAddr       ( ITFGLB_RdAddr       ),
     .ITFGLB_RdAddrVld    ( ITFGLB_RdAddrVld    ),
     .GLBITF_RdAddrRdy    ( GLBITF_RdAddrRdy    ),

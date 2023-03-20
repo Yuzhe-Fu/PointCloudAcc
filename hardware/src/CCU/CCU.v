@@ -52,6 +52,7 @@ module CCU #(
     output                                  CCUGLB_ISARdDatRdy      ,
     output [ADDR_WIDTH              -1 : 0] CCUTOP_MduISARdAddrMin  , // To avoid ITF over-write ISARAM of GLB
     output                                  CCUITF_Rst              , 
+    output [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)    -1 : 0] CCUITF_RstPort, 
     output reg [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0][DRAM_ADDR_WIDTH-1 : 0] CCUITF_DRAMBaseAddr,
 
     output     [NUM_FPC             -1 : 0] CCUFPS_Rst              ,
@@ -394,10 +395,11 @@ always @(posedge clk or negedge rst_n) begin
             end 
         end 
         for(int_i = 0; int_i < ITF_NUM_RDPORT+ITF_NUM_WRPORT; int_i=int_i+1) begin
-            if(int_i == GLBWRIDX_ITFISA)
+            if(int_i == GLBWRIDX_ITFISA) begin
                 CCUITF_DRAMBaseAddr[int_i]    <= 'd0; // ISA read DramAddr = 0
-            else 
+            end else begin
                 CCUITF_DRAMBaseAddr[int_i]    <= 'd0;
+            end
         end
 
     end else if ( handshake_s1 & OpCodeMatch) begin
@@ -561,6 +563,14 @@ assign CCUFPS_Rst = {NUM_FPC{state == IDLE}};
 assign CCUKNN_Rst = state == IDLE;
 assign CCUITF_Rst = state == IDLE;
 
+assign CCUITF_RstPort[GLBWRIDX_ITFISA]                  = state == IDLE;
+assign CCUITF_RstPort[GLBWRIDX_ITFCRD                 ] = &(CCUFPS_CfgVld & FPSCCU_CfgRdy);
+assign CCUITF_RstPort[ITF_NUM_WRPORT + GLBRDIDX_ITFIDX] = &(CCUFPS_CfgVld & FPSCCU_CfgRdy);
+assign CCUITF_RstPort[ITF_NUM_WRPORT + GLBRDIDX_ITFMAP] =   CCUKNN_CfgVld & KNNCCU_CfgRdy;
+assign CCUITF_RstPort[GLBWRIDX_ITFACT                 ] =   CCUSYA_CfgVld & SYACCU_CfgRdy;
+assign CCUITF_RstPort[GLBWRIDX_ITFWGT                 ] =   CCUSYA_CfgVld & SYACCU_CfgRdy;
+assign CCUITF_RstPort[ITF_NUM_WRPORT + GLBRDIDX_ITFOFM] =   CCUSYA_CfgVld & SYACCU_CfgRdy;
+assign CCUITF_RstPort[GLBWRIDX_ITFMAP                 ] = &(CCUPOL_CfgVld & POLCCU_CfgRdy);
 //=====================================================================================================================
 // Logic Design 4: GLB Control
 //=====================================================================================================================
