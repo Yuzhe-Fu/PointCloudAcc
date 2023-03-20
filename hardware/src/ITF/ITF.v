@@ -95,7 +95,7 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CMD :   if( CmdRdy & CmdVld) begin
-                    if ( PortIdx_ >= ITF_NUM_WRPORT)
+                    if ( PortIdx >= ITF_NUM_WRPORT)
                         next_state <= OUT2OFF;
                     else
                         next_state <= IN2CHIP;
@@ -133,7 +133,7 @@ RR_arbiter #(
 )u_RR_arbiter_Port(
     .clk        ( clk       ),
     .rst_n      ( rst_n     ),
-    .arb_round  ( next_state == CMD && state == IDLE ), // update arbed info(port) when arbing sucessfully
+    .arb_round  (  state == IDLE && next_state == CMD ), // update arbed info(port) when arbing sucessfully
     .req        ( req       ),
     .gnt        ( gnt       ),
     .arb_port   ( PortIdx_  )
