@@ -36,6 +36,7 @@ module ITF #(
 
     input  [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)-1 : 0][DRAM_ADDR_WIDTH-1 : 0] CCUITF_DRAMBaseAddr,
     input                                               CCUITF_Rst,
+    input  [(ITF_NUM_RDPORT+ITF_NUM_WRPORT)         -1 : 0] CCUITF_RstPort,
 
     output [ITF_NUM_RDPORT  -1 : 0][ADDR_WIDTH      -1 : 0] ITFGLB_RdAddr    ,
     output [ITF_NUM_RDPORT                          -1 : 0] ITFGLB_RdAddrVld ,
@@ -95,7 +96,7 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         CMD :   if( CmdRdy & CmdVld) begin
-                    if ( PortIdx_ >= ITF_NUM_WRPORT)
+                    if ( PortIdx >= ITF_NUM_WRPORT)
                         next_state <= OUT2OFF;
                     else
                         next_state <= IN2CHIP;
@@ -133,7 +134,7 @@ RR_arbiter #(
 )u_RR_arbiter_Port(
     .clk        ( clk       ),
     .rst_n      ( rst_n     ),
-    .arb_round  ( next_state == CMD && state == IDLE ), // update arbed info(port) when arbing sucessfully
+    .arb_round  (  state == IDLE && next_state == CMD ), // update arbed info(port) when arbing sucessfully
     .req        ( req       ),
     .gnt        ( gnt       ),
     .arb_port   ( PortIdx_  )
@@ -195,7 +196,7 @@ generate
         )u_counter_CntWrAddr(
             .CLK       ( clk            ),
             .RESET_N   ( rst_n          ),
-            .CLEAR     ( CCUITF_Rst     ),
+            .CLEAR     ( CCUITF_RstPort[i] ),
             .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
             .INC       ( ITFGLB_WrDatVld[i] & GLBITF_WrDatRdy[i] ),
             .DEC       ( 1'b0           ),
@@ -227,7 +228,7 @@ generate
         )u_counter_CntRdAddr(
             .CLK       ( clk            ),
             .RESET_N   ( rst_n          ),
-            .CLEAR     ( CCUITF_Rst     ),
+            .CLEAR     ( CCUITF_RstPort[ITF_NUM_RDPORT + gv_i] ),
             .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
             .INC       ( ITFGLB_RdAddrVld[gv_i] & GLBITF_RdAddrRdy[gv_i] ),
             .DEC       ( 1'b0           ),

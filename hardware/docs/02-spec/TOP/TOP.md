@@ -2,6 +2,7 @@
 - 给所有模块加断言：
     - CCU的cfgrdy高了，cfgvld没拉高；CCU的ISA RAM满堵塞满了；
     - GLB的空满，同时读写
+- 流片：停滞纠正跑-异常停滞可以继续跑加入一个开关信号
 - SYA的4个PE_bank输出ofm怎么连GLB？
 # 文件列表
 | File | Descriptions |
