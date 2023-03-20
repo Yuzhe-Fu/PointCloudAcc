@@ -117,6 +117,10 @@ wire [NUM_BANK                                      -1 : 0] sync_out_rdy;
 wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][ACT_WIDTH   -1 : 0] sync_out;
 wire [$clog2(NUM_ROW*NUM_BANK) + 1                  -1 : 0] SYA_MaxRowCol;
 
+reg  [NUM_ROW*NUM_BANK  -1 : 0][IDX_WIDTH           -1 : 0] AllBank_InCntTilIfm;
+reg  [NUM_ROW*NUM_BANK  -1 : 0][CHN_WIDTH           -1 : 0] AllBank_InCntTilFlt;
+reg  [NUM_ROW*NUM_BANK  -1 : 0][IDX_WIDTH           -1 : 0] AllBank_InCntGrp;
+
 //=====================================================================================================================
 // Logic Design :s0
 //=====================================================================================================================
@@ -279,14 +283,17 @@ assign vld_s1 = GLBSYA_ActRdDatVld & GLBSYA_WgtRdDatVld;
 // Reg Update
 always @ ( posedge clk or negedge rst_n )begin
     if( !rst_n )
-    {AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 'd0;
+    {AllBank_InCntGrp????????, AllBank_InCntTilFlt, AllBank_InCntTilIfm, AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 'd0;
     else if( handshake_s1 )
-    {AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 
+    {AllBank_InCntGrp, AllBank_InCntTilFlt, AllBank_InCntTilIfm, AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 
         {
-            {AllBank_InWgtChnLast_N[NUM_COL*NUM_BANK  -2:0], Overflow_CntChn    },
-            {AllBank_InWgtVld_N    [NUM_COL*NUM_BANK  -2:0], handshake_s1       },
-            {AllBank_InActChnLast_W[NUM_ROW*NUM_BANK  -2:0], Overflow_CntChn    },
-            {AllBank_InActVld_W    [NUM_ROW*NUM_BANK  -2:0], handshake_s1       }
+            {AllBank_InCntGrp      [NUM_ROW*NUM_BANK  -2 : 0], CntGrp             },
+            {AllBank_InCntTilFlt   [NUM_ROW*NUM_BANK  -2 : 0], CntTilFlt          },
+            {AllBank_InCntTilIfm   [NUM_ROW*NUM_BANK  -2 : 0], CntTilIfm          },
+            {AllBank_InWgtChnLast_N[NUM_COL*NUM_BANK  -2 : 0], Overflow_CntChn    },
+            {AllBank_InWgtVld_N    [NUM_COL*NUM_BANK  -2 : 0], handshake_s1       },
+            {AllBank_InActChnLast_W[NUM_ROW*NUM_BANK  -2 : 0], Overflow_CntChn    },
+            {AllBank_InActVld_W    [NUM_ROW*NUM_BANK  -2 : 0], handshake_s1       }
         }; // 
 end
 
@@ -385,18 +392,20 @@ SYNC_SHAPE #(
     .out_data_rdy        ( sync_out_rdy )
 );
 // {NUM_ROW*NUM_BANK{SYA_OutPsumVld == ReqVld}}; ofm in specific channels are valid(rhomboid sibianxing)
-assign din_data_vld         = CCUSYA_CfgOfmPhaseShift? { (NUM_ROW*NUM_BANK){1'b0} } : {|SYA_OutPsumVld[3], |SYA_OutPsumVld[2], |SYA_OutPsumVld[1], |SYA_OutPsumVld[0]}; 
+assign din_data_vld         = CCUSYA_CfgOfmPhaseShift? {|SYA_OutPsumVld[3], |SYA_OutPsumVld[2], |SYA_OutPsumVld[1], |SYA_OutPsumVld[0]} : { (NUM_ROW*NUM_BANK){1'b0} }; 
 assign SYA_InPsumRdy        = CCUSYA_CfgOfmPhaseShift? 
-                                { (NUM_ROW*NUM_BANK){GLBSYA_OfmWrDatRdy} } 
-                                : { {NUM_ROW{din_data_rdy[3]}}, {NUM_ROW{din_data_rdy[2]}}, {NUM_ROW{din_data_rdy[1]}}, {NUM_ROW{din_data_rdy[0]}} };
+                                { {NUM_ROW{din_data_rdy[3]}}, {NUM_ROW{din_data_rdy[2]}}, {NUM_ROW{din_data_rdy[1]}}, {NUM_ROW{din_data_rdy[0]}} }
+                                : { (NUM_ROW*NUM_BANK){GLBSYA_OfmWrDatRdy} } ;
 
-assign SYAGLB_OfmWrDatVld   = CCUSYA_CfgOfmPhaseShift? |SYA_OutPsumVld : |sync_out_vld;
-assign SYAGLB_OfmWrDat      = CCUSYA_CfgOfmPhaseShift? SYA_OutPsum     : sync_out;
+assign SYAGLB_OfmWrDatVld   = CCUSYA_CfgOfmPhaseShift? |sync_out_vld : |SYA_OutPsumVld;
+assign SYAGLB_OfmWrDat      = CCUSYA_CfgOfmPhaseShift? sync_out      : SYA_OutPsum;
 assign SYAGLB_OfmWrAddr     = CCUSYA_CfgOfmPhaseShift? 
-                                CCUSYA_CfgOfmWrBaseAddr + ( (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt) *CCUSYA_CfgNumGrpPerTile)*CntTilIfm + (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt)*CntGrp 
-                                : 0;// ???????????? : 0??
-assign sync_out_rdy         = CCUSYA_CfgOfmPhaseShift? { (NUM_ROW*NUM_BANK){1'b0} } : {NUM_BANK{GLBSYA_OfmWrDatRdy}};
-
+                                0 // Need to Sync across with Data??????????????
+                                : CCUSYA_CfgOfmWrBaseAddr +  ( CCUSYA_CfgLopOrd == 0? 
+                                      (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt)*AllBank_InCntTilIfm[NUM_ROW*1 + NUM_ROW -1] + CCUSYA_CfgNumGrpPerTile*AllBank_InCntTilFlt[NUM_ROW*1 + NUM_ROW -1] + AllBank_InCntGrp[NUM_ROW*1 + NUM_ROW -1] // [31]
+                                    : (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilIfm)*AllBank_InCntTilFlt[NUM_ROW*1 + NUM_ROW -1] + CCUSYA_CfgNumGrpPerTile*AllBank_InCntTilIfm[NUM_ROW*1 + NUM_ROW -1] + AllBank_InCntGrp[NUM_ROW*1 + NUM_ROW -1] );
+                                    // Need to Sync across with Data??????????????
+assign sync_out_rdy         = CCUSYA_CfgOfmPhaseShift? {NUM_BANK{GLBSYA_OfmWrDatRdy}} : { (NUM_ROW*NUM_BANK){1'b1} };
 
 endmodule
 
