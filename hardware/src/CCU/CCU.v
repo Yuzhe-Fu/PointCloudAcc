@@ -159,15 +159,15 @@ reg                                         ISA_DatOutVld;
 
 reg [NUM_LAYER_WIDTH                -1 : 0] CfgNumLy;
 wire                                        ISA_RdEn_d;
-wire [OPCODE_WIDTH                  -1 : 0] OpCode;
+wire[OPCODE_WIDTH                   -1 : 0] OpCode;
 wire                                        OpCodeMatch;
-reg [5                              -1 : 0] OpNumWord[0 : OPNUM -1];
-reg [OPCODE_WIDTH                   -1 : 0] StateCode[0 : OPNUM -1];
-reg [DRAM_ADDR_WIDTH                -1 : 0] DramAddr[0 : GLB_NUM_WRPORT+GLB_NUM_RDPORT -1];
+reg [5                              -1 : 0] OpNumWord[0 : OPNUM                             -1];
+reg [OPCODE_WIDTH                   -1 : 0] StateCode[0 : OPNUM                             -1];
+reg [DRAM_ADDR_WIDTH                -1 : 0] DramAddr [0 : GLB_NUM_WRPORT + GLB_NUM_RDPORT   -1];
 
 reg [NUM_LAYER_WIDTH                -1 : 0] NumLy;
-reg [OPCODE_WIDTH                     -1 : 0] Mode;
-wire [$clog2(OPNUM)                 -1 : 0] AddrRdMinIdx;
+reg [OPCODE_WIDTH                   -1 : 0] Mode;
+wire[$clog2(OPNUM)                  -1 : 0] AddrRdMinIdx;
 
 wire                                        PISO_ISAInRdy;
 wire [PORT_WIDTH                    -1 : 0] PISO_ISAOut;
@@ -192,23 +192,23 @@ wire                                        handshake_s1;
 
 
 reg [4      -1 : 0] state       ;
-reg [4      -1 : 0] state_s1       ;
+reg [4      -1 : 0] state_s1    ;
 reg [4      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE    :   if( TOPCCU_start)
+        IDLE    :   if(TOPCCU_start)
                         next_state <= IDLE_CFG; //
                     else
                         next_state <= IDLE;
 
-        IDLE_CFG:   if ( |CfgRdy)
+        IDLE_CFG:   if (|CfgRdy)
                         next_state <= CFG;
                     else 
                         next_state <= IDLE_CFG;
 
         CFG     :   if (NumLy == CfgNumLy & CfgNumLy != 0)
                         next_state <= NETFNH;
-                    else if(CfgVld[ArbCfgRdyIdx_s2] & CfgRdy[ArbCfgRdyIdx_s2] )
+                    else if(CfgVld[ArbCfgRdyIdx_s2] & CfgRdy[ArbCfgRdyIdx_s2])
                         next_state <= IDLE_CFG;
                     else
                         next_state <= CFG;
@@ -256,17 +256,16 @@ end
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        OpNumWord[0] = 1;// localparam OPCODE_CCU             = 0;
-        OpNumWord[1] = 10;// localparam OPCODE_FPS             = 1;
-        OpNumWord[2] = 1;// localparam OPCODE_KNN             = 2;
-        OpNumWord[3] = 2;// localparam OPCODE_SYA             = 3;
-        OpNumWord[4] = 4;// localparam OPCODE_POL             = 4;
+        OpNumWord[0] = 1;   // localparam OPCODE_CCU             = 0;
+        OpNumWord[1] = 10;  // localparam OPCODE_FPS             = 1;
+        OpNumWord[2] = 1;   // localparam OPCODE_KNN             = 2;
+        OpNumWord[3] = 2;   // localparam OPCODE_SYA             = 3;
+        OpNumWord[4] = 4;   // localparam OPCODE_POL             = 4;
     end
 end
 
 // CfgRdy -> Req
-// Test POL
-assign CfgRdy = {1'b0, 1'b0, KNNCCU_CfgRdy, 1'b0, CCUTOP_CfgRdy}; // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
+assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
@@ -289,8 +288,8 @@ end
 //=====================================================================================================================
 genvar gv_i;
 generate
-    for(gv_i=0; gv_i<OPNUM; gv_i=gv_i+1) begin: GEN_CntMduISARdAddr
-        wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH -1;
+    for(gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_CntMduISARdAddr
+        wire [ADDR_WIDTH     -1 : 0] MaxCnt = 2**ADDR_WIDTH -1;
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter_CntMduISARdAddr(
@@ -309,8 +308,8 @@ generate
     end
 endgenerate
 
-assign CCUGLB_ISARdAddr = CntMduISARdAddr[ArbCfgRdyIdx_s0];
-assign CCUGLB_ISARdAddrVld = state==CFG & !(Ovf_CntISARdWord_s1 & (CfgVld[ArbCfgRdyIdx_s2] + OpCodeMatch) ); // current code is match or cfg is valid
+assign CCUGLB_ISARdAddr     = CntMduISARdAddr[ArbCfgRdyIdx_s0];
+assign CCUGLB_ISARdAddrVld  = state == CFG & !(Ovf_CntISARdWord_s1 & (CfgVld[ArbCfgRdyIdx_s2] + OpCodeMatch) ); // current code is match or cfg is valid
 
 // Reg Update
 always @(posedge clk or negedge rst_n) begin
@@ -323,12 +322,12 @@ end
 //=====================================================================================================================
 // Logic Design: s2
 //=====================================================================================================================
-assign CCUGLB_ISARdDatRdy = state_s1 == CFG;
-assign handshake_s1 = GLBCCU_ISARdDatVld & CCUGLB_ISARdDatRdy;
-assign OpCode = GLBCCU_ISARdDatVld? GLBCCU_ISARdDat[0 +: OPCODE_WIDTH] : {OPCODE_WIDTH{1'b1}};
-assign OpCodeMatch = OpCode == ArbCfgRdyIdx_s1;
+assign CCUGLB_ISARdDatRdy   = state_s1 == CFG;
+assign handshake_s1         = GLBCCU_ISARdDatVld & CCUGLB_ISARdDatRdy;
+assign OpCode               = GLBCCU_ISARdDatVld? GLBCCU_ISARdDat[0 +: OPCODE_WIDTH] : {OPCODE_WIDTH{1'b1}};
+assign OpCodeMatch          = OpCode == ArbCfgRdyIdx_s1;
 
-wire [ADDR_WIDTH     -1 : 0] MaxCntISARdWord= OpNumWord[ArbCfgRdyIdx_s1] -1;
+wire [ADDR_WIDTH     -1 : 0] MaxCntISARdWord = OpNumWord[ArbCfgRdyIdx_s1] -1;
 
 // Reg Update
 counter#(
@@ -387,11 +386,6 @@ always @(posedge clk or negedge rst_n) begin
             end else if(int_i == GLB_NUM_WRPORT + GLBRDIDX_CCUISA) begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 'd1; // ISA read bank0
                 CCUTOP_CfgPortParBank[int_i] <= 'd1;
-
-            // Test KNN -----------------------------------------------------
-            end else if(int_i == GLBWRIDX_ITFCRD )begin
-                CCUTOP_CfgPortBankFlag[int_i] <= 32'h0000_0004;
-                CCUTOP_CfgPortParBank[int_i] <= 'd1; 
 
             end else begin
                 CCUTOP_CfgPortBankFlag[int_i] <= 0; // ISA read bank0
@@ -536,7 +530,7 @@ generate
                 CfgVld[gv_i] <= 0;
             end else if ( CfgVld[gv_i] & CfgRdy[gv_i] ) begin
                 CfgVld[gv_i] <= 0;
-            end else if ( state_s1 == CFG & (ArbCfgRdyIdx_s1 == gv_i) & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch) begin
+            end else if ( state_s1 == CFG & (ArbCfgRdyIdx_s1 == gv_i) & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch ) begin
                 CfgVld[gv_i] <= 1'b1;
             end
         end
@@ -546,7 +540,7 @@ endgenerate
 always @(posedge clk or negedge rst_n)  begin
     if (!rst_n) begin
         ArbCfgRdyIdx_s2 <= 0;
-    end else if ( state_s1 == CFG & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch)begin
+    end else if ( state_s1 == CFG & Ovf_CntISARdWord_s1 & handshake_s1 & OpCodeMatch )begin
         ArbCfgRdyIdx_s2 <= ArbCfgRdyIdx_s1;
     end
 end
