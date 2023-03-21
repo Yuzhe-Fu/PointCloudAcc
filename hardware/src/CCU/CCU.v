@@ -266,8 +266,12 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // CfgRdy -> Req
-assign CfgRdy = {1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
-// assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
+`ifdef PSEUDO_DATA
+    assign CfgRdy = {1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
+`else
+    assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
+`endif
+
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
 )u_prior_arb_ArbCfgRdyIdx(
