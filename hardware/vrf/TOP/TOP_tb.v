@@ -134,12 +134,14 @@ assign IO_Dat = O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr];
 // DRAM WRITE
 assign OI_DatRdy = O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz;
 
-always @(posedge clk or rst_n) begin
-    if(state == OUT2OFF) begin
-        if(IO_DatVld & OI_DatRdy)
-            Dram[addr] <= IO_Dat;
+`ifndef PSEUDO_DATA
+    always @(posedge clk or rst_n) begin
+        if(state == OUT2OFF) begin
+            if(IO_DatVld & OI_DatRdy)
+                Dram[addr] <= IO_Dat;
+        end
     end
-end
+`endif
 
 //=====================================================================================================================
 // Sub-Module :
