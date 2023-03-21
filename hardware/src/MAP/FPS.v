@@ -490,7 +490,7 @@ generate
             )u1_counter_CntMaskRd(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] ), // MaxCntMaskRd also Clears
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE), // MaxCntMaskRd also Clears
                 .DEFAULT   ( {CNT_CUTMASK_WIDTH{1'b0}}  ),
                 .INC       ( handshake_Mask_s0  ),
                 .DEC       ( 1'b0               ),
@@ -506,7 +506,7 @@ generate
             )u0_counter_CntCpMask(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] ),
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( overflow_CntMaskRd & handshake_Mask_s0),
                 .DEC       ( 1'b0               ),
@@ -524,7 +524,7 @@ generate
             )u1_counter_CntCrdRdAddr(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] ),
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( handshake_Crd_s0   ),
                 .DEC       ( 1'b0               ),
@@ -540,7 +540,7 @@ generate
             )u0_counter_CntCpCrd(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] ),
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( overflow_CntCrdRdAddr & handshake_Crd_s0),
                 .DEC       ( 1'b0               ),
@@ -558,7 +558,7 @@ generate
             )u1_counter_CntDistRdAddr(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] ), 
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ), 
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( handshake_Dist_s0   ),
                 .DEC       ( 1'b0               ),
@@ -574,7 +574,7 @@ generate
             )u0_counter_CntCpDist(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] ),
+                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( overflow_CntDistRdAddr & handshake_Dist_s0), // The least bitwidth determines
                 .DEC       ( 1'b0               ),
@@ -637,6 +637,8 @@ generate
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
                     {FPC_MaskRdAddr_s1, CntMaskRd_s1, CntCpMask_s1, LopCntLastMask_s1, MaskRdAddrVld_s1, overflow_CntCpMask_s1} <= 0;
+                end else if(state == IDLE) begin    
+                    {FPC_MaskRdAddr_s1, CntMaskRd_s1, CntCpMask_s1, LopCntLastMask_s1, MaskRdAddrVld_s1, overflow_CntCpMask_s1} <= 0;
                 end else if (  ena_Mask_s1 ) begin 
                     {FPC_MaskRdAddr_s1, 
                     CntMaskRd_s1, 
@@ -661,12 +663,16 @@ generate
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
                     {CntCrdRdAddr_s1, CntCpCrdRdAddr_s1, overflow_CntCrdRdAddr_s1, overflow_CntCpCrdRdAddr_s1} <= 0;
+                end else if(state == IDLE) begin 
+                    {CntCrdRdAddr_s1, CntCpCrdRdAddr_s1, overflow_CntCrdRdAddr_s1, overflow_CntCpCrdRdAddr_s1} <= 0;
                 end else if (  ena_Crd_s1 ) begin
                     {CntCrdRdAddr_s1, CntCpCrdRdAddr_s1, overflow_CntCrdRdAddr_s1, overflow_CntCpCrdRdAddr_s1} <= handshake_Crd_s0? {CntCrdRdAddr, CntCpCrdRdAddr, overflow_CntCrdRdAddr, overflow_CntCpCrdRdAddr} : {CntCrdRdAddr_s1, CntCpCrdRdAddr_s1, overflow_CntCrdRdAddr_s1, overflow_CntCpCrdRdAddr_s1};
                 end
             end
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
+                    {CntDistRdAddr_s1, CntCpDistRdAddr_s1, DistRdAddrVld_s1, overflow_CntDistRdAddr_s1, overflow_CntCpDistRdAddr_s1} <= 0;
+                end else if(state == IDLE) begin 
                     {CntDistRdAddr_s1, CntCpDistRdAddr_s1, DistRdAddrVld_s1, overflow_CntDistRdAddr_s1, overflow_CntCpDistRdAddr_s1} <= 0;
                 end else if (  ena_Dist_s1 ) begin
                     {CntDistRdAddr_s1, CntCpDistRdAddr_s1, DistRdAddrVld_s1, overflow_CntDistRdAddr_s1, overflow_CntCpDistRdAddr_s1} <= handshake_Dist_s0? {CntDistRdAddr, CntCpDistRdAddr, vld_Dist_s0, overflow_CntDistRdAddr, overflow_CntCpDistRdAddr} : {CntDistRdAddr_s1, CntCpDistRdAddr_s1, 1'b0, overflow_CntDistRdAddr_s1, overflow_CntCpDistRdAddr_s1};
@@ -802,6 +808,14 @@ generate
                     CntMaskRd_s2 <= 0;
                     FPC_MaskRdDat_s2 <= 0;
                     vld_MaskRdDat_s2 <= 0;
+                end else if(state == IDLE) begin 
+                    MaskCheck_s2 <= {CUTMASK_WIDTH{1'b1}}; // Not exist 0
+                    CntCpMask_s2 <= 0;
+                    overflow_CntCpMask_s2 <= 0;
+                    vld_Mask_s2 <= 0;
+                    CntMaskRd_s2 <= 0;
+                    FPC_MaskRdDat_s2 <= 0;
+                    vld_MaskRdDat_s2 <= 0;
                 end else if (ena_Mask_s2) begin
                     MaskCheck_s2            <= MaskCheck_s2_next;
                     CntCpMask_s2            <= CntCpMask_s1;
@@ -838,12 +852,16 @@ generate
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
                     {CntCrdRdAddr_s2, Crd_s2, CntCpCrdRdAddr_s2, vld_Crd_s2} <= 0;
+                end else if(state == IDLE) begin 
+                    {CntCrdRdAddr_s2, Crd_s2, CntCpCrdRdAddr_s2, vld_Crd_s2} <= 0;
                 end else if (ena_Crd_s2) begin
                     {CntCrdRdAddr_s2, Crd_s2, CntCpCrdRdAddr_s2, vld_Crd_s2} <= { CntCrdRdAddr_s1_arb, Crd_s1, CntCpCrdRdAddr_s1, handshake_Crd_s2? VldArbCrd_next : VldArbCrd};
                 end
             end
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
+                    {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= 0;
+                end else if(state == IDLE) begin 
                     {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= 0;
                 end else if (ena_Dist_s2) begin
                     {FPC_DistWrDat_s2, CntDistRdAddr_s2, Dist_s2, CntCpDistRdAddr_s2, vld_Dist_s2} <= {Dist_s2_next, CntDistRdAddr_s1_arb, Dist_s2_next, CntCpDistRdAddr_s1, handshake_Dist_s2? VldArbDist_next : VldArbDist };
@@ -858,6 +876,8 @@ generate
 
             always @(posedge clk or negedge rst_n) begin
                 if(!rst_n) begin
+                    {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx_LastCp, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, vld_Max_s2} <= 0;
+                end else if(state == IDLE) begin 
                     {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx_LastCp, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, vld_Max_s2} <= 0;
                 end else if (ena_Max_s2) begin
                     {FPS_CpCrd, FPS_MaxDist, FPS_MaxCrd, FPS_MaxIdx_LastCp, FPS_MaxIdx, FPS_PsDist_s2, LopCntLast_s2, vld_Max_s2} <= 
