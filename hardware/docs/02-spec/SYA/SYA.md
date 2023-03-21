@@ -1,19 +1,23 @@
-# 问题：
-- 无x态
-- 适应将多层直切分块：也是MLP融合：
-    - CCU具备控制SYA无缝切换下一层的Wgt和一块Act的读取， 还有输出OFM存的地址  由CCU控制需要流水线跟随计算结果
-    - 当少filter且浅通道时，如filter剪枝之后的均少至16个，以16个FLT和2个chn为例
-        - 先不管shift，直接默认按chn grp tileifm 有shift在SRAM密集排列不变
-        - 而SYA算2个chn就直接取2个WORD的IFM和Flt，boost进BANK就行
-        - 然后，IFM的SRAM连续继续取，FLT的SRAM倒回来重复取2个WORD
-        - OFM的地址计算还是按照哪一个grp tileifm和tileflt计算
-        - state切换方案
-            - **必然**state不必等输出完成WAITFNH，而是自动到IDLE等配置，通过流水线传到后面，但问题是读写哪个GLB还是没变，**会导致地址从第一轮的高到第二轮的0有问题，除非给GLB的flag也随流水线??????**或者让GLB支持乱序读写?????
-                - 后面考虑增加方案2的整形模块
-            - state保留INSHIFT和WAITFNH，那么就要切断此时的输入？但是启动流水线又要SHIFT延迟，相当于两倍即64的延迟，但16chn的256点，flt是16个，总计算时间也才16*256/32=128，**占了一半不能容忍！**
+# 问题
 
-- 优化面积
-    - 看Mux是否太大？实验组是替换为拼接16个output的最高位MSB（保证其它位不会被综合掉）
+
+- 暂时规避:question:
+    - 适应将多层直切分块：也是MLP融合：
+        - CCU具备控制SYA无缝切换下一层的Wgt和一块Act的读取， 还有输出OFM存的地址  由CCU控制需要流水线跟随计算结果
+        - 当少filter且浅通道时，如filter剪枝之后的均少至16个，以16个FLT和2个chn为例
+            - 先不管shift，直接默认按chn grp tileifm 有shift在SRAM密集排列不变
+            - 而SYA算2个chn就直接取2个WORD的IFM和Flt，boost进BANK就行
+            - 然后，IFM的SRAM连续继续取，FLT的SRAM倒回来重复取2个WORD
+            - OFM的地址计算还是按照哪一个grp tileifm和tileflt计算
+            - state切换方案
+                - **必然方案**state不必等输出完成WAITFNH，而是自动到IDLE等配置，通过流水线传到后面，但问题是读写哪个GLB还是没变，会导致地址从第一轮的高到第二轮的0有问题
+                    - 暂时方案是让关闭OfmWr口的空满信号
+                    - :question:后面要给GLB的flag也随流水线
+                    - :question:后面要让GLB支持乱序读写
+                    - :question:后面要增加方案2的整形模块
+                - 舍弃方案：state保留INSHIFT和WAITFNH，那么就要切断此时的输入？但是启动流水线又要SHIFT延迟，相当于两倍即64的延迟，但16chn的256点，flt是16个，总计算时间也才16*256/32=128，**占了一半不能容忍！**
+    - 优化面积
+        - 看Mux是否太大？实验组是替换为拼接16个output的最高位MSB（保证其它位不会被综合掉）
 
 # 文件列表
 | File | Descriptions |
