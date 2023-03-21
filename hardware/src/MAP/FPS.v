@@ -298,15 +298,11 @@ generate
         reg [CRD_WIDTH*CRD_DIM  -1 : 0] FPS_CpCrd;
         wire[CRD_WIDTH*CRD_DIM  -1 : 0] FPS_CpCrd_next;
         wire                            FPS_UpdMax;
-        wire[IDX_WIDTH          -1 : 0] FPS_PsIdx;
         reg [DISTSQR_WIDTH      -1 : 0] FPS_MaxDist;
         wire[DISTSQR_WIDTH      -1 : 0] FPS_MaxDist_;
         wire[DISTSQR_WIDTH      -1 : 0] FPS_PsDist;
         reg [DISTSQR_WIDTH      -1 : 0] FPS_PsDist_s2;
-        reg [DISTSQR_WIDTH      -1 : 0] FPS_PsDist_s3;
         wire[DISTSQR_WIDTH      -1 : 0] LopDist;
-        reg [DISTSQR_WIDTH      -1 : 0] FPS_LastPsDist_s2; 
-        reg [IDX_WIDTH          -1 : 0] FPS_LastPsIdx_s2;
         reg                             LopCntLast_s1;
         reg                             LopCntLast_s2;
         reg                             LopCntLast_s3;
@@ -314,18 +310,11 @@ generate
         wire                            LopCntLastCrd;
         wire                            LopCntLastDist;
         reg                             LopCntLastMask_s1;
-        reg [IDX_WIDTH          -1 : 0] LopPntIdx_s2;
-        reg [IDX_WIDTH          -1 : 0] LopPntIdx_s1;
-        reg [IDX_WIDTH          -1 : 0] LopPntIdx_s3;
-        wire[IDX_WIDTH          -1 : 0] LopPntIdx;
         wire[CRD_WIDTH*CRD_DIM  -1 : 0] LopPntCrd;
         wire [IDX_WIDTH         -1 : 0] LopLLA;
-        wire [IDX_WIDTH         -1 : 0] LopCnt;
-        reg  [SRAM_WIDTH        -1 : 0] GLBFPS_MaskRdDat_s2;
         wire                            rdy_Mask_s0;
         wire                            rdy_Mask_s1;
         wire                            rdy_Mask_s2;
-        wire                            rdy_Mask_s3;
         reg                             vld_Mask_s0;
         wire                            vld_Mask_s1;
         reg                             vld_Mask_s2;
@@ -354,11 +343,9 @@ generate
         wire                            rdy_Dist_s0;
         wire                            rdy_Dist_s1;
         wire                            rdy_Dist_s2;
-        wire                            rdy_Dist_s3;
         reg                             vld_Dist_s0;
         wire                            vld_Dist_s1;
         reg                             vld_Dist_s2;
-        reg                             vld_Dist_s3;
         wire                            handshake_Dist_s0;
         wire                            handshake_Dist_s1;
         wire                            handshake_Dist_s2;
@@ -368,14 +355,9 @@ generate
         wire                            ena_Dist_s2;
         wire                            ena_Dist_s3;
 
-        wire                            rdy_Max_s0;
-        wire                            rdy_Max_s1;
         wire                            rdy_Max_s2;
         wire                            rdy_Max_s3;
-        reg                             vld_Max_s0;
-        wire                            vld_Max_s1;
         reg                             vld_Max_s2;
-        reg                             vld_Max_s3;
         wire                            handshake_Max_s0;
         wire                            handshake_Max_s1;
         wire                            handshake_Max_s2;
@@ -409,7 +391,6 @@ generate
         wire                            overflow_CntCpMask;
         reg                             overflow_CntCpMask_s1;
         reg                             overflow_CntCpMask_s2;
-        reg                             overflow_CntCpMask_s3;
         wire                            overflow_CntCpCrdRdAddr;
         reg                             overflow_CntCpCrdRdAddr_s1;
         reg                             overflow_CntCpCrdRdAddr_s2;
@@ -621,7 +602,6 @@ generate
             // 1. MaskRdDat drivers s2(load0) and FPC_MaskWr(load1);
             // 2. Load0: MaskCheck_s2 MUST be invalid, then MaskRdDat can be transferred to MaskCheck_s2
             wire MaskWrRdy;
-            wire MaskRxRdy;
             wire vld_Mask_s1_arb;
 
             assign rdy_Mask_s1 = (!vld_Mask_s2 | !VldArbMask) & ena_Mask_s2;
@@ -891,7 +871,6 @@ generate
         // Combinational Logic
 
         // HandShake
-            wire                SIPO_DistInRdy;
             wire                SIPO_CrdInRdy;
             wire                SIPO_IdxInRdy;
 

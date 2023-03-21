@@ -266,7 +266,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // CfgRdy -> Req
-assign CfgRdy = {1'b0, SYACCU_CfgRdy, 1'b0, 1'b0, CCUTOP_CfgRdy};
+assign CfgRdy = {1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 // assign CfgRdy = {&POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, CCUTOP_CfgRdy};
 prior_arb#(
     .REQ_WIDTH ( OPNUM )
@@ -448,6 +448,7 @@ always @(posedge clk or negedge rst_n) begin
                 CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK]<= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9     +1 +: 1];
                 CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                 ]    <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9 +2 +: 1];
                 CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST]    <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9 +3 +: 1];
+                CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSIDX                 ]    <= GLBCCU_ISARdDat[OPCODE_WIDTH + MAXPAR_WIDTH*9 +4 +: 1];
 
             end
 
