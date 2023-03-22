@@ -15,8 +15,8 @@ set_attribute hdl_error_on_blackbox true
 set_attribute hdl_max_loop_limit 8192
 set_attribute hdl_track_filename_row_col true /
 
-set_attribute max_cpus_per_server 16
-set_attribute super_thread_servers [string repeat "localhost " 16]
+set_attribute max_cpus_per_server 64
+set_attribute super_thread_servers [string repeat "localhost " 64]
 ##########################################################################
 #                     Libraries and technology files                     #
 ##########################################################################
@@ -114,9 +114,10 @@ report timing -verbose -lint > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_pre_s
 ##########################################################################
 #                             Synthesis                                  #
 ##########################################################################
-synthesize -to_generic -effort medium
-synthesize -to_mapped -eff high -no_incr
-synthesize -incr
+syn_generic -effort medium
+syn_map -effort medium
+syn_opt
+# syn_opt -incremental
 
 
 ##########################################################################
