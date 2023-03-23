@@ -26,7 +26,6 @@ module KNN #(
     input                               rst_n               ,
 
     // Configure
-    input                               CCUKNN_Rst          ,
     input                               CCUKNN_CfgVld       ,
     output                              KNNCCU_CfgRdy       ,
     input [IDX_WIDTH            -1 : 0] CCUKNN_CfgNip       ,
@@ -125,18 +124,24 @@ always @(*) begin
                     next_state <= CP; //
                 else
                     next_state <= IDLE;
-        CP:     if( handshake_s0 )
+        CP:     if(CCUKNN_CfgVld)
+                    next_state <= IDLE;
+                else if( handshake_s0 )
                     next_state <= LP;
                 else
                     next_state <= CP;
-        LP:     if ( CntCrdRdAddrLast & KNNGLB_CrdRdAddrVld & GLBKNN_CrdRdAddrRdy ) begin
+        LP:     if(CCUKNN_CfgVld)
+                    next_state <= IDLE;
+                else if ( CntCrdRdAddrLast & KNNGLB_CrdRdAddrVld & GLBKNN_CrdRdAddrRdy ) begin
                     if ( CntCpCrdRdAddr == 0 )
                         next_state <= WAITFNH;
                     else //
                         next_state <= CP;
                 end else
                     next_state <= LP;
-        WAITFNH:if(PISO_OUT_LAST & KNNGLB_MapWrDatVld & GLBKNN_MapWrDatRdy)
+        WAITFNH:if(CCUKNN_CfgVld)
+                    next_state <= IDLE;
+                else if(PISO_OUT_LAST & KNNGLB_MapWrDatVld & GLBKNN_MapWrDatRdy)
                     next_state <= IDLE;
                 else
                     next_state <= WAITFNH;
@@ -180,7 +185,7 @@ counter#(
 )u0_counter_CntCp(
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
-    .CLEAR     ( CCUKNN_Rst | state == IDLE    ),
+    .CLEAR     ( state == IDLE  ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}),
     .INC       ( INC_CntCpCrdRdAddr),
     .DEC       ( 1'b0           ),
@@ -196,7 +201,7 @@ counter#(
 )u1_counter_CntCrdRdAddr(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( INC_CntCpCrdRdAddr | CCUKNN_Rst | state == IDLE   ),
+    .CLEAR     ( INC_CntCpCrdRdAddr | state == IDLE   ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
     .INC       ( INC_CntCrdRdAddr   ),
     .DEC       ( 1'b0               ),
@@ -277,7 +282,7 @@ counter#(
 )u1_counter_CrdByte(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( INC_CntCrdRdAddr | CCUKNN_Rst | state == IDLE  ),
+    .CLEAR     ( INC_CntCrdRdAddr | state == IDLE  ),
     .DEFAULT   ( {CRDBYTE_WIDTH{1'b0}}  ),
     .INC       ( PISO_OutVld_CrdRd & PISO_OutRdy_CrdRd   ),
     .DEC       ( 1'b0               ),

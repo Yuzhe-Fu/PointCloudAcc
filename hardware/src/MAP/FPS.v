@@ -26,7 +26,6 @@ module FPS #(
     input                                       rst_n                   ,
 
     // Configure
-    input  [NUM_FPC                     -1 : 0] CCUFPS_Rst              ,
     input  [NUM_FPC                     -1 : 0] CCUFPS_CfgVld           ,
     output [NUM_FPC                     -1 : 0] FPSCCU_CfgRdy           ,
     input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgNip           ,
@@ -437,7 +436,9 @@ generate
                                 next_state <= WORK; //
                             else
                                 next_state <= IDLE;
-                    WORK :if( CntCpMask_s2 == MaxCntCpMask & LopCntLast_s2 & !FPC_MaskWrDatVld[gv_fpc] & !FPC_DistWrDatVld[gv_fpc] & !FPC_CrdWrDatVld[gv_fpc] & !FPC_IdxWrDatVld[gv_fpc]) // Last Loop point & no to Write
+                    WORK :  if(CCUFPS_CfgVld[gv_fpc]) // Force
+                                next_state <= IDLE;
+                            else if( CntCpMask_s2 == MaxCntCpMask & LopCntLast_s2 & !FPC_MaskWrDatVld[gv_fpc] & !FPC_DistWrDatVld[gv_fpc] & !FPC_CrdWrDatVld[gv_fpc] & !FPC_IdxWrDatVld[gv_fpc]) // Last Loop point & no to Write
                                 next_state <= IDLE;
                             else
                                 next_state <= WORK;
@@ -490,7 +491,7 @@ generate
             )u1_counter_CntMaskRd(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE), // MaxCntMaskRd also Clears
+                .CLEAR     ( state == IDLE      ), // MaxCntMaskRd also Clears
                 .DEFAULT   ( {CNT_CUTMASK_WIDTH{1'b0}}  ),
                 .INC       ( handshake_Mask_s0  ),
                 .DEC       ( 1'b0               ),
@@ -506,7 +507,7 @@ generate
             )u0_counter_CntCpMask(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ),
+                .CLEAR     ( state == IDLE      ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( overflow_CntMaskRd & handshake_Mask_s0),
                 .DEC       ( 1'b0               ),
@@ -524,7 +525,7 @@ generate
             )u1_counter_CntCrdRdAddr(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ),
+                .CLEAR     ( state == IDLE      ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( handshake_Crd_s0   ),
                 .DEC       ( 1'b0               ),
@@ -540,7 +541,7 @@ generate
             )u0_counter_CntCpCrd(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE),
+                .CLEAR     ( state == IDLE      ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( overflow_CntCrdRdAddr & handshake_Crd_s0),
                 .DEC       ( 1'b0               ),
@@ -558,9 +559,9 @@ generate
             )u1_counter_CntDistRdAddr(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ), 
+                .CLEAR     ( state == IDLE      ), 
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
-                .INC       ( handshake_Dist_s0   ),
+                .INC       ( handshake_Dist_s0  ),
                 .DEC       ( 1'b0               ),
                 .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
                 .MAX_COUNT ( MaxCntDistRdAddr   ),
@@ -574,7 +575,7 @@ generate
             )u0_counter_CntCpDist(
                 .CLK       ( clk                ),
                 .RESET_N   ( rst_n              ),
-                .CLEAR     ( CCUFPS_Rst[gv_fpc] | state == IDLE ),
+                .CLEAR     ( state == IDLE      ),
                 .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
                 .INC       ( overflow_CntDistRdAddr & handshake_Dist_s0), // The least bitwidth determines
                 .DEC       ( 1'b0               ),

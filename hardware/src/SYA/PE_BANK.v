@@ -18,7 +18,7 @@ module PE_BANK #(
   )(
     input                                       clk,
     input                                       rst_n,
-    input                                       CCUSYA_Rst     ,
+    input                                       CCUSYA_CfgVld     ,
     input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgShift,
     input  [ACT_WIDTH                   -1 : 0] CCUSYA_CfgZp   ,
 
@@ -69,7 +69,7 @@ PE_ROW #(
 )u_PE_ROW [NUM_ROW  - 1 : 0](
     .clk             ( clk             ),
     .rst_n           ( rst_n           ),
-    .CCUSYA_Rst      ( CCUSYA_Rst      ),
+    .CCUSYA_CfgVld   ( CCUSYA_CfgVld   ),
     .CCUSYA_CfgShift ( CCUSYA_CfgShift ),
     .CCUSYA_CfgZp    ( CCUSYA_CfgZp    ),
     .InActVld_W      ( InActVld_W      ),
