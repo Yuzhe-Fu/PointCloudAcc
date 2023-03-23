@@ -32,8 +32,6 @@ module CCU #(
 
     parameter MAXPAR                = 32,
     parameter NUM_BANK              = 32,
-    parameter ITF_NUM_RDPORT        = 12,
-    parameter ITF_NUM_WRPORT        = 14,
     parameter NUM_FPC               = 8,
     parameter OPNUM                 = NUM_MODULE + (NUM_FPC -1) + (POOL_CORE -1),
     parameter MAXPAR_WIDTH          = $clog2(MAXPAR) + 1 // MAXPAR=2 -> 2
@@ -95,7 +93,8 @@ module CCU #(
              
     output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][NUM_BANK    -1 : 0] CCUTOP_CfgPortBankFlag ,
     output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][MAXPAR_WIDTH-1 : 0] CCUTOP_CfgPortParBank,
-    output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                   -1 : 0] CCUTOP_CfgPortOffEmptyFull
+    output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                   -1 : 0] CCUTOP_CfgPortOffEmptyFull,
+    output [OPNUM                   -1 : 0] CCUTOP_CfgRdy
 
 );
 //=====================================================================================================================
@@ -153,7 +152,6 @@ localparam GLBRDIDX_POLOFM = 11;
 //=====================================================================================================================
 reg [OPCODE_WIDTH                   -1 : 0] OpCode;
 integer                                     int_i;
-wire [OPNUM                         -1 : 0] CfgRdy;
 wire  [OPNUM                        -1 : 0] CfgVld; 
 wire                                        CCUTOP_CfgVld;  
 
@@ -169,7 +167,7 @@ always @(*) begin
                     else
                         next_state <= IDLE;
 
-        DEC:        if (CfgVld[OpCode] & CfgRdy[OpCode])
+        DEC:        if (CfgVld[OpCode] & CCUTOP_CfgRdy[OpCode])
                         next_state <= IDLE;
                     else 
                         next_state <= DEC;
@@ -188,11 +186,11 @@ end
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
-// CfgRdy -> Req
+// CCUTOP_CfgRdy -> Req
 `ifdef PSEUDO_DATA
-    assign CfgRdy = {ITFCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
+    assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
 `else
-    assign CfgRdy = {ITFCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
+    assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
 `endif
 
 wire        FPS_CfgVld;
@@ -242,7 +240,7 @@ SIPO#(
     .OUT_DAT      ( ISA_FPS        ),
     .OUT_VLD      ( CfgVld[OPCODE_FPS] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CfgRdy[OPCODE_FPS])
+    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_FPS])
 );
 
 SIPO#(
@@ -258,7 +256,7 @@ SIPO#(
     .OUT_DAT      ( ISA_KNN        ),
     .OUT_VLD      ( CfgVld[OPCODE_KNN] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CfgRdy[OPCODE_KNN])
+    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_KNN])
 );
 
 SIPO#(
@@ -274,7 +272,7 @@ SIPO#(
     .OUT_DAT      ( ISA_SYA        ),
     .OUT_VLD      ( CfgVld[OPCODE_SYA] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CfgRdy[OPCODE_SYA])
+    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_SYA])
 );
 SIPO#(
     .DATA_IN_WIDTH ( PORT_WIDTH               ),
@@ -289,7 +287,7 @@ SIPO#(
     .OUT_DAT      ( ISA_POL        ),
     .OUT_VLD      ( CfgVld[OPCODE_POL] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CfgRdy[OPCODE_POL])
+    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_POL])
 );
 SIPO#(
     .DATA_IN_WIDTH ( PORT_WIDTH               ),
@@ -304,7 +302,7 @@ SIPO#(
     .OUT_DAT      ( ISA_ITF        ),
     .OUT_VLD      ( CfgVld[OPCODE_ITF] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CfgRdy[OPCODE_ITF])
+    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_ITF])
 );
 
 assign SIPO_InRdy           = {SIPO_ITF_InRdy, SIPO_POL_InRdy, SIPO_SYA_InRdy, SIPO_KNN_InRdy, SIPO_FPS_InRdy, 1'b1};
