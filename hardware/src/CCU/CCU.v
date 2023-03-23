@@ -16,6 +16,7 @@ module CCU #(
     parameter SRAM_WIDTH            = 256,
     parameter PORT_WIDTH            = 128,
     parameter POOL_CORE             = 6,
+    parameter BYTE_WIDTH            = 8,
 
     parameter ADDR_WIDTH            = 16,
     parameter DRAM_ADDR_WIDTH       = 32,
@@ -41,14 +42,17 @@ module CCU #(
     input                                   clk                     ,
     input                                   rst_n                   ,
 
-    input   [PORT_WIDTH             -1 : 0] TOPCCU_ISARdDat        ,       
+    input   [PORT_WIDTH             -1 : 0] TOPCCU_ISARdDat         ,       
     input                                   TOPCCU_ISARdDatVld      ,          
     output                                  CCUTOP_ISARdDatRdy      ,
 
     output                                  CCUITF_CfgVld           ,
-    input                                   ITFCCU_CfgRdy           ,   
+    input                                   ITFCCU_CfgRdy           ,  
+    output  [BYTE_WIDTH             -1 : 0] CCUITF_InOut            , 
     output  [DRAM_ADDR_WIDTH        -1 : 0] CCUITF_DRAMBaseAddr     ,
-    output  [IDX_WIDTH              -1 : 0] CCUITF_DRAMNum          ,             
+    output  [IDX_WIDTH              -1 : 0] CCUITF_GLBBaseAddr      ,
+    output  [IDX_WIDTH              -1 : 0] CCUITF_Num              , 
+                
 
     output  [NUM_FPC                -1 : 0] CCUFPS_CfgVld           ,
     input   [NUM_FPC                -1 : 0] FPSCCU_CfgRdy           ,        
@@ -418,8 +422,10 @@ assign {
 } = ISA_POL[PORT_WIDTH*NUMPORT_POL -1 : OPCODE_WIDTH];
 
 assign { 
+    CCUITF_Num,     
+    CCUITF_GLBBaseAddr,
     CCUITF_DRAMBaseAddr,
-    CCUITF_DRAMNum     
+    CCUITF_InOut // 0: IN2CHIP; 1: OUT2OFF
 } = ISA_ITF[PORT_WIDTH*NUMPORT_ITF -1 : OPCODE_WIDTH];
 
 endmodule
