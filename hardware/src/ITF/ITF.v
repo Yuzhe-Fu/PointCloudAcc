@@ -22,12 +22,12 @@ module ITF #(
     input                                               clk             ,
     input                                               rst_n           ,
 
-    output                                              CCUITF_CfgVld      ,
-    input                                               ITFCCU_CfgRdy      ,  
-    output  [BYTE_WIDTH                         -1 : 0] CCUITF_CfgInOut       , // 0: IN2CHIP; 1: OUT2OFF
-    output  [DRAM_ADDR_WIDTH                    -1 : 0] CCUITF_CfgDRAMBaseAddr,
-    output  [ADDR_WIDTH                         -1 : 0] CCUITF_CfgGLBBaseAddr ,
-    output  [ADDR_WIDTH                         -1 : 0] CCUITF_CfgNum         , 
+    input                                               CCUITF_CfgVld      ,
+    output                                              ITFCCU_CfgRdy      ,  
+    input   [BYTE_WIDTH                         -1 : 0] CCUITF_CfgInOut       , // 0: IN2CHIP; 1: OUT2OFF
+    input   [DRAM_ADDR_WIDTH                    -1 : 0] CCUITF_CfgDRAMBaseAddr,
+    input   [ADDR_WIDTH                         -1 : 0] CCUITF_CfgGLBBaseAddr ,
+    input   [ADDR_WIDTH                         -1 : 0] CCUITF_CfgNum         , 
 
     output                                              ITFPAD_DatOE    ,
     output reg                                          ITFPAD_CmdVld   ,
@@ -69,15 +69,12 @@ reg  [PORT_WIDTH    -1 : 0] Cmd;
 wire                        CmdRdy;
 wire                        CmdVld;
 wire                        Out2Off;
-reg [NUMPORT_WIDTH  -1 : 0] PortIdx_;
-reg [NUMPORT_WIDTH  -1 : 0] PortIdx;
 wire [SRAM_WIDTH    -1 : 0] DatIn;
 wire                        DatInVld;
 wire                        DatInRdy;
 wire [PORT_WIDTH    -1 : 0] DatOut;
 wire                        DatOutVld;
 wire                        DatOutRdy;
-wire [NUMPORT_WIDTH -1 : 0] WrPort;
 wire                        PISO_OUTRdy;
 wire [ADDR_WIDTH    -1 : 0] CntGLBAddr;
 

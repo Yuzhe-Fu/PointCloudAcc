@@ -13,7 +13,7 @@ module TOP_tb();
 parameter PORT_WIDTH        = 128;
 parameter ADDR_WIDTH        = 16;
 parameter DRAM_ADDR_WIDTH   = 32;
-parameter OPNUM = 10;
+parameter OPNUM = 27;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -40,9 +40,10 @@ reg [DRAM_ADDR_WIDTH    -1 : 0] BaseAddr;
 reg [ADDR_WIDTH         -1 : 0] ReqNum;
 
 wire [$clog2(OPNUM)     -1 : 0] ArbCfgRdyIdx;
-wire [$clog2(OPNUM)     -1 : 0][ADDR_WIDTH  -1 : 0] CntMduISARdAddr;
-reg  [OPNUM  -1 : 0][DRAM_ADDR_WIDTH        -1 : 0] MDUISABASEADDR;
-wire [OPNUM             -1 : 0]O_CfgRdy;
+wire [OPNUM -1 : 0][ADDR_WIDTH      -1 : 0] CntMduISARdAddr;
+reg  [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] MDUISABASEADDR;
+wire [OPNUM             -1 : 0] O_CfgRdy;
+wire                            I_ISAVld;
 //=====================================================================================================================
 // Logic Design: Debounce
 //=====================================================================================================================
@@ -77,16 +78,18 @@ end
 // Logic Design 1: FSM=ITF
 //=====================================================================================================================
 localparam IDLE     = 3'b000;
-localparam CMD      = 3'b001;
-localparam IN2CHIP  = 3'b010;
-localparam OUT2OFF  = 3'b011;
+localparam FET      = 3'b001;
+localparam CMD      = 3'b010;
+localparam IN2CHIP  = 3'b011;
+localparam OUT2OFF  = 3'b100;
+
 
 reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE:   if ( |O_CfgRdy )
-                    next_state <= ARB;
+                    next_state <= FET;
                 else if( O_CmdVld )
                     next_state <= CMD;
                 else
@@ -197,7 +200,7 @@ end
 //=====================================================================================================================
 // DRAM READ
 assign IO_DatVld  = I_ISAVld? 1'b1 : (O_DatOE? 1'bz : state== IN2CHIP);
-assign IO_Dat     = I_ISAVld? Dram[MDUISABASEADDR[ArbCfgRdyIdx] + CntMduISARdAddr[gv_i]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
+assign IO_Dat     = I_ISAVld? Dram[MDUISABASEADDR[ArbCfgRdyIdx] + CntMduISARdAddr[ArbCfgRdyIdx]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
 
 // DRAM WRITE
 assign OI_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);

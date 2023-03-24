@@ -347,7 +347,6 @@ CCU#(
     .TOPCCU_ISARdDat         ( TOPCCU_ISARdDat         ),
     .TOPCCU_ISARdDatVld      ( TOPCCU_ISARdDatVld      ),
     .CCUTOP_ISARdDatRdy      ( CCUTOP_ISARdDatRdy      ),
-    .CCUITF_CfgDRAMBaseAddr  ( CCUITF_CfgDRAMBaseAddr  ),
     .CCUITF_CfgVld           ( CCUITF_CfgVld           ),
     .ITFCCU_CfgRdy           ( ITFCCU_CfgRdy           ),
     .CCUITF_CfgInOut         ( CCUITF_CfgInOut         ),

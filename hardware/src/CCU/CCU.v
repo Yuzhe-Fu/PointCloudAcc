@@ -46,10 +46,10 @@ module CCU #(
 
     output                                  CCUITF_CfgVld           ,
     input                                   ITFCCU_CfgRdy           ,  
-    output  [BYTE_WIDTH             -1 : 0] CCUITF_InOut            , 
-    output  [DRAM_ADDR_WIDTH        -1 : 0] CCUITF_DRAMBaseAddr     ,
-    output  [IDX_WIDTH              -1 : 0] CCUITF_GLBBaseAddr      ,
-    output  [IDX_WIDTH              -1 : 0] CCUITF_Num              , 
+    output  [BYTE_WIDTH             -1 : 0] CCUITF_CfgInOut            , 
+    output  [DRAM_ADDR_WIDTH        -1 : 0] CCUITF_CfgDRAMBaseAddr     ,
+    output  [IDX_WIDTH              -1 : 0] CCUITF_CfgGLBBaseAddr      ,
+    output  [IDX_WIDTH              -1 : 0] CCUITF_CfgNum              , 
                 
 
     output  [NUM_FPC                -1 : 0] CCUFPS_CfgVld           ,
@@ -121,31 +121,24 @@ localparam NUMPORT_SYA   = 3;
 localparam NUMPORT_POL   = 4;
 localparam NUMPORT_ITF   = 4;
 
-localparam GLBWRIDX_ITFISA = 0; 
-localparam GLBWRIDX_ITFCRD = 1; 
-localparam GLBWRIDX_ITFMAP = 2; 
-localparam GLBWRIDX_ITFACT = 3; 
-localparam GLBWRIDX_ITFWGT = 4; 
-localparam GLBWRIDX_FPSMSK = 5; 
-localparam GLBWRIDX_FPSCRD = 6; 
-localparam GLBWRIDX_FPSDST = 7; 
-localparam GLBWRIDX_FPSIDX = 8; 
-localparam GLBWRIDX_KNNMAP = 9;
-localparam GLBWRIDX_SYAOFM = 10;
-localparam GLBWRIDX_POLOFM = 11;
+localparam GLBWRIDX_ITFGLB = 0; 
+localparam GLBWRIDX_FPSMSK = 1; 
+localparam GLBWRIDX_FPSCRD = 2; 
+localparam GLBWRIDX_FPSDST = 3; 
+localparam GLBWRIDX_FPSIDX = 4; 
+localparam GLBWRIDX_KNNMAP = 5;
+localparam GLBWRIDX_SYAOFM = 6;
+localparam GLBWRIDX_POLOFM = 7;
                                 
-localparam GLBRDIDX_ITFMAP = 0; 
-localparam GLBRDIDX_ITFOFM = 1; 
-localparam GLBRDIDX_ITFIDX = 2; 
-localparam GLBRDIDX_CCUISA = 3; 
-localparam GLBRDIDX_FPSMSK = 4; 
-localparam GLBRDIDX_FPSCRD = 5; 
-localparam GLBRDIDX_FPSDST = 6; 
-localparam GLBRDIDX_KNNCRD = 7; 
-localparam GLBRDIDX_SYAACT = 8; 
-localparam GLBRDIDX_SYAWGT = 9; 
-localparam GLBRDIDX_POLMAP = 10;
-localparam GLBRDIDX_POLOFM = 11;
+localparam GLBRDIDX_ITFGLB = 0; 
+localparam GLBRDIDX_FPSMSK = 1; 
+localparam GLBRDIDX_FPSCRD = 2; 
+localparam GLBRDIDX_FPSDST = 3; 
+localparam GLBRDIDX_KNNCRD = 4; 
+localparam GLBRDIDX_SYAACT = 5; 
+localparam GLBRDIDX_SYAWGT = 6; 
+localparam GLBRDIDX_POLMAP = 7;
+localparam GLBRDIDX_POLOFM = 8;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -153,6 +146,7 @@ localparam GLBRDIDX_POLOFM = 11;
 reg [OPCODE_WIDTH                   -1 : 0] OpCode;
 integer                                     int_i;
 wire  [OPNUM                        -1 : 0] CfgVld; 
+wire  [OPNUM                        -1 : 0] SIPO_InRdy; 
 wire                                        CCUTOP_CfgVld;  
 
 //=====================================================================================================================
@@ -310,53 +304,42 @@ assign CCUTOP_ISARdDatRdy   = state == DEC & SIPO_InRdy[OpCode];
 
 assign {
     CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSCRD                 ],
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_ITFIDX],
     CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSIDX                 ],
     CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST],
     CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                 ],
     CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSMSK                 ],
     CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSCRD],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_ITFCRD                 ],
     CCUTOP_CfgPortParBank     [GLBWRIDX_FPSCRD                 ],
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_ITFIDX],
     CCUTOP_CfgPortParBank     [GLBWRIDX_FPSIDX                 ],
     CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_FPSDST],
     CCUTOP_CfgPortParBank     [GLBWRIDX_FPSDST                 ],
     CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     CCUTOP_CfgPortParBank     [GLBWRIDX_FPSMSK                 ],
     CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD],
-    CCUTOP_CfgPortParBank     [GLBWRIDX_ITFCRD                 ],
     CCUTOP_CfgPortBankFlag  [GLBWRIDX_FPSCRD                 ]  ,
-    CCUTOP_CfgPortBankFlag  [GLB_NUM_WRPORT + GLBRDIDX_ITFIDX]  ,
     CCUTOP_CfgPortBankFlag  [GLBWRIDX_FPSIDX                 ]  ,
     CCUTOP_CfgPortBankFlag  [GLB_NUM_WRPORT + GLBRDIDX_FPSDST]  ,
     CCUTOP_CfgPortBankFlag  [GLBWRIDX_FPSDST                 ]  ,
     CCUTOP_CfgPortBankFlag  [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK]  ,
     CCUTOP_CfgPortBankFlag  [GLBWRIDX_FPSMSK                 ]  ,
     CCUTOP_CfgPortBankFlag  [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD]  ,
-    CCUTOP_CfgPortBankFlag  [GLBWRIDX_ITFCRD                 ]  ,
-    CCUITF_DRAMBaseAddr     [GLBWRIDX_ITFCRD                 ]  ,
     CCUFPS_CfgDistBaseAddr                                      ,
     CCUFPS_CfgMaskBaseAddr                                      ,
     CUFPS_CfgIdxBaseWrAddr                                      ,
     CCUFPS_CfgCrdBaseWrAddr                                     ,
     CCUFPS_CfgCrdBaseRdAddr                                     ,
     CCUFPS_CfgNop                                               , 
-    CCUFPS_CfgNip                                               , 
+    CCUFPS_CfgNip                                                 
 } = ISA_FPS[PORT_WIDTH*NUMPORT_FPS -1 : OPCODE_WIDTH];
 
 assign {
     CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
     CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ],
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_ITFMAP],
     CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
     CCUTOP_CfgPortParBank     [GLBWRIDX_KNNMAP                 ],
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_ITFMAP],
     CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
     CCUTOP_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ],
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_ITFMAP],
-    CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFMAP]    ,
     CCUKNN_CfgMapWrAddr                                         ,
     CCUKNN_CfgCrdRdAddr                                         ,
     CCUKNN_CfgK                                                 ,
@@ -365,26 +348,14 @@ assign {
 
 assign {
     CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM                 ],
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_ITFOFM],
     CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_ITFWGT                 ],
     CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_ITFACT                 ],
     CCUTOP_CfgPortParBank     [GLBWRIDX_SYAOFM                 ],
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_ITFOFM],
     CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],
-    CCUTOP_CfgPortParBank     [GLBWRIDX_ITFWGT                 ],
     CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_SYAACT],
-    CCUTOP_CfgPortParBank     [GLBWRIDX_ITFACT                 ],
     CCUTOP_CfgPortBankFlag    [GLBWRIDX_SYAOFM                 ],
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_ITFOFM],
     CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT]    ,
-    CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFWGT                 ]    ,
     CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_SYAACT]    ,
-    CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFACT                 ]    ,
-    CCUITF_DRAMBaseAddr   [ITF_NUM_WRPORT + GLBRDIDX_ITFOFM]    ,
-    CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFWGT                 ]    ,
-    CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFACT                 ]    ,
     CCUSYA_CfgOfmWrBaseAddr                                     ,
     CCUSYA_CfgWgtRdBaseAddr                                     ,
     CCUSYA_CfgActRdBaseAddr                                     ,
@@ -403,27 +374,23 @@ assign {
     CCUTOP_CfgPortOffEmptyFull [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE]  ,
     CCUTOP_CfgPortOffEmptyFull [GLBWRIDX_POLOFM                 ]               ,
     CCUTOP_CfgPortOffEmptyFull [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]               ,
-    CCUTOP_CfgPortOffEmptyFull [GLBWRIDX_ITFMAP                 ]               ,
-    CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: MAXPAR_WIDTH*POOL_CORE],
+    CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE],
     CCUTOP_CfgPortParBank [GLBWRIDX_POLOFM                 ]                      ,
     CCUTOP_CfgPortParBank [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]                      ,
-    CCUTOP_CfgPortParBank [GLBWRIDX_ITFMAP                 ]                      ,
-    CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: NUM_BANK*POOL_CORE],
+    CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE],
     CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLOFM]                      ,
     CCUTOP_CfgPortBankFlag[GLBWRIDX_POLOFM                 ]                      ,
     CCUTOP_CfgPortBankFlag[GLB_NUM_WRPORT + GLBRDIDX_POLMAP]                      ,
-    CCUTOP_CfgPortBankFlag[GLBWRIDX_ITFMAP                 ]                      ,
-    CCUITF_DRAMBaseAddr   [GLBWRIDX_ITFMAP                 ]                      ,
     CCUPOL_CfgK                                                                   ,
     CCUPOL_CfgChn                                                                 ,
     CCUPOL_CfgNip                                                                 
 } = ISA_POL[PORT_WIDTH*NUMPORT_POL -1 : OPCODE_WIDTH];
 
 assign { 
-    CCUITF_Num,     
-    CCUITF_GLBBaseAddr,
-    CCUITF_DRAMBaseAddr,
-    CCUITF_InOut // 0: IN2CHIP; 1: OUT2OFF
+    CCUITF_CfgNum,     
+    CCUITF_CfgGLBBaseAddr,
+    CCUITF_CfgDRAMBaseAddr,
+    CCUITF_CfgInOut // 0: IN2CHIP; 1: OUT2OFF
 } = ISA_ITF[PORT_WIDTH*NUMPORT_ITF -1 : OPCODE_WIDTH];
 
 endmodule
