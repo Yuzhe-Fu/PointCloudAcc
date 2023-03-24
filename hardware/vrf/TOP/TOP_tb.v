@@ -40,6 +40,7 @@ reg [DRAM_ADDR_WIDTH    -1 : 0] BaseAddr;
 reg [ADDR_WIDTH         -1 : 0] ReqNum;
 
 wire [$clog2(OPNUM)     -1 : 0] ArbCfgRdyIdx;
+reg  [$clog2(OPNUM)     -1 : 0] ArbCfgRdyIdx_d;
 wire [OPNUM -1 : 0][ADDR_WIDTH      -1 : 0] CntMduISARdAddr;
 reg  [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] MDUISABASEADDR;
 wire [OPNUM             -1 : 0] O_CfgRdy;
@@ -95,7 +96,7 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         // ISA
-        FET:    if( !OI_DatRdy & !O_CfgRdy[ArbCfgRdyIdx])
+        FET:    if( !O_CfgRdy[ArbCfgRdyIdx_d] )
                     next_state <= IDLE;
                 else
                     next_state <= FET;
@@ -131,12 +132,12 @@ end
 //=====================================================================================================================
 always @ ( posedge clk or negedge rst_n ) begin
 MDUISABASEADDR[0] <= 0;
-MDUISABASEADDR[1] <= 50;
-MDUISABASEADDR[2] <= 100;
-MDUISABASEADDR[3] <= 150;
-MDUISABASEADDR[4] <= 200;
-MDUISABASEADDR[5] <= 250;
-MDUISABASEADDR[6] <= 300;
+MDUISABASEADDR[1] <= 1;
+MDUISABASEADDR[2] <= 17;
+MDUISABASEADDR[3] <= 19;
+MDUISABASEADDR[4] <= 21;
+MDUISABASEADDR[5] <= 26;
+MDUISABASEADDR[6] <= 27;
 
 end
 
@@ -159,7 +160,7 @@ generate
             .RESET_N   ( rst_n          ),
             .CLEAR     ( 1'b0           ),
             .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
-            .INC       ( I_ISAVld & (IO_DatVld & OI_DatRdy) & (ArbCfgRdyIdx == gv_i) ),
+            .INC       ( I_ISAVld & (IO_DatVld & OI_DatRdy) & (ArbCfgRdyIdx_d == gv_i) ),
             .DEC       ( 1'b0           ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
             .MAX_COUNT ( MaxCnt         ),
@@ -171,6 +172,14 @@ generate
 endgenerate
 
 assign I_ISAVld = state == FET;
+always @(posedge clk or rst_n) begin
+    if (!rst_n) begin
+        ArbCfgRdyIdx_d <= 0;
+    end else if(state == IDLE && next_state == FET) begin
+        ArbCfgRdyIdx_d <= ArbCfgRdyIdx;
+    end
+end
+
 
 //=====================================================================================================================
 // Logic Design: DATA 
@@ -200,7 +209,7 @@ end
 //=====================================================================================================================
 // DRAM READ
 assign IO_DatVld  = I_ISAVld? 1'b1 : (O_DatOE? 1'bz : state== IN2CHIP);
-assign IO_Dat     = I_ISAVld? Dram[MDUISABASEADDR[ArbCfgRdyIdx] + CntMduISARdAddr[ArbCfgRdyIdx]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
+assign IO_Dat     = I_ISAVld? Dram[MDUISABASEADDR[ArbCfgRdyIdx_d] + CntMduISARdAddr[ArbCfgRdyIdx_d]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
 
 // DRAM WRITE
 assign OI_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
