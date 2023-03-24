@@ -13,6 +13,7 @@ module TOP_tb();
 parameter PORT_WIDTH        = 128;
 parameter ADDR_WIDTH        = 16;
 parameter DRAM_ADDR_WIDTH   = 32;
+parameter OPNUM = 10;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -38,6 +39,10 @@ reg [DRAM_ADDR_WIDTH    -1 : 0] addr;
 reg [DRAM_ADDR_WIDTH    -1 : 0] BaseAddr;
 reg [ADDR_WIDTH         -1 : 0] ReqNum;
 
+wire [$clog2(OPNUM)     -1 : 0] ArbCfgRdyIdx;
+wire [$clog2(OPNUM)     -1 : 0][ADDR_WIDTH  -1 : 0] CntMduISARdAddr;
+reg  [OPNUM  -1 : 0][DRAM_ADDR_WIDTH        -1 : 0] MDUISABASEADDR;
+wire [OPNUM             -1 : 0]O_CfgRdy;
 //=====================================================================================================================
 // Logic Design: Debounce
 //=====================================================================================================================
@@ -80,10 +85,18 @@ reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE:   if( O_CmdVld )
+        IDLE:   if ( |O_CfgRdy )
+                    next_state <= ARB;
+                else if( O_CmdVld )
                     next_state <= CMD;
                 else
                     next_state <= IDLE;
+        // ISA
+        FET:    if( !OI_DatRdy & !O_CfgRdy[ArbCfgRdyIdx])
+                    next_state <= IDLE;
+                else
+                    next_state <= FET;
+        // Data
         CMD :   if( O_DatOE & IO_DatVld & OI_DatRdy) begin
                     if ( IO_Dat[0] ) // 
                         next_state <= OUT2OFF;
@@ -111,9 +124,54 @@ always @ ( posedge clk or negedge rst_n ) begin
 end
 
 //=====================================================================================================================
-// Logic Design 
+// Logic Design: ISA 
 //=====================================================================================================================
+always @ ( posedge clk or negedge rst_n ) begin
+MDUISABASEADDR[0] <= 0;
+MDUISABASEADDR[1] <= 50;
+MDUISABASEADDR[2] <= 100;
+MDUISABASEADDR[3] <= 150;
+MDUISABASEADDR[4] <= 200;
+MDUISABASEADDR[5] <= 250;
+MDUISABASEADDR[6] <= 300;
 
+end
+
+prior_arb#(
+    .REQ_WIDTH ( OPNUM )
+)u_prior_arb_ArbCfgRdyIdx(
+    .req ( O_CfgRdy             ),
+    .gnt (                      ),
+    .arb_port  ( ArbCfgRdyIdx   )
+);
+
+genvar gv_i;
+generate
+    for(gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_CntMduISARdAddr
+        wire [ADDR_WIDTH     -1 : 0] MaxCnt = 2**ADDR_WIDTH -1;
+        counter#(
+            .COUNT_WIDTH ( ADDR_WIDTH )
+        )u_counter_CntMduISARdAddr(
+            .CLK       ( clk            ),
+            .RESET_N   ( rst_n          ),
+            .CLEAR     ( 1'b0           ),
+            .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+            .INC       ( I_ISAVld & (IO_DatVld & OI_DatRdy) & (ArbCfgRdyIdx == gv_i) ),
+            .DEC       ( 1'b0           ),
+            .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+            .MAX_COUNT ( MaxCnt         ),
+            .OVERFLOW  (                ),
+            .UNDERFLOW (                ),
+            .COUNT     ( CntMduISARdAddr[gv_i])
+        );
+    end
+endgenerate
+
+assign I_ISAVld = state == FET;
+
+//=====================================================================================================================
+// Logic Design: DATA 
+//=====================================================================================================================
 // Indexed addressing
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
@@ -126,14 +184,6 @@ always @(posedge clk or rst_n) begin
         addr <= addr + 1;
     end
 end
-
-// DRAM READ
-assign IO_DatVld  = O_DatOE? 1'bz : state== IN2CHIP;
-assign IO_Dat = O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr];
-
-// DRAM WRITE
-assign OI_DatRdy = O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz;
-
 `ifndef PSEUDO_DATA
     always @(posedge clk or rst_n) begin
         if(state == OUT2OFF) begin
@@ -142,10 +192,15 @@ assign OI_DatRdy = O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 
         end
     end
 `endif
+//=====================================================================================================================
+// Logic Design : Interface
+//=====================================================================================================================
+// DRAM READ
+assign IO_DatVld  = I_ISAVld? 1'b1 : (O_DatOE? 1'bz : state== IN2CHIP);
+assign IO_Dat     = I_ISAVld? Dram[MDUISABASEADDR[ArbCfgRdyIdx] + CntMduISARdAddr[gv_i]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
 
-//=====================================================================================================================
-// Sub-Module :
-//=====================================================================================================================
+// DRAM WRITE
+assign OI_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
 
 TOP #(
     .PORT_WIDTH  (PORT_WIDTH)
@@ -153,14 +208,14 @@ TOP #(
     u_TOP (
     .I_SysRst_n              ( rst_n          ),
     .I_SysClk                ( clk            ),
-    .I_StartPulse            ( I_StartPulse   ),
     .I_BypAsysnFIFO          ( I_BypAsysnFIFO ),
+    .O_CfgRdy                ( O_CfgRdy       ),
+    .I_ISAVld                ( I_ISAVld       ),
     .O_DatOE                 ( O_DatOE        ),
     .O_CmdVld                ( O_CmdVld       ),
     .IO_Dat                  ( IO_Dat         ),
     .IO_DatVld               ( IO_DatVld      ),
-    .OI_DatRdy               ( OI_DatRdy      ),
-    .O_NetFnh                ( O_NetFnh       )
+    .OI_DatRdy               ( OI_DatRdy      )
 );
 
 endmodule
