@@ -33,7 +33,7 @@ module CCU #(
     parameter MAXPAR                = 32,
     parameter NUM_BANK              = 32,
     parameter NUM_FPC               = 8,
-    parameter OPNUM                 = NUM_MODULE + (NUM_FPC -1) + (POOL_CORE -1),
+    parameter OPNUM                 = NUM_MODULE,
     parameter MAXPAR_WIDTH          = $clog2(MAXPAR) + 1 // MAXPAR=2 -> 2
 
     )(
@@ -112,7 +112,7 @@ localparam OPCODE_FPS   = 1;
 localparam OPCODE_KNN   = 2;
 localparam OPCODE_SYA   = 3;
 localparam OPCODE_POL   = 4;
-localparam OPCODE_ITF   = 4;
+localparam OPCODE_ITF   = 5;
 
 localparam NUMPORT_CCU   = 1;
 localparam NUMPORT_FPS   = 16;
@@ -397,6 +397,8 @@ assign CCUPOL_CfgK = CCUPOL_CfgK_tmp;
 
 
 assign { 
+    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_ITFGLB],
+    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_ITFGLB],
     CCUITF_CfgNum,          // 16
     CCUITF_CfgGLBBaseAddr,  // 16
     CCUITF_CfgDRAMBaseAddr, // 32

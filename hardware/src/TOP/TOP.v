@@ -15,7 +15,7 @@
 module TOP #(
     // HW-Modules
     // CCU
-    parameter NUM_MODULE     = 5,
+    parameter NUM_MODULE     = 6,
     parameter BYTE_WIDTH     = 8,
 
     // FPS
@@ -59,7 +59,7 @@ module TOP #(
     parameter MAXPAR         = ACT_WIDTH*(POOL_COMP_CORE > SYA_NUM_ROW*SYA_NUM_BANK ? POOL_COMP_CORE : SYA_NUM_ROW*SYA_NUM_BANK) / SRAM_WIDTH, 
 
     parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH),
-    parameter OPNUM         = NUM_MODULE + (NUM_FPC -1) + (POOL_CORE -1)
+    parameter OPNUM         = NUM_MODULE
     )(
     input                           I_SysRst_n    , 
     input                           I_SysClk      , 
