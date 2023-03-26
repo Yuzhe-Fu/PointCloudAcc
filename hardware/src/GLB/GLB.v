@@ -18,8 +18,8 @@ module GLB #(
     parameter SRAM_WORD    = 128, // MUST 2**
     parameter ADDR_WIDTH   = 16,
 
-    parameter NUM_WRPORT   = 12,
-    parameter NUM_RDPORT   = 19,
+    parameter NUM_WRPORT   = 8,
+    parameter NUM_RDPORT   = 16,
     parameter MAXPAR       = 2
     )(
     input                                               clk                 ,

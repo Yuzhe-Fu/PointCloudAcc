@@ -117,9 +117,9 @@ localparam OPCODE_ITF   = 5;
 localparam NUMPORT_CCU   = 1;
 localparam NUMPORT_FPS   = 16;
 localparam NUMPORT_KNN   = 2;
-localparam NUMPORT_SYA   = 2;
+localparam NUMPORT_SYA   = 3;
 localparam NUMPORT_POL   = 6;
-localparam NUMPORT_ITF   = 1;
+localparam NUMPORT_ITF   = 2;
 
 localparam GLBWRIDX_ITFGLB = 0; 
 localparam GLBWRIDX_FPSMSK = 1; 
@@ -181,11 +181,11 @@ end
 // Logic Design
 //=====================================================================================================================
 // CCUTOP_CfgRdy -> Req
-`ifdef PSEUDO_DATA
-    assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
-`else
+// `ifdef PSEUDO_DATA
+//     assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
+// `else
     assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
-`endif
+// `endif
 
 wire        FPS_CfgVld;
 wire        POL_CfgVld;
@@ -397,8 +397,12 @@ assign CCUPOL_CfgK = CCUPOL_CfgK_tmp;
 
 
 assign { 
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_ITFGLB],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_ITFGLB],
+    CCUTOP_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
+    CCUTOP_CfgPortOffEmptyFull  [GLBWRIDX_ITFGLB                    ],
+    CCUTOP_CfgPortParBank       [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
+    CCUTOP_CfgPortParBank       [GLBWRIDX_ITFGLB                    ],
+    CCUTOP_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
+    CCUTOP_CfgPortBankFlag      [GLBWRIDX_ITFGLB                    ],
     CCUITF_CfgNum,          // 16
     CCUITF_CfgGLBBaseAddr,  // 16
     CCUITF_CfgDRAMBaseAddr, // 32
