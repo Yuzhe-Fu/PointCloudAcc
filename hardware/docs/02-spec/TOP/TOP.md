@@ -1,4 +1,7 @@
 # 问题
+- BUGs:
+    - SYA按照之前的dram配置，貌似两个SRAM
+    - 修正GLBITF_WrDatRdy的不定态
 - 加function到TOP.v来增强可读性
 - 给所有模块加断言：
     - CCU的cfgrdy高了，cfgvld没拉高；CCU的ISA RAM满堵塞满了；
@@ -7,10 +10,11 @@
     - 可靠性设计
         - 复位信号有问题：每个模块增加同步复位信号state或reset到所有寄存器；
         - 同步接口有问题：
-            - pad转向时间：务必让每次传输都先state使得OE作用两倍时间，
+            - pad转向时间：务必让每次传输都先state使得OE作用两倍时间，双向控制信号IO_DatVld，OI_DatRdy也需要OE提前控制PAD转向
             - 数据约束要统一且方便统一调相位；
         - 异步接口有问题再看？
         - 指令传输有问题：预设初始指令能默认模式跑。
+        - 信号无高阻态不定态，位宽一致
     - 可测性设计
 - SYA的4个PE_bank输出ofm怎么连GLB？
 # 文件列表
