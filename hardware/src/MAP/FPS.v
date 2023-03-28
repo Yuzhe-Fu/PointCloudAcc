@@ -485,7 +485,7 @@ generate
         // Reg Update
 
             // Mask Pipeline
-            wire [CNT_CUTMASK_WIDTH     -1 : 0] MaxCntMaskRd = ( CCUFPS_CfgNip[gv_fpc] % CUTMASK_WIDTH?  CCUFPS_CfgNip[gv_fpc] / CUTMASK_WIDTH + 1 : CCUFPS_CfgNip[gv_fpc] / CUTMASK_WIDTH ) - 1;
+            wire [CNT_CUTMASK_WIDTH     -1 : 0] MaxCntMaskRd = `CEIL(CCUFPS_CfgNip[gv_fpc], CUTMASK_WIDTH) - 1;
             counter#(
                 .COUNT_WIDTH ( CNT_CUTMASK_WIDTH )
             )u1_counter_CntMaskRd(
@@ -519,7 +519,7 @@ generate
             );
 
             // Crd Pipeline
-            wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = ( CCUFPS_CfgNip[gv_fpc] % NUM_CRD_SRAM?  CCUFPS_CfgNip[gv_fpc] / NUM_CRD_SRAM + 1 : CCUFPS_CfgNip[gv_fpc] / NUM_CRD_SRAM ) - 1;
+            wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = `CEIL(CCUFPS_CfgNip[gv_fpc], NUM_CRD_SRAM) - 1;
             counter#( // Pipe S0
                 .COUNT_WIDTH ( IDX_WIDTH )
             )u1_counter_CntCrdRdAddr(
@@ -553,7 +553,7 @@ generate
             );
 
             // Dist Pipeline
-            wire [IDX_WIDTH     -1 : 0] MaxCntDistRdAddr = ( CCUFPS_CfgNip[gv_fpc] % NUM_DIST_SRAM?  CCUFPS_CfgNip[gv_fpc] / NUM_DIST_SRAM + 1 : CCUFPS_CfgNip[gv_fpc] / NUM_DIST_SRAM ) - 1;
+            wire [IDX_WIDTH     -1 : 0] MaxCntDistRdAddr = `CEIL(CCUFPS_CfgNip[gv_fpc], NUM_DIST_SRAM) - 1;
             counter#( // Pipe S0
                 .COUNT_WIDTH ( IDX_WIDTH )
             )u1_counter_CntDistRdAddr(

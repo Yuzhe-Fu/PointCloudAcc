@@ -179,7 +179,7 @@ assign vld_s0 = state == CP | state == LP;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0 = handshake_s0 | ~vld_s0;
 
-wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = ( CCUKNN_CfgNip % NUM_SORT_CORE==0?  CCUKNN_CfgNip / NUM_SORT_CORE : CCUKNN_CfgNip / NUM_SORT_CORE + 1) -1;
+wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = `CEIL(CCUKNN_CfgNip, NUM_SORT_CORE) -1;
 counter#(
     .COUNT_WIDTH ( IDX_WIDTH )
 )u0_counter_CntCp(
