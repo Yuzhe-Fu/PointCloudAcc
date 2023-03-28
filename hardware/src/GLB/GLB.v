@@ -226,7 +226,7 @@ generate
 
         // Map RdPort to Bank
         assign RdPortAddrVldRange =  RdPortAlloc? (SRAM_WORD*RdPortNumBank/TOPGLB_CfgPortParBank[NUM_WRPORT + gv_j]) : SRAM_WORD; // Cut address to a relative(valid) range in NumBank/ParBank; Default: SRAM_WORD
-        assign RdPortAlloc = |TOPGLB_CfgPortBankFlag[NUM_WRPORT + gv_j];
+        assign RdPortAlloc = |TOPGLB_CfgPortBankFlag[NUM_WRPORT + gv_j] & TOPGLB_CfgPortParBank[NUM_WRPORT + gv_j] != 0;
         assign PortCur1stBankIdx = RdPort1stBankIdx + (TOPGLB_RdPortAddr[gv_j] % RdPortAddrVldRange >> SRAM_DEPTH_WIDTH)*TOPGLB_CfgPortParBank[NUM_WRPORT + gv_j];
 
         // To Bank
@@ -301,6 +301,7 @@ generate
 
         // Map WrPort to Bank
         assign WrPortAddrVldSpace = WrPortAlloc? (SRAM_WORD*WrPortNumBank/TOPGLB_CfgPortParBank[gv_j]) : SRAM_WORD;// Cut address to a relative(valid) range in NumBank/ParBank
+        assign WrPortAlloc = |TOPGLB_CfgPortBankFlag[gv_j] & TOPGLB_CfgPortParBank[gv_j] != 0;
         assign PortCur1stBankIdx = WrPort1stBankIdx + (TOPGLB_WrPortAddr[gv_j] % WrPortAddrVldSpace  >> SRAM_DEPTH_WIDTH)*TOPGLB_CfgPortParBank[gv_j];
 
         // To Bank
@@ -322,8 +323,6 @@ generate
         assign Full = !TOPGLB_CfgPortOffEmptyFull[gv_j] & (TOPGLB_WrPortAddr[gv_j] - WrPortMthRdAddr) >= (WrPortMthRden? WrPortAddrVldSpace + 1 : WrPortAddrVldSpace);
         assign GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & !Full & Bank_wready[PortCur1stBankIdx];
         assign GLBTOP_WrFull[gv_j] = Full;
-
-        assign WrPortAlloc = |TOPGLB_CfgPortBankFlag[gv_j];
 
         prior_arb#(
             .REQ_WIDTH ( NUM_BANK )
