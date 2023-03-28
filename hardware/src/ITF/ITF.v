@@ -1,4 +1,4 @@
-// This is a simple example.
+// This is a simpleCCUITF_InOut example.
 // You can make a your own header file and set its path to settings.
 // (Preferences > Package Settings > Verilog Gadget > Settings - User)
 //
@@ -22,12 +22,12 @@ module ITF #(
     input                                               clk             ,
     input                                               rst_n           ,
 
-    output                                              CCUITF_CfgVld      ,
-    input                                               ITFCCU_CfgRdy      ,  
-    output  [BYTE_WIDTH                         -1 : 0] CCUITF_InOut       , // 0: IN2CHIP; 1: OUT2OFF
-    output  [DRAM_ADDR_WIDTH                    -1 : 0] CCUITF_DRAMBaseAddr,
-    output  [ADDR_WIDTH                         -1 : 0] CCUITF_GLBBaseAddr ,
-    output  [ADDR_WIDTH                         -1 : 0] CCUITF_Num         , 
+    input                                               CCUITF_CfgVld      ,
+    output                                              ITFCCU_CfgRdy      ,  
+    input   [BYTE_WIDTH                         -1 : 0] CCUITF_CfgInOut       , // 0: IN2CHIP; 1: OUT2OFF
+    input   [DRAM_ADDR_WIDTH                    -1 : 0] CCUITF_CfgDRAMBaseAddr,
+    input   [ADDR_WIDTH                         -1 : 0] CCUITF_CfgGLBBaseAddr ,
+    input   [ADDR_WIDTH                         -1 : 0] CCUITF_CfgNum         , 
 
     output                                              ITFPAD_DatOE    ,
     output reg                                          ITFPAD_CmdVld   ,
@@ -69,15 +69,12 @@ reg  [PORT_WIDTH    -1 : 0] Cmd;
 wire                        CmdRdy;
 wire                        CmdVld;
 wire                        Out2Off;
-reg [NUMPORT_WIDTH  -1 : 0] PortIdx_;
-reg [NUMPORT_WIDTH  -1 : 0] PortIdx;
 wire [SRAM_WIDTH    -1 : 0] DatIn;
 wire                        DatInVld;
 wire                        DatInRdy;
 wire [PORT_WIDTH    -1 : 0] DatOut;
 wire                        DatOutVld;
 wire                        DatOutRdy;
-wire [NUMPORT_WIDTH -1 : 0] WrPort;
 wire                        PISO_OUTRdy;
 wire [ADDR_WIDTH    -1 : 0] CntGLBAddr;
 
@@ -92,18 +89,24 @@ always @(*) begin
                     next_state <= CMD;
                 else
                     next_state <= IDLE;
-        CMD :   if( CmdRdy & CmdVld) begin
-                    if ( CCUITF_InOut == 1)
+        CMD :   if(CCUITF_CfgVld)
+                    next_state <= IDLE;
+                else if( CmdRdy & CmdVld) begin
+                    if ( CCUITF_CfgInOut == 1)
                         next_state <= OUT2OFF;
                     else
                         next_state <= IN2CHIP;
                 end else
                     next_state <= CMD;
-        IN2CHIP:   if( CntGLBAddr == CCUITF_Num ) // End
+        IN2CHIP:if(CCUITF_CfgVld)
+                    next_state <= IDLE;
+                else if( CntGLBAddr == CCUITF_CfgNum ) // End
                     next_state <= IDLE;
                 else
                     next_state <= IN2CHIP;
-        OUT2OFF:   if( CntGLBAddr == CCUITF_Num & !DatOutVld ) // fetched by Off-chip
+        OUT2OFF:if(CCUITF_CfgVld)
+                    next_state <= IDLE;
+                else if( CntGLBAddr == CCUITF_CfgNum & !DatOutVld ) // fetched by Off-chip
                     next_state <= IDLE;
                 else
                     next_state <= OUT2OFF;
@@ -121,6 +124,8 @@ end
 //=====================================================================================================================
 // Logic Design:
 //=====================================================================================================================
+assign ITFCCU_CfgRdy = state == IDLE;
+
 // HandShake
 assign CmdVld = state == CMD;
 
@@ -131,7 +136,7 @@ always @(posedge clk or negedge rst_n) begin
     end else if ( state == IDLE )begin 
         Cmd <= {PORT_WIDTH{1'b0}};
     end else if(state == IDLE && next_state == CMD) begin
-        Cmd <= {CCUITF_DRAMBaseAddr, CCUITF_InOut[0]};
+        Cmd <= {CCUITF_CfgDRAMBaseAddr, CCUITF_CfgInOut[0]};
     end
 end
 
@@ -184,7 +189,7 @@ counter#(
 // Logic Design: Out to off-chip
 //=====================================================================================================================
 assign ITFGLB_RdAddr    = CntGLBAddr; 
-assign ITFGLB_RdAddrVld = state == OUT2OFF & CntGLBAddr < CCUITF_Num; 
+assign ITFGLB_RdAddrVld = state == OUT2OFF & CntGLBAddr < CCUITF_CfgNum; 
 assign ITFGLB_RdDatRdy  = PISO_OUTRdy & state == OUT2OFF;
 
 PISO_NOCACHE #(

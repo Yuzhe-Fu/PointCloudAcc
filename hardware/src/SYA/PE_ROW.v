@@ -18,7 +18,7 @@ module PE_ROW #(
   )(
     input                           clk,
     input                           rst_n,
-    input                           CCUSYA_Rst     ,
+    input                           CCUSYA_CfgVld     ,
     input  [ACT_WIDTH       -1 : 0] CCUSYA_CfgShift,
     input  [ACT_WIDTH       -1 : 0] CCUSYA_CfgZp   ,
 

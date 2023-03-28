@@ -26,7 +26,6 @@ module SYA #(
   )(
     input                                                   clk                     ,
     input                                                   rst_n                   ,
-    input                                                   CCUSYA_Rst              ,
     input                                                   CCUSYA_CfgVld           ,
     output                                                  SYACCU_CfgRdy           ,
     input  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgShift         ,
@@ -179,7 +178,7 @@ counter#(
 )u1_counter_CntChn(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE ),
+    .CLEAR     ( state == IDLE ),
     .DEFAULT   ( {CHN_WIDTH{1'b0}}  ),
     .INC       ( INC_CntChn         ),
     .DEC       ( 1'b0               ),
@@ -197,7 +196,7 @@ counter#(
 )u1_counter_CntGrp(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE ),
+    .CLEAR     ( state == IDLE ),
     .DEFAULT   ( {ADDR_WIDTH{1'b0}} ),
     .INC       ( INC_CntGrp         ),
     .DEC       ( 1'b0               ),
@@ -215,7 +214,7 @@ counter#(
 )u1_counter_CntTilFlt(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE),
+    .CLEAR     ( state == IDLE),
     .DEFAULT   ( {CHN_WIDTH{1'b0}}  ),
     .INC       ( INC_CntTilFlt      ),
     .DEC       ( 1'b0               ),
@@ -233,7 +232,7 @@ counter#(
 )u1_counter_CntTilIfm(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE ),
+    .CLEAR     ( state == IDLE ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
     .INC       ( INC_CntTilIfm      ),
     .DEC       ( 1'b0               ),
@@ -348,7 +347,7 @@ PE_BANK#(
 )u_PE_BANK [NUM_BANK -1 : 0](
     .clk             ( clk                  ),
     .rst_n           ( rst_n                ),
-    .CCUSYA_Rst      ( CCUSYA_Rst           ),
+    .CCUSYA_CfgVld   ( CCUSYA_CfgVld        ),//???????? multiple array??
     .CCUSYA_CfgShift ( CCUSYA_CfgShift      ),
     .CCUSYA_CfgZp    ( CCUSYA_CfgZp         ),
     .InActVld_W      ( SYA_InActVld_W       ),
