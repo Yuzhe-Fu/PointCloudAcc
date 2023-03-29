@@ -1,11 +1,12 @@
 # 问题
-- BUGs:
-    - SYA按照之前的dram配置，貌似两个SRAM
-    - 修正GLBITF_WrDatRdy的不定态
-- 加function到TOP.v来增强可读性
+- 各块点数不同，负载不均衡：点数相差2倍，FPS时间相差4倍
+    - FPS和POL各核要求可独立配置，FPS和POL的请求信号CfgRdy太多怎么办？只有高的CfgRdy才输出(16+8=5bit)，不是每个周期都要输出，CfgRdy并转串
+    
 - 给所有模块加断言：
     - CCU的cfgrdy高了，cfgvld没拉高；CCU的ISA RAM满堵塞满了；
     - GLB的空满，同时读写
+- SYA的4个PE_bank输出ofm怎么连GLB？
+
 - 流片
     - 可靠性设计
         - 复位信号有问题：每个模块增加同步复位信号state或reset到所有寄存器；
@@ -16,7 +17,7 @@
         - 指令传输有问题：预设初始指令能默认模式跑。
         - 信号无高阻态不定态，位宽一致
     - 可测性设计
-- SYA的4个PE_bank输出ofm怎么连GLB？
+
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
