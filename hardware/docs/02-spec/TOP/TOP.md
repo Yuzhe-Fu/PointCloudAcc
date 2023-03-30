@@ -1,5 +1,23 @@
 # 问题
-    - SYA的4个PE_bank输出ofm怎么连GLB？
+- 各块点数不同，负载不均衡：点数相差2倍，FPS时间相差4倍
+    - FPS和POL各核要求可独立配置，FPS和POL的请求信号CfgRdy太多怎么办？只有高的CfgRdy才输出(16+8=5bit)，不是每个周期都要输出，CfgRdy并转串
+    
+- 给所有模块加断言：
+    - CCU的cfgrdy高了，cfgvld没拉高；CCU的ISA RAM满堵塞满了；
+    - GLB的空满，同时读写
+- SYA的4个PE_bank输出ofm怎么连GLB？
+
+- 流片
+    - 可靠性设计
+        - 复位信号有问题：每个模块增加同步复位信号state或reset到所有寄存器；
+        - 同步接口有问题：
+            - pad转向时间：务必让每次传输都先state使得OE作用两倍时间，双向控制信号IO_DatVld，OI_DatRdy也需要OE提前控制PAD转向
+            - 数据约束要统一且方便统一调相位；
+        - 异步接口有问题再看？
+        - 指令传输有问题：预设初始指令能默认模式跑。
+        - 信号无高阻态不定态，位宽一致
+    - 可测性设计
+
 # 文件列表
 | File | Descriptions |
 | ---- | ---- |
@@ -36,7 +54,7 @@ parameter MAP_WIDTH      = 5,   // MAP Idx的表示，但CfgK位宽是MAP_WIDTH+
 
 parameter CRD_WIDTH      = 16,   
 parameter CRD_DIM        = 3,   
-parameter NUM_SORT_CORE  = 4,   // 数量是灵活调整的，不由SRAM_WIDTH / (Crd+Idx)决定
+parameter NUM_SORT_CORE  = 4,   // 数量是灵活调整的，但由于期望SRAM一次给所有KNN的Cp点赋初值，所以暂定10个核
 
 parameter SYA_NUM_ROW    = 16,
 parameter SYA_NUM_COL    = 16,  // 是正方形，必须等于SYA_NUM_ROW

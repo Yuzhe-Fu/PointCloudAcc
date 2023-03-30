@@ -14,6 +14,7 @@
             ../../src/SYA/PE.v                                 
     ../../src/SYA/SYNC_SHAPE.v                 
 ../../src/primitives/DELAY/DELAY.v
+../../src/primitives/DELAY/LATCH_DELAY.v
 ../../src/primitives/DEB/DEB.v
 ../../src/primitives/MINMAX/MINMAX.v
 ../../src/primitives/Memory/RAM_HS.v

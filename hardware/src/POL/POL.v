@@ -26,7 +26,6 @@ module POL #(
     input                                                   rst_n               ,
 
     // Configure
-    input  [POOL_CORE                               -1 : 0] CCUPOL_Rst          ,
     input  [POOL_CORE                               -1 : 0] CCUPOL_CfgVld       ,
     output [POOL_CORE                               -1 : 0] POLCCU_CfgRdy       ,
     input  [POOL_CORE   -1 : 0][(MAP_WIDTH+1)       -1 : 0] CCUPOL_CfgK         , // 24
@@ -188,11 +187,15 @@ generate
                         next_state <= MAPIN;
                     else
                         next_state <= IDLE;
-            MAPIN:  if ( overflow_CntCp & overflow_CntMapWord & handshake_s0 )
+            MAPIN:  if(CCUPOL_CfgVld[gv_plc])
+                        next_state <= IDLE;
+                    else if ( overflow_CntCp & overflow_CntMapWord & handshake_s0 )
                         next_state <= WAITFNH;
                     else 
                         next_state <= MAPIN;
-            WAITFNH:if ( LastNp_s4 & handshake_s4 )
+            WAITFNH:if(CCUPOL_CfgVld[gv_plc])
+                        next_state <= IDLE;
+                    else if ( LastNp_s4 & handshake_s4 )
                         next_state <= IDLE;
                     else
                         next_state <= WAITFNH;
@@ -203,7 +206,7 @@ generate
     assign POLCCU_CfgRdy[gv_plc] = state == IDLE;
 
     // Handshake
-    assign rdy_s0 = GLBPOL_MapRdAddrRdy & ArbPLCIdx_MapRd == gv_plc;
+    assign rdy_s0 = GLBPOL_MapRdAddrRdy & (ArbPLCIdx_MapRd == gv_plc);
     assign vld_s0 = state == MAPIN  & (rdy_s1 & !vld_s1);
     assign handshake_s0 = rdy_s0 & vld_s0;
     assign ena_s0 = handshake_s0 | ~vld_s0;
@@ -211,8 +214,6 @@ generate
     // Reg Update
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
-            state <= IDLE;
-        end else if(CCUPOL_Rst[gv_plc]) begin
             state <= IDLE;
         end else begin
             state <= next_state;
@@ -314,7 +315,7 @@ generate
     )u_CntNp(
         .CLK       ( clk                    ),
         .RESET_N   ( rst_n                  ),
-        .CLEAR     ( CCUPOL_Rst[gv_plc] | state == IDLE    ),
+        .CLEAR     ( state == IDLE          ),
         .DEFAULT   ( {MAP_WIDTH{1'd0}}      ),
         .INC       ( handshake_s2           ),
         .DEC       ( 1'b0                   ),
@@ -330,7 +331,7 @@ generate
     )u_CntChnGrp(
         .CLK       ( clk                ),
         .RESET_N   ( rst_n              ),
-        .CLEAR     ( CCUPOL_Rst[gv_plc] | state == IDLE ),
+        .CLEAR     ( state == IDLE      ),
         .DEFAULT   ( {CHNGRP_WIDTH{1'd0}}),
         .INC       ( overflow_CntNp & handshake_s2 ),
         .DEC       ( 1'b0               ),
@@ -376,7 +377,7 @@ generate
     assign POLGLB_OfmRdDatRdy[gv_plc] = rdy_s3;
 
     // Handshake
-    assign rdy_s4       = GLBPOL_OfmWrDatRdy & ArbPLCIdxWrOfm == gv_plc;
+    assign rdy_s4       = GLBPOL_OfmWrDatRdy & (ArbPLCIdxWrOfm == gv_plc);
     assign handshake_s4 = rdy_s4 & vld_s4;
     assign ena_s4       = handshake_s4 | ~vld_s4;
 
@@ -389,7 +390,7 @@ generate
         always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
                 MaxArray[gv_cmp] <= 0;
-            end else if(CCUPOL_Rst[gv_plc]) begin
+            end else if(state == IDLE) begin
                 MaxArray[gv_cmp] <= 0;
             end else if ( CntNp ==0 & handshake_s3 ) begin // initialize
                 MaxArray[gv_cmp] <= CMP_DatIn;                

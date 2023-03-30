@@ -18,7 +18,7 @@ module EDC #(
     )(
     input       [CRD_DIM    -1 : 0][CRD_WIDTH           -1 : 0] Crd0,
     input       [CRD_DIM    -1 : 0][CRD_WIDTH           -1 : 0] Crd1,
-    output reg  [CRD_WIDTH*2+$clog2(CRD_DIM)            -1 : 0] DistSqr
+    output reg signed[CRD_WIDTH*2+$clog2(CRD_DIM)            -1 : 0] DistSqr
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -34,10 +34,14 @@ module EDC #(
 // Logic Design 1: FSM
 //=====================================================================================================================
 integer  i;
+reg signed [CRD_WIDTH + 1           -1 : 0] Diff;
+
 always @(*) begin
     DistSqr = 0;
-    for(i=0; i<CRD_DIM; i=i+1) begin
-        DistSqr = DistSqr + Crd0[i] * Crd1[i];
+    Diff    = 0;
+    for(i = 0; i < CRD_DIM; i = i + 1) begin
+        Diff = {Crd0[i][CRD_WIDTH -1], $signed(Crd0[i])} - {Crd1[i][CRD_WIDTH -1], $signed(Crd1[i])};
+        DistSqr = DistSqr + Diff*Diff;
     end
 end
 

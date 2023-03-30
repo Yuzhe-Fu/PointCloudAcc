@@ -26,7 +26,6 @@ module SYA #(
   )(
     input                                                   clk                     ,
     input                                                   rst_n                   ,
-    input                                                   CCUSYA_Rst              ,
     input                                                   CCUSYA_CfgVld           ,
     output                                                  SYACCU_CfgRdy           ,
     input  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgShift         ,
@@ -117,6 +116,10 @@ wire [NUM_BANK                                      -1 : 0] sync_out_rdy;
 wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][ACT_WIDTH   -1 : 0] sync_out;
 wire [$clog2(NUM_ROW*NUM_BANK) + 1                  -1 : 0] SYA_MaxRowCol;
 
+reg  [NUM_ROW*NUM_BANK  -1 : 0][IDX_WIDTH           -1 : 0] AllBank_InCntTilIfm;
+reg  [NUM_ROW*NUM_BANK  -1 : 0][CHN_WIDTH           -1 : 0] AllBank_InCntTilFlt;
+reg  [NUM_ROW*NUM_BANK  -1 : 0][IDX_WIDTH           -1 : 0] AllBank_InCntGrp;
+
 //=====================================================================================================================
 // Logic Design :s0
 //=====================================================================================================================
@@ -134,18 +137,18 @@ always @(*) begin
                 else
                     next_state <= IDLE;
         INREGUL:if( (Overflow_CntTilIfm & Overflow_CntTilFlt & Overflow_CntGrp & Overflow_CntChn) & handshake_s0)
-                    next_state <= INSHIFT;
+                    next_state <= IDLE;
                 else
                     next_state <= INREGUL;
         
-        INSHIFT :if( (CntChn == (SYA_MaxRowCol -1) -1) & handshake_s0 ) 
-                    next_state <= WAITOUT;
-                else
-                    next_state <= INSHIFT;
-        WAITOUT     : if( !(|SYA_OutPsumVld) & !SYAGLB_OfmWrDatVld )
-                    next_state <= IDLE;
-                else
-                    next_state <= WAITOUT;
+        // INSHIFT :if( (CntChn == (SYA_MaxRowCol -1) -1) & handshake_s0 ) 
+        //             next_state <= WAITOUT;
+        //         else
+        //             next_state <= INSHIFT;
+        // WAITOUT     : if( !(|SYA_OutPsumVld) & !SYAGLB_OfmWrDatVld )
+        //             next_state <= IDLE;
+        //         else
+        //             next_state <= WAITOUT;
         default:    next_state <= IDLE;
     endcase
 end
@@ -165,7 +168,7 @@ assign SYACCU_CfgRdy= state == IDLE;
 assign rdy_s0       = GLBSYA_ActRdAddrRdy & GLBSYA_WgtRdAddrRdy; // 2 loads
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
-assign vld_s0       = state == INREGUL | state == INSHIFT;
+assign vld_s0       = state == INREGUL;
 
 // Reg Update
 assign MaxCntChn    = CCUSYA_CfgChn - 1; 
@@ -175,7 +178,7 @@ counter#(
 )u1_counter_CntChn(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE ),
+    .CLEAR     ( state == IDLE ),
     .DEFAULT   ( {CHN_WIDTH{1'b0}}  ),
     .INC       ( INC_CntChn         ),
     .DEC       ( 1'b0               ),
@@ -193,7 +196,7 @@ counter#(
 )u1_counter_CntGrp(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE ),
+    .CLEAR     ( state == IDLE ),
     .DEFAULT   ( {ADDR_WIDTH{1'b0}} ),
     .INC       ( INC_CntGrp         ),
     .DEC       ( 1'b0               ),
@@ -211,7 +214,7 @@ counter#(
 )u1_counter_CntTilFlt(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE),
+    .CLEAR     ( state == IDLE),
     .DEFAULT   ( {CHN_WIDTH{1'b0}}  ),
     .INC       ( INC_CntTilFlt      ),
     .DEC       ( 1'b0               ),
@@ -229,7 +232,7 @@ counter#(
 )u1_counter_CntTilIfm(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( CCUSYA_Rst | state == IDLE ),
+    .CLEAR     ( state == IDLE ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
     .INC       ( INC_CntTilIfm      ),
     .DEC       ( 1'b0               ),
@@ -239,8 +242,6 @@ counter#(
     .UNDERFLOW (                    ),
     .COUNT     ( CntTilIfm          )
 );
-
-
 
 //=====================================================================================================================
 // Logic Design : s1
@@ -279,14 +280,17 @@ assign vld_s1 = GLBSYA_ActRdDatVld & GLBSYA_WgtRdDatVld;
 // Reg Update
 always @ ( posedge clk or negedge rst_n )begin
     if( !rst_n )
-    {AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 'd0;
+    {AllBank_InCntGrp, AllBank_InCntTilFlt, AllBank_InCntTilIfm, AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 'd0;
     else if( handshake_s1 )
-    {AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 
+    {AllBank_InCntGrp, AllBank_InCntTilFlt, AllBank_InCntTilIfm, AllBank_InWgtChnLast_N, AllBank_InWgtVld_N, AllBank_InActChnLast_W, AllBank_InActVld_W} <= 
         {
-            {AllBank_InWgtChnLast_N[NUM_COL*NUM_BANK  -2:0], Overflow_CntChn    },
-            {AllBank_InWgtVld_N    [NUM_COL*NUM_BANK  -2:0], handshake_s1       },
-            {AllBank_InActChnLast_W[NUM_ROW*NUM_BANK  -2:0], Overflow_CntChn    },
-            {AllBank_InActVld_W    [NUM_ROW*NUM_BANK  -2:0], handshake_s1       }
+            {AllBank_InCntGrp      [NUM_ROW*NUM_BANK  -2 : 0], CntGrp             },
+            {AllBank_InCntTilFlt   [NUM_ROW*NUM_BANK  -2 : 0], CntTilFlt          },
+            {AllBank_InCntTilIfm   [NUM_ROW*NUM_BANK  -2 : 0], CntTilIfm          },
+            {AllBank_InWgtChnLast_N[NUM_COL*NUM_BANK  -2 : 0], Overflow_CntChn    },
+            {AllBank_InWgtVld_N    [NUM_COL*NUM_BANK  -2 : 0], handshake_s1       },
+            {AllBank_InActChnLast_W[NUM_ROW*NUM_BANK  -2 : 0], Overflow_CntChn    },
+            {AllBank_InActVld_W    [NUM_ROW*NUM_BANK  -2 : 0], handshake_s1       }
         }; // 
 end
 
@@ -343,7 +347,7 @@ PE_BANK#(
 )u_PE_BANK [NUM_BANK -1 : 0](
     .clk             ( clk                  ),
     .rst_n           ( rst_n                ),
-    .CCUSYA_Rst      ( CCUSYA_Rst           ),
+    .CCUSYA_CfgVld   ( CCUSYA_CfgVld        ),//???????? multiple array??
     .CCUSYA_CfgShift ( CCUSYA_CfgShift      ),
     .CCUSYA_CfgZp    ( CCUSYA_CfgZp         ),
     .InActVld_W      ( SYA_InActVld_W       ),
@@ -376,7 +380,7 @@ SYNC_SHAPE #(
 
     .clk                 ( clk          ),
     .rst_n               ( rst_n        ),
-    .Rst                 ( state == IDLE),                        
+    .Rst                 ( 1'b0         ),                        
     .din_data            ( SYA_OutPsum  ),
     .din_data_vld        ( din_data_vld ),
     .din_data_rdy        ( din_data_rdy ),                        
@@ -385,18 +389,20 @@ SYNC_SHAPE #(
     .out_data_rdy        ( sync_out_rdy )
 );
 // {NUM_ROW*NUM_BANK{SYA_OutPsumVld == ReqVld}}; ofm in specific channels are valid(rhomboid sibianxing)
-assign din_data_vld         = CCUSYA_CfgOfmPhaseShift? { (NUM_ROW*NUM_BANK){1'b0} } : {|SYA_OutPsumVld[3], |SYA_OutPsumVld[2], |SYA_OutPsumVld[1], |SYA_OutPsumVld[0]}; 
+assign din_data_vld         = CCUSYA_CfgOfmPhaseShift? {|SYA_OutPsumVld[3], |SYA_OutPsumVld[2], |SYA_OutPsumVld[1], |SYA_OutPsumVld[0]} : { (NUM_ROW*NUM_BANK){1'b0} }; 
 assign SYA_InPsumRdy        = CCUSYA_CfgOfmPhaseShift? 
-                                { (NUM_ROW*NUM_BANK){GLBSYA_OfmWrDatRdy} } 
-                                : { {NUM_ROW{din_data_rdy[3]}}, {NUM_ROW{din_data_rdy[2]}}, {NUM_ROW{din_data_rdy[1]}}, {NUM_ROW{din_data_rdy[0]}} };
+                                { {NUM_ROW{din_data_rdy[3]}}, {NUM_ROW{din_data_rdy[2]}}, {NUM_ROW{din_data_rdy[1]}}, {NUM_ROW{din_data_rdy[0]}} }
+                                : { (NUM_ROW*NUM_BANK){GLBSYA_OfmWrDatRdy} } ;
 
-assign SYAGLB_OfmWrDatVld   = CCUSYA_CfgOfmPhaseShift? |SYA_OutPsumVld : |sync_out_vld;
-assign SYAGLB_OfmWrDat      = CCUSYA_CfgOfmPhaseShift? SYA_OutPsum     : sync_out;
+assign SYAGLB_OfmWrDatVld   = CCUSYA_CfgOfmPhaseShift? |sync_out_vld : |SYA_OutPsumVld;
+assign SYAGLB_OfmWrDat      = CCUSYA_CfgOfmPhaseShift? sync_out      : SYA_OutPsum;
 assign SYAGLB_OfmWrAddr     = CCUSYA_CfgOfmPhaseShift? 
-                                CCUSYA_CfgOfmWrBaseAddr + ( (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt) *CCUSYA_CfgNumGrpPerTile)*CntTilIfm + (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt)*CntGrp 
-                                : 0;// ???????????? : 0??
-assign sync_out_rdy         = CCUSYA_CfgOfmPhaseShift? { (NUM_ROW*NUM_BANK){1'b0} } : {NUM_BANK{GLBSYA_OfmWrDatRdy}};
-
+                                0 // Need to Sync across with Data??????????????
+                                : CCUSYA_CfgOfmWrBaseAddr +  ( CCUSYA_CfgLopOrd == 0? 
+                                      (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt)*AllBank_InCntTilIfm[NUM_ROW*1 + NUM_ROW -1] + CCUSYA_CfgNumGrpPerTile*AllBank_InCntTilFlt[NUM_ROW*1 + NUM_ROW -1] + AllBank_InCntGrp[NUM_ROW*1 + NUM_ROW -1] // [31]
+                                    : (CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilIfm)*AllBank_InCntTilFlt[NUM_ROW*1 + NUM_ROW -1] + CCUSYA_CfgNumGrpPerTile*AllBank_InCntTilIfm[NUM_ROW*1 + NUM_ROW -1] + AllBank_InCntGrp[NUM_ROW*1 + NUM_ROW -1] );
+                                    // Need to Sync across with Data??????????????
+assign sync_out_rdy         = CCUSYA_CfgOfmPhaseShift? {NUM_BANK{GLBSYA_OfmWrDatRdy}} : { (NUM_ROW*NUM_BANK){1'b1} };
 
 endmodule
 
