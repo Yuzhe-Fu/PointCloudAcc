@@ -24,10 +24,10 @@ module TOP #(
 
     // FPS
     parameter NUM_FPC        = 16, 
-    parameter CUTMASK_WIDTH  = 32, 
+    parameter CUTMASK_WIDTH  = 64, // Reduce BW
     
     // KNN
-    parameter NUM_SORT_CORE  = 10, // ???
+    parameter NUM_SORT_CORE  = 10, // Decided by SRAM/Crd
 
     // SYA
     parameter SYA_NUM_ROW    = 16,
@@ -36,7 +36,7 @@ module TOP #(
 
     // POL
     parameter POOL_CORE      = 8,
-    parameter POOL_COMP_CORE = 64, 
+    parameter POOL_COMP_CORE = 32, // SRAM/BYTE 
 
     // ITF
     parameter PORT_WIDTH     = 128, 
