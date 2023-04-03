@@ -59,9 +59,6 @@ module TOP #(
     parameter ACT_WIDTH      = 8,
     parameter CHN_WIDTH      = 16,
     parameter QNTSL_WIDTH    = 16,
-
-    parameter MAXPAR         = ACT_WIDTH*(POOL_COMP_CORE > SYA_NUM_ROW*SYA_NUM_BANK ? POOL_COMP_CORE : SYA_NUM_ROW*SYA_NUM_BANK) / SRAM_WIDTH, 
-
     parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH),
     parameter OPNUM         = NUM_MODULE
     )(
@@ -164,7 +161,6 @@ wire  [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip           ;
 wire  [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn           ;
             
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK              -1 : 0] CCUTOP_CfgPortBankFlag;
-wire [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT+GLB_NUM_WRPORT)    -1 : 0] CCUTOP_CfgPortParBank;
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] CCUTOP_CfgPortOffEmptyFull;
 // --------------------------------------------------------------------------------------------------------------------
 // FPS
@@ -297,10 +293,9 @@ wire                                                GLBITF_WrFull    ;
 // GLB
 // Configure
 wire [NUM_BANK * (GLB_NUM_RDPORT + GLB_NUM_WRPORT)      -1 : 0] TOPGLB_CfgPortBankFlag;
-wire [($clog2(MAXPAR) + 1)*(GLB_NUM_RDPORT + GLB_NUM_WRPORT)-1 : 0] TOPGLB_CfgPortParBank;
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] TOPGLB_CfgPortOffEmptyFull;
 // Data
-wire [GLB_NUM_WRPORT    -1 : 0][SRAM_WIDTH*MAXPAR   -1 : 0] TOPGLB_WrPortDat    ;
+wire [GLB_NUM_WRPORT    -1 : 0][SRAM_WIDTH          -1 : 0] TOPGLB_WrPortDat    ;
 wire [GLB_NUM_WRPORT                                -1 : 0] TOPGLB_WrPortDatVld ;
 wire [GLB_NUM_WRPORT                                -1 : 0] GLBTOP_WrPortDatRdy ;
 wire [GLB_NUM_WRPORT    -1 : 0][ADDR_WIDTH          -1 : 0] TOPGLB_WrPortAddr   ;
@@ -309,7 +304,7 @@ wire [GLB_NUM_WRPORT                                -1 : 0] GLBTOP_WrFull ;
 wire [GLB_NUM_RDPORT    -1 : 0][ADDR_WIDTH          -1 : 0] TOPGLB_RdPortAddr   ;
 wire [GLB_NUM_RDPORT                                -1 : 0] TOPGLB_RdPortAddrVld;
 wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdPortAddrRdy;
-wire [GLB_NUM_RDPORT    -1 : 0][SRAM_WIDTH*MAXPAR   -1 : 0] GLBTOP_RdPortDat    ;
+wire [GLB_NUM_RDPORT    -1 : 0][SRAM_WIDTH          -1 : 0] GLBTOP_RdPortDat    ;
 wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdPortDatVld ;
 wire [GLB_NUM_RDPORT                                -1 : 0] TOPGLB_RdPortDatRdy ;
 wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdEmpty      ;
@@ -342,7 +337,6 @@ CCU#(
     .NUM_LAYER_WIDTH         ( NUM_LAYER_WIDTH  ),
     .NUM_MODULE              ( NUM_MODULE       ),
     .OPNUM                   ( OPNUM            ),
-    .MAXPAR                  ( MAXPAR           ),
     .NUM_BANK                ( NUM_BANK         ),
     .NUM_FPC                 ( NUM_FPC          )
 )u_CCU(
@@ -393,7 +387,6 @@ CCU#(
     .CCUPOL_CfgNip           ( CCUPOL_CfgNip           ),
     .CCUPOL_CfgChn           ( CCUPOL_CfgChn           ),   
     .CCUTOP_CfgPortBankFlag  ( CCUTOP_CfgPortBankFlag  ),
-    .CCUTOP_CfgPortParBank   ( CCUTOP_CfgPortParBank   ),
     .CCUTOP_CfgPortOffEmptyFull( CCUTOP_CfgPortOffEmptyFull),
     .CCUTOP_CfgRdy           ( O_CfgRdy                 )
 );
@@ -761,13 +754,11 @@ GLB#(
     .SRAM_WORD               ( SRAM_WORD        ),
     .ADDR_WIDTH              ( ADDR_WIDTH       ),
     .NUM_WRPORT              ( GLB_NUM_WRPORT   ),
-    .NUM_RDPORT              ( GLB_NUM_RDPORT   ),
-    .MAXPAR                  ( MAXPAR           )
+    .NUM_RDPORT              ( GLB_NUM_RDPORT   )
 )u_GLB(
     .clk                    ( clk                    ),
     .rst_n                  ( rst_n                  ),
     .TOPGLB_CfgPortBankFlag ( TOPGLB_CfgPortBankFlag ),
-    .TOPGLB_CfgPortParBank  ( TOPGLB_CfgPortParBank  ),
     .TOPGLB_CfgPortOffEmptyFull(TOPGLB_CfgPortOffEmptyFull),
     .TOPGLB_WrPortDat       ( TOPGLB_WrPortDat       ),
     .TOPGLB_WrPortDatVld    ( TOPGLB_WrPortDatVld    ),
@@ -783,7 +774,6 @@ GLB#(
     .GLBTOP_RdEmpty         ( GLBTOP_RdEmpty         )
 );
 assign TOPGLB_CfgPortBankFlag = CCUTOP_CfgPortBankFlag;
-assign TOPGLB_CfgPortParBank  = CCUTOP_CfgPortParBank;
 assign TOPGLB_CfgPortOffEmptyFull  = CCUTOP_CfgPortOffEmptyFull;
 
 
