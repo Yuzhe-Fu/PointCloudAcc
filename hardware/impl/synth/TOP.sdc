@@ -17,9 +17,8 @@ set_clock_uncertainty -hold  0.1 [get_ports $clk]
 # set_false_path -from [get_clocks clock_sck] -to [get_clocks clock_clk]
 
 # set_false_path -from [list \
-#   [get_ports I_SysRst_n] \
-#   [get_ports I_BypAsysnFIFO]  \
-#   [get_ports I_StartPulse]  \
+#   [get_ports I_SysRst_n_PAD] \
+#   [get_ports I_BypAsysnFIFO_PAD]  \
 #     ] 
 
 # set_input_delay  -clock clock_sck -clock_fall -add_delay [expr 0.0*$period_sck] [get_pins IO_spi_data_PAD_rd0_GEN*/DI]

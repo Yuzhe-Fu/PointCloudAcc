@@ -62,16 +62,16 @@ module TOP #(
     parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH),
     parameter OPNUM         = NUM_MODULE
     )(
-    input                           I_SysRst_n    , 
-    input                           I_SysClk      , 
-    input                           I_BypAsysnFIFO, 
-    output [OPNUM           -1 : 0] O_CfgRdy      ,
-    input                           I_ISAVld      ,
-    inout   [PORT_WIDTH     -1 : 0] IO_Dat        , 
-    inout                           IO_DatVld     ,
-    inout                           OI_DatRdy     , 
-    output                          O_DatOE       ,
-    output                          O_CmdVld      
+    input                           I_SysRst_n_PAD    , 
+    input                           I_SysClk_PAD      , 
+    input                           I_BypAsysnFIFO_PAD, 
+    output [OPNUM           -1 : 0] O_CfgRdy_PAD      ,
+    input                           I_ISAVld_PAD      ,
+    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD        , 
+    inout                           IO_DatVld_PAD     ,
+    inout                           OI_DatRdy_PAD     , 
+    output                          O_DatOE_PAD       ,
+    output                          O_CmdVld_PAD      
 
 );
 //=====================================================================================================================
@@ -106,6 +106,24 @@ localparam DISTSQR_WIDTH     =  CRD_WIDTH*2 + $clog2(CRD_DIM);
 wire                            clk;
 wire                            rst_n;
 genvar                          gv_i;
+
+localparam INPUT_PAD = 1'b1, OUTPUT_PAD = 1'b0;
+
+wire                          I_SysRst_n    ; 
+wire                          I_SysClk      ; 
+wire                          I_BypAsysnFIFO; 
+wire [OPNUM           -1 : 0] O_CfgRdy      ;
+wire                          I_ISAVld      ;
+wire                          O_DatOE       ;
+wire                          O_CmdVld     ;
+
+wire   [PORT_WIDTH          -1 : 0] I_Dat   ; 
+wire   [PORT_WIDTH          -1 : 0] O_Dat   ; 
+wire                                I_DatVld;
+wire                                O_DatVld;
+wire                                O_DatRdy; 
+wire                                I_DatRdy; 
+
 // --------------------------------------------------------------------------------------------------------------------
 // CCU 
 wire                                  CCUTOP_NetFnh;
@@ -314,12 +332,56 @@ wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdEmpty      
 //=====================================================================================================================
 assign clk  = I_SysClk;
 assign rst_n= I_SysRst_n;
+
+
+PDUW08DGZ_V_G inst_I_SysRst_n_PAD        (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysRst_n_PAD        ), .C(I_SysRst_n        ));
+PDUW08DGZ_V_G inst_I_SysClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysClk_PAD      ), .C(I_SysClk      ));
+PDUW08DGZ_V_G inst_I_BypAsysnFIFO_PAD          (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_BypAsysnFIFO_PAD          ), .C(I_BypAsysnFIFO          ));
+PDUW08DGZ_V_G inst_I_ISAVld_PAD    (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_ISAVld_PAD    ), .C(I_ISAVld    ));
+
+PDUW08DGZ_V_G inst_O_DatOE_PAD     (.I(O_DatOE     ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_DatOE_PAD     ), .C(    ));
+PDUW08DGZ_V_G inst_O_CmdVld_PAD    (.I(O_CmdVld    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CmdVld_PAD    ), .C(    ));
+
+PDUW08DGZ_V_G inst_IO_DatVld_PAD (.I(O_DatVld), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_DatVld_PAD), .C(I_DatVld));
+PDUW08DGZ_V_G inst_OI_DatRdy_PAD (.I(O_DatRdy), .OEN(!O_DatOE), .REN(1'b0), .PAD(OI_DatRdy_PAD), .C(I_DatRdy));
+
+generate
+    for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
+        PDUW08DGZ_V_G inst_O_CfgRdy_PAD    (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
+    end 
+endgenerate
+
+generate
+    for (gv_i = 0; gv_i < 20; gv_i = gv_i + 1) begin: IO_Dat_PAD_0_19
+        PDUW08DGZ_V_G inst_IO_Dat_PAD_0_19 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+    end
+endgenerate
+
+generate
+    for (gv_i = 20; gv_i < 60; gv_i = gv_i + 1) begin: IO_Dat_PAD_20_59
+        PDUW08DGZ_H_G inst_IO_Dat_PAD_20_59 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+    end
+endgenerate
+
+generate
+    for (gv_i = 60; gv_i < 90; gv_i = gv_i + 1) begin: IO_Dat_PAD_60_89
+        PDUW08DGZ_V_G inst_IO_Dat_PAD_60_89 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+    end
+endgenerate
+
+generate
+    for (gv_i = 90; gv_i < 128; gv_i = gv_i + 1) begin: IO_Dat_PAD_90_127
+        PDUW08DGZ_H_G inst_IO_Dat_PAD_90_127 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+    end
+endgenerate
+
+
 //=====================================================================================================================
 // Logic Design: CCU
 //=====================================================================================================================
 
-assign TOPCCU_ISARdDat      = I_ISAVld? IO_Dat : 0;
-assign TOPCCU_ISARdDatVld   = I_ISAVld? IO_DatVld : 0;
+assign TOPCCU_ISARdDat      = I_ISAVld? I_Dat : 0;
+assign TOPCCU_ISARdDatVld   = I_ISAVld? I_DatVld : 0;
 
 CCU#(
     .SRAM_WIDTH              ( SRAM_WIDTH       ),
@@ -683,10 +745,10 @@ POL#(
 //=====================================================================================================================
 
 // PAD
-assign {IO_Dat, IO_DatVld}          = O_DatOE? {ITFPAD_Dat, ITFPAD_DatVld} : { {PORT_WIDTH{1'bz}}, 1'bz};
-assign PADITF_DatRdy                = OI_DatRdy;
-assign {PADITF_Dat, PADITF_DatVld}  = {IO_Dat, IO_DatVld};
-assign OI_DatRdy                    = I_ISAVld? CCUTOP_ISARdDatRdy : (O_DatOE? 1'bz : ITFPAD_DatRdy);
+assign {O_Dat, O_DatVld}          = O_DatOE? {ITFPAD_Dat, ITFPAD_DatVld} : { {PORT_WIDTH{1'bz}}, 1'bz};
+assign PADITF_DatRdy                = I_DatRdy;
+assign {PADITF_Dat, PADITF_DatVld}  = {I_Dat, I_DatVld};
+assign O_DatRdy                    = I_ISAVld? CCUTOP_ISARdDatRdy : (O_DatOE? 1'bz : ITFPAD_DatRdy);
 assign O_DatOE                      = I_ISAVld? 1'b0 : ITFPAD_DatOE;
 assign O_CmdVld                     = ITFPAD_CmdVld;
 
