@@ -9,7 +9,6 @@
 //=======================================================
 // Description :
 //========================================================
-`define FUNC_SIM
 module SYA #(
     parameter ACT_WIDTH  = 8,
     parameter WGT_WIDTH  = 8,

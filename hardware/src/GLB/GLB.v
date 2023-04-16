@@ -96,6 +96,8 @@ generate
         wire [SRAM_WIDTH        -1 : 0] wdata;
         wire [SRAM_WIDTH        -1 : 0] rdata;
         reg  [$clog2(NUM_BANK)  -1 : 0] CurBankIdxInWrPortPar;
+        wire                            WrBankAlloc;
+        wire                            RdBankAlloc;
 
         RAM_HS#(
             .SRAM_BIT     ( SRAM_WIDTH  ),
@@ -119,7 +121,7 @@ generate
         //=====================================================================================================================
         // Logic Design: Write
         //=====================================================================================================================
-        assign wvalid           = PortWrBankVld[BankWrPortIdx[gv_i]][gv_i];
+        assign wvalid           = WrBankAlloc & PortWrBankVld[BankWrPortIdx[gv_i]][gv_i];
         assign waddr            = TOPGLB_WrPortAddr[BankWrPortIdx[gv_i]]; // Cut MSB
         assign Bank_wready[gv_i]= wready;
 
@@ -149,7 +151,7 @@ generate
         // Logic Design: Read
         //=====================================================================================================================
         // Bank
-        assign arvalid              = PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i];    
+        assign arvalid              = RdBankAlloc & PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i];    
         assign araddr               = TOPGLB_RdPortAddr[BankRdPortIdx[gv_i]]; 
         assign Bank_arready[gv_i]   = arready;
 
@@ -171,6 +173,7 @@ generate
             end
         end
 
+        assign WrBankAlloc = |BankPortFlag[gv_i][0 +: NUM_WRPORT];
         prior_arb#(
             .REQ_WIDTH ( NUM_WRPORT )
         )u_prior_arb_BankWrPortIdx(
@@ -179,6 +182,7 @@ generate
             .arb_port  ( BankWrPortIdx[gv_i]  )
         );
 
+        assign RdBankAlloc = |BankPortFlag[gv_i][NUM_WRPORT +: NUM_RDPORT];
         prior_arb#(
             .REQ_WIDTH ( NUM_RDPORT )
         )u_prior_arb_BankRdPortIdx(
@@ -190,6 +194,8 @@ generate
         for(gv_j=0; gv_j<NUM_WRPORT+NUM_RDPORT; gv_j=gv_j+1) begin
             assign BankPortFlag[gv_i][gv_j] = TOPGLB_CfgPortBankFlag[gv_j][gv_i];
         end
+
+        
 
     end
 endgenerate
