@@ -1,0 +1,49 @@
+################################################################
+# The script for mini-mips power analysis
+################################################################
+
+###### global settings ######
+source -verbose ./config_temp.tcl
+
+set DESIGN $DESIGN_NAME
+set clk $clk
+
+#set_attribute hdl_language       vhdl
+set_attr hdl_search_path ./p+r_enc
+set_attribute script_search_path ./script
+#set verbosity level (0-9):
+set_attribute information_level  9
+
+###### Libraries and technology files ######
+
+source ./script/${TECH_SETTING}
+#read_cpf -library ./behaviour.cpf
+
+
+###### Read HDL files ######
+
+read_hdl ${SYNTH_PROJDIR}/p+r_enc/${DESIGN}_synth.v
+
+###### Elaborate design ######
+
+elaborate $DESIGN
+
+# set_attribute wireload_mode enclosed
+set_attribute interconnect_mode ple
+
+# read tcf file for power estimation:
+
+ read_tcf -tcf_instance $TCF_INST $TCF_DUMP
+# read_vcd -instance TS3D -vcd_module top.TS3D_U ../sim_power_vcd/ASIC.vcd
+# write reports:
+
+report gates        > ${SYNTH_PROJDIR}/report/${PERIOD}_${NOTE}/${DESIGN}.gates
+report power        > ${SYNTH_PROJDIR}/report/${PERIOD}_${NOTE}/${DESIGN}.power
+report summary      > ${SYNTH_PROJDIR}/report/${PERIOD}_${NOTE}/${DESIGN}.summary
+
+
+puts "The RUNTIME is [get_attr runtime /] seconds"
+
+
+
+

@@ -2,7 +2,8 @@
 
 `define CLOCK_PERIOD 10
 `define SIM
-`define FUNC_SIM
+// `define FUNC_SIM
+`define POST_SIM
 `define PSEUDO_DATA
 `define ASSERTION_ON
 // `define WITHPAD
@@ -100,6 +101,18 @@ begin
             repeat(100) @(posedge clk);
     end
 end
+
+`ifdef POST_SIM
+    initial begin 
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230413_Period10_group_Track3vt_NoteWithIO_I_SysClk_PAD/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+    end 
+
+    reg EnTcf;
+    initial begin
+        EnTcf = 1'b0;
+    end
+`endif
+
 
 //=====================================================================================================================
 // Logic Design 1: FSM=ITF
@@ -281,9 +294,10 @@ wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];
 // DRAM WRITE
 assign OI_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
 
-TOP #(
-    .PORT_WIDTH  (PORT_WIDTH)
-)
+TOP 
+// #(
+//     .PORT_WIDTH  (PORT_WIDTH)
+// )
     u_TOP (
     .I_SysRst_n_PAD              ( rst_n          ),
     .I_SysClk_PAD                ( clk            ),
