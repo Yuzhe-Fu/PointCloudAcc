@@ -5,6 +5,7 @@
 `define FUNC_SIM
 `define PSEUDO_DATA
 `define ASSERTION_ON
+// `define WITHPAD
 
 module TOP_tb();
 //=====================================================================================================================
@@ -23,21 +24,13 @@ reg                             I_BypAsysnFIFO;
 
 // TOP Outputs
 wire                            O_DatOE;
-wire                            O_DatOE_PAD;
 wire                            O_CmdVld;
-wire                            O_CmdVld_PAD;
 wire                            O_NetFnh;
 
 // TOP Bidirs
 wire  [PORT_WIDTH       -1 : 0] IO_Dat;
-wire  [PORT_WIDTH       -1 : 0] I_Dat;
-wire  [PORT_WIDTH       -1 : 0] O_Dat;
 wire                            IO_DatVld ;
-wire                            I_DatVld ;
-wire                            O_DatVld ;
 wire                            OI_DatRdy ;
-wire                            O_DatRdy ;
-wire                            I_DatRdy ;
 
 reg                             rst_n ;
 reg                             clk   ;
@@ -53,7 +46,6 @@ wire [OPNUM -1 : 0] Overflow_ISA;
 reg  [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] MDUISABASEADDR;
 reg  [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] MDUISANUM;
 wire [OPNUM             -1 : 0] O_CfgRdy;
-wire [OPNUM             -1 : 0] O_CfgRdy_PAD;
 wire                            I_ISAVld;
 
 localparam IDLE     = 3'b000;
@@ -130,8 +122,8 @@ always @(*) begin
                 else
                     next_state <= WAITCFG;        
         // Data
-        CMD :   if( O_DatOE & O_DatVld & O_DatRdy) begin
-                    if ( O_Dat[0] ) // 
+        CMD :   if( O_DatOE & IO_DatVld & OI_DatRdy) begin
+                    if ( IO_Dat[0] ) // 
                         next_state <= OUT2OFF;
                     else
                         next_state <= IN2CHIP;
@@ -189,7 +181,7 @@ generate
             .RESET_N   ( rst_n          ),
             .CLEAR     ( 1'b0           ),
             .DEFAULT   ( Default        ),
-            .INC       ( I_ISAVld & (I_DatVld & O_DatRdy) & (ArbCfgRdyIdx_d == gv_i) ),
+            .INC       ( I_ISAVld & (IO_DatVld & OI_DatRdy) & (ArbCfgRdyIdx_d == gv_i) ),
             .DEC       ( 1'b0           ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
             .MAX_COUNT ( MaxCnt         ),
@@ -226,7 +218,7 @@ endgenerate
 //     .COUNT     ( CntISA         )
 // );
 
-assign #1 I_ISAVld = state == FET | state == WAITCFG;
+assign I_ISAVld = state == FET | state == WAITCFG;
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
         ArbCfgRdyIdx_d <= 0;
@@ -255,7 +247,7 @@ counter#(
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
     .CLEAR     ( state==CMD & (next_state == IN2CHIP | next_state == OUT2OFF) ),
-    .DEFAULT   ( O_Dat[1 +: DRAM_ADDR_WIDTH]),
+    .DEFAULT   ( IO_Dat[1 +: DRAM_ADDR_WIDTH]),
     .INC       ( (state == IN2CHIP | state == OUT2OFF) & IO_DatVld & OI_DatRdy ),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {DRAM_ADDR_WIDTH{1'b0}}),
@@ -270,8 +262,8 @@ counter#(
 `ifndef PSEUDO_DATA
     always @(posedge clk or rst_n) begin
         if(state == OUT2OFF) begin
-            if(O_DatVld & I_DatRdy)
-                Dram[addr] <= O_Dat;
+            if(IO_DatVld & OI_DatRdy)
+                Dram[addr] <= IO_Dat;
         end
     end
 `endif
@@ -280,33 +272,14 @@ counter#(
 // Logic Design : Interface
 //=====================================================================================================================
 // DRAM READ
-assign I_DatVld  = I_ISAVld? state == FET & next_state != WAITCFG : (O_DatOE? 1'bz : state== IN2CHIP);
-assign I_Dat     = I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
+assign IO_DatVld  = I_ISAVld? state == FET & next_state != WAITCFG : (O_DatOE? 1'bz : state== IN2CHIP);
+assign IO_Dat     = I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
+
+wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];
+
 
 // DRAM WRITE
-assign I_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
-
-// wire                           I_SysRst_n_PAD    ; 
-// wire                           I_SysClk_PAD      ; 
-// wire                           I_BypAsysnFIFO_PAD; 
-// wire  [OPNUM           -1 : 0] O_CfgRdy_PAD      ;
-// wire                           I_ISAVld_PAD      ;
-// wire   [PORT_WIDTH     -1 : 0] IO_Dat_PAD        ; 
-// wire                           IO_DatVld_PAD     ;
-// wire                           OI_DatRdy_PAD     ; 
-// wire                           O_DatOE_PAD       ;
-// wire                           O_CmdVld_PAD      ;
-
-assign #1 O_CfgRdy =  O_CfgRdy_PAD;
-assign #1 O_DatOE  =  O_DatOE_PAD;
-assign #1 O_CmdVld =  O_CmdVld_PAD;
-
-assign #1 IO_Dat   =  I_Dat;
-assign #1 O_Dat    =  IO_Dat;
-assign #1 IO_DatVld=  I_DatVld;
-assign #1 O_DatVld =  IO_DatVld;
-assign #1 OI_DatRdy=  I_DatRdy;
-assign #1 O_DatRdy =  OI_DatRdy;
+assign OI_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
 
 TOP #(
     .PORT_WIDTH  (PORT_WIDTH)
@@ -315,10 +288,10 @@ TOP #(
     .I_SysRst_n_PAD              ( rst_n          ),
     .I_SysClk_PAD                ( clk            ),
     .I_BypAsysnFIFO_PAD          ( I_BypAsysnFIFO ),
-    .O_CfgRdy_PAD                ( O_CfgRdy_PAD       ),
+    .O_CfgRdy_PAD                ( O_CfgRdy       ),
     .I_ISAVld_PAD                ( I_ISAVld       ),
-    .O_DatOE_PAD                 ( O_DatOE_PAD        ),
-    .O_CmdVld_PAD                ( O_CmdVld_PAD       ),
+    .O_DatOE_PAD                 ( O_DatOE        ),
+    .O_CmdVld_PAD                ( O_CmdVld       ),
     .IO_Dat_PAD                  ( IO_Dat         ),
     .IO_DatVld_PAD               ( IO_DatVld      ),
     .OI_DatRdy_PAD               ( OI_DatRdy      )

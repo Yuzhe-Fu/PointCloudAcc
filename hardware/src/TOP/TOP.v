@@ -333,47 +333,67 @@ wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdEmpty      
 assign clk  = I_SysClk;
 assign rst_n= I_SysRst_n;
 
+`ifdef WITHPAD
+    PDUW08DGZ_V_G inst_I_SysRst_n_PAD        (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysRst_n_PAD        ), .C(I_SysRst_n        ));
+    PDUW08DGZ_V_G inst_I_SysClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysClk_PAD      ), .C(I_SysClk      ));
+    PDUW08DGZ_V_G inst_I_BypAsysnFIFO_PAD          (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_BypAsysnFIFO_PAD          ), .C(I_BypAsysnFIFO          ));
+    PDUW08DGZ_V_G inst_I_ISAVld_PAD    (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_ISAVld_PAD    ), .C(I_ISAVld    ));
 
-PDUW08DGZ_V_G inst_I_SysRst_n_PAD        (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysRst_n_PAD        ), .C(I_SysRst_n        ));
-PDUW08DGZ_V_G inst_I_SysClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysClk_PAD      ), .C(I_SysClk      ));
-PDUW08DGZ_V_G inst_I_BypAsysnFIFO_PAD          (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_BypAsysnFIFO_PAD          ), .C(I_BypAsysnFIFO          ));
-PDUW08DGZ_V_G inst_I_ISAVld_PAD    (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_ISAVld_PAD    ), .C(I_ISAVld    ));
+    PDUW08DGZ_V_G inst_O_DatOE_PAD     (.I(O_DatOE     ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_DatOE_PAD     ), .C(    ));
+    PDUW08DGZ_V_G inst_O_CmdVld_PAD    (.I(O_CmdVld    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CmdVld_PAD    ), .C(    ));
 
-PDUW08DGZ_V_G inst_O_DatOE_PAD     (.I(O_DatOE     ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_DatOE_PAD     ), .C(    ));
-PDUW08DGZ_V_G inst_O_CmdVld_PAD    (.I(O_CmdVld    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CmdVld_PAD    ), .C(    ));
+    PDUW08DGZ_V_G inst_IO_DatVld_PAD (.I(O_DatVld), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_DatVld_PAD), .C(I_DatVld));
+    PDUW08DGZ_V_G inst_OI_DatRdy_PAD (.I(O_DatRdy), .OEN(!O_DatOE), .REN(1'b0), .PAD(OI_DatRdy_PAD), .C(I_DatRdy));
 
-PDUW08DGZ_V_G inst_IO_DatVld_PAD (.I(O_DatVld), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_DatVld_PAD), .C(I_DatVld));
-PDUW08DGZ_V_G inst_OI_DatRdy_PAD (.I(O_DatRdy), .OEN(!O_DatOE), .REN(1'b0), .PAD(OI_DatRdy_PAD), .C(I_DatRdy));
+    generate
+        for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
+            PDUW08DGZ_V_G inst_O_CfgRdy_PAD    (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
+        end 
+    endgenerate
 
-generate
-    for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
-        PDUW08DGZ_V_G inst_O_CfgRdy_PAD    (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
-    end 
-endgenerate
+    generate
+        for (gv_i = 0; gv_i < 20; gv_i = gv_i + 1) begin: IO_Dat_PAD_0_19
+            PDUW08DGZ_V_G inst_IO_Dat_PAD_0_19 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
 
-generate
-    for (gv_i = 0; gv_i < 20; gv_i = gv_i + 1) begin: IO_Dat_PAD_0_19
-        PDUW08DGZ_V_G inst_IO_Dat_PAD_0_19 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-    end
-endgenerate
+    generate
+        for (gv_i = 20; gv_i < 60; gv_i = gv_i + 1) begin: IO_Dat_PAD_20_59
+            PDUW08DGZ_H_G inst_IO_Dat_PAD_20_59 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
 
-generate
-    for (gv_i = 20; gv_i < 60; gv_i = gv_i + 1) begin: IO_Dat_PAD_20_59
-        PDUW08DGZ_H_G inst_IO_Dat_PAD_20_59 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-    end
-endgenerate
+    generate
+        for (gv_i = 60; gv_i < 90; gv_i = gv_i + 1) begin: IO_Dat_PAD_60_89
+            PDUW08DGZ_V_G inst_IO_Dat_PAD_60_89 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
 
-generate
-    for (gv_i = 60; gv_i < 90; gv_i = gv_i + 1) begin: IO_Dat_PAD_60_89
-        PDUW08DGZ_V_G inst_IO_Dat_PAD_60_89 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-    end
-endgenerate
+    generate
+        for (gv_i = 90; gv_i < 128; gv_i = gv_i + 1) begin: IO_Dat_PAD_90_127
+            PDUW08DGZ_H_G inst_IO_Dat_PAD_90_127 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
+    
+`else
+    assign I_SysRst_n = I_SysRst_n_PAD;
+    assign I_SysClk = I_SysClk_PAD;
+    assign I_BypAsysnFIFO = I_BypAsysnFIFO_PAD;
+    assign I_ISAVld = I_ISAVld_PAD;
+    assign O_DatOE_PAD = O_DatOE;
+    assign O_CmdVld_PAD = O_CmdVld;
+    assign O_CfgRdy_PAD = O_CfgRdy;
 
-generate
-    for (gv_i = 90; gv_i < 128; gv_i = gv_i + 1) begin: IO_Dat_PAD_90_127
-        PDUW08DGZ_H_G inst_IO_Dat_PAD_90_127 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-    end
-endgenerate
+    assign IO_DatVld_PAD = O_DatOE? O_DatVld : 1'bz;
+    assign I_DatVld = IO_DatVld_PAD;
+
+    assign IO_Dat_PAD = O_DatOE? O_Dat : {PORT_WIDTH{1'bz}};
+    assign I_Dat = IO_Dat_PAD;
+
+    assign OI_DatRdy_PAD = !O_DatOE? O_DatRdy : 1'bz;
+    assign I_DatRdy = OI_DatRdy_PAD;
+
+`endif
 
 
 //=====================================================================================================================
