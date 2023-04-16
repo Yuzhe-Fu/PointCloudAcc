@@ -50,7 +50,7 @@ module RAM #(
     assign #(DELAY) DI   = data_in;
     assign #(DELAY) WEB  = {SRAM_BYTE{~write_en}};
     assign #(DELAY) CSB  = (~write_en)&(~read_en);
-    assign #(DELAY) RTSEL= 2'b00;
+    assign #(DELAY) RTSEL= 2'b10;
 
     // Lock DO
     wire [ SRAM_WIDTH              -1 : 0] DO;
@@ -84,7 +84,7 @@ module RAM #(
             .WEB    ( WEB   ),
             .A      ( (&WEB)? AR : AW ),
             .D      ( DI    ),
-            .RTSEL  ( RTSEL ),
+            .RTSEL  ( RTSEL ), // 2'b00
             .WTSEL  ( 2'd0  ),
             .Q      ( DO    )
             );
