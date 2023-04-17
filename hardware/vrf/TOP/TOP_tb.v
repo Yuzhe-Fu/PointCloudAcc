@@ -1,6 +1,6 @@
 `timescale  1 ns / 100 ps
 
-`define CLOCK_PERIOD 10
+`define CLOCK_PERIOD 20
 `define SIM
 // `define FUNC_SIM
 `define POST_SIM
@@ -26,7 +26,6 @@ reg                             I_BypAsysnFIFO;
 // TOP Outputs
 wire                            O_DatOE;
 wire                            O_CmdVld;
-wire                            O_NetFnh;
 
 // TOP Bidirs
 wire  [PORT_WIDTH       -1 : 0] IO_Dat;
@@ -37,8 +36,6 @@ reg                             rst_n ;
 reg                             clk   ;
 reg [PORT_WIDTH         -1 : 0] Dram[0 : 2**18-1];
 wire[DRAM_ADDR_WIDTH    -1 : 0] addr;
-reg [DRAM_ADDR_WIDTH    -1 : 0] BaseAddr;
-reg [ADDR_WIDTH         -1 : 0] ReqNum;
 
 reg [$clog2(OPNUM)      -1 : 0] ArbCfgRdyIdx;
 reg  [$clog2(OPNUM)     -1 : 0] ArbCfgRdyIdx_d;
@@ -104,7 +101,7 @@ end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230413_Period10_group_Track3vt_NoteWithIO_I_SysClk_PAD/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230416_Period10_group_Track3vt_NoteWoPAD/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MINIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
@@ -231,7 +228,7 @@ endgenerate
 //     .COUNT     ( CntISA         )
 // );
 
-assign I_ISAVld = state == FET | state == WAITCFG;
+assign #2 I_ISAVld = state == FET | state == WAITCFG;
 always @(posedge clk or rst_n) begin
     if (!rst_n) begin
         ArbCfgRdyIdx_d <= 0;
@@ -285,20 +282,16 @@ counter#(
 // Logic Design : Interface
 //=====================================================================================================================
 // DRAM READ
-assign IO_DatVld  = I_ISAVld? state == FET & next_state != WAITCFG : (O_DatOE? 1'bz : state== IN2CHIP);
-assign IO_Dat     = I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
+assign #2 IO_DatVld  = I_ISAVld? state == FET & next_state != WAITCFG : (O_DatOE? 1'bz : state== IN2CHIP);
+assign #2 IO_Dat     = I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
 
 wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];
 
 
 // DRAM WRITE
-assign OI_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
+assign #2 OI_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
 
-TOP 
-// #(
-//     .PORT_WIDTH  (PORT_WIDTH)
-// )
-    u_TOP (
+TOP u_TOP (
     .I_SysRst_n_PAD              ( rst_n          ),
     .I_SysClk_PAD                ( clk            ),
     .I_BypAsysnFIFO_PAD          ( I_BypAsysnFIFO ),
