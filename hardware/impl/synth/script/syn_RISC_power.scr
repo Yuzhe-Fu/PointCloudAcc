@@ -37,9 +37,13 @@ set_attribute interconnect_mode ple
 # read_vcd -instance TS3D -vcd_module top.TS3D_U ../sim_power_vcd/ASIC.vcd
 # write reports:
 
-report gates        > ${SYNTH_PROJDIR}/report/${PERIOD}_${NOTE}/${DESIGN}.gates
-report power        > ${SYNTH_PROJDIR}/report/${PERIOD}_${NOTE}/${DESIGN}.power
-report summary      > ${SYNTH_PROJDIR}/report/${PERIOD}_${NOTE}/${DESIGN}.summary
+report gates            > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.gates
+report power            > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power
+report power -depth 1   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth1.rpt
+report power -depth 2   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth2.rpt
+report power -depth 3   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth3.rpt
+report power -depth 4   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth4.rpt
+report summary          > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.summary
 
 
 puts "The RUNTIME is [get_attr runtime /] seconds"

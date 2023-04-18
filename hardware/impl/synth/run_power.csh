@@ -1,18 +1,18 @@
+
+set SYNTH_PROJDIR = "../../work/synth/TOP/Date230417_Period10_group_Track3vt_NoteWoPAD&RTSEL10"
+set TCF_DUMP_NAME = "tcf_period20_90us_SYAPOL.dump"
+
+set NOTE = ${TCF_DUMP_NAME}
+set TCF_DUMP = ../../vrf/TOP/${TCF_DUMP_NAME}
 set DESIGN_NAME = "TOP"
 set clk = "I_SysClk_PAD"
-set PERIOD = "10"
-set NOTE = "Test"
-
 set TECH_SETTING=tech_settings.tcl
-set SYNTH_PROJDIR = "../../work/synth/TOP/Date230413_Period10_group_Track3vt_NoteWithIO_I_SysClk_PAD"
-set TCF_INST = "TOP"
-set TCF_DUMP = "../../vrf/TOP/tcf.dump"
+set TCF_INST = "u_TOP"
 ################################################################################
 rm ./config_temp.tcl
 
 echo "set DESIGN_NAME $DESIGN_NAME" >> ./config_temp.tcl
 echo "set clk $clk" >> ./config_temp.tcl
-echo "set PERIOD $PERIOD" >> ./config_temp.tcl
 echo "set NOTE $NOTE" >> ./config_temp.tcl
 echo "set TECH_SETTING $TECH_SETTING" >> ./config_temp.tcl
 echo "set SYNTH_PROJDIR $SYNTH_PROJDIR" >> ./config_temp.tcl

@@ -84,7 +84,7 @@ module RAM #(
             .WEB    ( WEB   ),
             .A      ( (&WEB)? AR : AW ),
             .D      ( DI    ),
-            .RTSEL  ( RTSEL ), // 2'b00
+            .RTSEL  ( RTSEL ),
             .WTSEL  ( 2'd0  ),
             .Q      ( DO    )
             );

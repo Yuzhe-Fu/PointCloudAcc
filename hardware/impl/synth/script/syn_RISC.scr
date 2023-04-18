@@ -154,23 +154,29 @@ foreach clock_name $clock_list {
 	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2reg > ${SYNTH_PROJDIR}/rpt/${clock_name}_reg2reg.rpt
 }
 
-report power        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power.rpt
-report area         > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area.rpt
-report gates        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.gates.rpt
-report design_rules > ${SYNTH_PROJDIR}/rpt/${DESIGN}.rules.rpt
-report clock_gating > ${SYNTH_PROJDIR}/rpt/${DESIGN}.clkgating.rpt
-report summary      > ${SYNTH_PROJDIR}/rpt/${DESIGN}.summary.rpt
+report power            > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power.rpt
+report power -depth 1   > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power_depth1.rpt
+report power -depth 2   > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power_depth2.rpt
+report power -depth 3   > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power_depth3.rpt
+report power -depth 4   > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power_depth4.rpt
+report area             > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area.rpt
+report area -depth 1    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth1.rpt
+report area -depth 2    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth2.rpt
+report area -depth 3    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth3.rpt
+report area -depth 4    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth4.rpt
+report area -depth 5    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth5.rpt
+report area -depth 6    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth6.rpt
+report area -depth 7    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth7.rpt
+report gates            > ${SYNTH_PROJDIR}/rpt/${DESIGN}.gates.rpt
+report design_rules     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.rules.rpt
+report clock_gating     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.clkgating.rpt
+report summary          > ${SYNTH_PROJDIR}/rpt/${DESIGN}.summary.rpt
 report timing -num_paths 100     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing.rpt
 
 #### check design after synth
 check_design -all > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_post_synth.rpt
 report timing -verbose -lint > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_post_synth.rpt
 
-report area -depth 2       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth2.rpt
-report area -depth 3       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth3.rpt
-report area -depth 4       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth4.rpt
-report area -depth 5       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth5.rpt
-report area -depth 6       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth6.rpt
-report area -depth 7       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth7.rpt
+
 
 puts "The RUNTIME is [get_attr runtime /] seconds"
