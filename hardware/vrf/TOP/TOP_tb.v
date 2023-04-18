@@ -1,6 +1,6 @@
 `timescale  1 ns / 100 ps
 
-`define CLOCK_PERIOD 20
+`define CLOCK_PERIOD 10
 `define SIM
 // `define FUNC_SIM
 `define POST_SIM
@@ -92,16 +92,14 @@ begin
         wait (state == IDLE & |O_CfgRdy & !O_CmdVld);
         @ (negedge clk );
         $stop;
-        if (ArbCfgRdyIdx <= 5)
-            repeat(2) @(posedge clk); // 
-        else
-            repeat(100) @(posedge clk);
+        wait (ArbCfgRdyIdx <= 5);
+        repeat(2) @(posedge clk); // 
     end
 end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230416_Period10_group_Track3vt_NoteWoPAD/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MINIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230417_Period10_group_Track3vt_NoteWoPAD&RTSEL10/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;

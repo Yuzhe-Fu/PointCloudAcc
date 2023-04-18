@@ -1,6 +1,6 @@
 ./TOP_tb.v
 ../../src/primitives/COUNTER/counter.v
-../../work/synth/TOP/Date230416_Period10_group_Track3vt_NoteWoPAD/p+r_enc/TOP_synth.v
+../../work/synth/TOP/Date230417_Period10_group_Track3vt_NoteWoPAD&RTSEL10/p+r_enc/TOP_synth.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb128x256m1sso_170a/VERILOG/ts1n28hpcpuhdhvtb128x256m1sso_170a_ssg0p81v125c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb64x128m4sso_170a/VERILOG/ts1n28hpcpuhdhvtb64x128m4sso_170a_ssg0p81v125c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb16x8m2sso_170a/VERILOG/ts1n28hpcpuhdhvtb16x8m2sso_170a_ssg0p81v125c.v
