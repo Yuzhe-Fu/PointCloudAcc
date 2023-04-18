@@ -1,6 +1,6 @@
 `timescale  1 ns / 100 ps
 
-`define CLOCK_PERIOD 10
+`define CLOCK_PERIOD 20
 `define SIM
 // `define FUNC_SIM
 `define POST_SIM
@@ -281,7 +281,7 @@ counter#(
 //=====================================================================================================================
 // DRAM READ
 assign #2 IO_DatVld  = I_ISAVld? state == FET & next_state != WAITCFG : (O_DatOE? 1'bz : state== IN2CHIP);
-assign #2 IO_Dat     = I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr]);
+assign #2 IO_Dat     = I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : (O_DatOE? {PORT_WIDTH{1'bz}} : Dram[addr[0 +: 13]]); // 8196
 
 wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];
 

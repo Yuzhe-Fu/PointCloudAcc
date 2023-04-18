@@ -43,6 +43,8 @@ report power -depth 1   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth1
 report power -depth 2   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth2.rpt
 report power -depth 3   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth3.rpt
 report power -depth 4   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth4.rpt
+report power -depth 5   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth5.rpt
+report power -depth 6   > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.power_depth6.rpt
 report summary          > ${SYNTH_PROJDIR}/report/${NOTE}/${DESIGN}.summary
 
 
