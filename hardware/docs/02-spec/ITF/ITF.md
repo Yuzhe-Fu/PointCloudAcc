@@ -1,5 +1,4 @@
 # 问题
-- IO不必要太高，占用率低
 
 # 文件列表
 | File | Descriptions |
