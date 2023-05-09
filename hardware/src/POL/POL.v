@@ -31,20 +31,23 @@ module POL #(
     input  [POOL_CORE   -1 : 0][(MAP_WIDTH+1)       -1 : 0] CCUPOL_CfgK         , // 24
     input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgNip       , // 1024
     input  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChn       , // 64
+    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr,
+    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr,
+    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr,
 
     output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr    ,   
     output                                                  POLGLB_MapRdAddrVld , 
     input                                                   GLBPOL_MapRdAddrRdy ,
-    input                                                   GLBPOL_MapRdDatVld     ,
+    input                                                   GLBPOL_MapRdDatVld  ,
     input  [SRAM_WIDTH                              -1 : 0] GLBPOL_MapRdDat     ,
-    output                                                  POLGLB_MapRdDatRdy     ,
+    output                                                  POLGLB_MapRdDatRdy  ,
 
     output [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld ,
     output [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] POLGLB_OfmRdAddr    ,
     input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy ,
-    input  [POOL_CORE   -1 : 0][(ACT_WIDTH*POOL_COMP_CORE)-1 : 0] GLBPOL_OfmRdDat     ,
-    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld     ,
-    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy     ,
+    input  [POOL_CORE   -1 : 0][(ACT_WIDTH*POOL_COMP_CORE)-1 : 0] GLBPOL_OfmRdDat,
+    input  [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld  ,
+    output [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy  ,
 
     output [IDX_WIDTH                               -1 : 0] POLGLB_OfmWrAddr    ,
     output [(ACT_WIDTH*POOL_COMP_CORE)              -1 : 0] POLGLB_OfmWrDat     ,
@@ -128,6 +131,10 @@ generate
     // Variable Definition :
     //=====================================================================================================================
     wire [IDX_WIDTH         -1 : 0] CntCp;
+    reg  [IDX_WIDTH         -1 : 0] CntCp_s1;
+    reg  [IDX_WIDTH         -1 : 0] CntCp_s2;
+    reg  [IDX_WIDTH         -1 : 0] CntCp_s3;
+    reg  [IDX_WIDTH         -1 : 0] CntCp_s4;
     wire [MAPWORD_WIDTH     -1 : 0] CntMapWord;
     wire [CHNGRP_WIDTH      -1 : 0] CntChnGrp;
     wire [MAP_WIDTH         -1 : 0] CntNp;
@@ -206,10 +213,10 @@ generate
     assign POLCCU_CfgRdy[gv_plc] = state == IDLE;
 
     // Handshake
-    assign rdy_s0 = GLBPOL_MapRdAddrRdy & (ArbPLCIdx_MapRd == gv_plc);
-    assign vld_s0 = state == MAPIN  & (rdy_s1 & !vld_s1);
+    assign rdy_s0       = GLBPOL_MapRdAddrRdy & (ArbPLCIdx_MapRd == gv_plc);
+    assign vld_s0       = state == MAPIN  & (rdy_s1 & !vld_s1);
     assign handshake_s0 = rdy_s0 & vld_s0;
-    assign ena_s0 = handshake_s0 | ~vld_s0;
+    assign ena_s0       = handshake_s0 | ~vld_s0;
 
     // Reg Update
     always @ ( posedge clk or negedge rst_n ) begin
@@ -259,7 +266,7 @@ generate
     // Logic Design: s1: Get Map 
     //=====================================================================================================================
     // Combinational Logic
-    assign PLC_MapRdAddr[gv_plc]    = (CntCp<<MAPWORD_WIDTH) + CntMapWord;
+    assign PLC_MapRdAddr[gv_plc]    = CCUPOL_CfgMapRdBaseAddr[gv_plc] + (CntCp<<MAPWORD_WIDTH) + CntMapWord;
     assign PLC_MapRdAddrVld[gv_plc] = vld_s0;
 
     // Handshake
@@ -271,9 +278,11 @@ generate
     // Reg Update
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
-            lastMapWord_s1 <= 0;
+            lastMapWord_s1  <= 0;
+            CntCp_s1        <= 0;
         end else if(ena_s1) begin
-            lastMapWord_s1 <= overflow_CntCp & overflow_CntMapWord;
+            lastMapWord_s1  <= overflow_CntCp & overflow_CntMapWord;
+            CntCp_s1        <= CntCp;
         end
     end
 
@@ -342,6 +351,14 @@ generate
         .COUNT     ( CntChnGrp          )
     );
 
+    // Reg Update
+    always @ ( posedge clk or negedge rst_n ) begin
+        if ( !rst_n ) begin
+            CntCp_s2 <= 0;
+        end else if(ena_s2) begin
+            CntCp_s2 <= CntCp_s1;
+        end
+    end
     //=====================================================================================================================
     // Logic Design: s3: Get Ofm
     //=====================================================================================================================
@@ -353,7 +370,7 @@ generate
     `else
         assign NpIdx_s2 = (CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE)*SIPO_MapOutDat[CntNp] + CntChnGrp;
     `endif
-    assign POLGLB_OfmRdAddr[gv_plc] = NpIdx_s2;
+    assign POLGLB_OfmRdAddr[gv_plc] = CCUPOL_CfgOfmRdBaseAddr[gv_plc] + NpIdx_s2;
 
     // Handshake
     assign rdy_s3       = ena_s4;
@@ -364,9 +381,11 @@ generate
     // Reg Update
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
-            {NpIdx_s3, LastNp_s3, overflow_CntNp_s3} <= 0;
+            {NpIdx_s3, LastNp_s3, overflow_CntNp_s3}    <= 0;
+            CntCp_s3                                    <= 0;
         end else if(ena_s3) begin
             {NpIdx_s3, LastNp_s3, overflow_CntNp_s3} <= {NpIdx_s2, SIPO_MapOutLast & overflow_CntChnGrp & overflow_CntNp, overflow_CntNp};
+            CntCp_s3    <= CntCp_s2;
         end
     end
 
@@ -402,9 +421,11 @@ generate
 
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
-            {NpIdx_s4, LastNp_s4, vld_s4} <= 0;
+            {NpIdx_s4, LastNp_s4, vld_s4}   <= 0;
+            CntCp_s4                        <= 0;
         end else if(ena_s4) begin
-            {NpIdx_s4, LastNp_s4, vld_s4} <= {NpIdx_s3, LastNp_s3, overflow_CntNp_s3};
+            {NpIdx_s4, LastNp_s4, vld_s4}   <= {NpIdx_s3, LastNp_s3, overflow_CntNp_s3};
+            CntCp_s4                        <= CntCp_s3;
         end
     end
 
@@ -413,7 +434,7 @@ generate
     //=====================================================================================================================
     // Combination Logic
     assign PLC_OfmWrDatVld[gv_plc]  = vld_s4;
-    assign PLC_OfmWrAddr[gv_plc]    = NpIdx_s4;
+    assign PLC_OfmWrAddr[gv_plc]    = CCUPOL_CfgOfmWrBaseAddr[gv_plc] + CntCp_s4;
     assign PLC_OfmWrDat[gv_plc]     = MaxArray;
 
     end
