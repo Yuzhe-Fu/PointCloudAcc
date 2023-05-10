@@ -51,7 +51,7 @@ assign ram_waddr = waddr;
 assign ram_wdata = wdata;
 
 // output
-assign wready   = DUAL_PORT? 1'b1 : !(ram_renc);
+assign wready   = 1'b1;
 
 //***********************************************
 // read path

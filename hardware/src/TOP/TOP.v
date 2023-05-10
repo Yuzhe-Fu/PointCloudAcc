@@ -41,6 +41,7 @@ module TOP #(
     // ITF
     parameter PORT_WIDTH     = 128, 
     parameter DRAM_ADDR_WIDTH= 32, 
+    parameter ASYNC_FIFO_ADDR_WIDTH = 4,
 
     // GLB
     parameter SRAM_WIDTH     = 256, 
@@ -64,6 +65,7 @@ module TOP #(
     )(
     input                           I_SysRst_n_PAD    , 
     input                           I_SysClk_PAD      , 
+    input                           I_OffClk_PAD      ,
     input                           I_BypAsysnFIFO_PAD, 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      ,
     input                           I_ISAVld_PAD      ,
@@ -111,6 +113,7 @@ localparam INPUT_PAD = 1'b1, OUTPUT_PAD = 1'b0;
 
 wire                          I_SysRst_n    ; 
 wire                          I_SysClk      ; 
+wire                          I_OffClk      ; 
 wire                          I_BypAsysnFIFO; 
 wire [OPNUM           -1 : 0] O_CfgRdy      ;
 wire                          I_ISAVld      ;
@@ -177,6 +180,9 @@ wire  [POOL_CORE              -1 : 0] POLCCU_CfgRdy           ;
 wire  [(MAP_WIDTH+1)*POOL_CORE-1 : 0] CCUPOL_CfgK             ;
 wire  [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip           ;
 wire  [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn           ;
+wire [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr;
+wire [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr;
+wire [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr;
             
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK              -1 : 0] CCUTOP_CfgPortBankFlag;
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] CCUTOP_CfgPortOffEmptyFull;
@@ -333,68 +339,6 @@ wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdEmpty      
 assign clk  = I_SysClk;
 assign rst_n= I_SysRst_n;
 
-`ifdef WITHPAD
-    PDUW08DGZ_V_G inst_I_SysRst_n_PAD        (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysRst_n_PAD        ), .C(I_SysRst_n        ));
-    PDUW08DGZ_V_G inst_I_SysClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysClk_PAD      ), .C(I_SysClk      ));
-    PDUW08DGZ_V_G inst_I_BypAsysnFIFO_PAD          (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_BypAsysnFIFO_PAD          ), .C(I_BypAsysnFIFO          ));
-    PDUW08DGZ_V_G inst_I_ISAVld_PAD    (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_ISAVld_PAD    ), .C(I_ISAVld    ));
-
-    PDUW08DGZ_V_G inst_O_DatOE_PAD     (.I(O_DatOE     ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_DatOE_PAD     ), .C(    ));
-    PDUW08DGZ_V_G inst_O_CmdVld_PAD    (.I(O_CmdVld    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CmdVld_PAD    ), .C(    ));
-
-    PDUW08DGZ_V_G inst_IO_DatVld_PAD (.I(O_DatVld), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_DatVld_PAD), .C(I_DatVld));
-    PDUW08DGZ_V_G inst_OI_DatRdy_PAD (.I(O_DatRdy), .OEN(!O_DatOE), .REN(1'b0), .PAD(OI_DatRdy_PAD), .C(I_DatRdy));
-
-    generate
-        for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
-            PDUW08DGZ_V_G inst_O_CfgRdy_PAD    (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
-        end 
-    endgenerate
-
-    generate
-        for (gv_i = 0; gv_i < 20; gv_i = gv_i + 1) begin: IO_Dat_PAD_0_19
-            PDUW08DGZ_V_G inst_IO_Dat_PAD_0_19 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-
-    generate
-        for (gv_i = 20; gv_i < 60; gv_i = gv_i + 1) begin: IO_Dat_PAD_20_59
-            PDUW08DGZ_H_G inst_IO_Dat_PAD_20_59 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-
-    generate
-        for (gv_i = 60; gv_i < 90; gv_i = gv_i + 1) begin: IO_Dat_PAD_60_89
-            PDUW08DGZ_V_G inst_IO_Dat_PAD_60_89 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-
-    generate
-        for (gv_i = 90; gv_i < 128; gv_i = gv_i + 1) begin: IO_Dat_PAD_90_127
-            PDUW08DGZ_H_G inst_IO_Dat_PAD_90_127 (.I(O_Dat[gv_i]), .OEN(O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-    
-`else
-    assign I_SysRst_n = I_SysRst_n_PAD;
-    assign I_SysClk = I_SysClk_PAD;
-    assign I_BypAsysnFIFO = I_BypAsysnFIFO_PAD;
-    assign I_ISAVld = I_ISAVld_PAD;
-    assign O_DatOE_PAD = O_DatOE;
-    assign O_CmdVld_PAD = O_CmdVld;
-    assign O_CfgRdy_PAD = O_CfgRdy;
-
-    assign IO_DatVld_PAD = O_DatOE? O_DatVld : 1'bz;
-    assign I_DatVld = IO_DatVld_PAD;
-
-    assign IO_Dat_PAD = O_DatOE? O_Dat : {PORT_WIDTH{1'bz}};
-    assign I_Dat = IO_Dat_PAD;
-
-    assign OI_DatRdy_PAD = !O_DatOE? O_DatRdy : 1'bz;
-    assign I_DatRdy = OI_DatRdy_PAD;
-
-`endif
-
 
 //=====================================================================================================================
 // Logic Design: CCU
@@ -467,7 +411,10 @@ CCU#(
     .POLCCU_CfgRdy           ( POLCCU_CfgRdy           ),
     .CCUPOL_CfgK             ( CCUPOL_CfgK             ),
     .CCUPOL_CfgNip           ( CCUPOL_CfgNip           ),
-    .CCUPOL_CfgChn           ( CCUPOL_CfgChn           ),   
+    .CCUPOL_CfgChn           ( CCUPOL_CfgChn           ), 
+    .CCUPOL_CfgOfmWrBaseAddr ( CCUPOL_CfgOfmWrBaseAddr ),
+    .CCUPOL_CfgMapRdBaseAddr ( CCUPOL_CfgMapRdBaseAddr ),
+    .CCUPOL_CfgOfmRdBaseAddr ( CCUPOL_CfgOfmRdBaseAddr ),
     .CCUTOP_CfgPortBankFlag  ( CCUTOP_CfgPortBankFlag  ),
     .CCUTOP_CfgPortOffEmptyFull( CCUTOP_CfgPortOffEmptyFull),
     .CCUTOP_CfgRdy           ( O_CfgRdy                 )
@@ -742,6 +689,10 @@ POL#(
     .CCUPOL_CfgK         ( CCUPOL_CfgK         ),
     .CCUPOL_CfgNip       ( CCUPOL_CfgNip       ),
     .CCUPOL_CfgChn       ( CCUPOL_CfgChn       ),
+    .CCUPOL_CfgOfmWrBaseAddr ( CCUPOL_CfgOfmWrBaseAddr ),
+    .CCUPOL_CfgMapRdBaseAddr ( CCUPOL_CfgMapRdBaseAddr ),
+    .CCUPOL_CfgOfmRdBaseAddr ( CCUPOL_CfgOfmRdBaseAddr ),
+    .CCUTOP_CfgPortBankFlag  ( CCUTOP_CfgPortBankFlag  ),
     .POLGLB_MapRdAddr    ( POLGLB_MapRdAddr    ),
     .POLGLB_MapRdAddrVld ( POLGLB_MapRdAddrVld ),
     .GLBPOL_MapRdAddrRdy ( GLBPOL_MapRdAddrRdy ),
@@ -763,14 +714,6 @@ POL#(
 //=====================================================================================================================
 // Logic Design: ITF
 //=====================================================================================================================
-
-// PAD
-assign {O_Dat, O_DatVld}          = O_DatOE? {ITFPAD_Dat, ITFPAD_DatVld} : { {PORT_WIDTH{1'bz}}, 1'bz};
-assign PADITF_DatRdy                = I_DatRdy;
-assign {PADITF_Dat, PADITF_DatVld}  = {I_Dat, I_DatVld};
-assign O_DatRdy                    = I_ISAVld? CCUTOP_ISARdDatRdy : (O_DatOE? 1'bz : ITFPAD_DatRdy);
-assign O_DatOE                      = I_ISAVld? 1'b0 : ITFPAD_DatOE;
-assign O_CmdVld                     = ITFPAD_CmdVld;
 
 // GLB RdPort
 assign TOPGLB_RdPortAddr   [GLBRDIDX_ITFGLB]= ITFGLB_RdAddr;
@@ -858,5 +801,151 @@ GLB#(
 assign TOPGLB_CfgPortBankFlag = CCUTOP_CfgPortBankFlag;
 assign TOPGLB_CfgPortOffEmptyFull  = CCUTOP_CfgPortOffEmptyFull;
 
+//=====================================================================================================================
+// Logic Design: ITF
+//=====================================================================================================================
+`ifdef WITHPAD
+    PDUW08DGZ_V_G inst_I_SysRst_n_PAD        (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysRst_n_PAD        ), .C(I_SysRst_n        ));
+    PDUW08DGZ_V_G inst_I_SysClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysClk_PAD      ), .C(I_SysClk      ));
+    PDUW08DGZ_V_G inst_I_OffClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_OffClk_PAD      ), .C(I_OffClk      ));
+    PDUW08DGZ_V_G inst_I_BypAsysnFIFO_PAD          (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_BypAsysnFIFO_PAD          ), .C(I_BypAsysnFIFO          ));
+    PDUW08DGZ_V_G inst_I_ISAVld_PAD    (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_ISAVld_PAD    ), .C(I_ISAVld    ));
+
+    PDUW08DGZ_V_G inst_O_DatOE_PAD     (.I(O_DatOE     ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_DatOE_PAD     ), .C(    ));
+    PDUW08DGZ_V_G inst_O_CmdVld_PAD    (.I(O_CmdVld    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CmdVld_PAD    ), .C(    ));
+
+    PDUW08DGZ_V_G inst_IO_DatVld_PAD (.I(O_DatVld), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_DatVld_PAD), .C(I_DatVld));
+    PDUW08DGZ_V_G inst_OI_DatRdy_PAD (.I(O_DatRdy), .OEN(O_DatOE), .REN(1'b0), .PAD(OI_DatRdy_PAD), .C(I_DatRdy));
+
+    generate
+        for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
+            PDUW08DGZ_V_G inst_O_CfgRdy_PAD    (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
+        end 
+    endgenerate
+
+    generate
+        for (gv_i = 0; gv_i < 20; gv_i = gv_i + 1) begin: IO_Dat_PAD_0_19
+            PDUW08DGZ_V_G inst_IO_Dat_PAD_0_19 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
+
+    generate
+        for (gv_i = 20; gv_i < 60; gv_i = gv_i + 1) begin: IO_Dat_PAD_20_59
+            PDUW08DGZ_H_G inst_IO_Dat_PAD_20_59 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
+
+    generate
+        for (gv_i = 60; gv_i < 90; gv_i = gv_i + 1) begin: IO_Dat_PAD_60_89
+            PDUW08DGZ_V_G inst_IO_Dat_PAD_60_89 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
+
+    generate
+        for (gv_i = 90; gv_i < 128; gv_i = gv_i + 1) begin: IO_Dat_PAD_90_127
+            PDUW08DGZ_H_G inst_IO_Dat_PAD_90_127 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
+        end
+    endgenerate
+    
+`else
+    assign I_SysRst_n = I_SysRst_n_PAD;
+    assign I_SysClk = I_SysClk_PAD;
+    assign I_BypAsysnFIFO = I_BypAsysnFIFO_PAD;
+    assign I_ISAVld = I_ISAVld_PAD;
+    assign O_DatOE_PAD = O_DatOE;
+    assign O_CmdVld_PAD = O_CmdVld;
+    assign O_CfgRdy_PAD = O_CfgRdy;
+
+    assign IO_DatVld_PAD = O_DatOE? O_DatVld : 1'bz;
+    assign I_DatVld = IO_DatVld_PAD;
+
+    assign IO_Dat_PAD = O_DatOE? O_Dat : {PORT_WIDTH{1'bz}};
+    assign I_Dat = IO_Dat_PAD;
+
+    assign OI_DatRdy_PAD = !O_DatOE? O_DatRdy : 1'bz;
+    assign I_DatRdy = OI_DatRdy_PAD;
+
+`endif
+
+assign O_DatOE                    = I_ISAVld? 1'b0 : ITFPAD_DatOE;
+// OUT2OFF---------------------------------------------------------------------------------------------------------
+// PAD
+assign {O_Dat, O_DatVld}        = O_DatOE? ( I_BypAsysnFIFO? {ITFPAD_Dat, ITFPAD_DatVld}
+                                                                : {fifo_async_OUT2OFF_dout[1 +: PORT_WIDTH], fifo_async_OUT2OFF_valid} ) 
+                                            : { {PORT_WIDTH{1'bz}}, 1'bz};
+assign O_CmdVld                   = I_BypAsysnFIFO? ITFPAD_CmdVld : fifo_async_OUT2OFF_dout[0];
+
+// ITF
+assign PADITF_DatRdy            = I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full;
+
+// ASYNCFIFO
+assign fifo_async_OUT2OFF_rd_en = !I_BypAsysnFIFO & I_DatRdy & !fifo_async_OUT2OFF_empty;
+assign fifo_async_OUT2OFF_wr_en = !I_BypAsysnFIFO & PADITF_DatVld & PADITF_DatRdy;
+assign fifo_async_OUT2OFF_din   = {ITFPAD_Dat, ITFPAD_CmdVld};
+
+// IN2CHIP---------------------------------------------------------------------------------------------------------
+// PAD
+assign O_DatRdy                   = O_DatOE? 1'bz : I_BypAsysnFIFO ? (I_ISAVld? CCUTOP_ISARdDatRdy :  ITFPAD_DatRdy) 
+                                                                    : !fifo_async_IN2CHIP_full;
+assign 
+
+// ITF
+assign {PADITF_Dat, PADITF_DatVld}= {I_Dat, I_DatVld};
+
+// ASYNCFIFO
+assign fifo_async_IN2CHIP_wr_en = !I_BypAsysnFIFO & I_DatVld & !fifo_async_IN2CHIP_full;
+assign fifo_async_IN2CHIP_din   = {I_DatRdy, I_ISAVld};
+assign fifo_async_OUT2OFF_rd_en = !I_BypAsysnFIFO & 
+
+
+fifo_async#(
+    .data_width ( PORT_WIDTH + 1 ),
+    .addr_width ( ASYNC_FIFO_ADDR_WIDTH )
+)u_fifo_async_OUT2OFF(
+    .rst_n      ( I_SysRst_n                ),
+    .wr_clk     ( clk                       ),
+    .wr_en      ( fifo_async_OUT2OFF_wr_en  ),
+    .din        ( fifo_async_OUT2OFF_din    ),
+    .rd_clk     ( I_OffClk                  ),
+    .rd_en      ( fifo_async_OUT2OFF_rd_en  ),
+    .valid      ( fifo_async_OUT2OFF_valid  ),
+    .dout       ( fifo_async_OUT2OFF_dout   ),
+    .empty      ( fifo_async_OUT2OFF_empty  ),
+    .full       ( fifo_async_OUT2OFF_full   )
+);
+
+
+fifo_async#(
+    .data_width ( PORT_WIDTH + 1 ),
+    .addr_width ( ASYNC_FIFO_ADDR_WIDTH )
+)u_fifo_async_IN2CHIP(
+    .rst_n      ( I_SysRst_n      ),
+    .wr_clk     ( I_OffClk     ),
+    .wr_en      ( fifo_async_IN2CHIP_wr_en      ),
+    .din        ( fifo_async_IN2CHIP_din      ),
+    .rd_clk     ( clk     ),
+    .rd_en      ( fifo_async_IN2CHIP_rd_en ),
+    .valid      ( fifo_async_IN2CHIP_valid ),
+    .dout       ( fifo_async_IN2CHIP_dout  ),
+    .empty      ( fifo_async_IN2CHIP_empty ),
+    .full       ( fifo_async_IN2CHIP_full  )
+);
+
+// module PDUW08DGZ_H_G (
+//     input  I, 
+//     input  OEN, 
+//     input  REN, 
+//     inout  PAD, 
+//     output C
+    
+// );
+
+//     // reg PAD;
+//     // reg C;
+
+//     assign PAD = OEN == 0 ? I : 1'bz;
+//     assign C   = OEN == 0 ? I : PAD;
+
+// endmodule : PDUW08DGZ_H_G
 
 endmodule

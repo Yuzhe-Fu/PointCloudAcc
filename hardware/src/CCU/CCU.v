@@ -87,6 +87,9 @@ module CCU #(
     output  [(MAP_WIDTH+1)*POOL_CORE-1 : 0] CCUPOL_CfgK         ,
     output  [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip       ,
     output  [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn       ,
+    output [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr,
+    output [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr,
+    output [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr,
              
     output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][NUM_BANK    -1 : 0] CCUTOP_CfgPortBankFlag,
     output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                   -1 : 0] CCUTOP_CfgPortOffEmptyFull,
@@ -114,7 +117,7 @@ localparam NUMPORT_CCU   = 1;
 localparam NUMPORT_FPS   = 16;
 localparam NUMPORT_KNN   = 2;
 localparam NUMPORT_SYA   = 3;
-localparam NUMPORT_POL   = 6;
+localparam NUMPORT_POL   = 9;
 localparam NUMPORT_ITF   = 2;
 
 localparam GLBWRIDX_ITFGLB = 0; 
@@ -370,12 +373,14 @@ assign {
     CCUTOP_CfgPortBankFlag      [GLBWRIDX_POLOFM                 ]              ,   // 32
     CCUTOP_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,   // 32 X 8
     CCUTOP_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]              ,   // 32
-    CCUPOL_CfgK_tmp                                                             ,   // 8 X 8
+    CCUPOL_CfgOfmWrBaseAddr                                                     ,   // 16 x 8 
+    CCUPOL_CfgMapRdBaseAddr                                                     ,   // 16 x 8
+    CCUPOL_CfgOfmRdBaseAddr                                                     ,   // 16 x 8
+    CCUPOL_CfgK_tmp                                                             ,   // 8  X 8
     CCUPOL_CfgChn                                                               ,   // 16 X 8
     CCUPOL_CfgNip                                                                   // 16 x 8  
 } = ISA_POL[PORT_WIDTH*NUMPORT_POL -1 : OPCODE_WIDTH];
 assign CCUPOL_CfgK = CCUPOL_CfgK_tmp;
-
 
 assign { 
     CCUTOP_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
