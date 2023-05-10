@@ -177,7 +177,7 @@ counter#(
 )u1_counter_CntChn(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( state == IDLE ),
+    .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( {CHN_WIDTH{1'b0}}  ),
     .INC       ( INC_CntChn         ),
     .DEC       ( 1'b0               ),
@@ -195,7 +195,7 @@ counter#(
 )u1_counter_CntGrp(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( state == IDLE ),
+    .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( {ADDR_WIDTH{1'b0}} ),
     .INC       ( INC_CntGrp         ),
     .DEC       ( 1'b0               ),
@@ -213,7 +213,7 @@ counter#(
 )u1_counter_CntTilFlt(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( state == IDLE),
+    .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( {CHN_WIDTH{1'b0}}  ),
     .INC       ( INC_CntTilFlt      ),
     .DEC       ( 1'b0               ),
@@ -231,7 +231,7 @@ counter#(
 )u1_counter_CntTilIfm(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( state == IDLE ),
+    .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
     .INC       ( INC_CntTilIfm      ),
     .DEC       ( 1'b0               ),
