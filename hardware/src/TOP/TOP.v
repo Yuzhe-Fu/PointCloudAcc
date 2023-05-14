@@ -63,23 +63,31 @@ module TOP #(
     parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH),
     parameter OPNUM         = NUM_MODULE
     )(
+    input                           I_BypAsysnFIFO_PAD,// Hyper
+    input                           I_BypOE_PAD       , 
     input                           I_SysRst_n_PAD    , 
     input                           I_SysClk_PAD      , 
     input                           I_OffClk_PAD      ,
-    input                           I_BypAsysnFIFO_PAD, 
-    output [OPNUM           -1 : 0] O_CfgRdy_PAD      ,
-    input                           I_ISAVld_PAD      ,
-    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD        , 
-    inout                           IO_DatVld_PAD     ,
-    inout                           OI_DatRdy_PAD     , 
+
+    output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
     output                          O_DatOE_PAD       ,
-    output                          O_CmdVld_PAD      
+
+    input                           I_OffOE_PAD       , // Transfer-Control
+    input                           I_DatVld_PAD      ,
+    input                           I_DatLast_PAD     ,
+    output                          O_DatRdy_PAD      ,
+    output                          O_DatVld_PAD      , 
+    input                           I_DatRdy_PAD      , 
+
+    input                           I_ISAVld_PAD      , // Transfer-Data
+    output                          O_CmdVld_PAD      ,
+    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD          
 
 );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam GLBWRIDX_ITFGLB = 0; 
+localparam GLBWRIDX_GICGLB = 0; 
 localparam GLBWRIDX_FPSMSK = 1; 
 localparam GLBWRIDX_FPSCRD = 2; 
 localparam GLBWRIDX_FPSDST = 3; 
@@ -88,7 +96,7 @@ localparam GLBWRIDX_KNNMAP = 5;
 localparam GLBWRIDX_SYAOFM = 6;
 localparam GLBWRIDX_POLOFM = 7;
                                 
-localparam GLBRDIDX_ITFGLB = 0; 
+localparam GLBRDIDX_GICGLB = 0; 
 localparam GLBRDIDX_FPSMSK = 1; 
 localparam GLBRDIDX_FPSCRD = 2; 
 localparam GLBRDIDX_FPSDST = 3; 
@@ -115,7 +123,7 @@ wire                          I_SysRst_n    ;
 wire                          I_SysClk      ; 
 wire                          I_OffClk      ; 
 wire                          I_BypAsysnFIFO; 
-wire [OPNUM           -1 : 0] O_CfgRdy      ;
+wire [OPNUM           -1 : 0] CCUITF_CfgRdy ;
 wire                          I_ISAVld      ;
 wire                          O_DatOE       ;
 wire                          O_CmdVld     ;
@@ -132,15 +140,15 @@ wire                                I_DatRdy;
 wire                                  CCUTOP_NetFnh;
 
     // Configure
-wire [PORT_WIDTH              -1 : 0] TOPCCU_ISARdDat     ;             
-wire                                  TOPCCU_ISARdDatVld  ;          
-wire                                  CCUTOP_ISARdDatRdy  ;
-wire                                  CCUITF_CfgVld       ;
-wire                                  ITFCCU_CfgRdy       ; 
-wire  [BYTE_WIDTH             -1 : 0] CCUITF_CfgInOut        ; 
-wire  [DRAM_ADDR_WIDTH        -1 : 0] CCUITF_CfgDRAMBaseAddr ;
-wire  [IDX_WIDTH              -1 : 0] CCUITF_CfgGLBBaseAddr  ;
-wire  [IDX_WIDTH              -1 : 0] CCUITF_CfgNum          ; 
+wire [PORT_WIDTH              -1 : 0] ITFCCU_ISARdDat     ;             
+wire                                  ITFCCU_ISARdDatVld  ;          
+wire                                  CCUITF_ISARdDatRdy  ;
+wire                                  CCUGIC_CfgVld       ;
+wire                                  GICCCU_CfgRdy       ; 
+wire  [BYTE_WIDTH             -1 : 0] CCUGIC_CfgInOut        ; 
+wire  [DRAM_ADDR_WIDTH        -1 : 0] CCUGIC_CfgDRAMBaseAddr ;
+wire  [IDX_WIDTH              -1 : 0] CCUGIC_CfgGLBBaseAddr  ;
+wire  [IDX_WIDTH              -1 : 0] CCUGIC_CfgNum          ; 
 
 wire [NUM_FPC             -1 : 0] CCUFPS_CfgVld;
 wire [NUM_FPC             -1 : 0] FPSCCU_CfgRdy;        
@@ -184,7 +192,7 @@ wire [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr;
 wire [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr;
 wire [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr;
             
-wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK              -1 : 0] CCUTOP_CfgPortBankFlag;
+wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)*NUM_BANK        -1 : 0] CCUTOP_CfgPortBankFlag;
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] CCUTOP_CfgPortOffEmptyFull;
 // --------------------------------------------------------------------------------------------------------------------
 // FPS
@@ -288,30 +296,32 @@ wire                                                POLGLB_OfmWrDatVld     ;
 wire                                                GLBPOL_OfmWrDatRdy     ;
 
 // --------------------------------------------------------------------------------------------------------------------
-// ITF
-wire                                                ITFPAD_DatOE    ;
-wire                                                ITFPAD_CmdVld   ;
-wire [PORT_WIDTH                            -1 : 0] ITFPAD_Dat      ;
-wire                                                ITFPAD_DatVld   ;
-wire                                                PADITF_DatRdy   ;
+// GIC
+wire                                                GICITF_DatOE    ;
+wire                                                GICITF_CmdVld   ;
+wire [PORT_WIDTH                            -1 : 0] GICITF_Dat      ;
+wire                                                GICITF_DatVld   ;
+wire                                                GICITF_DatLast   ;
+wire                                                ITFGIC_DatRdy   ;
 
-wire [PORT_WIDTH                            -1 : 0] PADITF_Dat      ;
-wire                                                PADITF_DatVld   ;
-wire                                                ITFPAD_DatRdy   ;
+wire [PORT_WIDTH                            -1 : 0] ITFGIC_Dat      ;
+wire                                                ITFGIC_DatVld   ;
+wire                                                ITFGIC_DatLast  ;
+wire                                                GICITF_DatRdy   ;
 
-wire [ADDR_WIDTH                            -1 : 0] ITFGLB_RdAddr    ;
-wire                                                ITFGLB_RdAddrVld ;
-wire                                                GLBITF_RdAddrRdy ;
-wire [SRAM_WIDTH                            -1 : 0] GLBITF_RdDat     ;
-wire                                                GLBITF_RdDatVld  ;
-wire                                                ITFGLB_RdDatRdy  ;
-wire                                                GLBITF_RdEmpty   ;
+wire [ADDR_WIDTH                            -1 : 0] GICGLB_RdAddr    ;
+wire                                                GICGLB_RdAddrVld ;
+wire                                                GLBGIC_RdAddrRdy ;
+wire [SRAM_WIDTH                            -1 : 0] GLBGIC_RdDat     ;
+wire                                                GLBGIC_RdDatVld  ;
+wire                                                GICGLB_RdDatRdy  ;
+wire                                                GLBGIC_RdEmpty   ;
 
-wire [ADDR_WIDTH                            -1 : 0] ITFGLB_WrAddr    ;
-wire [SRAM_WIDTH                            -1 : 0] ITFGLB_WrDat     ; 
-wire                                                ITFGLB_WrDatVld  ; 
-wire                                                GLBITF_WrDatRdy  ;
-wire                                                GLBITF_WrFull    ;
+wire [ADDR_WIDTH                            -1 : 0] GICGLB_WrAddr    ;
+wire [SRAM_WIDTH                            -1 : 0] GICGLB_WrDat     ; 
+wire                                                GICGLB_WrDatVld  ; 
+wire                                                GLBGIC_WrDatRdy  ;
+wire                                                GLBGIC_WrFull    ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // GLB
@@ -336,17 +346,10 @@ wire [GLB_NUM_RDPORT                                -1 : 0] GLBTOP_RdEmpty      
 //=====================================================================================================================
 // Logic Design： TOP
 //=====================================================================================================================
-assign clk  = I_SysClk;
-assign rst_n= I_SysRst_n;
-
 
 //=====================================================================================================================
 // Logic Design: CCU
 //=====================================================================================================================
-
-assign TOPCCU_ISARdDat      = I_ISAVld? I_Dat : 0;
-assign TOPCCU_ISARdDatVld   = I_ISAVld? I_DatVld : 0;
-
 CCU#(
     .SRAM_WIDTH              ( SRAM_WIDTH       ),
     .PORT_WIDTH              ( PORT_WIDTH       ),
@@ -368,15 +371,16 @@ CCU#(
 )u_CCU(
     .clk                     ( clk                     ),
     .rst_n                   ( rst_n                   ),
-    .TOPCCU_ISARdDat         ( TOPCCU_ISARdDat         ),
-    .TOPCCU_ISARdDatVld      ( TOPCCU_ISARdDatVld      ),
-    .CCUTOP_ISARdDatRdy      ( CCUTOP_ISARdDatRdy      ),
-    .CCUITF_CfgVld           ( CCUITF_CfgVld           ),
-    .ITFCCU_CfgRdy           ( ITFCCU_CfgRdy           ),
-    .CCUITF_CfgInOut         ( CCUITF_CfgInOut         ),
-    .CCUITF_CfgDRAMBaseAddr  ( CCUITF_CfgDRAMBaseAddr  ),
-    .CCUITF_CfgGLBBaseAddr   ( CCUITF_CfgGLBBaseAddr   ),
-    .CCUITF_CfgNum           ( CCUITF_CfgNum           ),
+    .CCUITF_CfgRdy           ( CCUITF_CfgRdy           ),
+    .ITFCCU_ISARdDat         ( ITFCCU_ISARdDat         ),
+    .ITFCCU_ISARdDatVld      ( ITFCCU_ISARdDatVld      ),
+    .CCUITF_ISARdDatRdy      ( CCUITF_ISARdDatRdy      ),
+    .CCUGIC_CfgVld           ( CCUGIC_CfgVld           ),
+    .GICCCU_CfgRdy           ( GICCCU_CfgRdy           ),
+    .CCUGIC_CfgInOut         ( CCUGIC_CfgInOut         ),
+    .CCUGIC_CfgDRAMBaseAddr  ( CCUGIC_CfgDRAMBaseAddr  ),
+    .CCUGIC_CfgGLBBaseAddr   ( CCUGIC_CfgGLBBaseAddr   ),
+    .CCUGIC_CfgNum           ( CCUGIC_CfgNum           ),
     .CCUFPS_CfgVld           ( CCUFPS_CfgVld           ),
     .FPSCCU_CfgRdy           ( FPSCCU_CfgRdy           ),
     .CCUFPS_CfgNip           ( CCUFPS_CfgNip           ),
@@ -416,8 +420,7 @@ CCU#(
     .CCUPOL_CfgMapRdBaseAddr ( CCUPOL_CfgMapRdBaseAddr ),
     .CCUPOL_CfgOfmRdBaseAddr ( CCUPOL_CfgOfmRdBaseAddr ),
     .CCUTOP_CfgPortBankFlag  ( CCUTOP_CfgPortBankFlag  ),
-    .CCUTOP_CfgPortOffEmptyFull( CCUTOP_CfgPortOffEmptyFull),
-    .CCUTOP_CfgRdy           ( O_CfgRdy                 )
+    .CCUTOP_CfgPortOffEmptyFull( CCUTOP_CfgPortOffEmptyFull)
 );
 
 //=====================================================================================================================
@@ -692,7 +695,6 @@ POL#(
     .CCUPOL_CfgOfmWrBaseAddr ( CCUPOL_CfgOfmWrBaseAddr ),
     .CCUPOL_CfgMapRdBaseAddr ( CCUPOL_CfgMapRdBaseAddr ),
     .CCUPOL_CfgOfmRdBaseAddr ( CCUPOL_CfgOfmRdBaseAddr ),
-    .CCUTOP_CfgPortBankFlag  ( CCUTOP_CfgPortBankFlag  ),
     .POLGLB_MapRdAddr    ( POLGLB_MapRdAddr    ),
     .POLGLB_MapRdAddrVld ( POLGLB_MapRdAddrVld ),
     .GLBPOL_MapRdAddrRdy ( GLBPOL_MapRdAddrRdy ),
@@ -709,65 +711,6 @@ POL#(
     .POLGLB_OfmWrDat     ( POLGLB_OfmWrDat     ),
     .POLGLB_OfmWrDatVld  ( POLGLB_OfmWrDatVld  ),
     .GLBPOL_OfmWrDatRdy  ( GLBPOL_OfmWrDatRdy  )
-);
-
-//=====================================================================================================================
-// Logic Design: ITF
-//=====================================================================================================================
-
-// GLB RdPort
-assign TOPGLB_RdPortAddr   [GLBRDIDX_ITFGLB]= ITFGLB_RdAddr;
-assign TOPGLB_RdPortAddrVld[GLBRDIDX_ITFGLB]= ITFGLB_RdAddrVld;
-assign GLBITF_RdAddrRdy                     = GLBTOP_RdPortAddrRdy  [GLBRDIDX_ITFGLB];
-assign GLBITF_RdDat                         = GLBTOP_RdPortDat      [GLBRDIDX_ITFGLB];
-assign GLBITF_RdDatVld                      = GLBTOP_RdPortDatVld   [GLBRDIDX_ITFGLB];
-assign TOPGLB_RdPortDatRdy [GLBRDIDX_ITFGLB]= ITFGLB_RdDatRdy;
-assign GLBITF_RdEmpty                       = GLBTOP_RdEmpty        [GLBRDIDX_ITFGLB];
-
-// GLB WrPort
-assign TOPGLB_WrPortAddr    [GLBWRIDX_ITFGLB]   = ITFGLB_WrAddr;
-assign TOPGLB_WrPortDat     [GLBWRIDX_ITFGLB]   = ITFGLB_WrDat;
-assign TOPGLB_WrPortDatVld  [GLBWRIDX_ITFGLB]   = ITFGLB_WrDatVld;
-assign GLBITF_WrDatRdy                          = GLBTOP_WrPortDatRdy   [GLBWRIDX_ITFGLB];
-assign GLBITF_WrFull                            = GLBTOP_WrFull         [GLBWRIDX_ITFGLB];
-
-// Config 1 bank
-// !Full To avoid ITF over-write ISARAM of GLB
-
-ITF#(
-    .PORT_WIDTH       ( PORT_WIDTH      ),
-    .SRAM_WIDTH       ( SRAM_WIDTH      ),
-    .ADDR_WIDTH       ( ADDR_WIDTH      ),
-    .DRAM_ADDR_WIDTH  ( DRAM_ADDR_WIDTH )
-)u_ITF(
-    .clk                 ( clk                 ),
-    .rst_n               ( rst_n               ),
-    .CCUITF_CfgVld       (  CCUITF_CfgVld         ),
-    .ITFCCU_CfgRdy       (  ITFCCU_CfgRdy         ),
-    .CCUITF_CfgInOut     (  CCUITF_CfgInOut       ),
-    .CCUITF_CfgDRAMBaseAddr(CCUITF_CfgDRAMBaseAddr),
-    .CCUITF_CfgGLBBaseAddr (CCUITF_CfgGLBBaseAddr ),
-    .CCUITF_CfgNum         (CCUITF_CfgNum         ),
-    .ITFPAD_DatOE        ( ITFPAD_DatOE        ),
-    .ITFPAD_CmdVld       ( ITFPAD_CmdVld       ),
-    .ITFPAD_Dat          ( ITFPAD_Dat          ),
-    .ITFPAD_DatVld       ( ITFPAD_DatVld       ),
-    .PADITF_DatRdy       ( PADITF_DatRdy       ),
-    .PADITF_Dat          ( PADITF_Dat          ),
-    .PADITF_DatVld       ( PADITF_DatVld       ),
-    .ITFPAD_DatRdy       ( ITFPAD_DatRdy       ),
-    .ITFGLB_RdAddr       ( ITFGLB_RdAddr       ),
-    .ITFGLB_RdAddrVld    ( ITFGLB_RdAddrVld    ),
-    .GLBITF_RdAddrRdy    ( GLBITF_RdAddrRdy    ),
-    .GLBITF_RdDat        ( GLBITF_RdDat        ),
-    .GLBITF_RdDatVld     ( GLBITF_RdDatVld     ),
-    .ITFGLB_RdDatRdy     ( ITFGLB_RdDatRdy     ),
-    .GLBITF_RdEmpty      ( GLBITF_RdEmpty      ),
-    .ITFGLB_WrAddr       ( ITFGLB_WrAddr       ),
-    .ITFGLB_WrDat        ( ITFGLB_WrDat        ),
-    .ITFGLB_WrDatVld     ( ITFGLB_WrDatVld     ),
-    .GLBITF_WrDatRdy     ( GLBITF_WrDatRdy     ),
-    .GLBITF_WrFull       ( GLBITF_WrFull       )
 );
 
 //=====================================================================================================================
@@ -798,154 +741,105 @@ GLB#(
     .TOPGLB_RdPortDatRdy    ( TOPGLB_RdPortDatRdy    ),
     .GLBTOP_RdEmpty         ( GLBTOP_RdEmpty         )
 );
-assign TOPGLB_CfgPortBankFlag = CCUTOP_CfgPortBankFlag;
-assign TOPGLB_CfgPortOffEmptyFull  = CCUTOP_CfgPortOffEmptyFull;
+assign TOPGLB_CfgPortBankFlag       = CCUTOP_CfgPortBankFlag;
+assign TOPGLB_CfgPortOffEmptyFull   = CCUTOP_CfgPortOffEmptyFull;
+
+//=====================================================================================================================
+// Logic Design: GIC
+//=====================================================================================================================
+// GLB RdPort
+assign TOPGLB_RdPortAddr   [GLBRDIDX_GICGLB]= GICGLB_RdAddr;
+assign TOPGLB_RdPortAddrVld[GLBRDIDX_GICGLB]= GICGLB_RdAddrVld;
+assign GLBGIC_RdAddrRdy                     = GLBTOP_RdPortAddrRdy  [GLBRDIDX_GICGLB];
+assign GLBGIC_RdDat                         = GLBTOP_RdPortDat      [GLBRDIDX_GICGLB];
+assign GLBGIC_RdDatVld                      = GLBTOP_RdPortDatVld   [GLBRDIDX_GICGLB];
+assign TOPGLB_RdPortDatRdy [GLBRDIDX_GICGLB]= GICGLB_RdDatRdy;
+assign GLBGIC_RdEmpty                       = GLBTOP_RdEmpty        [GLBRDIDX_GICGLB];
+
+// GLB WrPort
+assign TOPGLB_WrPortAddr    [GLBWRIDX_GICGLB]   = GICGLB_WrAddr;
+assign TOPGLB_WrPortDat     [GLBWRIDX_GICGLB]   = GICGLB_WrDat;
+assign TOPGLB_WrPortDatVld  [GLBWRIDX_GICGLB]   = GICGLB_WrDatVld;
+assign GLBGIC_WrDatRdy                          = GLBTOP_WrPortDatRdy   [GLBWRIDX_GICGLB];
+assign GLBGIC_WrFull                            = GLBTOP_WrFull         [GLBWRIDX_GICGLB];
+
+GIC#(
+    .PORT_WIDTH       ( PORT_WIDTH      ),
+    .SRAM_WIDTH       ( SRAM_WIDTH      ),
+    .ADDR_WIDTH       ( ADDR_WIDTH      ),
+    .DRAM_ADDR_WIDTH  ( DRAM_ADDR_WIDTH )
+)u_GIC(
+    .clk                 ( clk                 ),
+    .rst_n               ( rst_n               ),
+    .CCUGIC_CfgVld       (  CCUGIC_CfgVld         ),
+    .GICCCU_CfgRdy       (  GICCCU_CfgRdy         ),
+    .CCUGIC_CfgInOut     (  CCUGIC_CfgInOut       ),
+    .CCUGIC_CfgDRAMBaseAddr(CCUGIC_CfgDRAMBaseAddr),
+    .CCUGIC_CfgGLBBaseAddr (CCUGIC_CfgGLBBaseAddr ),
+    .CCUGIC_CfgNum         (CCUGIC_CfgNum         ),
+    .GICITF_CmdVld       ( GICITF_CmdVld       ),
+    .GICITF_Dat          ( GICITF_Dat          ),
+    .GICITF_DatVld       ( GICITF_DatVld       ),
+    .GICITF_DatLast      ( GICITF_DatLast      ),
+    .ITFGIC_DatRdy       ( ITFGIC_DatRdy       ),
+    .ITFGIC_Dat          ( ITFGIC_Dat          ),
+    .ITFGIC_DatVld       ( ITFGIC_DatVld       ),
+    .ITFGIC_DatLast      ( ITFGIC_DatLast      ),
+    .GICITF_DatRdy       ( GICITF_DatRdy       ),
+    .GICGLB_RdAddr       ( GICGLB_RdAddr       ),
+    .GICGLB_RdAddrVld    ( GICGLB_RdAddrVld    ),
+    .GLBGIC_RdAddrRdy    ( GLBGIC_RdAddrRdy    ),
+    .GLBGIC_RdDat        ( GLBGIC_RdDat        ),
+    .GLBGIC_RdDatVld     ( GLBGIC_RdDatVld     ),
+    .GICGLB_RdDatRdy     ( GICGLB_RdDatRdy     ),
+    .GLBGIC_RdEmpty      ( GLBGIC_RdEmpty      ),
+    .GICGLB_WrAddr       ( GICGLB_WrAddr       ),
+    .GICGLB_WrDat        ( GICGLB_WrDat        ),
+    .GICGLB_WrDatVld     ( GICGLB_WrDatVld     ),
+    .GLBGIC_WrDatRdy     ( GLBGIC_WrDatRdy     ),
+    .GLBGIC_WrFull       ( GLBGIC_WrFull       )
+);
 
 //=====================================================================================================================
 // Logic Design: ITF
 //=====================================================================================================================
-`ifdef WITHPAD
-    PDUW08DGZ_V_G inst_I_SysRst_n_PAD        (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysRst_n_PAD        ), .C(I_SysRst_n        ));
-    PDUW08DGZ_V_G inst_I_SysClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_SysClk_PAD      ), .C(I_SysClk      ));
-    PDUW08DGZ_V_G inst_I_OffClk_PAD      (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_OffClk_PAD      ), .C(I_OffClk      ));
-    PDUW08DGZ_V_G inst_I_BypAsysnFIFO_PAD          (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_BypAsysnFIFO_PAD          ), .C(I_BypAsysnFIFO          ));
-    PDUW08DGZ_V_G inst_I_ISAVld_PAD    (.I(1'b0               ), .OEN(INPUT_PAD),  .REN(1'b0),  .PAD(I_ISAVld_PAD    ), .C(I_ISAVld    ));
-
-    PDUW08DGZ_V_G inst_O_DatOE_PAD     (.I(O_DatOE     ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_DatOE_PAD     ), .C(    ));
-    PDUW08DGZ_V_G inst_O_CmdVld_PAD    (.I(O_CmdVld    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CmdVld_PAD    ), .C(    ));
-
-    PDUW08DGZ_V_G inst_IO_DatVld_PAD (.I(O_DatVld), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_DatVld_PAD), .C(I_DatVld));
-    PDUW08DGZ_V_G inst_OI_DatRdy_PAD (.I(O_DatRdy), .OEN(O_DatOE), .REN(1'b0), .PAD(OI_DatRdy_PAD), .C(I_DatRdy));
-
-    generate
-        for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
-            PDUW08DGZ_V_G inst_O_CfgRdy_PAD    (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
-        end 
-    endgenerate
-
-    generate
-        for (gv_i = 0; gv_i < 20; gv_i = gv_i + 1) begin: IO_Dat_PAD_0_19
-            PDUW08DGZ_V_G inst_IO_Dat_PAD_0_19 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-
-    generate
-        for (gv_i = 20; gv_i < 60; gv_i = gv_i + 1) begin: IO_Dat_PAD_20_59
-            PDUW08DGZ_H_G inst_IO_Dat_PAD_20_59 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-
-    generate
-        for (gv_i = 60; gv_i < 90; gv_i = gv_i + 1) begin: IO_Dat_PAD_60_89
-            PDUW08DGZ_V_G inst_IO_Dat_PAD_60_89 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-
-    generate
-        for (gv_i = 90; gv_i < 128; gv_i = gv_i + 1) begin: IO_Dat_PAD_90_127
-            PDUW08DGZ_H_G inst_IO_Dat_PAD_90_127 (.I(O_Dat[gv_i]), .OEN(!O_DatOE), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
-        end
-    endgenerate
-    
-`else
-    assign I_SysRst_n = I_SysRst_n_PAD;
-    assign I_SysClk = I_SysClk_PAD;
-    assign I_BypAsysnFIFO = I_BypAsysnFIFO_PAD;
-    assign I_ISAVld = I_ISAVld_PAD;
-    assign O_DatOE_PAD = O_DatOE;
-    assign O_CmdVld_PAD = O_CmdVld;
-    assign O_CfgRdy_PAD = O_CfgRdy;
-
-    assign IO_DatVld_PAD = O_DatOE? O_DatVld : 1'bz;
-    assign I_DatVld = IO_DatVld_PAD;
-
-    assign IO_Dat_PAD = O_DatOE? O_Dat : {PORT_WIDTH{1'bz}};
-    assign I_Dat = IO_Dat_PAD;
-
-    assign OI_DatRdy_PAD = !O_DatOE? O_DatRdy : 1'bz;
-    assign I_DatRdy = OI_DatRdy_PAD;
-
-`endif
-
-assign O_DatOE                    = I_ISAVld? 1'b0 : ITFPAD_DatOE;
-// OUT2OFF---------------------------------------------------------------------------------------------------------
-// PAD
-assign {O_Dat, O_DatVld}        = O_DatOE? ( I_BypAsysnFIFO? {ITFPAD_Dat, ITFPAD_DatVld}
-                                                                : {fifo_async_OUT2OFF_dout[1 +: PORT_WIDTH], fifo_async_OUT2OFF_valid} ) 
-                                            : { {PORT_WIDTH{1'bz}}, 1'bz};
-assign O_CmdVld                   = I_BypAsysnFIFO? ITFPAD_CmdVld : fifo_async_OUT2OFF_dout[0];
-
-// ITF
-assign PADITF_DatRdy            = I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full;
-
-// ASYNCFIFO
-assign fifo_async_OUT2OFF_rd_en = !I_BypAsysnFIFO & I_DatRdy & !fifo_async_OUT2OFF_empty;
-assign fifo_async_OUT2OFF_wr_en = !I_BypAsysnFIFO & PADITF_DatVld & PADITF_DatRdy;
-assign fifo_async_OUT2OFF_din   = {ITFPAD_Dat, ITFPAD_CmdVld};
-
-// IN2CHIP---------------------------------------------------------------------------------------------------------
-// PAD
-assign O_DatRdy                   = O_DatOE? 1'bz : I_BypAsysnFIFO ? (I_ISAVld? CCUTOP_ISARdDatRdy :  ITFPAD_DatRdy) 
-                                                                    : !fifo_async_IN2CHIP_full;
-assign 
-
-// ITF
-assign {PADITF_Dat, PADITF_DatVld}= {I_Dat, I_DatVld};
-
-// ASYNCFIFO
-assign fifo_async_IN2CHIP_wr_en = !I_BypAsysnFIFO & I_DatVld & !fifo_async_IN2CHIP_full;
-assign fifo_async_IN2CHIP_din   = {I_DatRdy, I_ISAVld};
-assign fifo_async_OUT2OFF_rd_en = !I_BypAsysnFIFO & 
-
-
-fifo_async#(
-    .data_width ( PORT_WIDTH + 1 ),
-    .addr_width ( ASYNC_FIFO_ADDR_WIDTH )
-)u_fifo_async_OUT2OFF(
-    .rst_n      ( I_SysRst_n                ),
-    .wr_clk     ( clk                       ),
-    .wr_en      ( fifo_async_OUT2OFF_wr_en  ),
-    .din        ( fifo_async_OUT2OFF_din    ),
-    .rd_clk     ( I_OffClk                  ),
-    .rd_en      ( fifo_async_OUT2OFF_rd_en  ),
-    .valid      ( fifo_async_OUT2OFF_valid  ),
-    .dout       ( fifo_async_OUT2OFF_dout   ),
-    .empty      ( fifo_async_OUT2OFF_empty  ),
-    .full       ( fifo_async_OUT2OFF_full   )
+ITF #(
+    .PORT_WIDTH             ( PORT_WIDTH            ),
+    .OPNUM                  ( OPNUM                 ),
+    .ASYNC_FIFO_ADDR_WIDTH  ( ASYNC_FIFO_ADDR_WIDTH ) 
+)u_ITF(
+    .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO_PAD ),
+    .I_BypOE_PAD        ( I_BypOE_PAD        ),
+    .I_SysRst_n_PAD     ( I_SysRst_n_PAD     ),
+    .I_SysClk_PAD       ( I_SysClk_PAD       ),
+    .I_OffClk_PAD       ( I_OffClk_PAD       ),
+    .O_CfgRdy_PAD       ( O_CfgRdy_PAD       ),
+    .O_DatOE_PAD        ( O_DatOE_PAD        ),
+    .I_OffOE_PAD        ( I_OffOE_PAD        ),
+    .I_DatVld_PAD       ( I_DatVld_PAD       ),
+    .I_DatLast_PAD      ( I_DatLast_PAD      ),
+    .O_DatRdy_PAD       ( O_DatRdy_PAD       ),
+    .O_DatVld_PAD       ( O_DatVld_PAD       ),
+    .I_DatRdy_PAD       ( I_DatRdy_PAD       ),
+    .I_ISAVld_PAD       ( I_ISAVld_PAD       ),
+    .O_CmdVld_PAD       ( O_CmdVld_PAD       ),
+    .IO_Dat_PAD         ( IO_Dat_PAD         ),
+    .CCUITF_CfgRdy      ( CCUITF_CfgRdy      ),
+    .ITFCCU_ISARdDat    ( ITFCCU_ISARdDat    ),
+    .ITFCCU_ISARdDatVld ( ITFCCU_ISARdDatVld ),
+    .CCUITF_ISARdDatRdy ( CCUITF_ISARdDatRdy ),
+    .GICITF_Dat         ( GICITF_Dat         ),
+    .GICITF_DatVld      ( GICITF_DatVld      ),
+    .GICITF_DatLast     ( GICITF_DatLast     ),
+    .GICITF_CmdVld      ( GICITF_CmdVld      ),
+    .ITFGIC_DatRdy      ( ITFGIC_DatRdy      ),
+    .ITFGIC_Dat         ( ITFGIC_Dat         ),
+    .ITFGIC_DatVld      ( ITFGIC_DatVld      ),
+    .ITFGIC_DatLast     ( ITFGIC_DatLast     ),
+    .GICITF_DatRdy      ( GICITF_DatRdy      ),
+    .clk                ( clk                ),
+    .rst_n              ( rst_n              )
 );
 
-
-fifo_async#(
-    .data_width ( PORT_WIDTH + 1 ),
-    .addr_width ( ASYNC_FIFO_ADDR_WIDTH )
-)u_fifo_async_IN2CHIP(
-    .rst_n      ( I_SysRst_n      ),
-    .wr_clk     ( I_OffClk     ),
-    .wr_en      ( fifo_async_IN2CHIP_wr_en      ),
-    .din        ( fifo_async_IN2CHIP_din      ),
-    .rd_clk     ( clk     ),
-    .rd_en      ( fifo_async_IN2CHIP_rd_en ),
-    .valid      ( fifo_async_IN2CHIP_valid ),
-    .dout       ( fifo_async_IN2CHIP_dout  ),
-    .empty      ( fifo_async_IN2CHIP_empty ),
-    .full       ( fifo_async_IN2CHIP_full  )
-);
-
-// module PDUW08DGZ_H_G (
-//     input  I, 
-//     input  OEN, 
-//     input  REN, 
-//     inout  PAD, 
-//     output C
-    
-// );
-
-//     // reg PAD;
-//     // reg C;
-
-//     assign PAD = OEN == 0 ? I : 1'bz;
-//     assign C   = OEN == 0 ? I : PAD;
-
-// endmodule : PDUW08DGZ_H_G
 
 endmodule

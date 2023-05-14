@@ -37,18 +37,18 @@ module CCU #(
     input                                   clk                     ,
     input                                   rst_n                   ,
 
-    input   [PORT_WIDTH             -1 : 0] TOPCCU_ISARdDat         ,       
-    input                                   TOPCCU_ISARdDatVld      ,          
-    output                                  CCUTOP_ISARdDatRdy      ,
+    output [OPNUM                   -1 : 0] CCUITF_CfgRdy           ,
+    input   [PORT_WIDTH             -1 : 0] ITFCCU_ISARdDat         ,       
+    input                                   ITFCCU_ISARdDatVld      ,          
+    output                                  CCUITF_ISARdDatRdy      ,
 
-    output                                  CCUITF_CfgVld           ,
-    input                                   ITFCCU_CfgRdy           ,  
-    output  [BYTE_WIDTH             -1 : 0] CCUITF_CfgInOut            , 
-    output  [DRAM_ADDR_WIDTH        -1 : 0] CCUITF_CfgDRAMBaseAddr     ,
-    output  [IDX_WIDTH              -1 : 0] CCUITF_CfgGLBBaseAddr      ,
-    output  [IDX_WIDTH              -1 : 0] CCUITF_CfgNum              , 
+    output                                  CCUGIC_CfgVld           ,
+    input                                   GICCCU_CfgRdy           ,  
+    output  [BYTE_WIDTH             -1 : 0] CCUGIC_CfgInOut         , 
+    output  [DRAM_ADDR_WIDTH        -1 : 0] CCUGIC_CfgDRAMBaseAddr  ,
+    output  [IDX_WIDTH              -1 : 0] CCUGIC_CfgGLBBaseAddr   ,
+    output  [IDX_WIDTH              -1 : 0] CCUGIC_CfgNum           , 
                 
-
     output  [NUM_FPC                -1 : 0] CCUFPS_CfgVld           ,
     input   [NUM_FPC                -1 : 0] FPSCCU_CfgRdy           ,        
     output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgNip           ,                    
@@ -92,8 +92,7 @@ module CCU #(
     output [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr,
              
     output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][NUM_BANK    -1 : 0] CCUTOP_CfgPortBankFlag,
-    output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                   -1 : 0] CCUTOP_CfgPortOffEmptyFull,
-    output [OPNUM                   -1 : 0] CCUTOP_CfgRdy
+    output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                   -1 : 0] CCUTOP_CfgPortOffEmptyFull
 
 );
 //=====================================================================================================================
@@ -155,12 +154,12 @@ reg [4      -1 : 0] state       ;
 reg [4      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE    :   if(TOPCCU_ISARdDatVld)
+        IDLE    :   if(ITFCCU_ISARdDatVld)
                         next_state <= DEC; //
                     else
                         next_state <= IDLE;
 
-        DEC:        if (CfgVld[OpCode] & CCUTOP_CfgRdy[OpCode])
+        DEC:        if (CfgVld[OpCode] & CCUITF_CfgRdy[OpCode])
                         next_state <= IDLE;
                     else 
                         next_state <= DEC;
@@ -179,17 +178,17 @@ end
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
-// CCUTOP_CfgRdy -> Req
+// CCUITF_CfgRdy -> Req
 // `ifdef PSEUDO_DATA
-//     assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
+//     assign CCUITF_CfgRdy = {GICCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
 // `else
-    assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
+    assign CCUITF_CfgRdy = {GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
 // `endif
 
 wire        FPS_CfgVld;
 wire        POL_CfgVld;
 
-assign {CCUITF_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign {CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld, CCUTOP_CfgVld} = CfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
 assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 
@@ -202,7 +201,7 @@ always @(posedge clk or negedge rst_n) begin
     end else if(next_state == IDLE) begin // HS
         OpCode <= {OPCODE_WIDTH{1'b1}};
     end else if(state == IDLE & next_state == DEC) begin
-        OpCode <= TOPCCU_ISARdDat[0 +: OPCODE_WIDTH];
+        OpCode <= ITFCCU_ISARdDat[0 +: OPCODE_WIDTH];
     end
 end
 
@@ -226,14 +225,14 @@ SIPO#(
 )u_SIPO_ISA_FPS(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_FPS ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_FPS ),
     .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
+    .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_FPS_InRdy ),
     .OUT_DAT      ( ISA_FPS        ),
     .OUT_VLD      ( CfgVld[OPCODE_FPS] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_FPS])
+    .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_FPS])
 );
 
 SIPO#(
@@ -242,14 +241,14 @@ SIPO#(
 )u_SIPO_ISA_KNN(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_KNN ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_KNN ),
     .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
+    .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_KNN_InRdy ),
     .OUT_DAT      ( ISA_KNN        ),
     .OUT_VLD      ( CfgVld[OPCODE_KNN] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_KNN])
+    .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_KNN])
 );
 
 SIPO#(
@@ -258,14 +257,14 @@ SIPO#(
 )u_SIPO_ISA_SYA(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_SYA ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_SYA ),
     .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
+    .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_SYA_InRdy ),
     .OUT_DAT      ( ISA_SYA        ),
     .OUT_VLD      ( CfgVld[OPCODE_SYA] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_SYA])
+    .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_SYA])
 );
 SIPO#(
     .DATA_IN_WIDTH ( PORT_WIDTH               ),
@@ -273,14 +272,14 @@ SIPO#(
 )u_SIPO_ISA_POL(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_POL ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_POL ),
     .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
+    .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_POL_InRdy ),
     .OUT_DAT      ( ISA_POL        ),
     .OUT_VLD      ( CfgVld[OPCODE_POL] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_POL])
+    .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_POL])
 );
 SIPO#(
     .DATA_IN_WIDTH ( PORT_WIDTH               ),
@@ -288,18 +287,18 @@ SIPO#(
 )u_SIPO_ISA_ITF(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_ITF ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_ITF ),
     .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
+    .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_ITF_InRdy ),
     .OUT_DAT      ( ISA_ITF        ),
     .OUT_VLD      ( CfgVld[OPCODE_ITF] ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_ITF])
+    .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_ITF])
 );
 
 assign SIPO_InRdy           = {SIPO_ITF_InRdy, SIPO_POL_InRdy, SIPO_SYA_InRdy, SIPO_KNN_InRdy, SIPO_FPS_InRdy, 1'b1};
-assign CCUTOP_ISARdDatRdy   = state == DEC & (SIPO_InRdy[OpCode] & !CfgVld[OpCode]);
+assign CCUITF_ISARdDatRdy   = state == DEC & (SIPO_InRdy[OpCode] & !CfgVld[OpCode]);
 
 assign {
     CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSCRD                 ],
@@ -387,10 +386,10 @@ assign {
     CCUTOP_CfgPortOffEmptyFull  [GLBWRIDX_ITFGLB                    ],
     CCUTOP_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
     CCUTOP_CfgPortBankFlag      [GLBWRIDX_ITFGLB                    ],
-    CCUITF_CfgNum,          // 16
-    CCUITF_CfgGLBBaseAddr,  // 16
-    CCUITF_CfgDRAMBaseAddr, // 32
-    CCUITF_CfgInOut // 8 0: IN2CHIP; 1: OUT2OFF
+    CCUGIC_CfgNum,          // 16
+    CCUGIC_CfgGLBBaseAddr,  // 16
+    CCUGIC_CfgDRAMBaseAddr, // 32
+    CCUGIC_CfgInOut // 8 0: IN2CHIP; 1: OUT2OFF
 } = ISA_ITF[PORT_WIDTH*NUMPORT_ITF -1 : OPCODE_WIDTH];
 
 endmodule
