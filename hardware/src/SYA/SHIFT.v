@@ -20,7 +20,7 @@ module SHIFT #(
     input                                       shift           , // 1: shift; 0: fifo
 
     input  [SIDE_LEN -1 : 0][DATA_WIDTH -1 : 0] shift_din       , 
-    input                                       shift_din_vld   ,
+    input  [SIDE_LEN                    -1 : 0] shift_din_vld   ,
     output                                      shift_din_rdy   ,
     
     output [SIDE_LEN -1 : 0][DATA_WIDTH -1 : 0] shift_dout      ,
