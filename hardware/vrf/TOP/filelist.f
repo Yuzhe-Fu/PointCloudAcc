@@ -3,16 +3,15 @@
 ../../src/ITF/ITF.v
 ../../src/CCU/CCU.v
 ../../src/GLB/GLB.v
+../../src/GLB/GIC.v
 ../../src/MAP/FPS.v
 ../../src/MAP/KNN.v
 ../../src/MAP/INS.v
 ../../src/MAP/EDC.v
 ../../src/POL/POL.v
-../../src/SYA/SYA.v                     
-    ../../src/SYA/PE_BANK.v                 
-        ../../src/SYA/PE_ROW.v                 
+../../src/SYA/SYA.v               
             ../../src/SYA/PE.v                                 
-    ../../src/SYA/SYNC_SHAPE.v                 
+    ../../src/SYA/SHIFT.v                  
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DELAY/LATCH_DELAY.v
 ../../src/primitives/DEB/DEB.v
@@ -22,6 +21,8 @@
 ../../src/primitives/Memory/RAM_REG.v
 ../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/PISO/PISO_NOCACHE.v
+../../src/primitives/AsyncFIFO/fifo_async_fwft.v
+../../src/primitives/AsyncFIFO/fifo_async.v
 ../../src/primitives/COUNTER/counter.v
 ../../src/primitives/COUNTER/CNT1.v
 ../../src/primitives/ARB/prior_arb.v
