@@ -908,6 +908,7 @@ generate
             )u_SIPO_CrdWr(
                 .CLK       ( clk                    ),
                 .RST_N     ( rst_n                  ),
+                .RESET     ( state == IDLE              ),
                 .IN_VLD    ( (vld_Max_s2 & LopCntLast_s2) & rdy_s2 & SIPO_IdxInRdy), // valid & other is ready: Max drivers 3 loads: other(Mask, Crd, Dist), SIPO_Crd, and SIPO_Idx
                 .IN_LAST   ( CntCpMask_s2 == MaxCntCpMask + 1),
                 .IN_DAT    ( FPS_MaxCrd             ),
@@ -927,6 +928,7 @@ generate
             )u_SIPO_IdxWr(
                 .CLK       ( clk                        ),
                 .RST_N     ( rst_n                      ),
+                .RESET     ( state == IDLE              ),
                 .IN_VLD    ( (vld_Max_s2 & LopCntLast_s2) & rdy_s2 & SIPO_CrdInRdy), // valid & other is ready: Max drivers 3 loads: other(Mask, Crd, Dist), SIPO_Crd, and SIPO_Idx
                 .IN_LAST   ( CntCpMask_s2 == MaxCntCpMask + 1 ),
                 .IN_DAT    ( FPS_MaxIdx                 ),

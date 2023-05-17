@@ -27,6 +27,7 @@ module SYA #(
     input                                                   rst_n                   ,
     input                                                   CCUSYA_CfgVld           ,
     output                                                  SYACCU_CfgRdy           ,
+    input                                                   CCUSYA_CfgRst           ,
     input  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgShift         ,
     input  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgZp            ,
     input  [2                                       -1 : 0] CCUSYA_CfgMod           ,
@@ -156,7 +157,9 @@ always @(*) begin
                     next_state <= INREGUL; //
                 else
                     next_state <= IDLE;
-        INREGUL:if( (Overflow_CntTilIfm & Overflow_CntTilFlt & Overflow_CntGrp & Overflow_CntChn) & handshake_s0)
+        INREGUL:if(CCUSYA_CfgVld)
+                    next_state <= IDLE;
+                else if( (Overflow_CntTilIfm & Overflow_CntTilFlt & Overflow_CntGrp & Overflow_CntChn) & handshake_s0)
                     next_state <= IDLE;
                 else
                     next_state <= INREGUL;
@@ -179,6 +182,7 @@ always @ ( posedge clk or negedge rst_n ) begin
         state <= next_state;
     end
 end
+assign RstAll = CCUSYA_CfgRst & state == IDLE;
 
 // Combinational Logic
 assign SYA_MaxRowCol= CCUSYA_CfgMod == 0 ? NUM_ROW*SYA_SIDEBANK : NUM_ROW*SYA_SIDEBANK*2;
@@ -311,7 +315,7 @@ counter#(
 )u1_counter_CntMac( // Total MAC
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( state == IDLE      ), // ???
+    .CLEAR     ( RstAll             ), // ???
     .DEFAULT   ( {32{1'b0}}  ),
     .INC       ( SYA_En             ),
     .DEC       ( 1'b0               ),
@@ -328,7 +332,7 @@ counter#(
 )u1_counter_CntRmDiagPsum( // Remained Diagnonal Psum to output
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( SYA_En             ),
+    .CLEAR     ( SYA_En | RstAll    ),
     .DEFAULT   ( DefaultRmDiagPsum ),
     .INC       ( 1'b0               ),
     .DEC       ( SYA_PsumOutVld & SYA_PsumOutRdy  ),
@@ -360,7 +364,7 @@ generate
                 assign axis_y = CCUSYA_CfgMod == 0? NUM_COL*(gv_bk%2) + gv_col
                                     : CCUSYA_CfgMod == 1? NUM_COL*gv_bk + gv_col
                                         : gv_col;
-                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx) & (SYA_PsumOutVld & SYA_PsumOutRdy);
+                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx) & (SYA_PsumOutVld & SYA_PsumOutRdy) | RstAll;
             end
         end
     end
@@ -379,7 +383,7 @@ FIFO_FWFT#(
     .INITIALIZE_FIFO ( "no" )
 )u_FIFO_FWFT_Cfg(
     .clk        ( clk        ),
-    .Reset      ( Reset      ),
+    .Reset      ( RstAll     ),
     .rst_n      ( rst_n      ),
     .push       ( push       ),
     .pop        ( pop        ),
@@ -434,7 +438,7 @@ SHIFT #(
 ) u_SHIFT_OFM (               
     .clk                 ( clk          ),
     .rst_n               ( rst_n        ),
-    .Rst                 ( 1'b0         ),  
+    .Rst                 ( RstAll       ),  
     .shift               ( fifo_out_CfgShift),                      
     .shift_din           ( shift_din     ),
     .shift_din_vld       ( shift_din_vld ),
@@ -457,7 +461,7 @@ assign shift_din_vld = fifo_out_CfgShift? (CurPsumOutDiagIdx > NUM_ROW*SYA_SIDEB
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         Cache_ShiftIn_OfmAddr <= 0;
-    end else if(state == IDLE) begin
+    end else if(RstAll) begin
         Cache_ShiftIn_OfmAddr <= 0;
     end else if(shift_din_vld & shift_din_rdy) begin // cache the address of the first din
         Cache_ShiftIn_OfmAddr <= SYA_PsumOutAddr;

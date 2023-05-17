@@ -35,6 +35,7 @@ module KNN #(
     input [(MAP_WIDTH + 1)      -1 : 0] CCUKNN_CfgK         , 
     input [IDX_WIDTH            -1 : 0] CCUKNN_CfgCrdRdAddr ,
     input [IDX_WIDTH            -1 : 0] CCUKNN_CfgMapWrAddr ,
+    input [IDX_WIDTH            -1 : 0] CCUKNN_CfgCpIdxRdAddr ,
 
     // Fetch Crd
     output [IDX_WIDTH           -1 : 0] KNNGLB_CrdRdAddr    ,   
@@ -268,6 +269,7 @@ PISO_NOCACHE#(
 )u_PISO_CrdRd(
     .CLK       ( clk                ),
     .RST_N     ( rst_n              ),
+    .RESET     ( state == IDLE      ),
     .IN_VLD    ( state_s1 == LP & vld_s1),
     .IN_LAST   ( CntLopCrdRdAddrLast_s1 ),
     .IN_DAT    ( CrdRdDat_s1        ),
@@ -346,6 +348,7 @@ generate
         )u_INS(
             .clk                 ( clk                 ),
             .rst_n               ( rst_n               ),
+            .reset               ( state == IDLE       ),
             .KNNINS_CfgK         ( CCUKNN_CfgK         ),
             .KNNINS_LopLast      ( PISO_OutLast_CrdRd   ),
             .KNNINS_Lop          ( {LopDist_s1, PntIdx_s1}),
@@ -413,6 +416,7 @@ PISO_NOCACHE#(
 )u_PISO_MAP(
     .CLK       ( clk            ),
     .RST_N     ( rst_n          ),
+    .RESET     ( state == IDLE  ),
     .IN_VLD    ( vld_s2         ),
     .IN_LAST   ( CntCpCrdRdAddrLast_s2 &  CntLopCrdRdAddrLast_s2 ),
     .IN_DAT    ( PISO_InDat     ),
@@ -425,6 +429,8 @@ PISO_NOCACHE#(
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
+        Pseudo_CrdRdVld <= 0;
+    end else if(state == IDLE) begin
         Pseudo_CrdRdVld <= 0;
     end else if(KNNGLB_CrdRdAddrVld & rdy_s0) begin
         Pseudo_CrdRdVld <= 1'b1;

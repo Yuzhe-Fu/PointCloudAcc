@@ -21,6 +21,7 @@ module INS #(
     )(
     input                                       clk             ,
     input                                       rst_n           ,
+    input                                       reset           ,
     input [(SORT_LEN_WIDTH + 1)         -1 : 0] KNNINS_CfgK     ,              
     input                                       KNNINS_LopLast  ,
     input [IDX_WIDTH+DATA_WIDTH         -1 : 0] KNNINS_Lop      ,
@@ -52,6 +53,8 @@ wire [SORT_LEN      -1 : 0] cur_insert;
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         INSKNN_MapVld <= 0;
+    end else if (reset) begin
+        INSKNN_MapVld <= 0;
     end else if(Out_HandShake)begin
         INSKNN_MapVld <= 1'b0;
     end else if(In_HandShake & KNNINS_LopLast) begin
@@ -77,8 +80,11 @@ generate
                 if (!rst_n) begin
                     IdxArray[i]  <= 0;
                     DistArray[i] <= -1;
-                if (i < KNNINS_CfgK) begin
-                    end else if (Out_HandShake) begin
+                end else if (reset) begin
+                    IdxArray[i]  <= 0;
+                    DistArray[i] <= -1;
+                end if (i < KNNINS_CfgK) begin
+                    if (Out_HandShake) begin
                         IdxArray[i]  <= 0;
                         DistArray[i] <= -1;                
                     end else if (last_shift[i] & In_HandShake) begin

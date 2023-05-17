@@ -6,6 +6,7 @@ module SIPO
 )( // PORTS
     input  wire                         CLK     ,
     input  wire                         RST_N   ,
+    input  wire                         RESET   ,
     input  wire                         IN_VLD  ,
     input  wire                         IN_LAST ,
     input  wire [DATA_IN_WIDTH -1 : 0]  IN_DAT  ,
@@ -42,6 +43,8 @@ assign OUT_DAT          = shift;
 always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
     if (!RST_N)
         shift_count <= 0;
+    else if (RESET)
+        shift_count <= 0;
     else begin
         if ( (IN_VLD & IN_RDY) && !OUT_VLD)
             shift_count <= shift_count + 1;
@@ -54,6 +57,9 @@ end
 
 always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
     if (!RST_N) begin
+        shift <= 0;
+        last  <= 0;
+    end else if (RESET) begin
         shift <= 0;
         last  <= 0;
     end else if (IN_VLD & IN_RDY) begin

@@ -280,6 +280,9 @@ generate
         if ( !rst_n ) begin
             lastMapWord_s1  <= 0;
             CntCp_s1        <= 0;
+        end else if(state == IDLE) begin
+            lastMapWord_s1  <= 0;
+            CntCp_s1        <= 0;
         end else if(ena_s1) begin
             lastMapWord_s1  <= overflow_CntCp & overflow_CntMapWord;
             CntCp_s1        <= CntCp;
@@ -305,8 +308,9 @@ generate
     )u_SIPO_MAP(
         .CLK       ( clk                ),
         .RST_N     ( rst_n              ),
+        .RESET     ( state == IDLE      ),
         .IN_VLD    ( vld_s1             ),
-        .IN_LAST   ( lastMapWord_s1 ),
+        .IN_LAST   ( lastMapWord_s1     ),
         .IN_DAT    ( GLBPOL_MapRdDat    ),
         .IN_RDY    ( SIPO_MapInRdy      ),
         .OUT_DAT   ( SIPO_MapOutDat     ),
@@ -355,6 +359,8 @@ generate
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
             CntCp_s2 <= 0;
+        end else if(state == IDLE) begin
+            CntCp_s2 <= 0;
         end else if(ena_s2) begin
             CntCp_s2 <= CntCp_s1;
         end
@@ -381,6 +387,9 @@ generate
     // Reg Update
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
+            {NpIdx_s3, LastNp_s3, overflow_CntNp_s3}    <= 0;
+            CntCp_s3                                    <= 0;
+        end else if(state == IDLE) begin
             {NpIdx_s3, LastNp_s3, overflow_CntNp_s3}    <= 0;
             CntCp_s3                                    <= 0;
         end else if(ena_s3) begin
@@ -421,6 +430,9 @@ generate
 
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
+            {NpIdx_s4, LastNp_s4, vld_s4}   <= 0;
+            CntCp_s4                        <= 0;
+        end else if(state == IDLE) begin
             {NpIdx_s4, LastNp_s4, vld_s4}   <= 0;
             CntCp_s4                        <= 0;
         end else if(ena_s4) begin
