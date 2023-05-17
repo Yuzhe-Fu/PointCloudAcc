@@ -225,6 +225,7 @@ SIPO#(
 )u_SIPO_ISA_FPS(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
+    .RESET        ( state == IDLE  ),
     .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_FPS ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
@@ -241,6 +242,7 @@ SIPO#(
 )u_SIPO_ISA_KNN(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
+    .RESET        ( state == IDLE  ),
     .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_KNN ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
@@ -257,6 +259,7 @@ SIPO#(
 )u_SIPO_ISA_SYA(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
+    .RESET        ( state == IDLE  ),
     .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_SYA ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
@@ -272,6 +275,7 @@ SIPO#(
 )u_SIPO_ISA_POL(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
+    .RESET        ( state == IDLE  ),
     .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_POL ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
@@ -287,6 +291,7 @@ SIPO#(
 )u_SIPO_ISA_ITF(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
+    .RESET        ( state == IDLE  ),
     .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_ITF ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),

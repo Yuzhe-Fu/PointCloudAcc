@@ -6,6 +6,7 @@ module PISO_NOCACHE
 )( // PORTS
     input  wire                         CLK     ,
     input  wire                         RST_N   ,
+    input  wire                         RESET   ,
     input  wire                         IN_VLD  ,
     input  wire                         IN_LAST ,
     input  wire [DATA_IN_WIDTH -1 : 0]  IN_DAT  ,
@@ -35,6 +36,8 @@ module PISO_NOCACHE
 
   always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
     if (!RST_N)
+        count <= 0;
+    else if ( RESET )
         count <= 0;
     else if (OUT_VLD & OUT_RDY) begin
         if (count == 0)
