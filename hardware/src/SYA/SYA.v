@@ -10,6 +10,7 @@
 // Description :
 //========================================================
 module SYA #(
+    parameter SYAISA_WIDTH = 384,
     parameter ACT_WIDTH  = 8,
     parameter WGT_WIDTH  = 8,
     parameter ACC_WIDTH  = ACT_WIDTH+ACT_WIDTH+10, //26
@@ -27,19 +28,7 @@ module SYA #(
     input                                                   rst_n                   ,
     input                                                   CCUSYA_CfgVld           ,
     output                                                  SYACCU_CfgRdy           ,
-    input                                                   CCUSYA_CfgRstAll        ,
-    input  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgShift         ,
-    input  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgZp            ,
-    input  [2                                       -1 : 0] CCUSYA_CfgMod           ,
-    input                                                   CCUSYA_CfgOfmPhaseShift ,
-    input  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumGrpPerTile ,
-    input  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumTilIfm     ,
-    input  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumTilFlt     ,
-    input                                                   CCUSYA_CfgLopOrd        ,
-    input  [CHN_WIDTH                               -1 : 0] CCUSYA_CfgChn           ,
-    input  [ADDR_WIDTH                              -1 : 0] CCUSYA_CfgActRdBaseAddr ,
-    input  [ADDR_WIDTH                              -1 : 0] CCUSYA_CfgWgtRdBaseAddr ,
-    input  [ADDR_WIDTH                              -1 : 0] CCUSYA_CfgOfmWrBaseAddr ,
+    input [SYAISA_WIDTH                             -1 : 0] CCUSYA_CfgInfo          ,
     output [ADDR_WIDTH                              -1 : 0] SYAGLB_ActRdAddr        ,
     output                                                  SYAGLB_ActRdAddrVld     ,
     input                                                   GLBSYA_ActRdAddrRdy     ,
@@ -143,6 +132,40 @@ wire [NUMDIAG_WIDTH         -1 : 0] CntRmDiagPsum;
 wire [NUMDIAG_WIDTH         -1 : 0] DefaultRmDiagPsum;
 wire [NUMDIAG_WIDTH         -1 : 0] NumDiag;
 integer                             i;
+
+wire                                                   CCUSYA_CfgRstAll        ;
+wire  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgShift         ;
+wire  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgZp            ;
+wire  [2                                       -1 : 0] CCUSYA_CfgMod           ;
+wire                                                   CCUSYA_CfgOfmPhaseShift ;
+wire  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumGrpPerTile ;
+wire  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumTilIfm     ;
+wire  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumTilFlt     ;
+wire                                                   CCUSYA_CfgLopOrd        ;
+wire  [CHN_WIDTH                               -1 : 0] CCUSYA_CfgChn           ;
+wire  [ADDR_WIDTH                              -1 : 0] CCUSYA_CfgActRdBaseAddr ;
+wire  [ADDR_WIDTH                              -1 : 0] CCUSYA_CfgWgtRdBaseAddr ;
+wire  [ADDR_WIDTH                              -1 : 0] CCUSYA_CfgOfmWrBaseAddr ;
+
+//=====================================================================================================================
+// Logic Design: ISA Decode
+//=====================================================================================================================
+assign {
+CCUSYA_CfgOfmWrBaseAddr , 
+CCUSYA_CfgActRdBaseAddr ,
+CCUSYA_CfgWgtRdBaseAddr ,
+CCUSYA_CfgNumGrpPerTile ,
+CCUSYA_CfgNumTilIfm     ,
+CCUSYA_CfgNumTilFlt     ,
+CCUSYA_CfgChn           ,
+CCUSYA_CfgShift         ,
+CCUSYA_CfgZp            ,
+CCUSYA_CfgOfmPhaseShift ,
+CCUSYA_CfgLopOrd        ,
+CCUSYA_CfgMod           ,
+CCUSYA_CfgRstAll        
+} = CCUSYA_CfgInfo;
+
 //=====================================================================================================================
 // Logic Design :s0
 //=====================================================================================================================
@@ -184,6 +207,7 @@ always @ ( posedge clk or negedge rst_n ) begin
         state <= next_state;
     end
 end
+
 assign RstAll = CCUSYA_CfgRstAll & state == IDLE;
 
 // Combinational Logic

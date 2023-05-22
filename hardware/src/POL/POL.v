@@ -14,6 +14,7 @@
 // -----------------------------------------------------------------------------
 
 module POL #(
+    parameter POLISA_WIDTH          = 128*9,
     parameter IDX_WIDTH             = 16,
     parameter ACT_WIDTH             = 8,
     parameter POOL_COMP_CORE        = 64,
@@ -28,12 +29,7 @@ module POL #(
     // Configure
     input  [POOL_CORE                               -1 : 0] CCUPOL_CfgVld       ,
     output [POOL_CORE                               -1 : 0] POLCCU_CfgRdy       ,
-    input  [POOL_CORE   -1 : 0][(MAP_WIDTH+1)       -1 : 0] CCUPOL_CfgK         , // 24
-    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgNip       , // 1024
-    input  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChn       , // 64
-    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr,
-    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr,
-    input  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr,
+    input  [POLISA_WIDTH                            -1 : 0] CCUPOL_CfgInfo      ,
 
     output [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr    ,   
     output                                                  POLGLB_MapRdAddrVld , 
@@ -78,6 +74,26 @@ wire [$clog2(POOL_CORE)                                     -1 : 0] ArbPLCIdxWrO
 
 genvar gv_plc;
 genvar gv_cmp;
+
+wire  [POOL_CORE   -1 : 0][(MAP_WIDTH+1)       -1 : 0] CCUPOL_CfgK              ; // 24
+wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgNip            ; // 1024
+wire  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChn            ; // 64
+wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr  ;
+wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr  ;
+wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr  ;
+
+//=====================================================================================================================
+// Logic Design: ISA Decode
+//=====================================================================================================================
+assign {
+    CCUPOL_CfgOfmWrBaseAddr,   // 16 x 8 
+    CCUPOL_CfgMapRdBaseAddr,   // 16 x 8
+    CCUPOL_CfgOfmRdBaseAddr,   // 16 x 8
+    CCUPOL_CfgK            ,   // 8  X 8
+    CCUPOL_CfgChn          ,   // 16 X 8
+    CCUPOL_CfgNip              // 16 x 8  
+} = CCUPOL_CfgInfo;
+
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================

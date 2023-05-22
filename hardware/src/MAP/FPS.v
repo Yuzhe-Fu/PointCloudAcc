@@ -16,6 +16,7 @@
  (a % b)? (a / b + 1) : (a / b) \
 )
 module FPS #(
+    parameter FPSISA_WIDTH      = 128*16,
     parameter SRAM_WIDTH        = 256,
     parameter IDX_WIDTH         = 16,
     parameter CRD_WIDTH         = 8,
@@ -31,13 +32,7 @@ module FPS #(
     // Configure
     input  [NUM_FPC                     -1 : 0] CCUFPS_CfgVld           ,
     output [NUM_FPC                     -1 : 0] FPSCCU_CfgRdy           ,
-    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgNip           ,
-    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgNop           ,
-    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgCrdBaseRdAddr ,
-    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgCrdBaseWrAddr ,
-    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgIdxBaseWrAddr ,
-    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgMaskBaseAddr  ,   
-    input  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgDistBaseAddr  ,
+    input  [FPSISA_WIDTH                -1 : 0] CCUFPS_CfgInfo          ,
 
     output [IDX_WIDTH                   -1 : 0] FPSGLB_MaskRdAddr       ,
     output                                      FPSGLB_MaskRdAddrVld    ,
@@ -87,10 +82,6 @@ localparam CNT_CUTMASK_WIDTH= IDX_WIDTH - $clog2(SRAM_WIDTH/CUTMASK_WIDTH);
 // Variable Definition :
 //=====================================================================================================================
 
-//=====================================================================================================================
-// Variable Definition :
-//=====================================================================================================================
-
 wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_MaskRdAddr;
 wire [NUM_FPC                       -1 : 0] FPC_MaskRdAddrVld;
 wire [NUM_FPC                       -1 : 0] FPC_MaskRdDatRdy;
@@ -128,6 +119,27 @@ wire [NUM_FPC   -1 : 0][IDX_WIDTH   -1 : 0] FPC_IdxWrAddr;
 wire [NUM_FPC   -1 : 0][SRAM_WIDTH  -1 : 0] FPC_IdxWrDat;
 wire [NUM_FPC                       -1 : 0] FPC_IdxWrDatVld;
 wire [$clog2(NUM_FPC)               -1 : 0] ArbFPCIdxWrIdx;
+
+wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgNip          ;
+wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgNop          ;
+wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgCrdBaseRdAddr;
+wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgCrdBaseWrAddr;
+wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgIdxBaseWrAddr;
+wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgMaskBaseAddr ;   
+wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgDistBaseAddr ;
+
+//=====================================================================================================================
+// Logic Design: ISA Decode
+//=====================================================================================================================
+assign {
+CCUFPS_CfgDistBaseAddr ,
+CCUFPS_CfgMaskBaseAddr ,
+CCUFPS_CfgIdxBaseWrAddr,
+CCUFPS_CfgCrdBaseWrAddr,
+CCUFPS_CfgCrdBaseRdAddr,
+CCUFPS_CfgNop          ,
+CCUFPS_CfgNip           
+} = CCUFPS_CfgInfo;
 
 //=====================================================================================================================
 // Logic Design

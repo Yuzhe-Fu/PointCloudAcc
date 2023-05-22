@@ -13,6 +13,7 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module GIC #(
+    parameter GICISA_WIDTH      = 128*2,
     parameter PORT_WIDTH        = 128,
     parameter SRAM_WIDTH        = 256,
     parameter DRAM_ADDR_WIDTH   = 32,
@@ -24,10 +25,7 @@ module GIC #(
 
     input                                               CCUGIC_CfgVld      ,
     output                                              GICCCU_CfgRdy      ,  
-    input   [BYTE_WIDTH                         -1 : 0] CCUGIC_CfgInOut       , // 0: IN2CHIP; 1: OUT2OFF
-    input   [DRAM_ADDR_WIDTH                    -1 : 0] CCUGIC_CfgDRAMBaseAddr,
-    input   [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgGLBBaseAddr ,
-    input   [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgNum         , 
+    input   [GICISA_WIDTH                       -1 : 0] CCUGIC_CfgInfo      ,
 
     output reg                                          GICITF_CmdVld   ,
     output [PORT_WIDTH                          -1 : 0] GICITF_Dat      ,
@@ -71,6 +69,20 @@ wire                        CmdRdy;
 wire                        CmdVld;
 wire                        Out2Off;
 wire [ADDR_WIDTH    -1 : 0] CntGLBAddr;
+wire [BYTE_WIDTH                         -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
+wire [DRAM_ADDR_WIDTH                    -1 : 0] CCUGIC_CfgDRAMBaseAddr;
+wire [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgGLBBaseAddr ;
+wire [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgNum         ; 
+
+//=====================================================================================================================
+// Logic Design: ISA Decode
+//=====================================================================================================================
+assign {
+CCUGIC_CfgGLBBaseAddr   , // 16
+CCUGIC_CfgDRAMBaseAddr  , // 32
+CCUGIC_CfgNum           , // 16
+CCUGIC_CfgInOut           // 8 0: IN2CHIP; 1: OUT2OFF
+} = CCUGIC_CfgInfo;
 
 //=====================================================================================================================
 // Logic Design 1: FSM
