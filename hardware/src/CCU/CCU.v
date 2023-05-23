@@ -76,7 +76,7 @@ module CCU #(
 localparam OPCODE_WIDTH = 8;
 localparam NUMWORD_WIDTH= 8;
 
-localparam IDLE         = 4'b0000;
+localparam IDLE         = 4'b0000;cfgVld
 localparam DEC          = 4'b0001;
 localparam CFG          = 4'b0010;
 
@@ -90,9 +90,9 @@ localparam OPCODE_ITF   = 5;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-reg [OPCODE_WIDTH                   -1 : 0] OpCode;
+reg [OPCODE_WIDTH                   -1 : 0] opCode;
 integer                                     int_i;
-wire  [OPNUM                        -1 : 0] CfgVld; 
+wire  [OPNUM                        -1 : 0] cfgVld; 
 wire  [OPNUM                        -1 : 0] SIPO_InRdy; 
 wire                                        CCUTOP_CfgVld;  
 
@@ -107,10 +107,9 @@ always @(*) begin
                         next_state <= DEC; //
                     else
                         next_state <= IDLE;
-
-        DEC:        if (CfgVld[OpCode] & CCUITF_CfgRdy[OpCode])
+        DEC:   if (SIPO_FPSISA_OUT_VLD[opCode] & SIPO_FPSISA_OUT_RDY[opCode])
                         next_state <= IDLE;
-                    else 
+                    else
                         next_state <= DEC;
 
         default :       next_state <= IDLE;
@@ -131,13 +130,14 @@ end
 // `ifdef PSEUDO_DATA
 //     assign CCUITF_CfgRdy = {GICCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
 // `else
-    assign CCUITF_CfgRdy = {GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
+    assign CCUITF_CfgRdy = cfgRdy;
+    assign cfgRdy = {GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
 // `endif
 
 wire        FPS_CfgVld;
 wire        POL_CfgVld;
 
-assign {CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign {CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld, CCUTOP_CfgVld} = cfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
 assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 
@@ -146,11 +146,11 @@ assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 //=====================================================================================================================
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        OpCode <= {OPCODE_WIDTH{1'b1}};
+        opCode <= {OPCODE_WIDTH{1'b1}};
     end else if(next_state == IDLE) begin // HS
-        OpCode <= {OPCODE_WIDTH{1'b1}};
+        opCode <= {OPCODE_WIDTH{1'b1}};
     end else if(state == IDLE & next_state == DEC) begin
-        OpCode <= ITFCCU_ISARdDat[0 +: OPCODE_WIDTH];
+        opCode <= ITFCCU_ISARdDat[0 +: OPCODE_WIDTH];
     end
 end
 
@@ -168,29 +168,72 @@ SIPO#(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
     .RESET        ( state == IDLE  ),
-    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_FPS ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & opCode == OPCODE_FPS ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_FPS_InRdy ),
-    .OUT_DAT      ( CCUFPS_CfgInfo        ),
-    .OUT_VLD      ( CfgVld[OPCODE_FPS] ),
+    .OUT_DAT      ( SIPO_FPSISA_OUT_DAT                ),
+    .OUT_VLD      ( SIPO_FPSISA_OUT_VLD                ),
     .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_FPS])
+    .OUT_RDY      ( SIPO_FPSISA_OUT_RDY)
+);
+assign SIPO_FPSISA_OUT_RDY = !FIFO_FPSISA_Reset & !FIFO_FPSISA_full;
+
+assign FIFO_FPSISA_Reset = SIPO_FPSISA_OUT_DAT[OPCODE_WIDTH] & SIPO_FPSISA_OUT_VLD & !FIFO_FPSISA_empty;
+FIFO_FWFT#(
+    .DATA_WIDTH ( FPSISA_WIDTH ),
+    .ADDR_WIDTH ( FPSISA_FIFO_ADDR_WIDTH )
+)u_FIFO_FWFT(
+    .clk        ( clk                   ),
+    .Reset      (  ),
+    .rst_n      ( rst_n                 ),
+    .push       ( FIFO_FPSISA_push      ),
+    .pop        ( FIFO_FPSISA_pop       ),
+    .data_in    ( SIPO_FPSISA_OUT_DAT   ),
+    .data_out   ( FIFO_FPSISA_data_out  ),
+    .empty      ( FIFO_FPSISA_empty     ),
+    .full       ( FIFO_FPSISA_full      ),
+    .fifo_count (                       )
 );
 
+assign FIFO_FPSISA_push= !FIFO_FPSISA_Reset & SIPO_FPSISA_OUT_VLD & !FIFO_FPSISA_full;
+assign FIFO_FPSISA_pop = cfgRdy[OPCODE_FPS];
+
+assign  cfgEnable = FIFO_FPSISA_data_out[OPCODE_WIDTH] | (cfgRdy[OPCODE_FPS] & !FIFO_FPSISA_empty);
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        CCUFPS_CfgInfo <= 0;
+    end else if( cfgEnable) begin
+        CCUFPS_CfgInfo <= FIFO_FPSISA_data_out;
+    end
+end
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        cfgVld[OPCODE_FPS] <= 0;
+    end else if( cfgVld[OPCODE_FPS] & cfgRdy[OPCODE_FPS] ) begin
+        cfgVld[OPCODE_FPS] <= 1'b0;
+    end else if( cfgEnable ) begin
+        cfgVld[OPCODE_FPS] <= 1'b1;
+    end
+end
+
+
+
+
+
 SIPO#(
-    .DATA_IN_WIDTH ( PORT_WIDTH               ),
+    .DATA_IN_WIDTH ( PORT_WIDTH     ),
     .DATA_OUT_WIDTH ( KNNISA_WIDTH  )
 )u_SIPO_ISA_KNN(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
     .RESET        ( state == IDLE  ),
-    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_KNN ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & opCode == OPCODE_KNN ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_KNN_InRdy ),
     .OUT_DAT      ( CCUKNN_CfgInfo        ),
-    .OUT_VLD      ( CfgVld[OPCODE_KNN] ),
+    .OUT_VLD      ( cfgVld[OPCODE_KNN] ),
     .OUT_LAST     (                ),
     .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_KNN])
 );
@@ -202,15 +245,16 @@ SIPO#(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
     .RESET        ( state == IDLE  ),
-    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_SYA ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & opCode == OPCODE_SYA ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_SYA_InRdy ),
     .OUT_DAT      ( CCUSYA_CfgInfo        ),
-    .OUT_VLD      ( CfgVld[OPCODE_SYA] ),
+    .OUT_VLD      ( cfgVld[OPCODE_SYA] ),
     .OUT_LAST     (                ),
     .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_SYA])
 );
+
 SIPO#(
     .DATA_IN_WIDTH ( PORT_WIDTH               ),
     .DATA_OUT_WIDTH ( POLISA_WIDTH  )
@@ -218,12 +262,12 @@ SIPO#(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
     .RESET        ( state == IDLE  ),
-    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_POL ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & opCode == OPCODE_POL ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_POL_InRdy ),
     .OUT_DAT      ( CCUPOL_CfgInfo        ),
-    .OUT_VLD      ( CfgVld[OPCODE_POL] ),
+    .OUT_VLD      ( cfgVld[OPCODE_POL] ),
     .OUT_LAST     (                ),
     .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_POL])
 );
@@ -234,19 +278,18 @@ SIPO#(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
     .RESET        ( state == IDLE  ),
-    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & OpCode == OPCODE_ITF ),
+    .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & opCode == OPCODE_ITF ),
     .IN_LAST      ( 1'b0           ),
     .IN_DAT       ( ITFCCU_ISARdDat),
     .IN_RDY       ( SIPO_ITF_InRdy ),
     .OUT_DAT      ( CCUGIC_CfgInfo        ),
-    .OUT_VLD      ( CfgVld[OPCODE_ITF] ),
+    .OUT_VLD      ( cfgVld[OPCODE_ITF] ),
     .OUT_LAST     (                ),
     .OUT_RDY      ( CCUITF_CfgRdy[OPCODE_ITF])
 );
 
 assign SIPO_InRdy           = {SIPO_ITF_InRdy, SIPO_POL_InRdy, SIPO_SYA_InRdy, SIPO_KNN_InRdy, SIPO_FPS_InRdy, 1'b1};
-assign CCUITF_ISARdDatRdy   = state == DEC & (SIPO_InRdy[OpCode] & !CfgVld[OpCode]);
-
+assign CCUITF_ISARdDatRdy   = state == DEC & SIPO_InRdy[opCode];
 
 
 endmodule
