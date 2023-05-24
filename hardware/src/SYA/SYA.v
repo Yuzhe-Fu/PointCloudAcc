@@ -22,6 +22,7 @@ module SYA #(
     parameter QNTSL_WIDTH= 8,
     parameter CHN_WIDTH  = 10,
     parameter IDX_WIDTH  = 16,
+    parameter SYAMON_WIDTH = SYAISA_WIDTH + 3,
     parameter NUM_OUT    = NUM_BANK
   )(
     input                                                   clk                     ,
@@ -44,7 +45,9 @@ module SYA #(
     output [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1 : 0] SYAGLB_OfmWrDat         ,
     output [ADDR_WIDTH                              -1 : 0] SYAGLB_OfmWrAddr        ,
     output                                                  SYAGLB_OfmWrDatVld      ,
-    input                                                   GLBSYA_OfmWrDatRdy           
+    input                                                   GLBSYA_OfmWrDatRdy      ,
+
+    output [SYAMON_WIDTH                            -1 : 0] SYAMON_Dat                    
 
   );
 
@@ -424,7 +427,7 @@ FIFO_FWFT#(
     .rst_n      ( rst_n      ),
     .push       ( push       ),
     .pop        ( pop        ),
-    .data_in    ( fifo_data_in    ),
+    .data_in    ( fifo_data_in),
     .data_out   ( fifo_data_out),
     .empty      (           ),
     .full       (           ),
@@ -524,5 +527,25 @@ assign SYAGLB_OfmWrDatVld   = fifo_out_CfgOfmPhaseShift? |shift_dout_vld
 assign SYAGLB_OfmWrAddr     = (fifo_out_CfgOfmPhaseShift | CurPsumOutDiagIdx > NUM_ROW*SYA_SIDEBANK)? ShiftOut_OfmAddr
                                 : SYA_PsumOutAddr; // Ref to HW-SYA
 
+//=====================================================================================================================
+// Logic Design: Monitor
+//=====================================================================================================================
+assign SYAMON_Dat = {
+CCUSYA_CfgVld     ,
+SYACCU_CfgRdy     ,
+SYAGLB_ActRdAddrVld,
+GLBSYA_ActRdAddrRdy,
+GLBSYA_ActRdDatVld,
+SYAGLB_ActRdDatRdy,
+SYAGLB_WgtRdAddrVld,
+GLBSYA_WgtRdAddrRdy, 
+GLBSYA_WgtRdDatVld,
+SYAGLB_WgtRdDatRdy, 
+SYAGLB_OfmWrDatVld,
+GLBSYA_OfmWrDatRdy, 
+CntRmDiagPsum, CntMac, CntTilFlt, CntTilIfm, CntGrp,  CntChn, CCUSYA_CfgInfo, state};
+
 endmodule
+
+
 

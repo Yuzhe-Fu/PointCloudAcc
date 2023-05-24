@@ -18,7 +18,8 @@ module GIC #(
     parameter SRAM_WIDTH        = 256,
     parameter DRAM_ADDR_WIDTH   = 32,
     parameter ADDR_WIDTH        = 16,
-    parameter BYTE_WIDTH        = 8
+    parameter BYTE_WIDTH        = 8,
+    parameter GICMON_WIDTH      = GICISA_WIDTH + 3
     )(
     input                                               clk             ,
     input                                               rst_n           ,
@@ -50,7 +51,9 @@ module GIC #(
     output [SRAM_WIDTH                          -1 : 0] GICGLB_WrDat     , 
     output                                              GICGLB_WrDatVld  , 
     input                                               GLBGIC_WrDatRdy  ,
-    input                                               GLBGIC_WrFull    
+    input                                               GLBGIC_WrFull    ,
+
+    output [GICMON_WIDTH                        -1 : 0] GICMON_Dat        
 
 );
 //=====================================================================================================================
@@ -193,5 +196,31 @@ assign CmdRdy           = ITFGIC_DatRdy;
 //=====================================================================================================================
 wire Debug_IO_Uti;
 assign Debug_IO_Uti = (GICITF_DatVld & ITFGIC_DatRdy) | (ITFGIC_DatVld & GICITF_DatRdy);
+
+//=====================================================================================================================
+// Logic Design : Monitor
+//=====================================================================================================================
+assign GICMON_Dat = {
+CCUGIC_CfgVld   ,
+GICCCU_CfgRdy   , 
+GICITF_CmdVld   ,
+GICITF_DatVld   ,
+GICITF_DatLast  ,
+ITFGIC_DatRdy   ,
+ITFGIC_DatVld   ,
+ITFGIC_DatLast  ,
+GICITF_DatRdy   ,
+GICGLB_RdAddrVld,
+GLBGIC_RdAddrRdy,
+GLBGIC_RdDatVld ,
+GICGLB_RdDatRdy ,
+GLBGIC_RdEmpty  ,
+GICGLB_WrDatVld , 
+GLBGIC_WrDatRdy ,
+GLBGIC_WrFull   ,
+CntGLBAddr      ,
+CCUGIC_CfgInfo  ,
+state           
+};
 
 endmodule

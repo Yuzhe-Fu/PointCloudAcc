@@ -57,8 +57,14 @@ module ITF #(
     output                          ITFGIC_DatLast  ,
     input                           GICITF_DatRdy   ,
 
-    output                          clk,
-    output                          rst_n 
+    // Monitor
+    input [PORT_WIDTH       -1 : 0] MONITF_Dat      ,
+    input                           MONITF_DatVld   ,
+    input                           MONITF_DatLast  ,
+    output                          ITFMON_DatRdy   ,
+
+    output                          clk             ,
+    output                          rst_n            
 
 );
 //=====================================================================================================================
@@ -140,7 +146,7 @@ always @(*) begin
                 else 
                     next_state <= INWAIT;
 
-        OUT :   if( GICITF_DatLast )
+        OUT :   if( MONITF_DatVld? MONITF_DatLast : GICITF_DatLast )
                     next_state <= OUTWAIT;
                 else
                     next_state <= OUT;
@@ -318,11 +324,13 @@ assign {O_Dat, O_CmdVld, O_DatVld}= (state_sync == OUT | state_sync == OUTWAIT)?
                                             : { {PORT_WIDTH{1'b0}}, 1'b0, 1'b0};
 assign fifo_async_OUT2OFF_pop   = (state_sync == OUT | state_sync == OUTWAIT) & !I_BypAsysnFIFO & I_DatRdy & !fifo_async_OUT2OFF_empty;
 
-// ITF
+// GIC & MON
 assign fifo_async_OUT2OFF_push = (state == OUT | state == OUTWAIT) & !I_BypAsysnFIFO & !fifo_async_OUT2OFF_full
-                                    & (GICITF_DatVld & ITFGIC_DatRdy);
-assign fifo_async_OUT2OFF_din  = (state == OUT | state == OUTWAIT)? {GICITF_Dat, GICITF_CmdVld} : 0;
-assign ITFGIC_DatRdy           = (state == OUT | state == OUTWAIT)? (I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full) : 1'b0;
+                                    & (GICITF_DatVld & ITFGIC_DatRdy | MONITF_DatVld & ITFMON_DatRdy);
+assign fifo_async_OUT2OFF_din  = (state == OUT | state == OUTWAIT)? MONITF_DatVld? MONITF_Dat : {GICITF_Dat, GICITF_CmdVld} : 0;
+
+assign ITFGIC_DatRdy           = ((state == OUT | state == OUTWAIT) | MONITF_DatVld)? (I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full) : 1'b0;
+assign ITFMON_DatRdy           = (state == OUT | state == OUTWAIT)? (I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full) : 1'b0;
 
 fifo_async_fwft#(
     .DATA_WIDTH ( PORT_WIDTH + 1        ),
@@ -338,5 +346,9 @@ fifo_async_fwft#(
     .empty      ( fifo_async_OUT2OFF_empty  ),
     .full       ( fifo_async_OUT2OFF_full   ) 
 );
+//=====================================================================================================================
+// Logic Design: Monitor
+//=====================================================================================================================
+
 
 endmodule

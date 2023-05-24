@@ -19,7 +19,9 @@ module GLB #(
     parameter ADDR_WIDTH   = 16,
 
     parameter NUM_WRPORT   = 8,
-    parameter NUM_RDPORT   = 16
+    parameter NUM_RDPORT   = 16,
+
+    parameter GLBMON_WIDTH = 128
     )(
     input                                               clk                 ,
     input                                               rst_n               ,
@@ -42,7 +44,9 @@ module GLB #(
     output [NUM_RDPORT              -1 : 0][SRAM_WIDTH          -1 : 0] GLBTOP_RdPortDat    ,
     output [NUM_RDPORT                                          -1 : 0] GLBTOP_RdPortDatVld ,
     input  [NUM_RDPORT                                          -1 : 0] TOPGLB_RdPortDatRdy ,
-    output [NUM_RDPORT                                          -1 : 0] GLBTOP_RdEmpty       
+    output [NUM_RDPORT                                          -1 : 0] GLBTOP_RdEmpty      ,
+
+    output [GLBMON_WIDTH                                        -1 : 0] GLBMON_Dat            
 );
 
 //=====================================================================================================================
@@ -342,5 +346,23 @@ generate
 
     end
 endgenerate
+
+//=====================================================================================================================
+// Logic Design: Monitor
+//=====================================================================================================================
+assign GLBMON_Dat = {
+TOPGLB_WrPortDatVld ,
+GLBTOP_WrPortDatRdy ,
+GLBTOP_WrFull       ,   
+TOPGLB_RdPortAddrVld,
+GLBTOP_RdPortAddrRdy,
+GLBTOP_RdPortDatVld ,
+TOPGLB_RdPortDatRdy ,
+GLBTOP_RdEmpty      ,
+TOPGLB_CfgPortOffEmptyFull,
+TOPGLB_CfgPortBankFlag
+
+ };
+
 
 endmodule

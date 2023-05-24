@@ -21,7 +21,8 @@ module POL #(
     parameter MAP_WIDTH             = 5,
     parameter POOL_CORE             = 8,
     parameter CHN_WIDTH             = 12,
-    parameter SRAM_WIDTH            = 256
+    parameter SRAM_WIDTH            = 256,
+    parameter POLMON_WIDTH          = POLISA_WIDTH + 3
     )(
     input                                                   clk                 ,
     input                                                   rst_n               ,
@@ -48,7 +49,9 @@ module POL #(
     output [IDX_WIDTH                               -1 : 0] POLGLB_OfmWrAddr    ,
     output [(ACT_WIDTH*POOL_COMP_CORE)              -1 : 0] POLGLB_OfmWrDat     ,
     output                                                  POLGLB_OfmWrDatVld  ,
-    input                                                   GLBPOL_OfmWrDatRdy       
+    input                                                   GLBPOL_OfmWrDatRdy  ,
+
+    output [POLMON_WIDTH                            -1 : 0] POLMON_Dat                
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -56,6 +59,9 @@ module POL #(
 
 parameter CHNGRP_WIDTH  = CHN_WIDTH - $clog2(POOL_COMP_CORE);
 parameter MAPWORD_WIDTH = $clog2(IDX_WIDTH*(2**MAP_WIDTH)/SRAM_WIDTH);
+localparam IDLE     = 3'b000;
+localparam MAPIN    = 3'b001;
+localparam WAITFNH  = 3'b010;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -81,6 +87,9 @@ wire  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChn            
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr  ;
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr  ;
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr  ;
+
+reg [POOL_CORE  -1 : 0][ 3     -1 : 0] state     ;
+reg [POOL_CORE  -1 : 0][ 3     -1 : 0] next_state ;
 
 //=====================================================================================================================
 // Logic Design: ISA Decode
@@ -197,49 +206,44 @@ generate
     //=====================================================================================================================
     // Logic Design: s0:  MapRdAddr
     //=====================================================================================================================
-    localparam IDLE     = 3'b000;
-    localparam MAPIN    = 3'b001;
-    localparam WAITFNH  = 3'b010;
-    reg [ 3     -1 : 0] state       ;
-    reg [ 3     -1 : 0] next_state  ;
 
     // Combination Logic
     always @(*) begin
-        case ( state )
+        case ( state[gv_plc] )
             IDLE :  if ( CCUPOL_CfgVld[gv_plc] & POLCCU_CfgRdy[gv_plc] )
-                        next_state <= MAPIN;
+                        next_state[gv_plc] <= MAPIN;
                     else
-                        next_state <= IDLE;
+                        next_state[gv_plc] <= IDLE;
             MAPIN:  if(CCUPOL_CfgVld[gv_plc])
-                        next_state <= IDLE;
+                        next_state[gv_plc] <= IDLE;
                     else if ( overflow_CntCp & overflow_CntMapWord & handshake_s0 )
-                        next_state <= WAITFNH;
+                        next_state[gv_plc] <= WAITFNH;
                     else 
-                        next_state <= MAPIN;
+                        next_state[gv_plc] <= MAPIN;
             WAITFNH:if(CCUPOL_CfgVld[gv_plc])
-                        next_state <= IDLE;
+                        next_state[gv_plc] <= IDLE;
                     else if ( LastNp_s4 & handshake_s4 )
-                        next_state <= IDLE;
+                        next_state[gv_plc] <= IDLE;
                     else
-                        next_state <= WAITFNH;
+                        next_state[gv_plc] <= WAITFNH;
 
-            default:    next_state <= IDLE;
+            default:    next_state[gv_plc] <= IDLE;
         endcase
     end
-    assign POLCCU_CfgRdy[gv_plc] = state == IDLE;
+    assign POLCCU_CfgRdy[gv_plc] = state[gv_plc] == IDLE;
 
     // Handshake
     assign rdy_s0       = GLBPOL_MapRdAddrRdy & (ArbPLCIdx_MapRd == gv_plc);
-    assign vld_s0       = state == MAPIN  & (rdy_s1 & !vld_s1);
+    assign vld_s0       = state[gv_plc] == MAPIN  & (rdy_s1 & !vld_s1);
     assign handshake_s0 = rdy_s0 & vld_s0;
     assign ena_s0       = handshake_s0 | ~vld_s0;
 
     // Reg Update
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
-            state <= IDLE;
+            state[gv_plc] <= IDLE;
         end else begin
-            state <= next_state;
+            state[gv_plc] <= next_state[gv_plc];
         end
     end
 
@@ -249,7 +253,7 @@ generate
     )u_CntCp(
         .CLK       ( clk                ),
         .RESET_N   ( rst_n              ),
-        .CLEAR     ( state == IDLE      ),
+        .CLEAR     ( state[gv_plc] == IDLE      ),
         .DEFAULT   ( {IDX_WIDTH{1'd0}}  ),
         .INC       ( overflow_CntMapWord & handshake_s0),
         .DEC       ( 1'b0               ),
@@ -266,7 +270,7 @@ generate
     )u_CntMapWord(
         .CLK       ( clk                    ),
         .RESET_N   ( rst_n                  ),
-        .CLEAR     ( state == IDLE          ), // automatically loop by MAX_COUNT
+        .CLEAR     ( state[gv_plc] == IDLE          ), // automatically loop by MAX_COUNT
         .DEFAULT   ( {MAPWORD_WIDTH{1'd0}}  ),
         .INC       ( handshake_s0           ),
         .DEC       ( 1'b0                   ),
@@ -296,7 +300,7 @@ generate
         if ( !rst_n ) begin
             lastMapWord_s1  <= 0;
             CntCp_s1        <= 0;
-        end else if(state == IDLE) begin
+        end else if(state[gv_plc] == IDLE) begin
             lastMapWord_s1  <= 0;
             CntCp_s1        <= 0;
         end else if(ena_s1) begin
@@ -324,7 +328,7 @@ generate
     )u_SIPO_MAP(
         .CLK       ( clk                ),
         .RST_N     ( rst_n              ),
-        .RESET     ( state == IDLE      ),
+        .RESET     ( state[gv_plc] == IDLE      ),
         .IN_VLD    ( vld_s1             ),
         .IN_LAST   ( lastMapWord_s1     ),
         .IN_DAT    ( GLBPOL_MapRdDat    ),
@@ -344,7 +348,7 @@ generate
     )u_CntNp(
         .CLK       ( clk                    ),
         .RESET_N   ( rst_n                  ),
-        .CLEAR     ( state == IDLE          ),
+        .CLEAR     ( state[gv_plc] == IDLE          ),
         .DEFAULT   ( {MAP_WIDTH{1'd0}}      ),
         .INC       ( handshake_s2           ),
         .DEC       ( 1'b0                   ),
@@ -360,7 +364,7 @@ generate
     )u_CntChnGrp(
         .CLK       ( clk                ),
         .RESET_N   ( rst_n              ),
-        .CLEAR     ( state == IDLE      ),
+        .CLEAR     ( state[gv_plc] == IDLE      ),
         .DEFAULT   ( {CHNGRP_WIDTH{1'd0}}),
         .INC       ( overflow_CntNp & handshake_s2 ),
         .DEC       ( 1'b0               ),
@@ -375,7 +379,7 @@ generate
     always @ ( posedge clk or negedge rst_n ) begin
         if ( !rst_n ) begin
             CntCp_s2 <= 0;
-        end else if(state == IDLE) begin
+        end else if(state[gv_plc] == IDLE) begin
             CntCp_s2 <= 0;
         end else if(ena_s2) begin
             CntCp_s2 <= CntCp_s1;
@@ -405,7 +409,7 @@ generate
         if ( !rst_n ) begin
             {NpIdx_s3, LastNp_s3, overflow_CntNp_s3}    <= 0;
             CntCp_s3                                    <= 0;
-        end else if(state == IDLE) begin
+        end else if(state[gv_plc] == IDLE) begin
             {NpIdx_s3, LastNp_s3, overflow_CntNp_s3}    <= 0;
             CntCp_s3                                    <= 0;
         end else if(ena_s3) begin
@@ -434,7 +438,7 @@ generate
         always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
                 MaxArray[gv_cmp] <= 0;
-            end else if(state == IDLE) begin
+            end else if(state[gv_plc] == IDLE) begin
                 MaxArray[gv_cmp] <= 0;
             end else if ( CntNp ==0 & handshake_s3 ) begin // initialize
                 MaxArray[gv_cmp] <= CMP_DatIn;                
@@ -448,7 +452,7 @@ generate
         if ( !rst_n ) begin
             {NpIdx_s4, LastNp_s4, vld_s4}   <= 0;
             CntCp_s4                        <= 0;
-        end else if(state == IDLE) begin
+        end else if(state[gv_plc] == IDLE) begin
             {NpIdx_s4, LastNp_s4, vld_s4}   <= 0;
             CntCp_s4                        <= 0;
         end else if(ena_s4) begin
@@ -469,8 +473,23 @@ generate
 endgenerate
 
 //=====================================================================================================================
-// Sub-Module :
+// Logic Design : Monitor
 //=====================================================================================================================
-
+assign POLMON_Dat = {
+CCUPOL_CfgVld       ,
+POLCCU_CfgRdy       , 
+POLGLB_MapRdAddrVld , 
+GLBPOL_MapRdAddrRdy ,
+GLBPOL_MapRdDatVld  ,
+POLGLB_MapRdDatRdy  ,
+POLGLB_OfmRdAddrVld ,
+GLBPOL_OfmRdAddrRdy ,
+GLBPOL_OfmRdDatVld  ,
+POLGLB_OfmRdDatRdy  ,
+POLGLB_OfmWrDatVld  ,
+GLBPOL_OfmWrDatRdy  ,
+CCUPOL_CfgInfo      , 
+state
+};
 
 endmodule

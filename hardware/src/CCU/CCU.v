@@ -39,13 +39,15 @@ module CCU #(
     parameter SYAISA_WIDTH          = PORT_WIDTH*3,
     parameter POLISA_WIDTH          = PORT_WIDTH*9,
     parameter GICISA_WIDTH          = PORT_WIDTH*2,
+    parameter MONISA_WIDTH          = PORT_WIDTH*1,
     parameter MAXISA_WIDTH          = PORT_WIDTH*16,
 
     parameter FPSISAFIFO_ADDR_WIDTH = 1,
     parameter KNNISAFIFO_ADDR_WIDTH = 1,
     parameter SYAISAFIFO_ADDR_WIDTH = 1,
     parameter POLISAFIFO_ADDR_WIDTH = 1,
-    parameter GICISAFIFO_ADDR_WIDTH = 1
+    parameter GICISAFIFO_ADDR_WIDTH = 1,
+    parameter MONISAFIFO_ADDR_WIDTH = 1
 
     )(
     input                                   clk                 ,
@@ -74,7 +76,11 @@ module CCU #(
 
     output  [POOL_CORE              -1 : 0] CCUPOL_CfgVld       ,
     input   [POOL_CORE              -1 : 0] POLCCU_CfgRdy       ,
-    output  [POLISA_WIDTH           -1 : 0] CCUPOL_CfgInfo          
+    output  [POLISA_WIDTH           -1 : 0] CCUPOL_CfgInfo      , 
+
+    output                                  CCUMON_CfgVld       ,
+    input                                   MONCCU_CfgRdy       ,  
+    output [MONISA_WIDTH            -1 : 0] CCUMON_CfgInfo          
 
 );
 //=====================================================================================================================
@@ -87,25 +93,21 @@ localparam IDLE         = 4'b0000;
 localparam DEC          = 4'b0001;
 localparam CFG          = 4'b0010;
 
-localparam OPCODE_FPS   = 0;
-localparam OPCODE_KNN   = 1;
-localparam OPCODE_SYA   = 2;
-localparam OPCODE_POL   = 3;
-localparam OPCODE_ITF   = 4;
-
 localparam [OPNUM    -1 : 0][16  -1 : 0] ISA_WIDTH = {
     GICISA_WIDTH[0 +: 16], 
     POLISA_WIDTH[0 +: 16], 
     SYAISA_WIDTH[0 +: 16], 
     KNNISA_WIDTH[0 +: 16], 
-    FPSISA_WIDTH[0 +: 16]
+    FPSISA_WIDTH[0 +: 16],
+    MONISA_WIDTH[0 +: 16]
 };
 localparam [OPNUM    -1 : 0][8   -1 : 0] ISAFIFO_ADDR_WIDTH = {
     GICISAFIFO_ADDR_WIDTH[0 +: 8], 
     POLISAFIFO_ADDR_WIDTH[0 +: 8], 
     SYAISAFIFO_ADDR_WIDTH[0 +: 8], 
     KNNISAFIFO_ADDR_WIDTH[0 +: 8], 
-    FPSISAFIFO_ADDR_WIDTH[0 +: 8]
+    FPSISAFIFO_ADDR_WIDTH[0 +: 8],
+    MONISAFIFO_ADDR_WIDTH[0 +: 8]
 };
 
 //=====================================================================================================================
@@ -156,9 +158,9 @@ end
 assign CCUITF_ISARdDatRdy   = state == DEC & SIPO_InRdy[opCode];
 
 assign CCUITF_CfgRdy= cfgRdy;
-assign cfgRdy       = {GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
+assign cfgRdy       = {MONCCU_CfgRdy, GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
 
-assign {CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld} = cfgVld;
+assign {CCUMON_CfgVld, CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld} = cfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
 assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 
@@ -225,9 +227,9 @@ generate
         );
 
         assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD & !FIFO_full;
-        assign FIFO_pop = cfgRdy[OPCODE_FPS];
+        assign FIFO_pop = cfgRdy[gv];
 
-        assign  cfgEnable = FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[OPCODE_FPS] & !FIFO_empty);
+        assign  cfgEnable = FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[gv] & !FIFO_empty);
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
                 cfgInfo[gv] <= 0;
@@ -237,11 +239,11 @@ generate
         end
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
-                cfgVld[OPCODE_FPS] <= 0;
-            end else if( cfgVld[OPCODE_FPS] & cfgRdy[OPCODE_FPS] ) begin
-                cfgVld[OPCODE_FPS] <= 1'b0;
+                cfgVld[gv] <= 0;
+            end else if( cfgVld[gv] & cfgRdy[gv] ) begin
+                cfgVld[gv] <= 1'b0;
             end else if( cfgEnable ) begin
-                cfgVld[OPCODE_FPS] <= 1'b1;
+                cfgVld[gv] <= 1'b1;
             end
         end
 
@@ -253,5 +255,6 @@ assign CCUKNN_CfgInfo = cfgInfo[1];
 assign CCUSYA_CfgInfo = cfgInfo[2];
 assign CCUPOL_CfgInfo = cfgInfo[3];
 assign CCUGIC_CfgInfo = cfgInfo[4];
+assign CCUMON_CfgInfo = cfgInfo[5];
 
 endmodule

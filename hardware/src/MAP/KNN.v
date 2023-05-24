@@ -23,7 +23,8 @@ module KNN #(
     parameter CRD_WIDTH         = 16,
     parameter CRD_DIM           = 3, 
     parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_DIM),
-    parameter NUM_SORT_CORE     = 8
+    parameter NUM_SORT_CORE     = 8,
+    parameter KNNMON_WIDTH      = 128
     )(
     input                               clk                 ,
     input                               rst_n               ,
@@ -53,7 +54,9 @@ module KNN #(
     output [IDX_WIDTH           -1 : 0] KNNGLB_MapWrAddr    ,
     output [SRAM_WIDTH          -1 : 0] KNNGLB_MapWrDat     ,   
     output                              KNNGLB_MapWrDatVld  ,     
-    input                               GLBKNN_MapWrDatRdy        
+    input                               GLBKNN_MapWrDatRdy  ,
+
+    output [KNNMON_WIDTH        -1 : 0] KNNMON_Dat                
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -500,5 +503,10 @@ always @(posedge clk or negedge rst_n) begin
         Pseudo_CrdRdVld <= 1'b0;
     end
 end
+
+//=====================================================================================================================
+// Logic Design: Monitor
+//=====================================================================================================================
+assign KNNMON_Dat = {CntCrdByte, CntLopCrdRdAddr, CntMaskAddr, CntCpCrdRdAddr, CCUKNN_CfgInfo, state};
 
 endmodule

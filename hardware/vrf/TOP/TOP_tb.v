@@ -16,7 +16,7 @@ module TOP_tb();
 parameter PORT_WIDTH        = 128;
 parameter ADDR_WIDTH        = 16;
 parameter DRAM_ADDR_WIDTH   = 32;
-parameter OPNUM             = 5;
+parameter OPNUM             = 6;
 
 //=====================================================================================================================
 // Variable Definition :
