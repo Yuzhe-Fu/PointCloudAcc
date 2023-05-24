@@ -16,7 +16,7 @@ module TOP_tb();
 parameter PORT_WIDTH        = 128;
 parameter ADDR_WIDTH        = 16;
 parameter DRAM_ADDR_WIDTH   = 32;
-parameter OPNUM             = 6;
+parameter OPNUM             = 5;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -177,19 +177,17 @@ end
 // Logic Design: ISA 
 //=====================================================================================================================
 always @ ( posedge I_OffClk or negedge rst_n ) begin
-MDUISABASEADDR[0] <= 0;
-MDUISABASEADDR[1] <= 1;
-MDUISABASEADDR[2] <= 17;
-MDUISABASEADDR[3] <= 19;
-MDUISABASEADDR[4] <= 22;
-MDUISABASEADDR[5] <= 28;
+MDUISABASEADDR[0] <= 1;
+MDUISABASEADDR[1] <= 17;
+MDUISABASEADDR[2] <= 19;
+MDUISABASEADDR[3] <= 22;
+MDUISABASEADDR[4] <= 28;
 
-MDUISANUM[0] <= 1;
-MDUISANUM[1] <= 16;
-MDUISANUM[2] <= 2;
-MDUISANUM[3] <= 3;
-MDUISANUM[4] <= 9;
-MDUISANUM[5] <= 2;
+MDUISANUM[0]      <= 16;
+MDUISANUM[1]      <= 2;
+MDUISANUM[2]      <= 3;
+MDUISANUM[3]      <= 9;
+MDUISANUM[4]      <= 2;
 
 end
 

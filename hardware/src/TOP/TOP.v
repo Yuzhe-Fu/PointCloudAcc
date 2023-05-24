@@ -49,14 +49,20 @@ module TOP #(
     parameter NUM_BANK       = 32,
 
     // CCU
-    parameter NUM_MODULE     = 6,
+    parameter NUM_MODULE     = 5,
     parameter BYTE_WIDTH     = 8,
-    parameter CCUISA_WIDTH   = PORT_WIDTH*1 ,
+    parameter CCUISA_WIDTH   = PORT_WIDTH*1,
     parameter FPSISA_WIDTH   = PORT_WIDTH*16,
-    parameter KNNISA_WIDTH   = PORT_WIDTH*2 ,
-    parameter SYAISA_WIDTH   = PORT_WIDTH*3 ,
-    parameter POLISA_WIDTH   = PORT_WIDTH*9 ,
-    parameter GICISA_WIDTH   = PORT_WIDTH*2 ,
+    parameter KNNISA_WIDTH   = PORT_WIDTH*2,
+    parameter SYAISA_WIDTH   = PORT_WIDTH*3,
+    parameter POLISA_WIDTH   = PORT_WIDTH*9,
+    parameter GICISA_WIDTH   = PORT_WIDTH*2,
+    parameter MAXISA_WIDTH   = PORT_WIDTH*16,
+    parameter FPSISAFIFO_ADDR_WIDTH = 1,
+    parameter KNNISAFIFO_ADDR_WIDTH = 1,
+    parameter SYAISAFIFO_ADDR_WIDTH = 1,
+    parameter POLISAFIFO_ADDR_WIDTH = 1,
+    parameter GICISAFIFO_ADDR_WIDTH = 1,
 
     // NetWork Parameters
     parameter NUM_LAYER_WIDTH= 20,
@@ -67,8 +73,8 @@ module TOP #(
     parameter ACT_WIDTH      = 8,
     parameter CHN_WIDTH      = 16,
     parameter QNTSL_WIDTH    = 16,
-    parameter MASK_ADDR_WIDTH = $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH),
-    parameter OPNUM         = NUM_MODULE
+    parameter MASK_ADDR_WIDTH= $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH),
+    parameter OPNUM          = NUM_MODULE
     )( // 148 + 15 / 4 VG
     input                           I_BypAsysnFIFO_PAD,// Hyper
     input                           I_BypOE_PAD       , 
@@ -356,7 +362,13 @@ CCU#(
     .KNNISA_WIDTH            ( KNNISA_WIDTH     ),
     .SYAISA_WIDTH            ( SYAISA_WIDTH     ),
     .POLISA_WIDTH            ( POLISA_WIDTH     ),
-    .GICISA_WIDTH            ( GICISA_WIDTH     ) 
+    .GICISA_WIDTH            ( GICISA_WIDTH     ),
+    .MAXISA_WIDTH            ( MAXISA_WIDTH     ),
+    .FPSISAFIFO_ADDR_WIDTH   ( FPSISAFIFO_ADDR_WIDTH ),
+    .KNNISAFIFO_ADDR_WIDTH   ( KNNISAFIFO_ADDR_WIDTH ),
+    .SYAISAFIFO_ADDR_WIDTH   ( SYAISAFIFO_ADDR_WIDTH ),
+    .POLISAFIFO_ADDR_WIDTH   ( POLISAFIFO_ADDR_WIDTH ),
+    .GICISAFIFO_ADDR_WIDTH   ( GICISAFIFO_ADDR_WIDTH )
 )u_CCU(
     .clk                     ( clk                     ),
     .rst_n                   ( rst_n                   ),
