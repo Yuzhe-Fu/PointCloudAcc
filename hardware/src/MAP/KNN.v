@@ -56,6 +56,13 @@ module KNN #(
     output                              KNNGLB_MapWrDatVld  ,     
     input                               GLBKNN_MapWrDatRdy  ,
 
+    output [IDX_WIDTH           -1 : 0] KNNGLB_IdxMaskRdAddr   ,
+    output                              KNNGLB_IdxMaskRdAddrVld,
+    input                               GLBKNN_IdxMaskRdAddrRdy,
+    input  [SRAM_WIDTH          -1 : 0] GLBKNN_IdxMaskRdDat    ,    
+    input                               GLBKNN_IdxMaskRdDatVld ,    
+    output                              KNNGLB_IdxMaskRdDatRdy ,  
+
     output [KNNMON_WIDTH        -1 : 0] KNNMON_Dat                
 );
 //=====================================================================================================================
@@ -125,7 +132,9 @@ wire [CRDBYTE_WIDTH     -1 : 0] MaxCntCrdByte;
 wire [CRDBYTE_WIDTH     -1 : 0] CntCrdByte;
 wire                            req_Mask;
 wire                            INC_CntMaskAddr;
+wire                            INC_CntIdxMaskAddr;
 wire [MASK_ADDR_WIDTH   -1 : 0] CntMaskAddr;
+wire [IDX_WIDTH         -1 : 0] CntIdxMaskAddr;
 wire [NUM_SORT_CORE     -1 : 0] MapFnh;
 
 wire [IDX_WIDTH            -1 : 0] CCUKNN_CfgNip       ;
@@ -133,11 +142,13 @@ wire [(MAP_WIDTH + 1)      -1 : 0] CCUKNN_CfgK         ;
 wire [IDX_WIDTH            -1 : 0] CCUKNN_CfgCrdRdAddr ;
 wire [IDX_WIDTH            -1 : 0] CCUKNN_CfgMaskRdAddr;
 wire [IDX_WIDTH            -1 : 0] CCUKNN_CfgMapWrAddr ;
+wire [IDX_WIDTH            -1 : 0] CCUKNN_CfgIdxMaskRdAddr ;
 
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign {
+CCUKNN_CfgIdxMaskRdAddr,
 CCUKNN_CfgMapWrAddr ,   // 16
 CCUKNN_CfgMaskRdAddr,
 CCUKNN_CfgCrdRdAddr ,   // 16
@@ -200,9 +211,11 @@ assign KNNCCU_CfgRdy = state==IDLE;
 
 assign INC_CntCpCrdRdAddr   = state == CP & ena_s0;
 assign INC_CntCrdRdAddr     = state == LP & ena_s0;
+assign INC_CntIdxMaskAddr   = state == LP & ena_s0;
 assign INC_CntMaskAddr      = handshake_s0 & req_Mask;
 
-assign req_Mask = SRAM_WIDTH*CntMaskAddr <= NUM_SORT_CORE*CntCpCrdRdAddr;
+assign req_Mask = SRAM_WIDTH*CntMaskAddr                    <= NUM_SORT_CORE*CntCpCrdRdAddr;
+assign req_Idx  = (SRAM_WIDTH/(IDX_WIDTH+1))*CntIdxMaskAddr <= NUM_SORT_CORE*CntCpCrdRdAddr;
 
 // HandShake
 // `ifdef PSEUDO_DATA
@@ -266,6 +279,22 @@ counter#(
     .COUNT     ( CntLopCrdRdAddr    )
 );
 
+counter#(
+    .COUNT_WIDTH ( IDX_WIDTH )
+)u1_counter_CntIdxMaskAddr(
+    .CLK       ( clk                ),
+    .RESET_N   ( rst_n              ),
+    .CLEAR     ( INC_CntCpCrdRdAddr | state == IDLE ),
+    .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
+    .INC       ( INC_CntIdxMaskAddr ),
+    .DEC       ( 1'b0               ),
+    .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
+    .MAX_COUNT ( {IDX_WIDTH{1'b1}}  ),
+    .OVERFLOW  (                    ),
+    .UNDERFLOW (                    ),
+    .COUNT     ( CntIdxMaskAddr     ) // Similar to Mask
+);
+
 //=====================================================================================================================
 // Logic Design: s1-Out Crd
 //=====================================================================================================================
@@ -274,6 +303,9 @@ assign KNNGLB_CrdRdAddr     = CCUKNN_CfgCrdRdAddr + (state == CP ? CntCpCrdRdAdd
 assign KNNGLB_CrdRdAddrVld  = vld_s0 & (req_Mask? GLBKNN_MaskRdAddrRdy : 1'b1);
 assign KNNGLB_MaskRdAddr    = CCUKNN_CfgMaskRdAddr + CntMaskAddr;
 assign KNNGLB_MaskRdAddrVld = vld_s0 & (GLBKNN_CrdRdAddrRdy & req_Mask);
+
+assign KNNGLB_IdxMaskRdAddr     = CCUKNN_CfgIdxMaskRdAddr + CntIdxMaskAddr;
+assign KNNGLB_IdxMaskRdAddrVld  = vld_s0 & (req_Idx & GLBKNN_MaskRdAddrRdy & GLBKNN_CrdRdAddrRdy);
 
 // HandShake
 assign rdy_s1 = state_s1 == CP | PISO_InRdy_CrdRd;
@@ -309,12 +341,15 @@ end
 // `ifdef PSEUDO_DATA
 //     assign CrdRdDat_s1 = state_s1 == IDLE? GLBKNN_CrdRdDat : {NUM_SORT_CORE{ {(CRD_WIDTH*CRD_DIM - IDX_WIDTH){1'b0}}, KNNGLB_CrdRdAddr}};
 // `else
-    assign CrdRdDat_s1 = GLBKNN_CrdRdDat;
+    assign CrdRdDat_s1  = GLBKNN_CrdRdDat;
     assign MaskRdDat_s1 = GLBKNN_MaskRdDat;
+    wire [SRAM_WIDTH/(IDX_WIDTH + 1)    -1 : 0][(IDX_WIDTH + 1) -1 : 0] IdxMaskRdDat_s1;
+    assign IdxMaskRdDat_s1 = GLBKNN_IdxMaskRdDat;
 // `endif
 
-
-assign KNNGLB_CrdRdDatRdy = rdy_s1; //state_s1 == LP & PISO_InRdy_CrdRd | state_s1 == CP & 1'b1;
+assign KNNGLB_CrdRdDatRdy   = rdy_s1; //state_s1 == LP & PISO_InRdy_CrdRd | state_s1 == CP & 1'b1;
+assign KNNGLB_MaskRdDatRdy  = rdy_s1;
+assign KNNGLB_IdxMaskRdDatRdy = rdy_s1;
 
 PISO_NOCACHE#(
     .DATA_IN_WIDTH   ( SRAM_WIDTH       ), 
@@ -369,14 +404,19 @@ generate
         wire [CRD_WIDTH*CRD_DIM  -1 : 0] Crd_s1;
         reg                              CpVld_s2;
         wire [IDX_WIDTH          -1 : 0] PntIdx_s1;
+        wire [IDX_WIDTH          -1 : 0] PntIdx_s1_upd;
         wire [IDX_WIDTH          -1 : 0] CpIdx_s1;
         reg  [IDX_WIDTH          -1 : 0] CpIdx_s2;
         wire [DISTSQR_WIDTH      -1 : 0] LopDist_s1;
         reg  [CRD_WIDTH*CRD_DIM  -1 : 0] CpCrd_s2;
-        wire [NUM_SRAMWORD_MAP   -1 : 0][SRAM_WIDTH     -1 : 0] INSKNN_Map;
+        wire [NUM_SRAMWORD_MAP   -1 : 0][SRAM_WIDTH -1 : 0] INSKNN_Map;
+        wire [$clog2(SRAM_WIDTH/(IDX_WIDTH + 1))    -1 : 0] PntIdx_s1_offset;
         
-        assign CpIdx_s1 = NUM_SORT_CORE*CntCpCrdRdAddr_s1  + gv_core;
-        assign PntIdx_s1= NUM_SORT_CORE*CntLopCrdRdAddr_s1 + CntCrdByte;
+        assign CpIdx_s1         = NUM_SORT_CORE*CntCpCrdRdAddr_s1  + gv_core;
+        assign PntIdx_s1        = NUM_SORT_CORE*CntLopCrdRdAddr_s1 + CntCrdByte;
+        assign PntIdx_s1_offset = PntIdx_s1 % (SRAM_WIDTH/(IDX_WIDTH + 1));
+
+        assign PntIdx_s1_upd    = IdxMaskRdDat_s1[PntIdx_s1_offset][0]? IdxMaskRdDat_s1[PntIdx_s1_offset][1 +: IDX_WIDTH] : CpIdx_s1; // Enable Point Pruning
         // `ifdef PSEUDO_DATA
         //     assign Crd_s1 = state_s1 == IDLE? GLBKNN_CrdRdDat[CRD_WIDTH*CRD_DIM*gv_core +: CRD_WIDTH*CRD_DIM] : KNNGLB_CrdRdAddr;
         // `else
