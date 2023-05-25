@@ -85,7 +85,7 @@ CCUGIC_CfgGLBBaseAddr   , // 16
 CCUGIC_CfgDRAMBaseAddr  , // 32
 CCUGIC_CfgNum           , // 16
 CCUGIC_CfgInOut           // 8 0: IN2CHIP; 1: OUT2OFF
-} = CCUGIC_CfgInfo;
+} = CCUGIC_CfgInfo[GICISA_WIDTH -1 : 8];
 
 //=====================================================================================================================
 // Logic Design 1: FSM

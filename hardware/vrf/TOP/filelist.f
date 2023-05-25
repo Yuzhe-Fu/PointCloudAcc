@@ -30,7 +30,7 @@
 ../../src/primitives/AsyncFIFO/fifo_async_fwft.v
 ../../src/primitives/AsyncFIFO/fifo_async.v
 ../../src/primitives/COUNTER/counter.v
-../../src/primitives/COUNTER/CNT1.v
+../../src/primitives/SUM/SUM.v
 ../../src/primitives/ARB/prior_arb.v
 ../../src/primitives/ARB/RR_arbiter.v
 ../../src/primitives/ARB/ArbCore.v

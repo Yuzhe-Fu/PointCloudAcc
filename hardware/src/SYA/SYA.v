@@ -20,7 +20,7 @@ module SYA #(
     parameter SRAM_WIDTH = 256,
     parameter ADDR_WIDTH = 16,
     parameter QNTSL_WIDTH= 8,
-    parameter CHN_WIDTH  = 10,
+    parameter CHN_WIDTH  = 16,
     parameter IDX_WIDTH  = 16,
     parameter SYAMON_WIDTH = SYAISA_WIDTH + 3,
     parameter NUM_OUT    = NUM_BANK
@@ -140,7 +140,7 @@ wire                                                   CCUSYA_CfgRstAll        ;
 wire  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgShift         ;
 wire  [ACT_WIDTH                               -1 : 0] CCUSYA_CfgZp            ;
 wire  [2                                       -1 : 0] CCUSYA_CfgMod           ;
-wire                                                   CCUSYA_CfgOfmPhaseShift ;
+wire  [4                                       -1 : 0] CCUSYA_CfgOfmPhaseShift ;
 wire  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumGrpPerTile ;
 wire  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumTilIfm     ;
 wire  [IDX_WIDTH                               -1 : 0] CCUSYA_CfgNumTilFlt     ;
@@ -154,20 +154,20 @@ wire  [ADDR_WIDTH                              -1 : 0] CCUSYA_CfgOfmWrBaseAddr ;
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign {
-CCUSYA_CfgOfmWrBaseAddr , 
-CCUSYA_CfgActRdBaseAddr ,
-CCUSYA_CfgWgtRdBaseAddr ,
-CCUSYA_CfgNumGrpPerTile ,
-CCUSYA_CfgNumTilIfm     ,
-CCUSYA_CfgNumTilFlt     ,
-CCUSYA_CfgChn           ,
-CCUSYA_CfgShift         ,
-CCUSYA_CfgZp            ,
-CCUSYA_CfgOfmPhaseShift ,
-CCUSYA_CfgLopOrd        ,
-CCUSYA_CfgMod           ,
-CCUSYA_CfgRstAll        
-} = CCUSYA_CfgInfo;
+CCUSYA_CfgOfmWrBaseAddr ,   // 16
+CCUSYA_CfgActRdBaseAddr ,   // 16
+CCUSYA_CfgWgtRdBaseAddr ,   // 16
+CCUSYA_CfgNumGrpPerTile ,   // 16
+CCUSYA_CfgNumTilIfm     ,   // 16
+CCUSYA_CfgNumTilFlt     ,   // 16
+CCUSYA_CfgChn           ,   // 16
+CCUSYA_CfgShift         ,   // 8
+CCUSYA_CfgZp            ,   // 8
+CCUSYA_CfgOfmPhaseShift ,   // 4
+CCUSYA_CfgLopOrd        ,   // 1
+CCUSYA_CfgMod           ,   // 2
+CCUSYA_CfgRstAll            // 1
+} = CCUSYA_CfgInfo[SYAISA_WIDTH -1 : 8];
 
 //=====================================================================================================================
 // Logic Design :s0
@@ -308,7 +308,7 @@ assign SYAGLB_WgtRdAddrVld  = vld_s0 & GLBSYA_ActRdAddrRdy; // other load are re
 assign SYAGLB_ActRdDatRdy   = rdy_s1;
 assign SYAGLB_WgtRdDatRdy   = rdy_s1;
 
-assign rdy_s1 = SYA_PsumOutVld? ( CCUSYA_CfgOfmPhaseShift? &shift_din_rdy : GLBSYA_OfmWrDatRdy) & CntRmDiagPsum == 1 : 1'b1;
+assign rdy_s1 = SYA_PsumOutVld? ( CCUSYA_CfgOfmPhaseShift[0]? &shift_din_rdy : GLBSYA_OfmWrDatRdy) & CntRmDiagPsum == 1 : 1'b1;
 
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
@@ -414,7 +414,7 @@ wire                            fifo_out_CfgLopOrd;
 wire [2                 -1 : 0] fifo_out_CfgMod;
 
 assign push         = SYA_Reset[0][0]; // The last channel of the 00 PE
-assign fifo_data_in = { CCUSYA_CfgNumTilFlt, CCUSYA_CfgNumGrpPerTile, CCUSYA_CfgChn, CCUSYA_CfgShift, CCUSYA_CfgZp, CCUSYA_CfgOfmPhaseShift, CCUSYA_CfgLopOrd, CCUSYA_CfgMod };
+assign fifo_data_in = { CCUSYA_CfgNumTilFlt, CCUSYA_CfgNumGrpPerTile, CCUSYA_CfgChn, CCUSYA_CfgShift, CCUSYA_CfgZp, CCUSYA_CfgOfmPhaseShift[0], CCUSYA_CfgLopOrd, CCUSYA_CfgMod };
 assign pop          = SYA_PsumOutVld & SYA_PsumOutRdy;
 assign {fifo_out_CfgNumTilFlt, fifo_out_CfgNumGrpPerTile, fifo_out_CfgChn, fifo_out_CfgShift, fifo_out_CfgZp, fifo_out_CfgOfmPhaseShift, fifo_out_CfgLopOrd, fifo_out_CfgMod} = fifo_data_out;
 
@@ -543,7 +543,15 @@ GLBSYA_WgtRdDatVld,
 SYAGLB_WgtRdDatRdy, 
 SYAGLB_OfmWrDatVld,
 GLBSYA_OfmWrDatRdy, 
-CntRmDiagPsum, CntMac, CntTilFlt, CntTilIfm, CntGrp,  CntChn, CCUSYA_CfgInfo, state};
+CntRmDiagPsum, 
+CntMac, 
+CntTilFlt, 
+CntTilIfm,
+CntGrp, 
+CntChn, 
+CCUSYA_CfgInfo, 
+state
+};
 
 endmodule
 

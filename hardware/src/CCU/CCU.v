@@ -177,8 +177,6 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-
-
 genvar gv;
 generate
     for(gv=0; gv<OPNUM; gv=gv+1) begin

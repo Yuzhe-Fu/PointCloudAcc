@@ -267,11 +267,13 @@ generate
             .gnt (  ),
             .arb_port  ( RdPort1stBankIdx  )
         );
-        CNT1 #(
-            .DATA_WIDTH(NUM_BANK)
-        ) u_CNT1_RdPortNumBank(
-            .din(TOPGLB_CfgPortBankFlag[NUM_WRPORT + gv_j]),
-            .dout(RdPortNumBank)
+        
+        SUM#(
+            .DATA_NUM   ( NUM_BANK ),
+            .DATA_WIDTH ( 1 )
+        )u_SUM_RdPortNumBank(
+            .DIN        ( TOPGLB_CfgPortBankFlag[NUM_WRPORT + gv_j]),
+            .DOUT       ( RdPortNumBank       )
         );
 
         LATCH_DELAY#(
