@@ -51,7 +51,7 @@ localparam IDLE    = 3'b000;
 localparam COMP    = 3'b010;
 localparam WAITFNH = 3'b100;
 
-localparam NUM = SRAM_WIDTH / DATA_IN_WIDTH;
+localparam NUM = SRAM_WIDTH / DATA_WIDTH;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
@@ -75,11 +75,22 @@ wire                                    handshake_s2;
 wire                                    ena_s0;
 wire                                    ena_s1;
 wire                                    ena_s2;
-wire [IDX_WIDTH                 -1 : 0] CntAddr;
+wire [ADDR_WIDTH                -1 : 0] CntAddr;
 
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd0Addr;
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd1Addr;
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgSumAddr;
+wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgNum;
+
+//=====================================================================================================================
+// Logic Design: Cfg
+//=====================================================================================================================
+assign {
+    CCUADD_CfgAdd0Addr,
+    CCUADD_CfgAdd1Addr,
+    CCUADD_CfgSumAddr,
+    CCUADD_CfgNum
+} = CCUADD_CfgInfo[16 +: ADDR_WIDTH*4];
 
 //=====================================================================================================================
 // Logic Design: FSM
@@ -131,17 +142,17 @@ assign ena_s0       = handshake_s0 | ~vld_s0;
 
 assign vld_s0 = state == COMP;
 
-wire [IDX_WIDTH     -1 : 0] MaxCntAddr = CCUADD_CfgNum -1;
+wire [ADDR_WIDTH     -1 : 0] MaxCntAddr = CCUADD_CfgNum -1;
 counter#(
-    .COUNT_WIDTH ( IDX_WIDTH )
+    .COUNT_WIDTH ( ADDR_WIDTH )
 )u0_counter_CntAddr(
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
     .CLEAR     ( state == IDLE  ),
-    .DEFAULT   ( {IDX_WIDTH{1'b0}}),
+    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
     .INC       ( handshake_s0   ),
     .DEC       ( 1'b0           ),
-    .MIN_COUNT ( {IDX_WIDTH{1'b0}}),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
     .MAX_COUNT (  MaxCntAddr    ),
     .OVERFLOW  ( overflow_CntAddr),
     .UNDERFLOW (                ),
@@ -186,7 +197,7 @@ assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
 
 generate
-    for(gv_i=0; gv_i< ; gv_i=gv_i+1) begin
+    for(gv_i=0; gv_i<NUM; gv_i=gv_i+1) begin
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
                 Sum[gv_i] <= 0;
