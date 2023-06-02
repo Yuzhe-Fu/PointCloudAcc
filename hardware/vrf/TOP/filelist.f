@@ -14,6 +14,7 @@
         ../../src/SYA/PE_ROW.v               
             ../../src/SYA/PE.v                                 
     ../../src/SYA/SHIFT.v
+../../src/UNT/ADD.v
 ../../src/MON/MON.v                  
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DELAY/LATCH_DELAY.v
@@ -25,10 +26,13 @@
 ../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/PISO/PISO_NOCACHE.v
 ../../src/primitives/PISO/PISO.v
+../../src/primitives/PISO/PISO_NOCACHE_FLEX.v
+../../src/primitives/BWC/BWC.v
 ../../src/primitives/FIFO/FIFO_FWFT.v
 ../../src/primitives/FIFO/FIFO.v
-../../src/primitives/AsyncFIFO/fifo_async_fwft.v
-../../src/primitives/AsyncFIFO/fifo_async.v
+../../src/primitives/SYNC/fifo_async_fwft.v
+../../src/primitives/SYNC/fifo_async.v
+../../src/primitives/SYNC/SYNC_PULSE.v
 ../../src/primitives/COUNTER/counter.v
 ../../src/primitives/SUM/SUM.v
 ../../src/primitives/ARB/prior_arb.v
