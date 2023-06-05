@@ -267,7 +267,7 @@ wire [DRAM_ADDR_WIDTH     -1 : 0] MaxAddr = IO_Dat[1 +: DRAM_ADDR_WIDTH] + IO_Da
 counter#(
     .COUNT_WIDTH ( DRAM_ADDR_WIDTH )
 )u_counter_addr(
-    .CLK       ( I_OffClk            ),
+    .CLK       ( I_OffClk       ),
     .RESET_N   ( rst_n          ),
     .CLEAR     ( state==CMD & (next_state == IN2CHIP | next_state == OUT2OFF) ),
     .DEFAULT   ( IO_Dat[1 +: DRAM_ADDR_WIDTH]),
@@ -275,7 +275,7 @@ counter#(
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {DRAM_ADDR_WIDTH{1'b0}}),
     .MAX_COUNT ( MaxAddr        ),
-    .OVERFLOW  ( Overflow_DatAddr  ),
+    .OVERFLOW  ( Overflow_DatAddr),
     .UNDERFLOW (                ),
     .COUNT     ( addr           )
 );
@@ -306,22 +306,23 @@ wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];
 assign #2 I_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==CMD | !O_CmdVld & state==OUT2OFF: 1'bz);
 
 TOP u_TOP (
-    .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO     ),
-    .I_BypOE_PAD        ( I_BypOE            ),
-    .I_SysRst_n_PAD     ( rst_n              ),
-    .I_SysClk_PAD       ( I_SysClk           ),
-    .I_OffClk_PAD       ( I_OffClk           ),
-    .O_CfgRdy_PAD       ( O_CfgRdy           ),
-    .O_DatOE_PAD        ( O_DatOE            ),
-    .I_OffOE_PAD        ( I_OffOE            ),
-    .I_DatVld_PAD       ( I_DatVld           ),
-    .I_DatLast_PAD      ( I_DatLast          ),
-    .O_DatRdy_PAD       ( O_DatRdy           ),
-    .O_DatVld_PAD       ( O_DatVld           ),
-    .I_DatRdy_PAD       ( I_DatRdy           ),
-    .I_ISAVld_PAD       ( I_ISAVld           ),
-    .O_CmdVld_PAD       ( O_CmdVld           ),
-    .IO_Dat_PAD         ( IO_Dat             ) 
+    .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO ),
+    .I_BypOE_PAD        ( I_BypOE        ),
+    .I_SysRst_n_PAD     ( rst_n          ),
+    .I_SysClk_PAD       ( I_SysClk       ),
+    .I_OffClk_PAD       ( I_OffClk       ),
+    .O_CfgRdy_PAD       ( O_CfgRdy       ),
+    .O_DatOE_PAD        ( O_DatOE        ),
+    .I_OffOE_PAD        ( I_OffOE        ),
+    .I_DatVld_PAD       ( I_DatVld       ),
+    .I_DatLast_PAD      ( I_DatLast      ),
+    .O_DatRdy_PAD       ( O_DatRdy       ),
+    .O_DatVld_PAD       ( O_DatVld       ), 
+    .O_DatLast_PAD      ( O_DatLast_PAD  ), 
+    .I_DatRdy_PAD       ( I_DatRdy       ),
+    .I_ISAVld_PAD       ( I_ISAVld       ),
+    .O_CmdVld_PAD       ( O_CmdVld       ),
+    .IO_Dat_PAD         ( IO_Dat         ) 
 );
 
 endmodule

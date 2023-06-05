@@ -55,7 +55,8 @@ module CCU #(
 
     output [OPNUM                   -1 : 0] CCUITF_CfgRdy       ,
     input   [PORT_WIDTH             -1 : 0] ITFCCU_ISARdDat     ,       
-    input                                   ITFCCU_ISARdDatVld  ,          
+    input                                   ITFCCU_ISARdDatVld  , 
+    input                                   ITFCCU_ISARdDatLast ,         
     output                                  CCUITF_ISARdDatRdy  ,
 
     output                                  CCUGIC_CfgVld       ,

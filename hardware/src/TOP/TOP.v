@@ -25,6 +25,7 @@ module TOP #(
     
     // KNN
     parameter NUM_SORT_CORE  = 10, // Decided by SRAM/Crd
+    parameter SRAM_MAXPARA   = 1,
 
     // SYA
     parameter SYA_NUM_ROW    = 16,
@@ -54,7 +55,7 @@ module TOP #(
     parameter CCUISA_WIDTH   = PORT_WIDTH*1,
     parameter FPSISA_WIDTH   = PORT_WIDTH*16,
     parameter KNNISA_WIDTH   = PORT_WIDTH*2,
-    parameter SYAISA_WIDTH   = PORT_WIDTH*3,
+    parameter SYAISA_WIDTH   = PORT_WIDTH*2,
     parameter POLISA_WIDTH   = PORT_WIDTH*9,
     parameter GICISA_WIDTH   = PORT_WIDTH*2,
     parameter MONISA_WIDTH   = PORT_WIDTH*1,
@@ -88,9 +89,14 @@ module TOP #(
     )( // 148 + 15 / 4 VG
     input                           I_BypAsysnFIFO_PAD,// Hyper
     input                           I_BypOE_PAD       , 
+    input                           I_BypPLL_PAD      , 
     input                           I_SysRst_n_PAD    , 
+    input                           I_SwClk_PAD       ,
     input                           I_SysClk_PAD      , 
     input                           I_OffClk_PAD      ,
+    output                          O_SysClk_PAD      ,
+    output                          O_OffClk_PAD      ,
+    output                          O_PLLLock_PAD     ,
 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
     output                          O_DatOE_PAD       ,
@@ -100,6 +106,7 @@ module TOP #(
     input                           I_DatLast_PAD     ,
     output                          O_DatRdy_PAD      ,
     output                          O_DatVld_PAD      , 
+    output                          O_DatLast_PAD     , 
     input                           I_DatRdy_PAD      , 
 
     input                           I_ISAVld_PAD      , // Transfer-Data
@@ -170,6 +177,7 @@ wire                                  CCUTOP_NetFnh;
     // Configure
 wire [PORT_WIDTH              -1 : 0] ITFCCU_ISARdDat   ;             
 wire                                  ITFCCU_ISARdDatVld;          
+wire                                  ITFCCU_ISARdDatLast;          
 wire                                  CCUITF_ISARdDatRdy;
 wire                                  CCUGIC_CfgVld     ;
 wire                                  GICCCU_CfgRdy     ; 
@@ -370,6 +378,11 @@ wire [KNNMON_WIDTH  -1 : 0] KNNMON_Dat;
 wire [FPSMON_WIDTH  -1 : 0] FPSMON_Dat;
 wire [TOPMON_WIDTH  -1 : 0] TOPMON_Dat;
 wire [PORT_WIDTH    -1 : 0] MONITF_Dat;
+
+wire                        MONITF_DatVld ;
+wire                        MONITF_DatLast;
+wire                        ITFMON_DatRdy ;
+
 //=====================================================================================================================
 // Logic Design： TOP
 //=====================================================================================================================
@@ -415,6 +428,7 @@ CCU#(
     .CCUITF_CfgRdy           ( CCUITF_CfgRdy        ),
     .ITFCCU_ISARdDat         ( ITFCCU_ISARdDat      ),
     .ITFCCU_ISARdDatVld      ( ITFCCU_ISARdDatVld   ),
+    .ITFCCU_ISARdDatLast     ( ITFCCU_ISARdDatLast  ),
     .CCUITF_ISARdDatRdy      ( CCUITF_ISARdDatRdy   ),
     .CCUGIC_CfgVld           ( CCUGIC_CfgVld        ),
     .GICCCU_CfgRdy           ( GICCCU_CfgRdy        ),
@@ -577,10 +591,10 @@ assign GLBKNN_MapWrDatRdy                       = GLBTOP_WrPortDatRdy[GLBWRIDX_K
 KNN#(
     .KNNISA_WIDTH         ( KNNISA_WIDTH    ),
     .SRAM_WIDTH           ( SRAM_WIDTH      ),
+    .SRAM_MAXPARA         ( SRAM_MAXPARA    ),
     .IDX_WIDTH            ( IDX_WIDTH       ),
     .MAP_WIDTH            ( MAP_WIDTH       ),
     .CRD_WIDTH            ( CRD_WIDTH       ),
-    .CRD_DIM              ( CRD_DIM         ),
     .NUM_SORT_CORE        ( NUM_SORT_CORE   ),
     .KNNMON_WIDTH         ( KNNMON_WIDTH    )
 )u_KNN(
@@ -944,6 +958,7 @@ ITF #(
     .I_DatLast_PAD      ( I_DatLast_PAD     ),
     .O_DatRdy_PAD       ( O_DatRdy_PAD      ),
     .O_DatVld_PAD       ( O_DatVld_PAD      ),
+    .O_DatLast_PAD      ( O_DatLast_PAD     ),
     .I_DatRdy_PAD       ( I_DatRdy_PAD      ),
     .I_ISAVld_PAD       ( I_ISAVld_PAD      ),
     .O_CmdVld_PAD       ( O_CmdVld_PAD      ),
@@ -951,6 +966,7 @@ ITF #(
     .CCUITF_CfgRdy      ( CCUITF_CfgRdy     ),
     .ITFCCU_ISARdDat    ( ITFCCU_ISARdDat   ),
     .ITFCCU_ISARdDatVld ( ITFCCU_ISARdDatVld),
+    .ITFCCU_ISARdDatLast( ITFCCU_ISARdDatLast),
     .CCUITF_ISARdDatRdy ( CCUITF_ISARdDatRdy),
     .GICITF_Dat         ( GICITF_Dat        ),
     .GICITF_DatVld      ( GICITF_DatVld     ),
@@ -968,5 +984,8 @@ ITF #(
     .clk                ( clk               ),
     .rst_n              ( rst_n             )
 );
+
+
+
 
 endmodule
