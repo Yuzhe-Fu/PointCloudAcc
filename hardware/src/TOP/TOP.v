@@ -40,6 +40,7 @@ module TOP #(
     parameter PORT_WIDTH     = 128, 
     parameter DRAM_ADDR_WIDTH= 32, 
     parameter ASYNC_FIFO_ADDR_WIDTH = 4,
+    parameter FBDIV_WIDTH    = 5,
 
     // GLB
     parameter SRAM_WIDTH     = 256, 
@@ -91,6 +92,7 @@ module TOP #(
     input                           I_BypOE_PAD       , 
     input                           I_BypPLL_PAD      , 
     input                           I_SysRst_n_PAD    , 
+    input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
     input                           I_SwClk_PAD       ,
     input                           I_SysClk_PAD      , 
     input                           I_OffClk_PAD      ,
@@ -944,10 +946,17 @@ assign TOPMON_Dat = {GICMON_Dat, GLBMON_Dat, POLMON_Dat, SYAMON_Dat, KNNMON_Dat,
 ITF #(
     .PORT_WIDTH             ( PORT_WIDTH            ),
     .OPNUM                  ( OPNUM                 ),
-    .ASYNC_FIFO_ADDR_WIDTH  ( ASYNC_FIFO_ADDR_WIDTH ) 
+    .ASYNC_FIFO_ADDR_WIDTH  ( ASYNC_FIFO_ADDR_WIDTH ),
+    .FBDIV_WIDTH            ( FBDIV_WIDTH           ) 
 )u_ITF(
     .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO_PAD),
     .I_BypOE_PAD        ( I_BypOE_PAD       ),
+    .I_BypPLL_PAD       ( I_BypPLL_PAD      ),
+    .I_FBDIV_PAD        ( I_FBDIV_PAD       ),
+    .I_SwClk_PAD        ( I_SwClk_PAD       ),
+    .O_SysClk_PAD       ( O_SysClk_PAD      ),
+    .O_OffClk_PAD       ( O_OffClk_PAD      ),
+    .O_PLLLock_PAD      ( O_PLLLock_PAD     ),
     .I_SysRst_n_PAD     ( I_SysRst_n_PAD    ),
     .I_SysClk_PAD       ( I_SysClk_PAD      ),
     .I_OffClk_PAD       ( I_OffClk_PAD      ),

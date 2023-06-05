@@ -1,6 +1,8 @@
 ./TOP_tb.v
 ../../src/TOP/TOP.v
 ../../src/ITF/ITF.v
+    ../../src/ITF/CLK.v
+        ../../src/ITF/CLKREL.v
 ../../src/CCU/CCU.v
 ../../src/GLB/GLB.v
 ../../src/GLB/GIC.v
@@ -39,6 +41,8 @@
 ../../src/primitives/ARB/RR_arbiter.v
 ../../src/primitives/ARB/ArbCore.v
 ../../src/primitives/DEBUG/DEC2D.v
+../../project/lib/PLL/verilog/PLLTS28HPMFRAC.v
+../../project/lib/PLL/verilog/PLLCOREFRAC.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb128x256m1sso_170a/VERILOG/ts1n28hpcpuhdhvtb128x256m1sso_170a_ssg0p81v125c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb64x128m4sso_170a/VERILOG/ts1n28hpcpuhdhvtb64x128m4sso_170a_ssg0p81v125c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb16x8m2sso_170a/VERILOG/ts1n28hpcpuhdhvtb16x8m2sso_170a_ssg0p81v125c.v
