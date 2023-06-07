@@ -79,13 +79,15 @@ module ITF #(
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam INPUT_PAD = 1'b1, OUTPUT_PAD = 1'b0;
+localparam INPUT_PAD    = 1'b1;
+localparam OUTPUT_PAD   = 1'b0;
 
 localparam IDLE     = 0;
 localparam IN2CHIP  = 1;
 localparam INWAIT   = 2;
 localparam OUT2OFF  = 3;
 localparam OUTWAIT  = 4;
+
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
@@ -134,46 +136,14 @@ wire [3             -1 : 0] state_sync;
 
 genvar                      gv_i;
 wire                        O_DatLastHS_sync;
+reg [ 3             -1 : 0] state       ;
+reg [ 3             -1 : 0] next_state  ;
 
 //=====================================================================================================================
-// Logic Design 1: FSM
+// Logic Design: OffClk Domain
 //=====================================================================================================================
-
-reg [ 3     -1 : 0] state       ;
-reg [ 3     -1 : 0] next_state  ;
-always @(*) begin
-    case ( state )
-        IDLE:   if ( I_DatVld_sync )
-                    next_state <= IN2CHIP;
-                else if ( GICITF_DatVld | MONITF_DatVld )
-                    next_state <= OUT2OFF;
-                else
-                    next_state <= IDLE;
-
-        IN2CHIP:if( (ITFGIC_DatLast & (ITFGIC_DatVld & GICITF_DatRdy)) | (ITFCCU_ISARdDatLast & ITFCCU_ISARdDatVld & CCUITF_ISARdDatRdy) )
-                    next_state <= IDLE;
-                else
-                    next_state <= IN2CHIP;
-
-        OUT2OFF:if( O_DatLastHS_sync )
-                    next_state <= OUTWAIT;
-                else
-                    next_state <= OUT2OFF;
-
-        default:    next_state <= IN2CHIP;
-    endcase
-end
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        state <= IDLE;
-    end else begin
-        state <= next_state;
-    end
-end
-
-//=====================================================================================================================
-// Logic Design: PAD_Init
-//=====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
+// PAD
 PDUW08DGZ_V_G inst_I_BypAsysnFIFO_PAD(.I(1'b0   ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_BypAsysnFIFO_PAD  ), .C(I_BypAsysnFIFO));
 PDUW08DGZ_V_G inst_I_BypOE_PAD      (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_BypOE_PAD         ), .C(I_BypOE       ));
 PDUW08DGZ_V_G inst_I_BypPLL_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_BypPLL_PAD        ), .C(I_BypPLL      ));
@@ -250,13 +220,86 @@ endgenerate
 
 assign OE       = I_BypOE? I_OffOE_sync : state == OUT2OFF | state == OUTWAIT;
 
-//=====================================================================================================================
-// Sub-Module : TOP
-//=====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
+// Clk Generation
+CLK#(
+    .FBDIV_WIDTH ( FBDIV_WIDTH )
+)u_CLK(
+    .I_BypAsysnFIFO(I_BypAsysnFIFO),
+    .I_BypPLL    ( I_BypPLL     ),
+    .I_SwClk     ( I_SwClk      ),
+    .I_SysRst_n  ( I_SysRst_n   ),
+    .I_SysClk    ( I_SysClk     ),
+    .I_OffClk    ( I_OffClk     ),
+    .I_FBDIV     ( I_FBDIV      ),
+    .SysRst_n    ( rst_n        ),
+    .SysClk      ( clk          ),
+    .OffClk      ( OffClk       ),
+    .O_PLLLock   ( O_PLLLock    ) 
+);
+
+DELAY#(
+    .NUM_STAGES ( 2     ),
+    .DATA_WIDTH ( 3     )
+)u_DELAY_Sync_CHIP2OFF(
+    .CLK        ( OffClk        ),
+    .RST_N      ( rst_n         ),
+    .DIN        ( {state}       ),
+    .DOUT       ( {state_sync}  )
+);
+
+// --------------------------------------------------------------------------------------------------------------------
+// IN2CHIP
+assign O_DatRdy                 = (state_sync == IN2CHIP | state_sync == INWAIT)? ( I_BypAsysnFIFO ? (I_ISAVld? CCUITF_ISARdDatRdy :  GICITF_DatRdy) 
+                                                                    : !fifo_async_IN2CHIP_full )
+                                                                        : 1'b0;
+assign fifo_async_IN2CHIP_push  = (state_sync == IN2CHIP | state_sync == INWAIT) & !I_BypAsysnFIFO & I_DatVld & !fifo_async_IN2CHIP_full;
+assign fifo_async_IN2CHIP_din   = {I_Dat, I_DatLast, I_ISAVld};
+
+// --------------------------------------------------------------------------------------------------------------------
+// OUT2OFF
+assign {O_Dat, O_CmdVld, O_DatLast, O_DatVld}= (state_sync == OUT2OFF | state_sync == OUTWAIT)? ( I_BypAsysnFIFO? (MONITF_DatVld? {MONITF_Dat, 1'b0, MONITF_DatLast} : {GICITF_Dat, GICITF_CmdVld, GICITF_DatLast})
+                                                                : {fifo_async_OUT2OFF_dout, !fifo_async_OUT2OFF_empty} ) 
+                                            : { {PORT_WIDTH{1'b0}}, 1'b0, 1'b0, 1'b0};
+assign fifo_async_OUT2OFF_pop   = (state_sync == OUT2OFF | state_sync == OUTWAIT) & !I_BypAsysnFIFO & I_DatRdy & !fifo_async_OUT2OFF_empty;
 
 //=====================================================================================================================
-// Sub-Module : Monitor
+// Logic Design: CoreClk Domain
 //=====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
+// FSM
+always @(*) begin
+    case ( state )
+        IDLE:   if ( I_DatVld_sync )
+                    next_state <= IN2CHIP;
+                else if ( GICITF_DatVld | MONITF_DatVld )
+                    next_state <= OUT2OFF;
+                else
+                    next_state <= IDLE;
+
+        IN2CHIP:if( (ITFGIC_DatLast & (ITFGIC_DatVld & GICITF_DatRdy)) | (ITFCCU_ISARdDatLast & ITFCCU_ISARdDatVld & CCUITF_ISARdDatRdy) )
+                    next_state <= IDLE;
+                else
+                    next_state <= IN2CHIP;
+
+        OUT2OFF:if( O_DatLastHS_sync )
+                    next_state <= OUTWAIT;
+                else
+                    next_state <= OUT2OFF;
+
+        default:    next_state <= IN2CHIP;
+    endcase
+end
+always @ ( posedge clk or negedge rst_n ) begin
+    if ( !rst_n ) begin
+        state <= IDLE;
+    end else begin
+        state <= next_state;
+    end
+end
+
+// --------------------------------------------------------------------------------------------------------------------
+// Async
 DELAY#(
     .NUM_STAGES ( 1     ),
     .DATA_WIDTH ( OPNUM )
@@ -266,11 +309,6 @@ DELAY#(
     .DIN        ( CCUITF_CfgRdy ),
     .DOUT       ( O_CfgRdy      )
 );
-
-//=====================================================================================================================
-// Sub-Module : Sync
-//=====================================================================================================================
-// OFF2CHIP
 DELAY#(
     .NUM_STAGES ( 2    ),
     .DATA_WIDTH ( 4     )
@@ -290,28 +328,8 @@ SYNC_PULSE u_SYNC_PULSE(
     .out_pulse ( O_DatLastHS_sync )
 );
 
-
-// CHIP2OFF
-DELAY#(
-    .NUM_STAGES ( 2     ),
-    .DATA_WIDTH ( 3     )
-)u_DELAY_Sync_CHIP2OFF(
-    .CLK        ( OffClk        ),
-    .RST_N      ( rst_n         ),
-    .DIN        ( {state}       ),
-    .DOUT       ( {state_sync}  )
-);
-
-//=====================================================================================================================
-// Sub-Module : IN2CHIP
-//=====================================================================================================================
-// PAD
-assign O_DatRdy                 = (state_sync == IN2CHIP | state_sync == INWAIT)? ( I_BypAsysnFIFO ? (I_ISAVld? CCUITF_ISARdDatRdy :  GICITF_DatRdy) 
-                                                                    : !fifo_async_IN2CHIP_full )
-                                                                        : 1'b0;
-assign fifo_async_IN2CHIP_push  = (state_sync == IN2CHIP | state_sync == INWAIT) & !I_BypAsysnFIFO & I_DatVld & !fifo_async_IN2CHIP_full;
-assign fifo_async_IN2CHIP_din   = {I_Dat, I_DatLast, I_ISAVld};
-
+// --------------------------------------------------------------------------------------------------------------------
+// IN2CHIP
 // GIC
 assign fifo_async_IN2CHIP_pop   = (state == IN2CHIP | state == INWAIT) & !I_BypAsysnFIFO & !fifo_async_IN2CHIP_empty  
                                         & (ITFCCU_ISARdDatVld & CCUITF_ISARdDatRdy | ITFGIC_DatVld & GICITF_DatRdy );
@@ -321,7 +339,23 @@ assign {ITFGIC_Dat, ITFGIC_DatLast, ITFGIC_DatVld} = {fifo_async_IN2CHIP_dout[1 
 assign {ITFCCU_ISARdDat, ITFCCU_ISARdDatLast, ITFCCU_ISARdDatVld} = (state == IN2CHIP | state == INWAIT)? (I_BypAsysnFIFO? {I_Dat, I_ISAVld}  
             : {fifo_async_IN2CHIP_dout[1 +: PORT_WIDTH + 1], fifo_async_IN2CHIP_dout[0] & !fifo_async_IN2CHIP_empty}) : 0;
 
+// --------------------------------------------------------------------------------------------------------------------
+// OUT2OFF
+assign fifo_async_OUT2OFF_push = (state == OUT2OFF | state == OUTWAIT) & !I_BypAsysnFIFO & !fifo_async_OUT2OFF_full
+                                    & (GICITF_DatVld & ITFGIC_DatRdy | MONITF_DatVld & ITFMON_DatRdy);
+assign fifo_async_OUT2OFF_din  = (state == OUT2OFF | state == OUTWAIT)? MONITF_DatVld? {MONITF_Dat, 1'b0, MONITF_DatLast} : {GICITF_Dat, GICITF_CmdVld, GICITF_DatLast} : 0;
 
+// GIC
+assign ITFGIC_DatRdy           = ((state == OUT2OFF | state == OUTWAIT) | MONITF_DatVld)? (I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full) : 1'b0;
+
+// MON
+assign ITFMON_DatRdy           = (state == OUT2OFF | state == OUTWAIT)? (I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full) : 1'b0;
+
+//=====================================================================================================================
+// Sub-Module : ASync FIFOs
+//=====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
+// IN2CHIP
 fifo_async_fwft#(
     .DATA_WIDTH ( PORT_WIDTH + 2           ),
     .ADDR_WIDTH ( ASYNC_FIFO_ADDR_WIDTH )
@@ -337,23 +371,8 @@ fifo_async_fwft#(
     .full       ( fifo_async_IN2CHIP_full   ) 
 );
 
-//=====================================================================================================================
-// Sub-Module : OUT2OFF
-//=====================================================================================================================
-// PAD
-assign {O_Dat, O_CmdVld, O_DatLast, O_DatVld}= (state_sync == OUT2OFF | state_sync == OUTWAIT)? ( I_BypAsysnFIFO? (MONITF_DatVld? {MONITF_Dat, 1'b0, MONITF_DatLast} : {GICITF_Dat, GICITF_CmdVld, GICITF_DatLast})
-                                                                : {fifo_async_OUT2OFF_dout, !fifo_async_OUT2OFF_empty} ) 
-                                            : { {PORT_WIDTH{1'b0}}, 1'b0, 1'b0, 1'b0};
-assign fifo_async_OUT2OFF_pop   = (state_sync == OUT2OFF | state_sync == OUTWAIT) & !I_BypAsysnFIFO & I_DatRdy & !fifo_async_OUT2OFF_empty;
-
-// GIC & MON
-assign fifo_async_OUT2OFF_push = (state == OUT2OFF | state == OUTWAIT) & !I_BypAsysnFIFO & !fifo_async_OUT2OFF_full
-                                    & (GICITF_DatVld & ITFGIC_DatRdy | MONITF_DatVld & ITFMON_DatRdy);
-assign fifo_async_OUT2OFF_din  = (state == OUT2OFF | state == OUTWAIT)? MONITF_DatVld? {MONITF_Dat, 1'b0, MONITF_DatLast} : {GICITF_Dat, GICITF_CmdVld, GICITF_DatLast} : 0;
-
-assign ITFGIC_DatRdy           = ((state == OUT2OFF | state == OUTWAIT) | MONITF_DatVld)? (I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full) : 1'b0;
-assign ITFMON_DatRdy           = (state == OUT2OFF | state == OUTWAIT)? (I_BypAsysnFIFO? I_DatRdy : !fifo_async_OUT2OFF_full) : 1'b0;
-
+// --------------------------------------------------------------------------------------------------------------------
+// OUT2OFF
 fifo_async_fwft#(
     .DATA_WIDTH ( PORT_WIDTH + 2        ),
     .ADDR_WIDTH ( ASYNC_FIFO_ADDR_WIDTH )
@@ -368,24 +387,4 @@ fifo_async_fwft#(
     .empty      ( fifo_async_OUT2OFF_empty  ),
     .full       ( fifo_async_OUT2OFF_full   ) 
 );
-//=====================================================================================================================
-// Logic Design: Monitor
-//=====================================================================================================================
-
-CLK#(
-    .FBDIV_WIDTH ( FBDIV_WIDTH )
-)u_CLK(
-    .I_BypAsysnFIFO(I_BypAsysnFIFO),
-    .I_BypPLL    ( I_BypPLL     ),
-    .I_SwClk     ( I_SwClk      ),
-    .I_SysRst_n  ( I_SysRst_n   ),
-    .I_SysClk    ( I_SysClk     ),
-    .I_OffClk    ( I_OffClk     ),
-    .I_FBDIV     ( I_FBDIV      ),
-    .SysRst_n    ( rst_n        ),
-    .SysClk      ( clk          ),
-    .OffClk      ( OffClk       ),
-    .O_PLLLock   ( O_PLLLock    ) 
-);
-
 endmodule
