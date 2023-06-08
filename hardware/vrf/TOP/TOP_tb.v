@@ -255,7 +255,7 @@ always @(posedge I_OffClk or rst_n) begin
     if (!rst_n) begin
         MaxAddr <= 0;
     end else if(state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF)) begin
-        MaxAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH] + IO_Dat[1 + DRAM_ADDR_WIDTH +: ADDR_WIDTH];
+        MaxAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH] + IO_Dat[1 + DRAM_ADDR_WIDTH +: ADDR_WIDTH] -1;
     end
 end
 assign default_addr = state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) ? IO_Dat[1 +: DRAM_ADDR_WIDTH] : 0;
@@ -290,7 +290,9 @@ counter#(
 // DRAM READ
 assign #2 I_DatVld  = state == ISASND | state== DATIN2CHIP;
 assign    I_DatLast = (I_ISAVld? Overflow_ISA[ArbCfgRdyIdx_d] : Overflow_DatAddr) & I_DatVld;
-assign #2 IO_Dat    = I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : Dram[addr[0 +: 13]]; // 8196
+assign #2 IO_Dat    = (state == ISASND | state == DATIN2CHIP)?
+                        (I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : Dram[addr[0 +: 13]])
+                        : {PORT_WIDTH{1'bz}}; // 8196
 
 wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];
 

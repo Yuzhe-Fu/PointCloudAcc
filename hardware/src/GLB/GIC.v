@@ -67,25 +67,25 @@ localparam OUT2OFF  = 3'b011;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-reg  [PORT_WIDTH    -1 : 0] Cmd;
-wire                        CmdRdy;
-wire                        CmdVld;
-wire                        Out2Off;
-wire [ADDR_WIDTH    -1 : 0] CntGLBAddr;
-wire [BYTE_WIDTH                         -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
-wire [DRAM_ADDR_WIDTH                    -1 : 0] CCUGIC_CfgDRAMBaseAddr;
-wire [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgGLBBaseAddr ;
-wire [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgNum         ; 
+reg  [PORT_WIDTH            -1 : 0] Cmd;
+wire                                CmdRdy;
+wire                                CmdVld;
+wire                                Out2Off;
+wire [ADDR_WIDTH            -1 : 0] CntGLBAddr;
+wire [BYTE_WIDTH    -1      -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
+wire [DRAM_ADDR_WIDTH       -1 : 0] CCUGIC_CfgDRAMBaseAddr;
+wire [ADDR_WIDTH            -1 : 0] CCUGIC_CfgGLBBaseAddr ;
+wire [ADDR_WIDTH            -1 : 0] CCUGIC_CfgNum         ; 
 
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign {
-CCUGIC_CfgGLBBaseAddr   , // 16
-CCUGIC_CfgDRAMBaseAddr  , // 32
-CCUGIC_CfgNum           , // 16
-CCUGIC_CfgInOut           // 8 0: IN2CHIP; 1: OUT2OFF
-} = CCUGIC_CfgInfo[GICISA_WIDTH -1 : 8];
+    CCUGIC_CfgGLBBaseAddr   , // 16
+    CCUGIC_CfgDRAMBaseAddr  , // 32
+    CCUGIC_CfgNum           , // 16
+    CCUGIC_CfgInOut           // 7 0: IN2CHIP; 1: OUT2OFF
+} = CCUGIC_CfgInfo[GICISA_WIDTH -1 : BYTE_WIDTH + 1];
 
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -142,7 +142,7 @@ assign CmdVld = state == CMD;
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         Cmd <= {PORT_WIDTH{1'b0}};
-    end else if ( state == IDLE )begin 
+    end else if ( next_state == IDLE )begin 
         Cmd <= {PORT_WIDTH{1'b0}};
     end else if(state == IDLE && next_state == CMD) begin
         Cmd <= {CCUGIC_CfgNum, CCUGIC_CfgDRAMBaseAddr, CCUGIC_CfgInOut[0]};
@@ -176,7 +176,7 @@ counter#(
     .OVERFLOW  (                ),
     .UNDERFLOW (                ),
     .COUNT     ( CntGLBAddr     )
-); 
+);
 
 //=====================================================================================================================
 // Logic Design: Out to off-chip
@@ -185,9 +185,9 @@ assign GICGLB_RdAddr    = CntGLBAddr;
 assign GICGLB_RdAddrVld = state == OUT2OFF & CntGLBAddr < CCUGIC_CfgNum; 
 assign GICGLB_RdDatRdy  = ITFGIC_DatRdy & state == OUT2OFF;
 
-assign GICITF_Dat       = state==CMD? Cmd   : GLBGIC_RdDat;
-assign GICITF_DatVld    = state==CMD? CmdVld: GLBGIC_RdDatVld;
-assign GICITF_DatLast   = GICITF_DatVld & CntGLBAddr == CCUGIC_CfgNum -1;
+assign GICITF_Dat       = state==CMD? Cmd   : state==OUT2OFF?   GLBGIC_RdDat    : 0;
+assign GICITF_DatVld    = state==CMD? CmdVld: state==OUT2OFF?   GLBGIC_RdDatVld : 0;
+assign GICITF_DatLast   = GICITF_DatVld & (CmdVld? 1'b1 : CntGLBAddr == CCUGIC_CfgNum -1);
 
 assign CmdRdy           = ITFGIC_DatRdy;
 
@@ -201,26 +201,26 @@ assign Debug_IO_Uti = (GICITF_DatVld & ITFGIC_DatRdy) | (ITFGIC_DatVld & GICITF_
 // Logic Design : Monitor
 //=====================================================================================================================
 assign GICMON_Dat = {
-CCUGIC_CfgVld   ,
-GICCCU_CfgRdy   , 
-GICITF_CmdVld   ,
-GICITF_DatVld   ,
-GICITF_DatLast  ,
-ITFGIC_DatRdy   ,
-ITFGIC_DatVld   ,
-ITFGIC_DatLast  ,
-GICITF_DatRdy   ,
-GICGLB_RdAddrVld,
-GLBGIC_RdAddrRdy,
-GLBGIC_RdDatVld ,
-GICGLB_RdDatRdy ,
-GLBGIC_RdEmpty  ,
-GICGLB_WrDatVld , 
-GLBGIC_WrDatRdy ,
-GLBGIC_WrFull   ,
-CntGLBAddr      ,
-CCUGIC_CfgInfo  ,
-state           
+    CCUGIC_CfgVld   ,
+    GICCCU_CfgRdy   , 
+    GICITF_CmdVld   ,
+    GICITF_DatVld   ,
+    GICITF_DatLast  ,
+    ITFGIC_DatRdy   ,
+    ITFGIC_DatVld   ,
+    ITFGIC_DatLast  ,
+    GICITF_DatRdy   ,
+    GICGLB_RdAddrVld,
+    GLBGIC_RdAddrRdy,
+    GLBGIC_RdDatVld ,
+    GICGLB_RdDatRdy ,
+    GLBGIC_RdEmpty  ,
+    GICGLB_WrDatVld , 
+    GLBGIC_WrDatRdy ,
+    GLBGIC_WrFull   ,
+    CntGLBAddr      ,
+    CCUGIC_CfgInfo  ,
+    state           
 };
 
 endmodule

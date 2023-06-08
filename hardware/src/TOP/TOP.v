@@ -353,7 +353,7 @@ wire                                                GLBGIC_WrFull    ;
 // --------------------------------------------------------------------------------------------------------------------
 // GLB
 // Configure
-wire [NUM_BANK * (GLB_NUM_RDPORT + GLB_NUM_WRPORT)      -1 : 0] TOPGLB_CfgPortBankFlag;
+wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT) -1 : 0][NUM_BANK-1 : 0] TOPGLB_CfgPortBankFlag;
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] TOPGLB_CfgPortOffEmptyFull;
 // Data
 wire [GLB_NUM_WRPORT    -1 : 0][SRAM_WIDTH          -1 : 0] TOPGLB_WrPortDat    ;
@@ -814,19 +814,21 @@ assign {
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSMSK                 ],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD] 
-} = CCUFPS_CfgInfo[FPSISA_WIDTH -9 -: 32*7];
+} = CCUFPS_CfgInfo[FPSISA_WIDTH -9 -: NUM_BANK*7];
 
 wire [BYTE_WIDTH    -1 : 0] CCUKNN_CfgK_tmp;
 assign {
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ],
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNMASK],
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ]
 } = CCUKNN_CfgInfo[KNNISA_WIDTH -1 -: 8];
 assign {
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ], 
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNMASK],
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
-} = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: 32*3];
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ]
+} = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*4];
 
 wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgLopOrd_temp;
 wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgOfmPhaseShift_temp;
@@ -840,19 +842,21 @@ assign {
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM                 ],  
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],  
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   
-} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 : 32*3];
+} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*3];
 
 wire [POOL_CORE     -1 : 0][BYTE_WIDTH    -1 : 0] CCUPOL_CfgK_tmp;
 assign {
-    TOPGLB_CfgPortOffEmptyFull  [GLBWRIDX_POLOFM                 ]              ,  
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
-    TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]                 
-} = CCUPOL_CfgInfo[POLISA_WIDTH -1 -: 8];
+    TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLMAP],
+    TOPGLB_CfgPortOffEmptyFull  [GLBWRIDX_POLIDM                 ],                  
+    TOPGLB_CfgPortOffEmptyFull  [GLBWRIDX_POLOFM                 ]                  
+} = CCUPOL_CfgInfo[POLISA_WIDTH -1 -: 16];
 assign {
-    TOPGLB_CfgPortBankFlag      [GLBWRIDX_POLOFM                 ]              ,  
     TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
-    TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]                 
-} = CCUPOL_CfgInfo[POLISA_WIDTH -9 : 32*3];
+    TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLMAP],
+    TOPGLB_CfgPortBankFlag      [GLBWRIDX_POLIDM                 ],                  
+    TOPGLB_CfgPortBankFlag      [GLBWRIDX_POLOFM                 ]                  
+} = CCUPOL_CfgInfo[POLISA_WIDTH -17 -: NUM_BANK*(3 + POOL_CORE)];
 
 assign { 
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_GICGLB   ],
@@ -861,7 +865,7 @@ assign {
 assign {
     TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_GICGLB   ],
     TOPGLB_CfgPortBankFlag      [GLBWRIDX_GICGLB                    ]
-} = CCUGIC_CfgInfo[GICISA_WIDTH -9 : 32*2];
+} = CCUGIC_CfgInfo[GICISA_WIDTH -9 -: NUM_BANK*2];
 
 //=====================================================================================================================
 // Logic Design: GIC

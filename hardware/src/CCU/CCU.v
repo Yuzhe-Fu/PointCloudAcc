@@ -95,20 +95,20 @@ localparam DEC          = 4'b0001;
 localparam CFG          = 4'b0010;
 
 localparam [OPNUM    -1 : 0][16  -1 : 0] ISA_WIDTH = {
+    MONISA_WIDTH[0 +: 16],
     GICISA_WIDTH[0 +: 16], 
     POLISA_WIDTH[0 +: 16], 
     SYAISA_WIDTH[0 +: 16], 
     KNNISA_WIDTH[0 +: 16], 
-    FPSISA_WIDTH[0 +: 16],
-    MONISA_WIDTH[0 +: 16]
+    FPSISA_WIDTH[0 +: 16]
 };
 localparam [OPNUM    -1 : 0][8   -1 : 0] ISAFIFO_ADDR_WIDTH = {
+    MONISAFIFO_ADDR_WIDTH[0 +: 8],
     GICISAFIFO_ADDR_WIDTH[0 +: 8], 
     POLISAFIFO_ADDR_WIDTH[0 +: 8], 
     SYAISAFIFO_ADDR_WIDTH[0 +: 8], 
     KNNISAFIFO_ADDR_WIDTH[0 +: 8], 
-    FPSISAFIFO_ADDR_WIDTH[0 +: 8],
-    MONISAFIFO_ADDR_WIDTH[0 +: 8]
+    FPSISAFIFO_ADDR_WIDTH[0 +: 8]
 };
 
 //=====================================================================================================================
@@ -225,7 +225,7 @@ generate
             .fifo_count (                       )
         );
 
-        assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD & !FIFO_full;
+        assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
         assign FIFO_pop = cfgRdy[gv];
 
         assign  cfgEnable = FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[gv] & !FIFO_empty);
