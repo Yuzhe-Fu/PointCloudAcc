@@ -255,7 +255,7 @@ always @(posedge I_OffClk or rst_n) begin
     if (!rst_n) begin
         MaxAddr <= 0;
     end else if(state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF)) begin
-        MaxAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH] + IO_Dat[1 + DRAM_ADDR_WIDTH +: ADDR_WIDTH] -1;
+        MaxAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH] + IO_Dat[1 + DRAM_ADDR_WIDTH +: ADDR_WIDTH]*2 -1; // 256bit -> 128bit
     end
 end
 assign default_addr = state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) ? IO_Dat[1 +: DRAM_ADDR_WIDTH] : 0;
