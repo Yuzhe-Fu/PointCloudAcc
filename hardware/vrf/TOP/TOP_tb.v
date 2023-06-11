@@ -1,7 +1,7 @@
 `timescale  1 ns / 100 ps
 
-`define CLOCK_PERIOD 20
-`define OFFCLOCK_PERIOD 20
+`define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
+`define OFFCLOCK_PERIOD 20 // 
 `define SIM
 `define FUNC_SIM
 // `define POST_SIM
@@ -17,7 +17,7 @@ parameter PORT_WIDTH        = 128   ;
 parameter ADDR_WIDTH        = 16    ;
 parameter DRAM_ADDR_WIDTH   = 32    ;
 parameter OPNUM             = 6     ;
-
+parameter FBDIV_WIDTH    = 5;
 parameter FPSISA_WIDTH   = PORT_WIDTH*16;
 parameter KNNISA_WIDTH   = PORT_WIDTH*2 ;
 parameter SYAISA_WIDTH   = PORT_WIDTH*2 ;
@@ -53,6 +53,10 @@ reg                             I_OffOE;
 reg                             I_SysClk;
 reg                             I_OffClk;
 
+      
+reg                             I_BypPLL;      
+reg [FBDIV_WIDTH        -1 : 0] I_FBDIV;       
+reg                             I_SwClk;                  
 // TOP Outputs
 wire                            O_DatOE;
 wire                            O_CmdVld;
@@ -66,7 +70,7 @@ wire                            O_DatRdy ;
 wire                            I_DatLast;
 
 reg                             rst_n ;
-
+wire                            O_PLLLock;
 reg [PORT_WIDTH         -1 : 0] Dram[0 : 2**18-1];
 wire[DRAM_ADDR_WIDTH    -1 : 0] addr;
 
@@ -92,26 +96,35 @@ reg [ 3     -1 : 0] next_state  ;
 //=====================================================================================================================
 // Logic Design: Debounce
 //=====================================================================================================================
-initial
-begin
+initial begin
     I_OffClk = 1;
     forever #(`OFFCLOCK_PERIOD/2) I_OffClk=~I_OffClk;
 end
 
-initial
-begin
+initial begin
     I_SysClk = 1;
-    forever #(`CLOCK_PERIOD/2)  I_SysClk=~I_SysClk;
+    @(posedge I_OffClk); // wait I_FBDIV
+    forever #(`CLOCK_PERIOD/2*{I_FBDIV, 4'd0})  I_SysClk=~I_SysClk;
 end
 
-initial
-begin
-    rst_n           = 1;
-    I_BypAsysnFIFO  = 1;
-    I_BypOE         = 0;
-    I_OffOE         = 0;
-    #(`CLOCK_PERIOD*2)  rst_n  =  0;
-    #(`CLOCK_PERIOD*10) rst_n  =  1;
+initial begin
+    rst_n                      = 1;
+    #(`OFFCLOCK_PERIOD*2)  rst_n  =  0;
+    #(`OFFCLOCK_PERIOD*10) rst_n  =  1;
+end
+
+initial begin
+    I_BypAsysnFIFO  = 1'b0;
+    I_BypOE         = 1'b0;
+    I_BypPLL        = 1'b0;
+    I_FBDIV         = 5'b1;
+    I_SwClk         = 1'b0;
+    I_OffOE         = 1'b0;
+    @(posedge rst_n);
+    if(!I_BypPLL) begin
+        wait(O_PLLLock);
+        I_SwClk     = 1'b1;
+    end
 end
 
 initial begin
@@ -302,15 +315,15 @@ assign #2 I_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==DATCMD | !O_Cm
 TOP u_TOP (
     .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO),
     .I_BypOE_PAD        ( I_BypOE       ),
-    .I_BypPLL_PAD       ( 1'b0          ),
-    .I_FBDIV_PAD        ( 5'd1          ),
-    .I_SwClk_PAD        ( 1'b1          ),
+    .I_BypPLL_PAD       ( I_BypPLL      ),
+    .I_FBDIV_PAD        ( I_FBDIV       ),
+    .I_SwClk_PAD        ( I_SwClk       ),
     .I_SysRst_n_PAD     ( rst_n         ),
     .I_SysClk_PAD       ( I_SysClk      ),
     .I_OffClk_PAD       ( I_OffClk      ),
     .O_SysClk_PAD       (               ),
     .O_OffClk_PAD       (               ),
-    .O_PLLLock_PAD      (               ),
+    .O_PLLLock_PAD      ( O_PLLLock     ),
     .O_CfgRdy_PAD       ( O_CfgRdy      ),
     .O_DatOE_PAD        ( O_DatOE       ),
     .I_OffOE_PAD        ( I_OffOE       ),

@@ -49,9 +49,9 @@ module ITF #(
 
     // CCU
     input  [OPNUM           -1 : 0] CCUITF_CfgRdy     ,
-    output   [PORT_WIDTH    -1 : 0] ITFCCU_ISARdDat   ,       
-    output                          ITFCCU_ISARdDatVld,          
-    output                          ITFCCU_ISARdDatLast,          
+    output reg[PORT_WIDTH    -1 : 0] ITFCCU_ISARdDat   ,       
+    output reg                         ITFCCU_ISARdDatVld,          
+    output reg                         ITFCCU_ISARdDatLast,          
     input                           CCUITF_ISARdDatRdy,
 
     // GIC-Global Buffer Interface Controller
@@ -112,14 +112,11 @@ wire                          O_CmdVld      ;
 wire  [PORT_WIDTH     -1 : 0] I_Dat         ;
 wire  [PORT_WIDTH     -1 : 0] O_Dat         ;
 
-wire                        I_OffOE_sync;
-wire                        I_DatVld_sync;
 wire                        fifo_async_IN2CHIP_push ;
 wire                        fifo_async_IN2CHIP_pop  ;
 wire [PORT_WIDTH + 2-1 : 0] fifo_async_IN2CHIP_din  ;
 wire [PORT_WIDTH + 2-1 : 0] fifo_async_IN2CHIP_dout ;
 wire                        fifo_async_IN2CHIP_empty;
-wire                        fifo_async_IN2CHIP_empty_sync;
 wire                        fifo_async_IN2CHIP_full ;
 
 wire                        fifo_async_OUT2OFF_push ;
@@ -127,7 +124,6 @@ wire                        fifo_async_OUT2OFF_pop  ;
 wire [PORT_WIDTH + 2-1 : 0] fifo_async_OUT2OFF_din  ;
 wire [PORT_WIDTH + 2-1 : 0] fifo_async_OUT2OFF_dout ;
 wire                        fifo_async_OUT2OFF_empty;
-wire                        fifo_async_OUT2OFF_empty_sync;
 wire                        fifo_async_OUT2OFF_full ;
 
 wire                        oEPad;
@@ -260,7 +256,7 @@ always @(*) begin
         default:    next_state_off <= IDLE;
     endcase
 end
-always @ ( posedge clk or negedge rst_n ) begin
+always @ ( posedge OffClk or negedge rst_n ) begin
     if ( !rst_n ) begin
         state_off <= IDLE;
     end else begin
@@ -361,25 +357,28 @@ assign {ITFGIC_Dat, ITFGIC_DatVld, ITFGIC_DatLast} =
             )
             :(fifo_async_IN2CHIP_dout[1]?
                 0
-                :{fifo_async_IN2CHIP_dout[2 +: PORT_WIDTH + 1], !fifo_async_IN2CHIP_empty, fifo_async_IN2CHIP_dout[0]}
+                :{fifo_async_IN2CHIP_dout[2 +: PORT_WIDTH], !fifo_async_IN2CHIP_empty, fifo_async_IN2CHIP_dout[0]}
             ) 
         ) 
         : 0;
 
 // CCU
-assign {ITFCCU_ISARdDat, ITFCCU_ISARdDatVld, ITFCCU_ISARdDatLast} = 
-    state_core == IN2CHIP? 
-        (I_BypAsysnFIFO? 
-            (I_ISAVld?
-                {I_Dat, I_DatVld, I_DatLast}
-                :0
-            ) 
-            :(fifo_async_IN2CHIP_dout[1]?
-                {fifo_async_IN2CHIP_dout[2 +: PORT_WIDTH + 1], !fifo_async_IN2CHIP_empty, fifo_async_IN2CHIP_dout[0]} 
-                :0
-            )
-        )
-        :0;
+always@(*) begin
+    if(state_core == IN2CHIP) begin
+        if(I_BypAsysnFIFO) begin
+            if(I_ISAVld)
+                {ITFCCU_ISARdDat, ITFCCU_ISARdDatVld, ITFCCU_ISARdDatLast} <= {I_Dat, I_DatVld, I_DatLast};
+            else
+                {ITFCCU_ISARdDat, ITFCCU_ISARdDatVld, ITFCCU_ISARdDatLast} <= 0;
+        end else begin
+            if(fifo_async_IN2CHIP_dout[1])
+                {ITFCCU_ISARdDat, ITFCCU_ISARdDatVld, ITFCCU_ISARdDatLast} <= {fifo_async_IN2CHIP_dout[2 +: PORT_WIDTH], !fifo_async_IN2CHIP_empty, fifo_async_IN2CHIP_dout[0]};
+            else
+                {ITFCCU_ISARdDat, ITFCCU_ISARdDatVld, ITFCCU_ISARdDatLast} <= 0;
+        end
+    end else
+        {ITFCCU_ISARdDat, ITFCCU_ISARdDatVld, ITFCCU_ISARdDatLast} <= 0;
+end
 
 // --------------------------------------------------------------------------------------------------------------------
 // OUT2OFF
@@ -408,7 +407,7 @@ fifo_async_fwft#(
     .DATA_WIDTH ( PORT_WIDTH + 2           ),
     .ADDR_WIDTH ( ASYNC_FIFO_ADDR_WIDTH )
 )u_fifo_async_fwft_IN2CHIP(
-    .rst_n      ( I_SysRst_n                ),
+    .rst_n      ( rst_n                     ),
     .wr_clk     ( OffClk                    ),
     .rd_clk     ( clk                       ),
     .push       ( fifo_async_IN2CHIP_push   ),
@@ -425,7 +424,7 @@ fifo_async_fwft#(
     .DATA_WIDTH ( PORT_WIDTH + 2        ),
     .ADDR_WIDTH ( ASYNC_FIFO_ADDR_WIDTH )
 )u_fifo_async_fwft_OUT2OFF(
-    .rst_n      ( I_SysRst_n                ),
+    .rst_n      ( rst_n                     ),
     .wr_clk     ( clk                       ),
     .rd_clk     ( OffClk                    ),
     .push       ( fifo_async_OUT2OFF_push   ),
