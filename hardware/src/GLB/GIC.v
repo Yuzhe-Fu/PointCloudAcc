@@ -83,8 +83,8 @@ wire                        SIPO_DatOutRdy;
 wire                        PISO_DatInLast;
 wire                        PISO_DatInRdy;
 wire [PORT_WIDTH    -1 : 0] PISO_DatOut;
-wire [PORT_WIDTH    -1 : 0] PISO_DatOutVld;
-wire [PORT_WIDTH    -1 : 0] PISO_DatOutLast;
+wire                        PISO_DatOutVld;
+wire                        PISO_DatOutLast;
 
 //=====================================================================================================================
 // Logic Design: ISA Decode
@@ -167,6 +167,7 @@ SIPO#(
 )u_SIPO_IN2CHIP(
     .CLK          ( clk            ),
     .RST_N        ( rst_n          ),
+    .RESET        ( state == IDLE  ),
     .IN_VLD       ( ITFGIC_DatVld & state == IN2CHIP ),
     .IN_LAST      ( ITFGIC_DatLast ),
     .IN_DAT       ( ITFGIC_Dat     ),
@@ -196,6 +197,7 @@ PISO_NOCACHE #(
 )u_PISO_OUT2OFF(
     .CLK          ( clk         ),
     .RST_N        ( rst_n       ),
+    .RESET        ( state == IDLE  ),
     .IN_VLD       ( state == OUT2OFF & GLBGIC_RdDatVld),
     .IN_LAST      ( PISO_DatInLast),
     .IN_DAT       ( GLBGIC_RdDat  ),
