@@ -20,12 +20,12 @@ parameter OPNUM             = 6     ;
 parameter FBDIV_WIDTH    = 5;
 parameter FPSISA_WIDTH   = PORT_WIDTH*16;
 parameter KNNISA_WIDTH   = PORT_WIDTH*2 ;
-parameter SYAISA_WIDTH   = PORT_WIDTH*2 ;
+parameter SYAISA_WIDTH   = PORT_WIDTH*3 ;
 parameter POLISA_WIDTH   = PORT_WIDTH*9 ;
 parameter GICISA_WIDTH   = PORT_WIDTH*2 ;
 parameter MONISA_WIDTH   = PORT_WIDTH*1 ;
 
-localparam [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] MDUISABASEADDR = {
+localparam [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] ISABASEADDR = {
     32'd0 + FPSISA_WIDTH/PORT_WIDTH + KNNISA_WIDTH/PORT_WIDTH + SYAISA_WIDTH/PORT_WIDTH + POLISA_WIDTH/PORT_WIDTH + GICISA_WIDTH/PORT_WIDTH + MONISA_WIDTH/PORT_WIDTH,
     32'd0 + FPSISA_WIDTH/PORT_WIDTH + KNNISA_WIDTH/PORT_WIDTH + SYAISA_WIDTH/PORT_WIDTH + POLISA_WIDTH/PORT_WIDTH, //29
     32'd0 + FPSISA_WIDTH/PORT_WIDTH + KNNISA_WIDTH/PORT_WIDTH + SYAISA_WIDTH/PORT_WIDTH, 
@@ -34,13 +34,13 @@ localparam [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] MDUISABASEADDR = {
     32'd0
 };
 
-localparam [OPNUM -1 : 0][ADDR_WIDTH -1 : 0] MDUISANUM = {
-    MONISA_WIDTH[0 +: 16]/PORT_WIDTH,
-    GICISA_WIDTH[0 +: 16]/PORT_WIDTH, 
-    POLISA_WIDTH[0 +: 16]/PORT_WIDTH, 
-    SYAISA_WIDTH[0 +: 16]/PORT_WIDTH, 
-    KNNISA_WIDTH[0 +: 16]/PORT_WIDTH, 
-    FPSISA_WIDTH[0 +: 16]/PORT_WIDTH
+localparam [OPNUM -1 : 0][32 -1 : 0] ISANUM = {
+    MONISA_WIDTH/PORT_WIDTH,
+    GICISA_WIDTH/PORT_WIDTH, 
+    POLISA_WIDTH/PORT_WIDTH, 
+    SYAISA_WIDTH/PORT_WIDTH, 
+    KNNISA_WIDTH/PORT_WIDTH, 
+    FPSISA_WIDTH/PORT_WIDTH
 };
 
 //=====================================================================================================================
@@ -72,11 +72,11 @@ wire                            I_DatLast;
 reg                             rst_n ;
 wire                            O_PLLLock;
 reg [PORT_WIDTH         -1 : 0] Dram[0 : 2**18-1];
-wire[DRAM_ADDR_WIDTH    -1 : 0] addr;
+wire[DRAM_ADDR_WIDTH    -1 : 0] DatAddr;
 
-reg [$clog2(OPNUM)      -1 : 0] ArbCfgRdyIdx;
-reg [$clog2(OPNUM)      -1 : 0] ArbCfgRdyIdx_d;
-wire[OPNUM  -1 : 0][ADDR_WIDTH  -1 : 0] MduISARdAddr;
+reg [$clog2(OPNUM)      -1 : 0] ISAIdx;
+reg [$clog2(OPNUM)      -1 : 0] ISAIdx_d;
+wire[OPNUM  -1 : 0][ADDR_WIDTH  -1 : 0] ISAAddr;
 wire[OPNUM              -1 : 0] Overflow_ISA;
 wire [OPNUM             -1 : 0] O_CfgRdy;
 wire                            I_ISAVld;
@@ -133,19 +133,19 @@ end
 
 initial begin
     $shm_open("TEMPLATE.shm");
-    $shm_probe(TOP_tb, "AS");
+    $shm_probe(TOP_tb.u_TOP, "AS");
 end
 
 initial
 begin
-    ArbCfgRdyIdx = 7; // Invalid
+    ISAIdx = 7; // Invalid
     @(posedge rst_n);
     repeat(10) @(posedge I_OffClk);
     forever begin
         wait (state == IDLE & |O_CfgRdy & !O_CmdVld);
         @ (negedge I_OffClk );
         $stop;
-        wait (ArbCfgRdyIdx <= OPNUM -1);
+        wait (ISAIdx <= OPNUM -1);
         repeat(2) @(posedge I_OffClk); // 
     end
 end
@@ -169,7 +169,7 @@ always @(*) begin
     case ( state )
         IDLE:   if( O_CmdVld )
                     next_state <= DATCMD;
-                else if ( ArbCfgRdyIdx <= 5 )
+                else if ( ISAIdx <= 5 )
                     next_state <= ISASND;
                 else
                     next_state <= IDLE;
@@ -215,37 +215,37 @@ end
 //=====================================================================================================================
 genvar gv_i;
 generate
-    for(gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_MduISARdAddr
-        reg  [ADDR_WIDTH     -1 : 0] MduISARdAddr_r; // Last
+    for(gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_ISAAddr
+        reg  [ADDR_WIDTH     -1 : 0] ISAAddr_r; // Last
         wire [ADDR_WIDTH     -1 : 0] MaxCnt; 
         wire [ADDR_WIDTH     -1 : 0] Default;
 
         assign MaxCnt   = 2**ADDR_WIDTH -1;
-        assign Default  = MDUISABASEADDR[gv_i];
+        assign Default  = ISABASEADDR[gv_i];
 
         counter#(
             .COUNT_WIDTH ( ADDR_WIDTH )
         )u_counter_MduISARdAddr(
             .CLK       ( I_OffClk       ),
             .RESET_N   ( rst_n          ),
-            .CLEAR     ( 1'b0           ),
+            .CLEAR     ( state == IDLE & next_state == ISASND ),
             .DEFAULT   ( Default        ),
-            .INC       ( I_ISAVld & (I_DatVld & O_DatRdy) & (ArbCfgRdyIdx_d == gv_i) ),
+            .INC       ( I_ISAVld & (I_DatVld & O_DatRdy) & (ISAIdx_d == gv_i) ),
             .DEC       ( 1'b0           ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
             .MAX_COUNT ( MaxCnt         ),
             .OVERFLOW  (                ),
             .UNDERFLOW (                ),
-            .COUNT     ( MduISARdAddr[gv_i])
+            .COUNT     ( ISAAddr[gv_i])
         );
         always @(posedge I_OffClk or rst_n) begin
             if (!rst_n) begin
-                MduISARdAddr_r <= 0;
+                ISAAddr_r <= 0;
             end else if(state == IDLE) begin
-                MduISARdAddr_r <= MduISARdAddr[gv_i];
+                ISAAddr_r <= ISAAddr[gv_i];
             end
         end
-        assign Overflow_ISA[gv_i] = MduISARdAddr[gv_i] - MduISARdAddr_r == MDUISANUM[ArbCfgRdyIdx_d] - 1;
+        assign Overflow_ISA[gv_i] = ISAAddr[gv_i] - ISAAddr_r == ISANUM[ISAIdx_d] - 1;
 
     end
 endgenerate
@@ -253,9 +253,9 @@ endgenerate
 assign #2 I_ISAVld = state == ISASND;
 always @(posedge I_OffClk or rst_n) begin
     if (!rst_n) begin
-        ArbCfgRdyIdx_d <= 0;
+        ISAIdx_d <= 0;
     end else if(state == IDLE && next_state == ISASND) begin
-        ArbCfgRdyIdx_d <= ArbCfgRdyIdx;
+        ISAIdx_d <= ISAIdx;
     end
 end
 
@@ -285,14 +285,14 @@ counter#(
     .MAX_COUNT ( MaxAddr        ),
     .OVERFLOW  ( Overflow_DatAddr),
     .UNDERFLOW (                ),
-    .COUNT     ( addr           )
+    .COUNT     ( DatAddr           )
 );
 
 `ifndef PSEUDO_DATA
     always @(posedge I_OffClk or rst_n) begin
         if(state == DATOUT2OFF) begin
             if(O_DatVld & I_DatRdy)
-                Dram[addr] <= IO_Dat;
+                Dram[DatAddr] <= IO_Dat;
         end
     end
 `endif
@@ -302,9 +302,9 @@ counter#(
 //=====================================================================================================================
 // DRAM READ
 assign #2 I_DatVld  = state == ISASND | state== DATIN2CHIP;
-assign    I_DatLast = (I_ISAVld? Overflow_ISA[ArbCfgRdyIdx_d] : Overflow_DatAddr) & I_DatVld;
+assign    I_DatLast = (I_ISAVld? Overflow_ISA[ISAIdx_d] : Overflow_DatAddr) & I_DatVld;
 assign #2 IO_Dat    = (state == ISASND | state == DATIN2CHIP)?
-                        (I_ISAVld? Dram[MduISARdAddr[ArbCfgRdyIdx_d]] : Dram[addr[0 +: 13]])
+                        (I_ISAVld? Dram[ISAAddr[ISAIdx_d]] : Dram[DatAddr[0 +: 13]])
                         : {PORT_WIDTH{1'bz}}; // 8196
 
 wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];

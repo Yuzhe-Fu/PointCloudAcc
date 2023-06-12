@@ -39,7 +39,7 @@ always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         {OutPsum, OutWgt_S, OutAct_E} <= 0;
     end else if(En) begin
-        {OutPsum, OutAct_E, OutAct_E} <= {
+        {OutPsum, OutWgt_S, OutAct_E} <= {
             Reset? Signed_Mul : OutPsum + Signed_Mul, InWgt_N, InAct_W};
     end
 end
