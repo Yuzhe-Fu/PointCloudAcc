@@ -139,12 +139,12 @@ wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][NUM_COL   -1 : 0] SYA_Reset;
 wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][NUM_COL   -1 : 0] SYA_En;
 
 wire [ACT_WIDTH*NUM_ROW*NUM_BANK        -1 : 0] shift_din;
-wire [1*NUM_ROW*NUM_BANK                -1 : 0] shift_din_vld;
+wire [1*NUM_ROW*NUM_BANK                -1 : 0] fwftOfm_din;
 reg  [1*NUM_ROW*NUM_BANK                -1 : 0] PartPsumVld;
-wire                                            shift_din_rdy;
+wire                                            fwftOfm_din_rdy;
 wire [ACT_WIDTH*NUM_ROW*NUM_BANK        -1 : 0] shift_dout;
-wire                                            shift_dout_vld;
-wire                                            shift_dout_rdy;
+wire                                            fwftOfm_dout_vld;
+wire                                            fwftOfm_dout_rdy;
 reg [ADDR_WIDTH                         -1 : 0] SYA_PsumOutAddr_s2;
 reg [ADDR_WIDTH                         -1 : 0] ShiftOut_OfmAddr_s3;
 reg [ACT_WIDTH*NUM_ROW*NUM_BANK         -1 : 0] OfmDiagConcat;
@@ -442,7 +442,7 @@ assign pop          = handshake_s2;
 
 // HandShake
 // SYA_PsumOutRdy: 2 loads: shift_din or GLB
-assign rdy_s2       = fifo_out_CfgOfmPhaseShift? &shift_din_rdy : GLBSYA_OfmWrDatRdy; 
+assign rdy_s2       = fifo_out_CfgOfmPhaseShift? &fwftOfm_din_rdy : GLBSYA_OfmWrDatRdy; 
 // SYA_PsumOutVld
 assign vld_s2       = ( (CntMac >= fifo_out_CfgChn) & 0 <= CntMac % fifo_out_CfgChn & CntMac % fifo_out_CfgChn <= NumDiag ) & CntRmDiagPsum > 0;
 assign handshake_s2 = rdy_s2 & vld_s2;
@@ -592,7 +592,7 @@ assign DiagOut = CurPsumOutDiagIdx_s2 <= NUM_ROW*SYA_SIDEBANK;
 
 // Generate shift_din
 assign shift_din     = OfmDiag;
-assign shift_din_vld = fifo_out_CfgOfmPhaseShift? 
+assign fwftOfm_din = fifo_out_CfgOfmPhaseShift? 
                         (DiagOut? 0 : PartPsumVld)
                         : {NUM_ROW*NUM_BANK{vld_s2}}; // Write a part
 
@@ -609,27 +609,37 @@ end
 
 // HandShake
 assign rdy_s3       = GLBSYA_OfmWrDatRdy;
-assign vld_s3       = |shift_dout_vld;
+assign vld_s3       = |fwftOfm_dout_vld;
 assign handshake_s3 = rdy_s3 & vld_s3;
 assign ena_s3       = handshake_s3 | ~vld_s3;
 
-assign shift_dout_rdy   = rdy_s3;
+assign fwftOfm_dout_rdy   = rdy_s3;
 // --------------------------------------------------------------------------------------------------------------------
 // Reg Update
-SHIFT #(
-    .DATA_WIDTH(ACT_WIDTH),
-    .SIDE_LEN  (NUM_ROW*NUM_BANK) // 32
-) u_SHIFT_OFM (               
-    .clk                 ( clk          ),
-    .rst_n               ( rst_n        ),
-    .Rst                 ( RstAll       ),  
-    .shift               ( fifo_out_CfgOfmPhaseShift),                      
-    .shift_din           ( shift_din     ),
-    .shift_din_vld       ( shift_din_vld ),
-    .shift_din_rdy       ( shift_din_rdy ),                        
-    .shift_dout          ( shift_dout    ),
-    .shift_dout_vld      ( shift_dout_vld),
-    .shift_dout_rdy      ( shift_dout_rdy) 
+wire                        fwftOfm_push;
+wire                        fwftOfm_pop;
+wire                        fwftOfm_empty;
+wire                        fwftOfm_full;
+
+assign fwftOfm_push     = fwftOfm_din & fwftOfm_din_rdy;
+assign fwftOfm_din_rdy  = !fwftOfm_full;
+assign fwftOfm_pop      = fwftOfm_dout_vld & fwftOfm_dout_rdy;
+assign fwftOfm_dout_vld = !fwftOfm_empty;
+
+FIFO_FWFT#(
+    .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK ),// ?????????? TO SRAM?????????????
+    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  ) // Max
+)u_FIFO_FWFT_OFM(
+    .clk        ( clk           ),
+    .Reset      ( RstAll        ),
+    .rst_n      ( rst_n         ),
+    .push       ( fwftOfm_push  ),
+    .pop        ( fwftOfm_pop   ),
+    .data_in    ( shift_din     ),
+    .data_out   ( shift_dout    ),
+    .empty      ( fwftOfm_empty ),
+    .full       ( fwftOfm_full  ),
+    .fifo_count (               )
 );
 
 always @ ( posedge clk or negedge rst_n ) begin
@@ -637,7 +647,7 @@ always @ ( posedge clk or negedge rst_n ) begin
         ShiftOut_OfmAddr_s3 <= 0;
     end else if(RstAll) begin
         ShiftOut_OfmAddr_s3 <= 0;
-    end else if(shift_din_vld & shift_din_rdy) begin
+    end else if(fwftOfm_din & fwftOfm_din_rdy) begin
         // cache the address of the first din
         ShiftOut_OfmAddr_s3 <= SYA_PsumOutAddr_s2 + (NUM_ROW*NUM_BANK - 1);
     end

@@ -17,7 +17,8 @@
             ../../src/SYA/PE.v                                 
     ../../src/SYA/SHIFT.v
 ../../src/UNT/ADD.v
-../../src/MON/MON.v                  
+../../src/UNT/SHF.v
+../../src/MON/MON.v
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DELAY/LATCH_DELAY.v
 ../../src/primitives/DEB/DEB.v
