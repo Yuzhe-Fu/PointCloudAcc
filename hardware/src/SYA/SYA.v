@@ -347,12 +347,12 @@ counter#(
 // Logic Design: S1: RdAct/WgtDat
 //=====================================================================================================================
 // Combinational Logic
-assign SYAGLB_ActRdAddr     = CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilIfm + CCUSYA_CfgChn*CntGrp + CntChn;
-assign SYAGLB_ActRdAddrVld  = vld_s0 & GLBSYA_WgtRdAddrRdy; // other load are ready
-assign SYAGLB_WgtRdAddr     = CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilFlt + CCUSYA_CfgChn*CntGrp + CntChn;
-assign SYAGLB_WgtRdAddrVld  = vld_s0 & GLBSYA_ActRdAddrRdy; // other load are ready
-assign SYAGLB_ActRdDatRdy   = rdy_s1;
-assign SYAGLB_WgtRdDatRdy   = rdy_s1;
+assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilIfm + CCUSYA_CfgChn*CntGrp + CntChn;
+assign SYAGLB_ActRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_WgtRdAddrRdy; // other load are ready
+assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilFlt + CCUSYA_CfgChn*CntGrp + CntChn;
+assign SYAGLB_WgtRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_ActRdAddrRdy; // other load are ready
+assign SYAGLB_ActRdDatRdy   = state == IDLE? 0 : rdy_s1;
+assign SYAGLB_WgtRdDatRdy   = state == IDLE? 0 : rdy_s1;
 
 assign rdy_s1       = ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
@@ -627,8 +627,8 @@ assign fwftOfm_pop      = fwftOfm_dout_vld & fwftOfm_dout_rdy;
 assign fwftOfm_dout_vld = !fwftOfm_empty;
 
 FIFO_FWFT#(
-    .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK ),// ?????????? TO SRAM?????????????
-    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  ) // Max
+    .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK ), // 64B
+    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64
 )u_FIFO_FWFT_OFM(
     .clk        ( clk           ),
     .Reset      ( RstAll        ),
@@ -661,13 +661,13 @@ end
 
 // --------------------------------------------------------------------------------------------------------------------
 // Write Ofm to GLB 
-assign SYAGLB_OfmWrDat      = fifo_out_CfgOfmPhaseShift? 
+assign SYAGLB_OfmWrDat      = state == IDLE? 0 : fifo_out_CfgOfmPhaseShift? 
                                 shift_dout       
                                 : OfmDiagConcat;
-assign SYAGLB_OfmWrDatVld   = fifo_out_CfgOfmPhaseShift? 
+assign SYAGLB_OfmWrDatVld   = state == IDLE? 0 : fifo_out_CfgOfmPhaseShift? 
                                 vld_s3  
                                 : DiagOut & (vld_s2 & vld_s3); // Concate
-assign SYAGLB_OfmWrAddr     = (fifo_out_CfgOfmPhaseShift | !DiagOut)? 
+assign SYAGLB_OfmWrAddr     = state == IDLE? 0 : (fifo_out_CfgOfmPhaseShift | !DiagOut)? 
                                 ShiftOut_OfmAddr_s3
                                 : SYA_PsumOutAddr_s2; // Ref to HW-SYA
 
