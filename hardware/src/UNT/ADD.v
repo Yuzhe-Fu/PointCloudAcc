@@ -168,7 +168,7 @@ assign ADDGLB_Add1RdAddrVld = vld_s0 & GLBADD_Add0RdAddrRdy;
 //=====================================================================================================================
 // Logic Design: s1
 //=====================================================================================================================
-assign rdy_s1       = ena_s1;
+assign rdy_s1       = ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
 assign vld_s1       = GLBADD_Add0RdDatVld & GLBADD_Add1RdDatVld;
@@ -209,20 +209,19 @@ generate
             
         end
     end
-    always @ ( posedge clk or negedge rst_n ) begin
-        if ( !rst_n ) begin
-            vld_s2 <= 0;
-            overflow_CntAddr_s2 <= 0;
-        end else if( state == IDLE) begin
-            vld_s2 <= 0;
-            overflow_CntAddr_s2 <= 0;
-        end else if(ena_s2) begin
-            vld_s2 <= handshake_s1;
-            overflow_CntAddr_s2 <= overflow_CntAddr_s1;
-        end
-    end
-    
 endgenerate
+always @ ( posedge clk or negedge rst_n ) begin
+    if ( !rst_n ) begin
+        vld_s2 <= 0;
+        overflow_CntAddr_s2 <= 0;
+    end else if( state == IDLE) begin
+        vld_s2 <= 0;
+        overflow_CntAddr_s2 <= 0;
+    end else if(ena_s2) begin
+        vld_s2 <= handshake_s1;
+        overflow_CntAddr_s2 <= overflow_CntAddr_s1;
+    end
+end
 
 assign ADDGLB_SumWrDat      = Sum;
 assign ADDGLB_SumWrAddr     = CCUADD_CfgSumAddr + CntAddr;
