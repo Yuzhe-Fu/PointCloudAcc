@@ -591,8 +591,8 @@ assign fifo_out_CfgChn = fifo_out_CfgChn_tmp == 0? 1 : fifo_out_CfgChn_tmp;
 assign DiagOut = CurPsumOutDiagIdx_s2 <= NUM_ROW*SYA_SIDEBANK; 
 
 // Generate shift_din
-assign shift_din     = OfmDiag;
-assign fwftOfm_din = fifo_out_CfgOfmPhaseShift? 
+assign shift_din    = OfmDiag;
+assign fwftOfm_din  = fifo_out_CfgOfmPhaseShift? 
                         (DiagOut? 0 : PartPsumVld)
                         : {NUM_ROW*NUM_BANK{vld_s2}}; // Write a part
 
@@ -609,11 +609,11 @@ end
 
 // HandShake
 assign rdy_s3       = GLBSYA_OfmWrDatRdy;
-assign vld_s3       = |fwftOfm_dout_vld;
+assign vld_s3       = fwftOfm_dout_vld;
 assign handshake_s3 = rdy_s3 & vld_s3;
 assign ena_s3       = handshake_s3 | ~vld_s3;
 
-assign fwftOfm_dout_rdy   = rdy_s3;
+assign fwftOfm_dout_rdy   = rdy_s3 & SYAGLB_OfmWrDatVld;
 // --------------------------------------------------------------------------------------------------------------------
 // Reg Update
 wire                        fwftOfm_push;
@@ -666,7 +666,7 @@ assign SYAGLB_OfmWrDat      = state == IDLE? 0 : fifo_out_CfgOfmPhaseShift?
                                 : OfmDiagConcat;
 assign SYAGLB_OfmWrDatVld   = state == IDLE? 0 : fifo_out_CfgOfmPhaseShift? 
                                 vld_s3  
-                                : DiagOut & (vld_s2 & vld_s3); // Concate
+                                : DiagOut & vld_s2; // Concate
 assign SYAGLB_OfmWrAddr     = state == IDLE? 0 : (fifo_out_CfgOfmPhaseShift | !DiagOut)? 
                                 ShiftOut_OfmAddr_s3
                                 : SYA_PsumOutAddr_s2; // Ref to HW-SYA
