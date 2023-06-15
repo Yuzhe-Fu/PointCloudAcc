@@ -299,10 +299,12 @@ counter#(
 // Combinational Logic
 assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgLopOrd? 
                                                     CntChn // Change Filter Group: Filter is inner loop
-                                                    : CCUSYA_CfgChn*CntGrp + CntChn; // 
+                                                    
+                                                    // CntGrp%CCUSYA_CfgNumGrpPerTile : 0-NumGrp then turn back because rectangle
+                                                    : CCUSYA_CfgChn*(CntGrp%CCUSYA_CfgNumGrpPerTile) + CntChn; 
 assign SYAGLB_ActRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_WgtRdAddrRdy; // other load are ready
 assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgLopOrd? 
-                                                    CCUSYA_CfgChn*CntGrp + CntChn
+                                                    CCUSYA_CfgChn*(CntGrp%CCUSYA_CfgNumGrpPerTile) + CntChn
                                                     : CntChn;
 assign SYAGLB_WgtRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_ActRdAddrRdy; // other load are ready
 assign SYAGLB_ActRdDatRdy   = state == IDLE? 0 : rdy_s1;
