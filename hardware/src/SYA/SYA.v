@@ -23,7 +23,7 @@ module SYA #(
     parameter CHN_WIDTH  = 16,
     parameter IDX_WIDTH  = 16,
     parameter SYAMON_WIDTH = SYAISA_WIDTH + 3,
-    parameter NUM_OUT    = NUM_BANK
+    parameter SYA_SIDEBANK = 2**($clog2(NUM_BANK) - 1) // SQURT(4) = 2
   )(
     input                                                   clk                     ,
     input                                                   rst_n                   ,
@@ -33,7 +33,7 @@ module SYA #(
     output [ADDR_WIDTH                              -1 : 0] SYAGLB_ActRdAddr        ,
     output                                                  SYAGLB_ActRdAddrVld     ,
     input                                                   GLBSYA_ActRdAddrRdy     ,
-    input  [NUM_BANK-1:0][NUM_ROW  -1:0][ACT_WIDTH  -1 : 0] GLBSYA_ActRdDat         , // 512
+    input  [SYA_SIDEBANK-1:0][NUM_ROW  -1:0][ACT_WIDTH  -1 : 0] GLBSYA_ActRdDat     , // only 32B or 16B; can be change to Wgt
     input                                                   GLBSYA_ActRdDatVld      ,
     output                                                  SYAGLB_ActRdDatRdy      ,
     output [ADDR_WIDTH                              -1 : 0] SYAGLB_WgtRdAddr        ,
@@ -54,12 +54,11 @@ module SYA #(
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam  SYA_SIDEBANK    = 2**($clog2(NUM_BANK) - 1); // SQURT(4) = 2
 localparam  PSUM_WIDTH      = ACT_WIDTH + WGT_WIDTH + CHN_WIDTH;
 localparam  NUMDIAG_WIDTH   = $clog2(NUM_ROW*8);
 
 localparam IDLE             = 3'b000;
-localparam INREGUL          = 3'b001;
+localparam COMP             = 3'b001;
 localparam INSHIFT          = 3'b010;
 localparam WAITOUT          = 3'b011;
 
@@ -68,8 +67,6 @@ localparam WAITOUT          = 3'b011;
 //=====================================================================================================================
 wire                                                        Overflow_CntChn;
 wire                                                        Overflow_CntGrp;
-wire                                                        Overflow_CntTilFlt;
-wire                                                        Overflow_CntTilIfm;
 wire [CHN_WIDTH                                     -1 : 0] CntChn;
 wire [IDX_WIDTH                                     -1 : 0] CntTilIfm;
 wire [CHN_WIDTH                                     -1 : 0] MaxCntChn;
@@ -77,11 +74,6 @@ wire                                                        INC_CntChn;
 wire [IDX_WIDTH                                     -1 : 0] CntGrp;
 wire [IDX_WIDTH                                     -1 : 0] MaxCntGrp;
 wire                                                        INC_CntGrp; 
-wire [CHN_WIDTH                                     -1 : 0] CntTilFlt;
-wire [CHN_WIDTH                                     -1 : 0] MaxCntTilFlt;
-wire                                                        INC_CntTilFlt;
-wire [IDX_WIDTH                                     -1 : 0] MaxCntTilIfm;
-wire                                                        INC_CntTilIfm; 
 wire                                                        rdy_s0;
 wire                                                        vld_s0;
 wire                                                        ena_s0;
@@ -131,15 +123,11 @@ wire [NUM_BANK                                      -1 : 0] sync_out_rdy;
 wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][ACT_WIDTH   -1 : 0] sync_out;
 wire [$clog2(NUM_ROW*NUM_BANK) + 1                  -1 : 0] SYA_MaxRowCol;
 
-reg  [NUM_ROW*NUM_BANK  -1 : 0][IDX_WIDTH           -1 : 0] AllBank_InCntTilIfm;
-reg  [NUM_ROW*NUM_BANK  -1 : 0][CHN_WIDTH           -1 : 0] AllBank_InCntTilFlt;
-reg  [NUM_ROW*NUM_BANK  -1 : 0][IDX_WIDTH           -1 : 0] AllBank_InCntGrp;
-
 wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][NUM_COL   -1 : 0] SYA_Reset;
 wire [NUM_BANK  -1 : 0][NUM_ROW -1 : 0][NUM_COL   -1 : 0] SYA_En;
 
 wire [ACT_WIDTH*NUM_ROW*NUM_BANK        -1 : 0] shift_din;
-wire [1*NUM_ROW*NUM_BANK                -1 : 0] fwftOfm_din;
+wire                                            fwftOfm_din_vld;
 reg  [1*NUM_ROW*NUM_BANK                -1 : 0] PartPsumVld;
 wire                                            fwftOfm_din_rdy;
 wire [ACT_WIDTH*NUM_ROW*NUM_BANK        -1 : 0] shift_dout;
@@ -154,7 +142,6 @@ wire [NUMDIAG_WIDTH                     -1 : 0] CurPsumOutDiagIdx_s2;
 wire [NUMDIAG_WIDTH                     -1 : 0] DefaultRmDiagPsum;
 wire [NUMDIAG_WIDTH                     -1 : 0] NumDiag;
 integer                                         i;
-wire                                            RstAll_d;
 reg [NUM_BANK   -1 : 0][NUM_ROW -1 : 0][NUM_COL -1 : 0][ACT_WIDTH  -1 : 0] SYA_OutPsum_RQ;
 reg [$clog2(NUM_ROW*NUM_BANK + NUM_COL*NUM_BANK)  -1 : 0] travDiagIdx_tmp; // traverse
 
@@ -200,7 +187,7 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgLopOrd        <=  0; // 1
         CCUSYA_CfgMod           <=  0; // 2
         CCUSYA_CfgRstAll        <=  1; // 1
-    end else if( state == IDLE & next_state == INREGUL) begin // Config
+    end else if( state == IDLE & next_state == COMP) begin // Config
         {
         CCUSYA_CfgOfmWrBaseAddr ,   // 16
         CCUSYA_CfgActRdBaseAddr ,   // 16
@@ -211,7 +198,7 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgChn           ,   // 16
         CCUSYA_CfgShift         ,   // 8
         CCUSYA_CfgZp            ,   // 8
-        
+
         CCUSYA_CfgOfmPhaseShift ,   // 3
         CCUSYA_CfgLopOrd        ,   // 1
 
@@ -228,16 +215,16 @@ wire CCUSYA_CfgRstAll_wire = CCUSYA_CfgInfo[9];
 always @(*) begin
     case ( state )
         IDLE :  if(CCUSYA_CfgVld & SYACCU_CfgRdy)
-                    next_state <= INREGUL; //
+                    next_state <= COMP; //
                 else
                     next_state <= IDLE;
 
-        INREGUL:if(CCUSYA_CfgVld)
+        COMP:if(CCUSYA_CfgVld)
                     next_state <= IDLE;
-                else if( (Overflow_CntTilIfm & Overflow_CntTilFlt & Overflow_CntGrp & Overflow_CntChn) & handshake_s0)
+                else if( (Overflow_CntGrp & Overflow_CntChn) & handshake_s0)
                     next_state <= IDLE;
                 else
-                    next_state <= INREGUL;
+                    next_state <= COMP;
 
         default:    next_state <= IDLE;
 
@@ -257,24 +244,19 @@ end
 // --------------------------------------------------------------------------------------------------------------------
 // Combinational Logic
 // --------------------------------------------------------------------------------------------------------------------
-assign RstAll       = CCUSYA_CfgRstAll_wire & (state == IDLE & next_state == INREGUL); // Pulse
 assign SYA_MaxRowCol= CCUSYA_CfgMod == 0 ? NUM_ROW*SYA_SIDEBANK : NUM_ROW*SYA_SIDEBANK*2;
 assign SYACCU_CfgRdy= state == IDLE;
 
 assign MaxCntChn    = CCUSYA_CfgChn - 1; 
 assign INC_CntChn   = handshake_s0;
-assign MaxCntGrp    = CCUSYA_CfgNumGrpPerTile - 1; 
+assign MaxCntGrp    = CCUSYA_CfgNumGrpPerTile + 1- 1; // 1 More Grp, because last triangle 
 assign INC_CntGrp   = Overflow_CntChn & INC_CntChn;
-assign MaxCntTilFlt = CCUSYA_CfgNumTilFlt - 1; 
-assign INC_CntTilFlt= CCUSYA_CfgLopOrd == 0? Overflow_CntGrp & INC_CntGrp : Overflow_CntTilIfm & INC_CntTilIfm;
-assign MaxCntTilIfm = CCUSYA_CfgNumTilIfm - 1;
-assign INC_CntTilIfm= CCUSYA_CfgLopOrd == 0? Overflow_CntTilFlt & INC_CntTilFlt : Overflow_CntGrp & INC_CntGrp;
 
 // HandShake
-assign rdy_s0       = GLBSYA_ActRdAddrRdy & GLBSYA_WgtRdAddrRdy; // 2 loads
+assign rdy_s0       = state != IDLE & GLBSYA_ActRdAddrRdy & GLBSYA_WgtRdAddrRdy; // 2 loads
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
-assign vld_s0       = state == INREGUL;
+assign vld_s0       = state != IDLE;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Reg Update
@@ -311,50 +293,22 @@ counter#(
     .COUNT     ( CntGrp             ) 
 );
 
-counter#(
-    .COUNT_WIDTH ( CHN_WIDTH )
-)u1_counter_CntTilFlt(
-    .CLK       ( clk                ),
-    .RESET_N   ( rst_n              ),
-    .CLEAR     ( state == IDLE      ),
-    .DEFAULT   ( {CHN_WIDTH{1'b0}}  ),
-    .INC       ( INC_CntTilFlt      ),
-    .DEC       ( 1'b0               ),
-    .MIN_COUNT ( {CHN_WIDTH{1'b0}}  ),
-    .MAX_COUNT ( MaxCntTilFlt       ),
-    .OVERFLOW  ( Overflow_CntTilFlt ),
-    .UNDERFLOW (                    ),
-    .COUNT     ( CntTilFlt          ) 
-);
-
-counter#(
-    .COUNT_WIDTH ( IDX_WIDTH )
-)u1_counter_CntTilIfm(
-    .CLK       ( clk                ),
-    .RESET_N   ( rst_n              ),
-    .CLEAR     ( state == IDLE      ),
-    .DEFAULT   ( {IDX_WIDTH{1'b0}}  ),
-    .INC       ( INC_CntTilIfm      ),
-    .DEC       ( 1'b0               ),
-    .MIN_COUNT ( {IDX_WIDTH{1'b0}}  ),
-    .MAX_COUNT ( MaxCntTilIfm       ),
-    .OVERFLOW  ( Overflow_CntTilIfm ),
-    .UNDERFLOW (                    ),
-    .COUNT     ( CntTilIfm          )
-);
-
 //=====================================================================================================================
 // Logic Design: S1: RdAct/WgtDat
 //=====================================================================================================================
 // Combinational Logic
-assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilIfm + CCUSYA_CfgChn*CntGrp + CntChn;
+assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgLopOrd? 
+                                                    CntChn // Change Filter Group: Filter is inner loop
+                                                    : CCUSYA_CfgChn*CntGrp + CntChn; // 
 assign SYAGLB_ActRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_WgtRdAddrRdy; // other load are ready
-assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgChn*CCUSYA_CfgNumGrpPerTile*CntTilFlt + CCUSYA_CfgChn*CntGrp + CntChn;
+assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgLopOrd? 
+                                                    CCUSYA_CfgChn*CntGrp + CntChn
+                                                    : CntChn;
 assign SYAGLB_WgtRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_ActRdAddrRdy; // other load are ready
 assign SYAGLB_ActRdDatRdy   = state == IDLE? 0 : rdy_s1;
 assign SYAGLB_WgtRdDatRdy   = state == IDLE? 0 : rdy_s1;
 
-assign rdy_s1       = ena_s2;
+assign rdy_s1       = state != IDLE & ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
 assign vld_s1       = GLBSYA_ActRdDatVld & GLBSYA_WgtRdDatVld;
@@ -376,15 +330,15 @@ assign SYA_InAct_W          [0] = GLBSYA_ActRdDat[0];
 assign SYA_InWgt_N          [0] = GLBSYA_WgtRdDat[0];
 
 // Bank[1]
-assign SYA_InAct_W          [1] = CCUSYA_CfgMod == 2? GLBSYA_ActRdDat[2]: SYA_OutAct_E[0];
-assign SYA_InWgt_N          [1] = CCUSYA_CfgMod == 2? SYA_OutWgt_S[2]   : GLBSYA_WgtRdDat[1];
+assign SYA_InAct_W          [1] = SYA_OutAct_E   [0];
+assign SYA_InWgt_N          [1] = GLBSYA_WgtRdDat[1];
 
 // Bank[2]
-assign SYA_InAct_W          [2] = CCUSYA_CfgMod == 1? SYA_OutAct_E[1]    : GLBSYA_ActRdDat[1];
+assign SYA_InAct_W          [2] = CCUSYA_CfgMod == 1? SYA_OutAct_E   [1] : GLBSYA_ActRdDat[1];
 assign SYA_InWgt_N          [2] = CCUSYA_CfgMod == 1? GLBSYA_WgtRdDat[2] : SYA_OutWgt_S[0];
 
 // Bank[3]
-assign SYA_InAct_W          [3] = CCUSYA_CfgMod == 2? GLBSYA_ActRdDat[3] : SYA_OutAct_E[2];
+assign SYA_InAct_W          [3] = SYA_OutAct_E[2];
 assign SYA_InWgt_N          [3] = CCUSYA_CfgMod == 1? GLBSYA_WgtRdDat[3] : SYA_OutWgt_S[1];
 
 // Generate SYA Input signals: SYA_En, SYA_Reset
@@ -397,54 +351,20 @@ generate
                 wire [$clog2(NUM_ROW*NUM_BANK)  -1 : 0] axis_y;
 
                 assign axis_x = CCUSYA_CfgMod == 0? NUM_ROW*(gv_bk/2) + gv_row
-                                    : CCUSYA_CfgMod == 1? gv_row
-                                        : NUM_ROW*gv_bk + gv_row;
+                                    : gv_row;
                 assign axis_y = CCUSYA_CfgMod == 0? NUM_COL*(gv_bk%2) + gv_col
-                                    : CCUSYA_CfgMod == 1? NUM_COL*gv_bk + gv_col
-                                        : gv_col;
-                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx_s2) & (handshake_s2) | RstAll;
+                                    : NUM_COL*gv_bk + gv_col;
+                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx_s2) & (handshake_s2);
             end
         end
     end
 endgenerate
 
-// --------------------------------------------------------------------------------------------------------------------
-// Cfg Cache
-localparam FIFO_DATA_WIDTH = IDX_WIDTH*2 + CHN_WIDTH + ACT_WIDTH*2 + 4;
-wire                            push;
-wire                            pop;
-wire [FIFO_DATA_WIDTH   -1 : 0] fifo_data_in;
-wire [FIFO_DATA_WIDTH   -1 : 0] fifo_data_out;
-
-wire [IDX_WIDTH         -1 : 0] fifo_out_CfgNumTilFlt;
-wire [IDX_WIDTH         -1 : 0] fifo_out_CfgNumGrpPerTile;
-wire [CHN_WIDTH         -1 : 0] fifo_out_CfgChn; 
-wire [CHN_WIDTH         -1 : 0] fifo_out_CfgChn_tmp; 
-wire [ACT_WIDTH         -1 : 0] fifo_out_CfgZp; 
-wire [ACT_WIDTH         -1 : 0] fifo_out_CfgShift; 
-wire                            fifo_out_CfgOfmPhaseShift;
-wire                            fifo_out_CfgLopOrd;
-wire [2                 -1 : 0] fifo_out_CfgMod;
-
-// The last channel of the 00 PE or RstAll-> push 1st
-assign push         = SYA_Reset[0][0] | RstAll_d; 
-assign fifo_data_in = {
-    CCUSYA_CfgNumTilFlt, 
-    CCUSYA_CfgNumGrpPerTile, 
-    CCUSYA_CfgChn, 
-    CCUSYA_CfgShift, 
-    CCUSYA_CfgZp, 
-    CCUSYA_CfgOfmPhaseShift[0], 
-    CCUSYA_CfgLopOrd, 
-    CCUSYA_CfgMod
-    };
-assign pop          = handshake_s2;
-
 // HandShake
 // SYA_PsumOutRdy: 2 loads: shift_din or GLB
-assign rdy_s2       = fifo_out_CfgOfmPhaseShift? &fwftOfm_din_rdy : GLBSYA_OfmWrDatRdy; 
+assign rdy_s2       = GLBSYA_OfmWrDatRdy; 
 // SYA_PsumOutVld
-assign vld_s2       = ( (CntMac >= fifo_out_CfgChn) & 0 <= CntMac % fifo_out_CfgChn & CntMac % fifo_out_CfgChn <= NumDiag ) & CntRmDiagPsum > 0;
+assign vld_s2       = ( (CntMac >= CCUSYA_CfgChn) & 0 <= CntMac % CCUSYA_CfgChn & CntMac % CCUSYA_CfgChn <= NumDiag ) & CntRmDiagPsum > 0;
 assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
 
@@ -455,7 +375,7 @@ counter#(
 )u1_counter_CntMac( // Total MAC
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
-    .CLEAR     ( RstAll         ),
+    .CLEAR     ( state == IDLE         ),
     .DEFAULT   ( {32{1'b0}}     ),
     .INC       ( handshake_s1   ),
     .DEC       ( 1'b0           ),
@@ -472,7 +392,7 @@ counter#(
 )u1_counter_CntRmDiagPsum( // Remained Diagnonal Psum to output
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( handshake_s1 | RstAll),
+    .CLEAR     ( handshake_s1 | state == IDLE),
     .DEFAULT   ( state == IDLE? {NUMDIAG_WIDTH{1'b0}} : DefaultRmDiagPsum ),
     .INC       ( 1'b0               ),
     .DEC       ( handshake_s2       ),
@@ -481,32 +401,6 @@ counter#(
     .OVERFLOW  (                    ),
     .UNDERFLOW (                    ),
     .COUNT     ( CntRmDiagPsum      )
-);
-
-FIFO_FWFT#(
-    .DATA_WIDTH ( FIFO_DATA_WIDTH ),
-    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK) ) // Max
-)u_FIFO_FWFT_Cfg(
-    .clk        ( clk       ),
-    .Reset      ( RstAll    ),
-    .rst_n      ( rst_n     ),
-    .push       ( push      ),
-    .pop        ( pop       ),
-    .data_in    ( fifo_data_in),
-    .data_out   ( fifo_data_out),
-    .empty      (           ),
-    .full       (           ),
-    .fifo_count (           )
-);
-
-DELAY#(
-    .NUM_STAGES ( 1 ),
-    .DATA_WIDTH ( 1 )
-)u_DELAY_RstAll_d(
-    .CLK        ( clk       ),
-    .RST_N      ( rst_n     ),
-    .DIN        ( RstAll    ),
-    .DOUT       ( RstAll_d  ) 
 );
 
 PE_BANK #(
@@ -536,13 +430,9 @@ assign DefaultRmDiagPsum    = (CntMac % NumDiag) / CCUSYA_CfgChn + 1;
 assign CurPsumOutDiagIdx_s2 = ( (CntMac - CCUSYA_CfgChn) % NumDiag ) - (DefaultRmDiagPsum - CntRmDiagPsum);
 
 // Generate OfmDiag
-assign NumFltPal            = fifo_out_CfgMod == 0? 32 : fifo_out_CfgMod == 1? 64 : 16;
-assign Cho_s2               = fifo_out_CfgNumGrpPerTile*fifo_out_CfgNumTilFlt;
-assign SYA_PsumOutAddr_s2   = CntMac % fifo_out_CfgChn + 
-                                (fifo_out_CfgLopOrd == 0? 
-                                    Cho_s2*(DefaultRmDiagPsum - CntRmDiagPsum)*(CCUSYA_CfgNumGrpPerTile*CntTilIfm + CntGrp)
-                                    : NumFltPal*(DefaultRmDiagPsum - CntRmDiagPsum)*(CCUSYA_CfgNumGrpPerTile*CntTilFlt + CntGrp)
-                                );
+assign NumFltPal            = CCUSYA_CfgMod == 0? 32 : 64;
+assign Cho_s2               = CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt;
+
 always@(*) begin
     OfmDiag  = OfmDiag_r;
     for(bank=0; bank<NUM_BANK; bank=bank+1) begin
@@ -550,7 +440,7 @@ always@(*) begin
             for(col=0; col<NUM_COL; col=col+1) begin
                 SYA_OutPsum_RQ[bank][row][col]   = SYA_OutPsum[bank][row][col][PSUM_WIDTH -1]? 
                                                     0 
-                                                    : SYA_OutPsum[bank][row][col][fifo_out_CfgShift +: ACT_WIDTH] + fifo_out_CfgZp; 
+                                                    : SYA_OutPsum[bank][row][col][CCUSYA_CfgShift +: ACT_WIDTH] + CCUSYA_CfgZp; 
                                                     // ReLU and Quant at first.
                 // Only when 2x2 case: Diag of Current looped PE
                 travDiagIdx_tmp = ((bank/2)*NUM_ROW + row + (bank%2)*NUM_COL + col); 
@@ -573,18 +463,6 @@ DELAY#(
     .DOUT       ( OfmDiag_r )
 );
 
-assign {
-    fifo_out_CfgNumTilFlt, 
-    fifo_out_CfgNumGrpPerTile, 
-    fifo_out_CfgChn_tmp, 
-    fifo_out_CfgShift, 
-    fifo_out_CfgZp, 
-    fifo_out_CfgOfmPhaseShift, 
-    fifo_out_CfgLopOrd, 
-    fifo_out_CfgMod
-    } = fifo_data_out;
-assign fifo_out_CfgChn = fifo_out_CfgChn_tmp == 0? 1 : fifo_out_CfgChn_tmp;
-
 // --------------------------------------------------------------------------------------------------------------------
 // Current Diag Psum Should be Out to GLB at Diag <32; 
 // otherwise should be cached into SHIFT at Diag > 32;
@@ -592,17 +470,12 @@ assign DiagOut = CurPsumOutDiagIdx_s2 <= NUM_ROW*SYA_SIDEBANK;
 
 // Generate shift_din
 assign shift_din    = OfmDiag;
-assign fwftOfm_din  = fifo_out_CfgOfmPhaseShift? 
-                        (DiagOut? 0 : PartPsumVld)
-                        : {NUM_ROW*NUM_BANK{vld_s2}}; // Write a part
+assign fwftOfm_din_vld  = vld_s2; 
 
-// PartPsumVld: Select partial psums at Diag<32 of the next loop
 // OfmDiagConcat: Concate psums at Diag<32 of the next loop with Diag>32 of the current loop
 always @(*) begin 
-    PartPsumVld = 0;
     OfmDiagConcat = OfmDiag;
     for(i=0; i<CurPsumOutDiagIdx_s2; i=i+1) begin
-        PartPsumVld[i] = vld_s2;
         OfmDiagConcat[ACT_WIDTH*i +: ACT_WIDTH] = vld_s3? shift_dout[ACT_WIDTH*i +: ACT_WIDTH] : 0;
     end
 end
@@ -621,7 +494,7 @@ wire                        fwftOfm_pop;
 wire                        fwftOfm_empty;
 wire                        fwftOfm_full;
 
-assign fwftOfm_push     = fwftOfm_din & fwftOfm_din_rdy;
+assign fwftOfm_push     = fwftOfm_din_vld & fwftOfm_din_rdy;
 assign fwftOfm_din_rdy  = !fwftOfm_full;
 assign fwftOfm_pop      = fwftOfm_dout_vld & fwftOfm_dout_rdy;
 assign fwftOfm_dout_vld = !fwftOfm_empty;
@@ -642,17 +515,6 @@ FIFO_FWFT#(
     .fifo_count (               )
 );
 
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        ShiftOut_OfmAddr_s3 <= 0;
-    end else if(RstAll) begin
-        ShiftOut_OfmAddr_s3 <= 0;
-    end else if(fwftOfm_din & fwftOfm_din_rdy) begin
-        // cache the address of the first din
-        ShiftOut_OfmAddr_s3 <= SYA_PsumOutAddr_s2 + (NUM_ROW*NUM_BANK - 1);
-    end
-end
-
 //=====================================================================================================================
 // Logic Design: S4: Psum Out
 //=====================================================================================================================
@@ -661,15 +523,25 @@ end
 
 // --------------------------------------------------------------------------------------------------------------------
 // Write Ofm to GLB 
-assign SYAGLB_OfmWrDat      = state == IDLE? 0 : fifo_out_CfgOfmPhaseShift? 
-                                shift_dout       
-                                : OfmDiagConcat;
-assign SYAGLB_OfmWrDatVld   = state == IDLE? 0 : fifo_out_CfgOfmPhaseShift? 
-                                vld_s3  
-                                : DiagOut & vld_s2; // Concate
-assign SYAGLB_OfmWrAddr     = state == IDLE? 0 : (fifo_out_CfgOfmPhaseShift | !DiagOut)? 
-                                ShiftOut_OfmAddr_s3
-                                : SYA_PsumOutAddr_s2; // Ref to HW-SYA
+assign SYAGLB_OfmWrDat      = state == IDLE? 0 : OfmDiagConcat;
+assign SYAGLB_OfmWrDatVld   = state == IDLE? 0 : DiagOut & vld_s2; // Concate
+
+counter#(
+    .COUNT_WIDTH ( ADDR_WIDTH   ),
+    .DEFAULT_VAR ( 1            )
+)u1_counter_SYAGLB_OfmWrAddr(
+    .CLK       ( clk                ),
+    .RESET_N   ( rst_n              ),
+    .CLEAR     ( state == IDLE      ),
+    .DEFAULT   ( CCUSYA_CfgOfmWrBaseAddr),
+    .INC       ( SYAGLB_OfmWrDatVld & GLBSYA_OfmWrDatRdy),
+    .DEC       ( 1'b0               ),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}} ),
+    .MAX_COUNT ( {ADDR_WIDTH{1'b1}} ),
+    .OVERFLOW  (                    ),
+    .UNDERFLOW (                    ),
+    .COUNT     ( SYAGLB_OfmWrAddr   )
+);
 
 //=====================================================================================================================
 // Logic Design: Monitor
@@ -689,8 +561,6 @@ assign SYAMON_Dat = {
     GLBSYA_OfmWrDatRdy  , 
     CntRmDiagPsum       , 
     CntMac              , 
-    CntTilFlt           , 
-    CntTilIfm           ,
     CntGrp              , 
     CntChn              , 
     CCUSYA_CfgInfo      , 
