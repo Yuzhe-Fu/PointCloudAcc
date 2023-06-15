@@ -67,25 +67,34 @@ localparam OUT2OFF  = 3'b011;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-reg  [PORT_WIDTH    -1 : 0] Cmd;
-wire                        CmdRdy;
-wire                        CmdVld;
-wire                        Out2Off;
-wire [ADDR_WIDTH    -1 : 0] CntGLBAddr;
-wire [BYTE_WIDTH                         -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
-wire [DRAM_ADDR_WIDTH                    -1 : 0] CCUGIC_CfgDRAMBaseAddr;
-wire [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgGLBBaseAddr ;
-wire [ADDR_WIDTH                         -1 : 0] CCUGIC_CfgNum         ; 
+reg  [PORT_WIDTH            -1 : 0] Cmd;
+wire                                Out2Off;
+wire [ADDR_WIDTH            -1 : 0] CntGLBAddr;
+wire [BYTE_WIDTH    -1      -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
+wire [DRAM_ADDR_WIDTH       -1 : 0] CCUGIC_CfgDRAMBaseAddr;
+wire [ADDR_WIDTH            -1 : 0] CCUGIC_CfgGLBBaseAddr ;
+wire [ADDR_WIDTH            -1 : 0] CCUGIC_CfgNum         ; 
+
+wire                        SIPO_DatInRdy;
+wire [SRAM_WIDTH    -1 : 0] SIPO_DatOut;
+wire                        SIPO_DatOutVld;
+wire                        SIPO_DatOutLast;
+wire                        SIPO_DatOutRdy;
+wire                        PISO_DatInLast;
+wire                        PISO_DatInRdy;
+wire [PORT_WIDTH    -1 : 0] PISO_DatOut;
+wire                        PISO_DatOutVld;
+wire                        PISO_DatOutLast;
 
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign {
-CCUGIC_CfgGLBBaseAddr   , // 16
-CCUGIC_CfgDRAMBaseAddr  , // 32
-CCUGIC_CfgNum           , // 16
-CCUGIC_CfgInOut           // 8 0: IN2CHIP; 1: OUT2OFF
-} = CCUGIC_CfgInfo[GICISA_WIDTH -1 : 8];
+    CCUGIC_CfgGLBBaseAddr   , // 16
+    CCUGIC_CfgDRAMBaseAddr  , // 32
+    CCUGIC_CfgNum           , // 16
+    CCUGIC_CfgInOut           // 7 0: IN2CHIP; 1: OUT2OFF
+} = CCUGIC_CfgInfo[GICISA_WIDTH -1 : BYTE_WIDTH + 1];
 
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -100,7 +109,7 @@ always @(*) begin
                     next_state <= IDLE;
         CMD :   if(CCUGIC_CfgVld)
                     next_state <= IDLE;
-                else if( CmdRdy & CmdVld) begin
+                else if( ITFGIC_DatRdy) begin
                     if ( CCUGIC_CfgInOut == 1)
                         next_state <= OUT2OFF;
                     else
@@ -109,13 +118,13 @@ always @(*) begin
                     next_state <= CMD;
         IN2CHIP:if(CCUGIC_CfgVld)
                     next_state <= IDLE;
-                else if( (CntGLBAddr == CCUGIC_CfgNum -1 | ITFGIC_DatLast) & (GICGLB_WrDatVld & GLBGIC_WrDatRdy) ) // End
+                else if( SIPO_DatOutLast & (GICGLB_WrDatVld & GLBGIC_WrDatRdy) ) // End
                     next_state <= IDLE;
                 else
                     next_state <= IN2CHIP;
         OUT2OFF:if(CCUGIC_CfgVld)
                     next_state <= IDLE;
-                else if( CntGLBAddr == CCUGIC_CfgNum -1  & (GLBGIC_RdDatVld & GICGLB_RdDatRdy) ) // fetched by Off-chip
+                else if( GICITF_DatLast & (GICITF_DatVld & ITFGIC_DatRdy) ) // fetched by Off-chip
                     next_state <= IDLE;
                 else
                     next_state <= OUT2OFF;
@@ -134,15 +143,11 @@ end
 // Logic Design:
 //=====================================================================================================================
 assign GICCCU_CfgRdy = state == IDLE;
-
-// HandShake
-assign CmdVld = state == CMD;
-
 // Reg Update
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         Cmd <= {PORT_WIDTH{1'b0}};
-    end else if ( state == IDLE )begin 
+    end else if ( next_state == IDLE )begin 
         Cmd <= {PORT_WIDTH{1'b0}};
     end else if(state == IDLE && next_state == CMD) begin
         Cmd <= {CCUGIC_CfgNum, CCUGIC_CfgDRAMBaseAddr, CCUGIC_CfgInOut[0]};
@@ -155,12 +160,61 @@ assign GICITF_CmdVld = state == CMD;
 // Logic Design: // Input to on-chip
 //=====================================================================================================================
 // Combinational Logic
-assign GICITF_DatRdy = state == IN2CHIP & GLBGIC_WrDatRdy;
-
-assign GICGLB_WrDat     = state == IN2CHIP? ITFGIC_Dat   : 0;
-assign GICGLB_WrDatVld  = state == IN2CHIP? ITFGIC_DatVld: 0;
+assign GICITF_DatRdy = state == IN2CHIP & SIPO_DatInRdy;
+SIPO#(
+    .DATA_IN_WIDTH ( PORT_WIDTH     ),
+    .DATA_OUT_WIDTH ( SRAM_WIDTH    )
+)u_SIPO_IN2CHIP(
+    .CLK          ( clk            ),
+    .RST_N        ( rst_n          ),
+    .RESET        ( state == IDLE  ),
+    .IN_VLD       ( ITFGIC_DatVld & state == IN2CHIP ),
+    .IN_LAST      ( ITFGIC_DatLast ),
+    .IN_DAT       ( ITFGIC_Dat     ),
+    .IN_RDY       ( SIPO_DatInRdy  ),
+    .OUT_DAT      ( SIPO_DatOut    ),
+    .OUT_VLD      ( SIPO_DatOutVld ),
+    .OUT_LAST     ( SIPO_DatOutLast),
+    .OUT_RDY      ( SIPO_DatOutRdy )
+);
+assign GICGLB_WrDat     = state == IN2CHIP? SIPO_DatOut   : 0;
+assign GICGLB_WrDatVld  = state == IN2CHIP? SIPO_DatOutVld: 0;
+assign SIPO_DatOutRdy   = state == IN2CHIP? GLBGIC_WrDatRdy:0;
 assign GICGLB_WrAddr    = CntGLBAddr;
 
+//=====================================================================================================================
+// Logic Design: Out to off-chip
+//=====================================================================================================================
+assign GICGLB_RdAddr    = CntGLBAddr; 
+assign GICGLB_RdAddrVld = state == OUT2OFF & CntGLBAddr < CCUGIC_CfgNum;
+assign GICGLB_RdDatRdy  = state == OUT2OFF & PISO_DatInRdy;
+
+assign PISO_DatInLast   = CntGLBAddr == CntGLBAddr == CCUGIC_CfgNum -1;
+
+PISO_NOCACHE #(
+    .DATA_IN_WIDTH ( SRAM_WIDTH ),
+    .DATA_OUT_WIDTH ( PORT_WIDTH )
+)u_PISO_OUT2OFF(
+    .CLK          ( clk         ),
+    .RST_N        ( rst_n       ),
+    .RESET        ( state == IDLE  ),
+    .IN_VLD       ( state == OUT2OFF & GLBGIC_RdDatVld),
+    .IN_LAST      ( PISO_DatInLast),
+    .IN_DAT       ( GLBGIC_RdDat  ),
+    .IN_RDY       ( PISO_DatInRdy ),
+    .OUT_DAT      ( PISO_DatOut   ), // On-chip output to Off-chip 
+    .OUT_VLD      ( PISO_DatOutVld),
+    .OUT_LAST     ( PISO_DatOutLast),
+    .OUT_RDY      ( ITFGIC_DatRdy )
+);
+
+assign GICITF_Dat       = state==CMD? Cmd   : state==OUT2OFF?   PISO_DatOut    : 0;
+assign GICITF_DatVld    = state==CMD? 1'b1  : state==OUT2OFF?   PISO_DatOutVld : 0;
+assign GICITF_DatLast   = state==CMD? 1'b1  : state==OUT2OFF?   PISO_DatOutLast: 0;
+
+//=====================================================================================================================
+// Logic Design: GLB Address Genration
+//=====================================================================================================================
 wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH - 1;
 counter#(
     .COUNT_WIDTH ( ADDR_WIDTH )
@@ -176,20 +230,7 @@ counter#(
     .OVERFLOW  (                ),
     .UNDERFLOW (                ),
     .COUNT     ( CntGLBAddr     )
-); 
-
-//=====================================================================================================================
-// Logic Design: Out to off-chip
-//=====================================================================================================================
-assign GICGLB_RdAddr    = CntGLBAddr; 
-assign GICGLB_RdAddrVld = state == OUT2OFF & CntGLBAddr < CCUGIC_CfgNum; 
-assign GICGLB_RdDatRdy  = ITFGIC_DatRdy & state == OUT2OFF;
-
-assign GICITF_Dat       = state==CMD? Cmd   : GLBGIC_RdDat;
-assign GICITF_DatVld    = state==CMD? CmdVld: GLBGIC_RdDatVld;
-assign GICITF_DatLast   = GICITF_DatVld & CntGLBAddr == CCUGIC_CfgNum -1;
-
-assign CmdRdy           = ITFGIC_DatRdy;
+);
 
 //=====================================================================================================================
 // Debug
@@ -201,26 +242,26 @@ assign Debug_IO_Uti = (GICITF_DatVld & ITFGIC_DatRdy) | (ITFGIC_DatVld & GICITF_
 // Logic Design : Monitor
 //=====================================================================================================================
 assign GICMON_Dat = {
-CCUGIC_CfgVld   ,
-GICCCU_CfgRdy   , 
-GICITF_CmdVld   ,
-GICITF_DatVld   ,
-GICITF_DatLast  ,
-ITFGIC_DatRdy   ,
-ITFGIC_DatVld   ,
-ITFGIC_DatLast  ,
-GICITF_DatRdy   ,
-GICGLB_RdAddrVld,
-GLBGIC_RdAddrRdy,
-GLBGIC_RdDatVld ,
-GICGLB_RdDatRdy ,
-GLBGIC_RdEmpty  ,
-GICGLB_WrDatVld , 
-GLBGIC_WrDatRdy ,
-GLBGIC_WrFull   ,
-CntGLBAddr      ,
-CCUGIC_CfgInfo  ,
-state           
+    CCUGIC_CfgVld   ,
+    GICCCU_CfgRdy   , 
+    GICITF_CmdVld   ,
+    GICITF_DatVld   ,
+    GICITF_DatLast  ,
+    ITFGIC_DatRdy   ,
+    ITFGIC_DatVld   ,
+    ITFGIC_DatLast  ,
+    GICITF_DatRdy   ,
+    GICGLB_RdAddrVld,
+    GLBGIC_RdAddrRdy,
+    GLBGIC_RdDatVld ,
+    GICGLB_RdDatRdy ,
+    GLBGIC_RdEmpty  ,
+    GICGLB_WrDatVld , 
+    GLBGIC_WrDatRdy ,
+    GLBGIC_WrFull   ,
+    CntGLBAddr      ,
+    CCUGIC_CfgInfo  ,
+    state           
 };
 
 endmodule

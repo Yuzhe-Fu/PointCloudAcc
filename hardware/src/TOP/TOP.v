@@ -46,8 +46,8 @@ module TOP #(
     parameter SRAM_WIDTH     = 256, 
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
-    parameter GLB_NUM_RDPORT = 11 + POOL_CORE - 1,
-    parameter GLB_NUM_WRPORT = 9, 
+    parameter GLB_NUM_RDPORT = 12 + POOL_CORE - 1,
+    parameter GLB_NUM_WRPORT = 10, 
     parameter NUM_BANK       = 32,
 
     // CCU
@@ -56,7 +56,7 @@ module TOP #(
     parameter CCUISA_WIDTH   = PORT_WIDTH*1,
     parameter FPSISA_WIDTH   = PORT_WIDTH*16,
     parameter KNNISA_WIDTH   = PORT_WIDTH*2,
-    parameter SYAISA_WIDTH   = PORT_WIDTH*2,
+    parameter SYAISA_WIDTH   = PORT_WIDTH*3,
     parameter POLISA_WIDTH   = PORT_WIDTH*9,
     parameter GICISA_WIDTH   = PORT_WIDTH*2,
     parameter MONISA_WIDTH   = PORT_WIDTH*1,
@@ -125,9 +125,9 @@ localparam GLBWRIDX_FPSCRD = 2;
 localparam GLBWRIDX_FPSDST = 3; 
 localparam GLBWRIDX_FPSIDX = 4; 
 localparam GLBWRIDX_KNNMAP = 5;
-localparam GLBWRIDX_SYAOFM = 6;
-localparam GLBWRIDX_POLOFM = 7;
-localparam GLBWRIDX_POLIDM = 8;
+localparam GLBWRIDX_SYAOFM = 6; // 2 Port
+localparam GLBWRIDX_POLOFM = 8;
+localparam GLBWRIDX_POLIDM = 9;
                                 
 localparam GLBRDIDX_GICGLB = 0; 
 localparam GLBRDIDX_FPSMSK = 1; 
@@ -136,10 +136,10 @@ localparam GLBRDIDX_FPSDST = 3;
 localparam GLBRDIDX_KNNCRD = 4; 
 localparam GLBRDIDX_KNNMASK= 5; 
 localparam GLBRDIDX_KNNIDM = 6; 
-localparam GLBRDIDX_SYAACT = 7; 
-localparam GLBRDIDX_SYAWGT = 8; 
-localparam GLBRDIDX_POLMAP = 9;
-localparam GLBRDIDX_POLOFM = 10;
+localparam GLBRDIDX_SYAACT = 7; // 2 SRAM BW 
+localparam GLBRDIDX_SYAWGT = 9; 
+localparam GLBRDIDX_POLMAP = 10;
+localparam GLBRDIDX_POLOFM = 11;
 
 localparam DISTSQR_WIDTH     =  CRD_WIDTH*2 + $clog2(CRD_DIM);
 
@@ -353,7 +353,7 @@ wire                                                GLBGIC_WrFull    ;
 // --------------------------------------------------------------------------------------------------------------------
 // GLB
 // Configure
-wire [NUM_BANK * (GLB_NUM_RDPORT + GLB_NUM_WRPORT)      -1 : 0] TOPGLB_CfgPortBankFlag;
+wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT) -1 : 0][NUM_BANK-1 : 0] TOPGLB_CfgPortBankFlag;
 wire [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                 -1 : 0] TOPGLB_CfgPortOffEmptyFull;
 // Data
 wire [GLB_NUM_WRPORT    -1 : 0][SRAM_WIDTH          -1 : 0] TOPGLB_WrPortDat    ;
@@ -634,12 +634,17 @@ KNN#(
 // Logic Design: SYA
 //=====================================================================================================================
 // Read Act
-assign TOPGLB_RdPortAddrVld[GLBRDIDX_SYAACT]    = SYAGLB_ActRdAddrVld;
-assign TOPGLB_RdPortAddr[GLBRDIDX_SYAACT]       = SYAGLB_ActRdAddr;
-assign GLBSYA_ActRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_SYAACT];
-assign GLBSYA_ActRdDat                          = GLBTOP_RdPortDat[GLBRDIDX_SYAACT];
-assign GLBSYA_ActRdDatVld                       = GLBTOP_RdPortDatVld[GLBRDIDX_SYAACT];
-assign TOPGLB_RdPortDatRdy[GLBRDIDX_SYAACT]     = SYAGLB_ActRdDatRdy;
+generate
+    for(gv_i=0; gv_i<2; gv_i =gv_i +1) begin
+        assign TOPGLB_RdPortAddrVld [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdAddrVld;
+        assign TOPGLB_RdPortAddr    [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdAddr;
+        assign TOPGLB_RdPortDatRdy  [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdDatRdy;
+    end
+endgenerate
+
+assign GLBSYA_ActRdAddrRdy      = {GLBTOP_RdPortAddrRdy [GLBRDIDX_SYAACT + 1], GLBTOP_RdPortAddrRdy [GLBRDIDX_SYAACT]}; // low 1 bit is enough
+assign GLBSYA_ActRdDat          = {GLBTOP_RdPortDat     [GLBRDIDX_SYAACT + 1], GLBTOP_RdPortDat     [GLBRDIDX_SYAACT]};
+assign GLBSYA_ActRdDatVld       = {GLBTOP_RdPortDatVld  [GLBRDIDX_SYAACT + 1], GLBTOP_RdPortDatVld  [GLBRDIDX_SYAACT]};
 
 // Read Wgt
 assign TOPGLB_RdPortAddrVld[GLBRDIDX_SYAWGT]    = SYAGLB_WgtRdAddrVld;
@@ -650,10 +655,14 @@ assign GLBSYA_WgtRdDatVld                       = GLBTOP_RdPortDatVld[GLBRDIDX_S
 assign TOPGLB_RdPortDatRdy[GLBRDIDX_SYAWGT]     = SYAGLB_WgtRdDatRdy;
 
 // Write Ofm
-assign TOPGLB_WrPortAddr[GLBWRIDX_SYAOFM]       = SYAGLB_OfmWrAddr;
-assign TOPGLB_WrPortDat[GLBWRIDX_SYAOFM]        = SYAGLB_OfmWrDat;
-assign TOPGLB_WrPortDatVld[GLBWRIDX_SYAOFM]     = &SYAGLB_OfmWrDatVld; // ????????????????????????????? BUG 4bit to 1 bit
-assign GLBSYA_OfmWrDatRdy                       = {NUM_BANK{GLBTOP_WrPortDatRdy[GLBWRIDX_SYAOFM]}};
+generate 
+    for(gv_i=0; gv_i<ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK/SRAM_WIDTH; gv_i=gv_i+1) begin
+        assign TOPGLB_WrPortAddr  [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrAddr  ;
+        assign TOPGLB_WrPortDat   [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDat   ;
+        assign TOPGLB_WrPortDatVld[GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDatVld;
+    end
+endgenerate
+assign GLBSYA_OfmWrDatRdy                       = GLBTOP_WrPortDatRdy[GLBWRIDX_SYAOFM];
 
 SYA#(
     .SYAISA_WIDTH(SYAISA_WIDTH  ),
@@ -814,45 +823,49 @@ assign {
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSMSK                 ],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD] 
-} = CCUFPS_CfgInfo[FPSISA_WIDTH -9 -: 32*7];
+} = CCUFPS_CfgInfo[FPSISA_WIDTH -9 -: NUM_BANK*7];
 
 wire [BYTE_WIDTH    -1 : 0] CCUKNN_CfgK_tmp;
 assign {
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ],
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNMASK],
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ]
 } = CCUKNN_CfgInfo[KNNISA_WIDTH -1 -: 8];
 assign {
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ], 
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNMASK],
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
-} = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: 32*3];
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ]
+} = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*4];
 
 wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgLopOrd_temp;
 wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgOfmPhaseShift_temp;
 wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgMod_tmp;
 assign {
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM                 ], 
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM +: 2            ], 
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT], 
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT]  
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: 2]  
 } = CCUSYA_CfgInfo[SYAISA_WIDTH -1 -: 8];
 assign {
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM                 ],  
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM +: 2            ],  
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],  
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   
-} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 : 32*3];
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: 2]   
+} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*4];
 
 wire [POOL_CORE     -1 : 0][BYTE_WIDTH    -1 : 0] CCUPOL_CfgK_tmp;
 assign {
-    TOPGLB_CfgPortOffEmptyFull  [GLBWRIDX_POLOFM                 ]              ,  
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
-    TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]                 
-} = CCUPOL_CfgInfo[POLISA_WIDTH -1 -: 8];
+    TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLMAP],
+    TOPGLB_CfgPortOffEmptyFull  [GLBWRIDX_POLIDM                 ],                  
+    TOPGLB_CfgPortOffEmptyFull  [GLBWRIDX_POLOFM                 ]                  
+} = CCUPOL_CfgInfo[POLISA_WIDTH -1 -: 16];
 assign {
-    TOPGLB_CfgPortBankFlag      [GLBWRIDX_POLOFM                 ]              ,  
     TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
-    TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]                 
-} = CCUPOL_CfgInfo[POLISA_WIDTH -9 : 32*3];
+    TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLMAP],
+    TOPGLB_CfgPortBankFlag      [GLBWRIDX_POLIDM                 ],                  
+    TOPGLB_CfgPortBankFlag      [GLBWRIDX_POLOFM                 ]                  
+} = CCUPOL_CfgInfo[POLISA_WIDTH -17 -: NUM_BANK*(3 + POOL_CORE)];
 
 assign { 
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_GICGLB   ],
@@ -861,7 +874,7 @@ assign {
 assign {
     TOPGLB_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_GICGLB   ],
     TOPGLB_CfgPortBankFlag      [GLBWRIDX_GICGLB                    ]
-} = CCUGIC_CfgInfo[GICISA_WIDTH -9 : 32*2];
+} = CCUGIC_CfgInfo[GICISA_WIDTH -9 -: NUM_BANK*2];
 
 //=====================================================================================================================
 // Logic Design: GIC

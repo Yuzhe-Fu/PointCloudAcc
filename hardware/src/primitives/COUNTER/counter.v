@@ -23,7 +23,8 @@ counter#(
 
 module counter #(
     // INPUT PARAMETERS
-    parameter COUNT_WIDTH               = 3
+    parameter COUNT_WIDTH               = 3,
+    parameter DEFAULT_VAR               = 0 // whether the DEFAULT is a variable
 )
 (
     // PORTS
@@ -48,26 +49,29 @@ module counter #(
 // CONTROL LOGIC
 // ******************************************************************
 
-    assign OVERFLOW = (COUNT == MAX_COUNT);
-    assign UNDERFLOW = (COUNT == MIN_COUNT);
+assign OVERFLOW = (COUNT == MAX_COUNT);
+assign UNDERFLOW = (COUNT == MIN_COUNT);
 
-    // UPCOUNTER
-    always @ (posedge CLK or negedge RESET_N) begin : COUNTER
-        if (!RESET_N)
+// UPCOUNTER
+always @ (posedge CLK or negedge RESET_N) begin : COUNTER
+    if (!RESET_N) begin
+        if(DEFAULT_VAR) // // when the DEFAULT is a variable, reset to 0 NOT variable "DEFAULT"
+            COUNT <= 0;
+        else
             COUNT <= DEFAULT;
-        else if (CLEAR)
-            COUNT <= DEFAULT;
-        else if (INC && !DEC) begin
-            if (!OVERFLOW)
-                COUNT <= COUNT + 1'b1;
-            else if (OVERFLOW)
-                COUNT <= MIN_COUNT;
-        end
-        else if (DEC && !INC) begin
-            if (!UNDERFLOW)
-                COUNT <= COUNT - 1'b1;
-            else if (UNDERFLOW)
-                COUNT <= MAX_COUNT;
-        end
+    end else if (CLEAR)
+        COUNT <= DEFAULT;
+    else if (INC && !DEC) begin
+        if (!OVERFLOW)
+            COUNT <= COUNT + 1'b1;
+        else if (OVERFLOW)
+            COUNT <= MIN_COUNT;
     end
+    else if (DEC && !INC) begin
+        if (!UNDERFLOW)
+            COUNT <= COUNT - 1'b1;
+        else if (UNDERFLOW)
+            COUNT <= MAX_COUNT;
+    end
+end
 endmodule

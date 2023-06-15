@@ -65,11 +65,6 @@ always@(posedge rd_clk or negedge rst_n)
             dout <= fifo_ram[rd_addr];
             valid <= 1'b1;
          end
-      else
-         begin
-            dout <=   'h0;
-            valid <= 1'b0;
-         end
    end
 assign wr_addr = wr_addr_ptr[addr_width-1-:addr_width];
 assign rd_addr = rd_addr_ptr[addr_width-1-:addr_width];

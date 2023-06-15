@@ -257,8 +257,8 @@ generate
         assign  GLBTOP_RdEmpty[gv_j] = Empty;
 
         // To Output (Data)
-        assign  GLBTOP_RdPortDatVld[gv_j] = RdPortAlloc & Bank_rvalid[PortCur1stBankIdx_d];
-        assign  GLBTOP_RdPortDat[gv_j] =  Bank_rdata_array[PortCur1stBankIdx_d];
+        assign  GLBTOP_RdPortDatVld[gv_j]   = RdPortAlloc & Bank_rvalid[PortCur1stBankIdx_d];
+        assign  GLBTOP_RdPortDat[gv_j]      = GLBTOP_RdPortDatVld[gv_j]? Bank_rdata_array[PortCur1stBankIdx_d] : 0;
 
         prior_arb#(
             .REQ_WIDTH ( NUM_BANK )

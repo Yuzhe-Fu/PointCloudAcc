@@ -10,29 +10,31 @@
 // Description :
 //========================================================
 module SHIFT #(
-    parameter DATA_WIDTH  = 8,
-    parameter SIDE_LEN    = 16,
-    parameter ADDR_WIDTH = $clog2(SIDE_LEN) // 2**ADDR_WIDTH MUST >= SIDE_LEN
+    parameter DATA_WIDTH= 8,
+    parameter WIDTH     = 32,// Number of Input data
+    parameter ADDR_WIDTH= 5, // Depth of shift buffer 2**ADDR_WIDTH MUST >= WIDTH because loop write and read
+    parameter DEPTH     = 2**ADDR_WIDTH
   )(
     input                                       clk             ,
     input                                       rst_n           ,
     input                                       Rst             , 
-    input                                       shift           , // 1: shift; 0: fifo
 
-    input  [SIDE_LEN -1 : 0][DATA_WIDTH -1 : 0] shift_din       , 
-    input  [SIDE_LEN                    -1 : 0] shift_din_vld   ,
+    input  [WIDTH    -1 : 0][DATA_WIDTH -1 : 0] shift_din       , 
+    input                                       shift_din_vld   ,
+    input                                       shift_din_last  ,
     output                                      shift_din_rdy   ,
     
-    output [SIDE_LEN -1 : 0][DATA_WIDTH -1 : 0] shift_dout      ,
+    output [WIDTH   -1 : 0][DATA_WIDTH  -1 : 0] shift_dout      ,
     output                                      shift_dout_vld  ,
-    input                                       shift_dout_rdy   
+    input                                       shift_dout_rdy  ,
+
+    output reg [ADDR_WIDTH + 1              -1 : 0] fifo_count      
   );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-localparam RAM_DEPTH = 2**ADDR_WIDTH;
-
 genvar gen_j;
+
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
@@ -42,10 +44,9 @@ wire                            empty;
 wire                            full;
 wire                            push;
 wire                            pop;
-reg     [ADDR_WIDTH + 1 -1 : 0] fifo_count;
 
-wire    [SIDE_LEN        -1 : 0][ADDR_WIDTH  -1 : 0] waddr;
-wire    [SIDE_LEN        -1 : 0][ADDR_WIDTH  -1 : 0] araddr;
+wire    [WIDTH          -1 : 0][ADDR_WIDTH  -1 : 0] waddr;
+wire    [WIDTH          -1 : 0][ADDR_WIDTH  -1 : 0] araddr;
 wire                            arvalid;
 wire                            wvalid;
 wire                            rvalid;
@@ -55,9 +56,9 @@ wire                            rready;
 //=====================================================================================================================
 always @ (posedge clk or negedge rst_n)begin : FIFO_COUNTER
     if (!rst_n) begin
-        fifo_count <= 0;
+        fifo_count <= WIDTH;
     end else if( Rst) begin
-        fifo_count <= 0;
+        fifo_count <= WIDTH;
     end else if (push && (!pop||pop&&empty) && !full)
         fifo_count <= fifo_count + 1;
     else if (pop && (!push||push&&full) && !empty)
@@ -84,44 +85,45 @@ always @ (posedge clk or negedge rst_n) begin : READ_PTR
     end
 end
 
-assign empty = fifo_count < SIDE_LEN; // !empty
-assign full  = fifo_count >= 2**ADDR_WIDTH; // !FULL
+// !empty: cache 1 data, can output 1 data; because of loop write and read
+assign empty = fifo_count <= (shift_din_last? 0 : WIDTH -1); 
+assign full  = fifo_count - WIDTH >= DEPTH;// !FULL: 
 assign push  = wvalid;
 assign pop   = arvalid;
 
 //=====================================================================================================================
 // Logic Design : DPRAM
 //=====================================================================================================================
-assign wvalid               = |shift_din_vld & !full;
-assign shift_din_rdy  = !full;
+assign wvalid               = shift_din_vld & shift_din_rdy;
+assign shift_din_rdy        = !full | shift_dout_rdy; // write and read simultaneously
 
 assign arvalid              = !empty & ( (&rvalid) & rready | ~(&rvalid) );
-assign shift_dout_vld       = &rvalid;
+assign shift_dout_vld       = rvalid;
 assign rready               = shift_dout_rdy;
 
-for( gen_j=0 ; gen_j < SIDE_LEN; gen_j = gen_j+1 ) begin : ROW_BLOCK
-    assign waddr[gen_j]  = shift? wr_pointer -gen_j : wr_pointer;
+for( gen_j=0 ; gen_j < WIDTH; gen_j = gen_j+1 ) begin : ROW_BLOCK
+    assign waddr[gen_j]  = wr_pointer -gen_j;
     assign araddr[gen_j] = rd_pointer;
 end
 
-assign wvalid_array = shift_din_vld & {SIDE_LEN{wvalid}}; // Write a part
+assign wvalid_array = shift_din_vld & wvalid; // Write a part
 RAM_HS#(
     .SRAM_BIT     ( DATA_WIDTH  ),
     .SRAM_BYTE    ( 1           ),
-    .SRAM_WORD    ( 2**ADDR_WIDTH),
+    .SRAM_WORD    ( DEPTH       ),
     .DUAL_PORT    ( 1           )
-)u_DPRAM_HS [SIDE_LEN     -1 : 0](
+)u_DPRAM_HS [WIDTH     -1 : 0](
     .clk          ( clk          ),
     .rst_n        ( rst_n        ),
     .wvalid       ( wvalid_array ),
     .wready       (              ),
     .waddr        ( waddr        ),
-    .wdata        ( shift_din),
-    .arvalid      ( {SIDE_LEN{arvalid}}),
+    .wdata        ( shift_din    ),
+    .arvalid      ( {WIDTH{arvalid}}),
     .arready      (              ),
     .araddr       ( araddr       ),
     .rvalid       ( rvalid       ),
-    .rready       ( {SIDE_LEN{rready}}),
+    .rready       ( {WIDTH{rready}}),
     .rdata        ( shift_dout)
 );
 

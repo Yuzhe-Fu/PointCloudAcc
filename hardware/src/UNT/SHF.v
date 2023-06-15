@@ -8,42 +8,38 @@
 // Copyright (c) 2014-2020 All rights reserved
 // -----------------------------------------------------------------------------
 // Author : zhouchch@pku.edu.cn
-// File   : ADD.v
+// File   : SHIFT.v
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-module ADD #( // Channel-wise Add
-    parameter DATA_WIDTH        = 16,
-    parameter SRAM_WIDTH        = 6,
+module SHF #(
+    parameter DATA_WIDTH        = 8,
+    parameter SRAM_WIDTH        = 256,
     parameter ADDR_WIDTH        = 16,
-    parameter ADDISA_WIDTH      = 128  
+    parameter SHIFTISA_WIDTH    = 128,
+    parameter SHF_ADDR_WIDTH    = 5
     )(
-    input                                       clk                     ,
-    input                                       rst_n                   ,
+    input                                       clk             ,
+    input                                       rst_n           ,
 
     // Configure
-    input                                       CCUADD_CfgVld           ,
-    output                                      ADDCCU_CfgRdy           ,
-    input  [ADDISA_WIDTH                -1 : 0] CCUADD_CfgInfo          ,
-
-    output [ADDR_WIDTH                  -1 : 0] ADDGLB_Add0RdAddr       ,
-    output                                      ADDGLB_Add0RdAddrVld    ,
-    input                                       GLBADD_Add0RdAddrRdy    ,
-    input  [SRAM_WIDTH                  -1 : 0] GLBADD_Add0RdDat        ,    
-    input                                       GLBADD_Add0RdDatVld     ,    
-    output                                      ADDGLB_Add0RdDatRdy     ,    
-    output [ADDR_WIDTH                  -1 : 0] ADDGLB_Add1RdAddr       ,
-    output                                      ADDGLB_Add1RdAddrVld    ,
-    input                                       GLBADD_Add1RdAddrRdy    ,
-    input  [SRAM_WIDTH                  -1 : 0] GLBADD_Add1RdDat        ,    
-    input                                       GLBADD_Add1RdDatVld     ,    
-    output                                      ADDGLB_Add1RdDatRdy     ,     
-    output [ADDR_WIDTH                  -1 : 0] ADDGLB_SumWrAddr        ,
-    output [SRAM_WIDTH                  -1 : 0] ADDGLB_SumWrDat         ,   
-    output                                      ADDGLB_SumWrDatVld      ,
-    input                                       GLBADD_SumWrDatRdy       
+    input                                       CCUSHF_CfgVld   ,
+    output                                      SHFCCU_CfgRdy   ,
+    input  [SHIFTISA_WIDTH              -1 : 0] CCUSHF_CfgInfo  ,
+   
+    output [ADDR_WIDTH                  -1 : 0] SHFGLB_InRdAddr     ,
+    output                                      SHFGLB_InRdAddrVld  ,
+    input                                       GLBSHF_InRdAddrRdy  ,
+    input  [SRAM_WIDTH                  -1 : 0] GLBSHF_InRdDat      ,    
+    input                                       GLBSHF_InRdDatVld   ,    
+    output                                      SHFGLB_InRdDatRdy   ,     
+    output [ADDR_WIDTH                  -1 : 0] SHFGLB_OutWrAddr    ,
+    output [SRAM_WIDTH                  -1 : 0] SHFGLB_OutWrDat     ,   
+    output                                      SHFGLB_OutWrDatVld  ,
+    input                                       GLBSHF_OutWrDatRdy   
 
 );
+
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
@@ -55,14 +51,11 @@ localparam NUM = SRAM_WIDTH / DATA_WIDTH;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire [NUM   -1 : 0][DATA_WIDTH  -1 : 0] Add0;
-wire [NUM   -1 : 0][DATA_WIDTH  -1 : 0] Add1;
-reg  [NUM   -1 : 0][DATA_WIDTH  -1 : 0] Sum;
 
 genvar                                  gv_i;
 wire                                    overflow_CntAddr;
 reg                                     overflow_CntAddr_s1;
-reg                                     overflow_CntAddr_s2;
+wire                                    overflow_CntAddr_s2;
 wire                                    rdy_s0;
 wire                                    rdy_s1;
 wire                                    rdy_s2;
@@ -76,21 +69,27 @@ wire                                    ena_s0;
 wire                                    ena_s1;
 wire                                    ena_s2;
 wire [ADDR_WIDTH                -1 : 0] CntAddr;
+reg  [ADDR_WIDTH                -1 : 0] CntAddr_s1;
+wire [ADDR_WIDTH                -1 : 0] CntAddr_s2;
 
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd0Addr;
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd1Addr;
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgSumAddr;
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgNum;
+wire [SHF_ADDR_WIDTH + 1        -1 : 0] fifo_count;
+wire                                    shift_din_rdy;
+wire                                    shift_dout_vld;
+wire                                    shift_dout_rdy;
+wire [DATA_WIDTH*NUM            -1 : 0] shift_dout;
+
+wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgInAddr;
+wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgOutAddr;
+wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgNum;
 
 //=====================================================================================================================
 // Logic Design: Cfg
 //=====================================================================================================================
 assign {
-    CCUADD_CfgAdd0Addr,
-    CCUADD_CfgAdd1Addr,
-    CCUADD_CfgSumAddr,
-    CCUADD_CfgNum
-} = CCUADD_CfgInfo[16 +: ADDR_WIDTH*4];
+    CCUSHF_CfgInAddr,
+    CCUSHF_CfgOutAddr,
+    CCUSHF_CfgNum
+} = CCUSHF_CfgInfo[16 +: ADDR_WIDTH*4];
 
 //=====================================================================================================================
 // Logic Design: FSM
@@ -100,19 +99,19 @@ reg [ 3 -1:0 ]state_s1;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
-        IDLE :  if(ADDCCU_CfgRdy & CCUADD_CfgVld)// 
+        IDLE :  if(SHFCCU_CfgRdy & CCUSHF_CfgVld)// 
                     next_state <= COMP; //
                 else
                     next_state <= IDLE;
 
-        COMP:   if(CCUADD_CfgVld)
+        COMP:   if(CCUSHF_CfgVld)
                     next_state <= IDLE;
                 else if( overflow_CntAddr & handshake_s0 ) // wait pipeline finishing
                     next_state <= WAITFNH;
                 else
                     next_state <= COMP;
 
-        WAITFNH:if(CCUADD_CfgVld)
+        WAITFNH:if(CCUSHF_CfgVld)
                     next_state <= IDLE;
                 else if (overflow_CntAddr_s2)
                     next_state <= IDLE;
@@ -131,18 +130,22 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
-assign ADDCCU_CfgRdy = state==IDLE;
+assign SHFCCU_CfgRdy = state==IDLE;
 
 //=====================================================================================================================
 // Logic Design: s0
 //=====================================================================================================================
-assign rdy_s0       = GLBADD_Add0RdAddrRdy & GLBADD_Add1RdAddrRdy;
+// Combinational Logic
+
+// HandShake
+assign rdy_s0       = GLBSHF_InRdAddrRdy;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 
-assign vld_s0 = state == COMP;
+assign vld_s0       = state == COMP;
+wire [ADDR_WIDTH     -1 : 0] MaxCntAddr = CCUSHF_CfgNum -1;
 
-wire [ADDR_WIDTH     -1 : 0] MaxCntAddr = CCUADD_CfgNum -1;
+// Reg Update
 counter#(
     .COUNT_WIDTH ( ADDR_WIDTH )
 )u0_counter_CntAddr(
@@ -159,72 +162,71 @@ counter#(
     .COUNT     ( CntAddr        )
 );
 
-assign ADDGLB_Add0RdAddr = CCUADD_CfgAdd0Addr + CntAddr;
-assign ADDGLB_Add1RdAddr = CCUADD_CfgAdd1Addr + CntAddr;
-
-assign ADDGLB_Add0RdAddrVld = vld_s0 & GLBADD_Add1RdAddrRdy;
-assign ADDGLB_Add1RdAddrVld = vld_s0 & GLBADD_Add0RdAddrRdy;
-
 //=====================================================================================================================
 // Logic Design: s1
 //=====================================================================================================================
-assign rdy_s1       = ena_s2;
+// Combinational Logic
+assign SHFGLB_InRdAddr      = CCUSHF_CfgInAddr + CntAddr;
+assign SHFGLB_InRdAddrVld   = vld_s0;
+
+// HandShake
+assign rdy_s1       = shift_din_rdy;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
-assign vld_s1       = GLBADD_Add0RdDatVld & GLBADD_Add1RdDatVld;
+assign vld_s1       = GLBSHF_InRdDatVld;
 
-assign Add0             = GLBADD_Add0RdDat;
-assign Add1             = GLBADD_Add1RdDat;
+assign SHFGLB_InRdDatRdy = rdy_s1;
 
-assign ADDGLB_Add0RdDatRdy = rdy_s1 & GLBADD_Add1RdDatVld;
-assign ADDGLB_Add1RdDatRdy = rdy_s1 & GLBADD_Add0RdDatVld;
-
+// Reg Update
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         overflow_CntAddr_s1 <= 0;
+        CntAddr_s1          <= 0;
     end else if( state == IDLE) begin
         overflow_CntAddr_s1 <= 0;
+        CntAddr_s1          <= 0;
     end else if(ena_s1) begin
         overflow_CntAddr_s1 <= overflow_CntAddr;
+        CntAddr_s1          <= 0;
     end
 end
 
 //=====================================================================================================================
 // Logic Design: s2
 //=====================================================================================================================
-assign rdy_s2       = GLBADD_SumWrDatRdy;
+
+// HandShake
+assign rdy_s2       = GLBSHF_OutWrDatRdy;
 assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
+assign vld_s2       = shift_dout_vld;
 
-generate
-    for(gv_i=0; gv_i<NUM; gv_i=gv_i+1) begin
-        always @(posedge clk or negedge rst_n) begin
-            if(!rst_n) begin
-                Sum[gv_i] <= 0;
-            end else if( state == IDLE ) begin
-                Sum[gv_i] <= 0;
-            end else if(handshake_s1) begin
-                Sum[gv_i] <= Add0[gv_i] + Add1[gv_i];
-            end
-            
-        end
-    end
-endgenerate
-always @ ( posedge clk or negedge rst_n ) begin
-    if ( !rst_n ) begin
-        vld_s2 <= 0;
-        overflow_CntAddr_s2 <= 0;
-    end else if( state == IDLE) begin
-        vld_s2 <= 0;
-        overflow_CntAddr_s2 <= 0;
-    end else if(ena_s2) begin
-        vld_s2 <= handshake_s1;
-        overflow_CntAddr_s2 <= overflow_CntAddr_s1;
-    end
-end
+// Reg Update
+SHIFT #(
+    .DATA_WIDTH(DATA_WIDTH  ),
+    .WIDTH     (NUM         ), // 32
+    .ADDR_WIDTH(SHF_ADDR_WIDTH)
+) u_SHIFT (               
+    .clk                 ( clk           ),
+    .rst_n               ( rst_n         ),
+    .Rst                 ( state == IDLE ),                     
+    .shift_din           ( GLBSHF_InRdDat),
+    .shift_din_vld       ( vld_s1        ),
+    .shift_din_last      ( overflow_CntAddr_s1), // for pop last NUM data (triangle)
+    .shift_din_rdy       ( shift_din_rdy ),                        
+    .shift_dout          ( shift_dout    ),
+    .shift_dout_vld      ( shift_dout_vld),
+    .shift_dout_rdy      ( shift_dout_rdy),
+    .fifo_count          ( fifo_count    ) 
+);
 
-assign ADDGLB_SumWrDat      = Sum;
-assign ADDGLB_SumWrAddr     = CCUADD_CfgSumAddr + CntAddr;
-assign ADDGLB_SumWrDatVld   = vld_s2;
+// overflow_CntAddr_s1? +(WIDTH - fifo_count)(0~WIDTH): -(fifo_count - WIDTH);
+assign CntAddr_s2           = CntAddr_s1 + NUM - fifo_count;
+assign SHFGLB_OutWrDat      = vld_s2? shift_dout : 0;
+// CntAddr_s1 == 32 -> 32 data in shift, fifo_count = 32; -> write address = 0
+assign SHFGLB_OutWrAddr     = CCUSHF_CfgOutAddr + CntAddr_s2; 
+assign SHFGLB_OutWrDatVld   = vld_s2;
+
+assign overflow_CntAddr_s2 = CntAddr_s2 == MaxCntAddr + NUM;
 
 endmodule
