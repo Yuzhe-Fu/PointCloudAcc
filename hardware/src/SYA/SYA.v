@@ -39,7 +39,7 @@ module SYA #(
     output [ADDR_WIDTH                              -1 : 0] SYAGLB_WgtRdAddr        ,
     output                                                  SYAGLB_WgtRdAddrVld     ,
     input                                                   GLBSYA_WgtRdAddrRdy     ,
-    input  [SYA_SIDEBANK -1:0][NUM_COL -1:0][WGT_WIDTH  -1 : 0] GLBSYA_WgtRdDat         ,
+    input  [NUM_BANK -1:0][NUM_COL -1:0][WGT_WIDTH  -1 : 0] GLBSYA_WgtRdDat         ,
     input                                                   GLBSYA_WgtRdDatVld      ,
     output                                                  SYAGLB_WgtRdDatRdy      ,
     output [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1 : 0] SYAGLB_OfmWrDat         ,
@@ -504,7 +504,7 @@ FIFO_FWFT#(
     .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64
 )u_FIFO_FWFT_OFM(
     .clk        ( clk           ),
-    .Reset      ( RstAll        ),
+    .Reset      ( state == IDLE ),
     .rst_n      ( rst_n         ),
     .push       ( fwftOfm_push  ),
     .pop        ( fwftOfm_pop   ),
