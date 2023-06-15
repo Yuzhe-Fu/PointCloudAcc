@@ -33,13 +33,13 @@ module SYA #(
     output [ADDR_WIDTH                              -1 : 0] SYAGLB_ActRdAddr        ,
     output                                                  SYAGLB_ActRdAddrVld     ,
     input                                                   GLBSYA_ActRdAddrRdy     ,
-    input  [SYA_SIDEBANK-1:0][NUM_ROW  -1:0][ACT_WIDTH  -1 : 0] GLBSYA_ActRdDat     , // only 32B or 16B; can be change to Wgt
+    input  [NUM_BANK-1:0][NUM_ROW  -1:0][ACT_WIDTH  -1 : 0] GLBSYA_ActRdDat     , // only 32B or 16B; can be change to Wgt
     input                                                   GLBSYA_ActRdDatVld      ,
     output                                                  SYAGLB_ActRdDatRdy      ,
     output [ADDR_WIDTH                              -1 : 0] SYAGLB_WgtRdAddr        ,
     output                                                  SYAGLB_WgtRdAddrVld     ,
     input                                                   GLBSYA_WgtRdAddrRdy     ,
-    input  [NUM_BANK -1:0][NUM_COL -1:0][WGT_WIDTH  -1 : 0] GLBSYA_WgtRdDat         ,
+    input  [SYA_SIDEBANK -1:0][NUM_COL -1:0][WGT_WIDTH  -1 : 0] GLBSYA_WgtRdDat         ,
     input                                                   GLBSYA_WgtRdDatVld      ,
     output                                                  SYAGLB_WgtRdDatRdy      ,
     output [NUM_BANK -1:0][NUM_ROW -1:0][ACT_WIDTH  -1 : 0] SYAGLB_OfmWrDat         ,
@@ -330,16 +330,16 @@ assign SYA_InAct_W          [0] = GLBSYA_ActRdDat[0];
 assign SYA_InWgt_N          [0] = GLBSYA_WgtRdDat[0];
 
 // Bank[1]
-assign SYA_InAct_W          [1] = SYA_OutAct_E   [0];
-assign SYA_InWgt_N          [1] = GLBSYA_WgtRdDat[1];
+assign SYA_InAct_W          [1] = CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[1]: SYA_OutAct_E[0];
+assign SYA_InWgt_N          [1] = CCUSYA_CfgMod == 1? SYA_OutWgt_S[0]   : GLBSYA_WgtRdDat[1];
 
 // Bank[2]
-assign SYA_InAct_W          [2] = CCUSYA_CfgMod == 1? SYA_OutAct_E   [1] : GLBSYA_ActRdDat[1];
-assign SYA_InWgt_N          [2] = CCUSYA_CfgMod == 1? GLBSYA_WgtRdDat[2] : SYA_OutWgt_S[0];
+assign SYA_InAct_W          [2] = CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[2] : GLBSYA_ActRdDat[1];
+assign SYA_InWgt_N          [2] = CCUSYA_CfgMod == 1? SYA_OutWgt_S[1] : SYA_OutWgt_S[0];
 
 // Bank[3]
-assign SYA_InAct_W          [3] = SYA_OutAct_E[2];
-assign SYA_InWgt_N          [3] = CCUSYA_CfgMod == 1? GLBSYA_WgtRdDat[3] : SYA_OutWgt_S[1];
+assign SYA_InAct_W          [3] = CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[3] : SYA_OutAct_E[2];
+assign SYA_InWgt_N          [3] = CCUSYA_CfgMod == 1? SYA_OutWgt_S[2] : SYA_OutWgt_S[1];
 
 // Generate SYA Input signals: SYA_En, SYA_Reset
 assign SYA_En   = {NUM_COL*NUM_ROW*NUM_BANK{handshake_s1}} ;
@@ -351,9 +351,9 @@ generate
                 wire [$clog2(NUM_ROW*NUM_BANK)  -1 : 0] axis_y;
 
                 assign axis_x = CCUSYA_CfgMod == 0? NUM_ROW*(gv_bk/2) + gv_row
-                                    : gv_row;
+                                    : NUM_ROW*gv_bk + gv_row;
                 assign axis_y = CCUSYA_CfgMod == 0? NUM_COL*(gv_bk%2) + gv_col
-                                    : NUM_COL*gv_bk + gv_col;
+                                    : gv_col;
                 assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx_s2) & (handshake_s2);
             end
         end
@@ -430,7 +430,7 @@ assign DefaultRmDiagPsum    = (CntMac % NumDiag) / CCUSYA_CfgChn + 1;
 assign CurPsumOutDiagIdx_s2 = ( (CntMac - CCUSYA_CfgChn) % NumDiag ) - (DefaultRmDiagPsum - CntRmDiagPsum);
 
 // Generate OfmDiag
-assign NumFltPal            = CCUSYA_CfgMod == 0? 32 : 64;
+assign NumFltPal            = CCUSYA_CfgMod == 0? 32 : 16;
 assign Cho_s2               = CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt;
 
 always@(*) begin
