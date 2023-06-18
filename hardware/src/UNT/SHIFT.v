@@ -12,12 +12,19 @@
 module SHIFT #(
     parameter DATA_WIDTH= 8,
     parameter WIDTH     = 32,// Number of Input data
-    parameter ADDR_WIDTH= 5, // Depth of shift buffer 2**ADDR_WIDTH MUST >= WIDTH because loop write and read
+    parameter ADDR_WIDTH= 8, // Depth of shift buffer >= Chn*Point/WIDTH
     parameter DEPTH     = 2**ADDR_WIDTH
   )(
     input                                       clk             ,
     input                                       rst_n           ,
     input                                       Rst             , 
+
+    // 0: MSB is written to Lowest Address; 1: MSB is written to Significant Address;
+    input                                       ByteWrIncr      , // = WrRecTangle
+    // Enable Addr write back when last triangle, when transform to SYA input
+
+    input [ADDR_WIDTH                   -1 : 0] ByteWrStep      , // Address step between Bytes
+    input [ADDR_WIDTH                   -1 : 0] WrBackStep      , 
 
     input  [WIDTH    -1 : 0][DATA_WIDTH -1 : 0] shift_din       , 
     input                                       shift_din_vld   ,
@@ -51,6 +58,30 @@ wire                            arvalid;
 wire                            wvalid;
 wire                            rvalid;
 wire                            rready;
+
+wire                            incCntWrChnGrp;
+wire [ADDR_WIDTH        -1 : 0] cntWrChnGrp;
+
+//=====================================================================================================================
+// Variable Definition :
+//=====================================================================================================================
+counter#(
+    .COUNT_WIDTH ( ADDR_WIDTH )
+)u1_counter_WrChnGrp( 
+    .CLK       ( clk                ),
+    .RESET_N   ( rst_n              ),
+    .CLEAR     (                    ),
+    .DEFAULT   ( {ADDR_WIDTH{1'b0}} ),
+    .INC       ( incCntWrChnGrp     ),
+    .DEC       ( 1'b0               ),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}} ),
+    .MAX_COUNT ( {ADDR_WIDTH{1'b1}} ),
+    .OVERFLOW  (                    ),
+    .UNDERFLOW (                    ),
+    .COUNT     ( cntWrChnGrp        )
+);
+assign incCntWrChnGrp = (wr_pointer == WrBackStep -1) & (push && !full);
+
 //=====================================================================================================================
 // Logic Design : FIFO Control
 //=====================================================================================================================
@@ -73,6 +104,7 @@ always @ (posedge clk or negedge rst_n) begin : WRITE_PTR
     end else if (push && !full) begin
         wr_pointer <= wr_pointer + 1;
     end
+
 end
 
 always @ (posedge clk or negedge rst_n) begin : READ_PTR
@@ -85,9 +117,9 @@ always @ (posedge clk or negedge rst_n) begin : READ_PTR
     end
 end
 
-// !empty: cache 1 data, can output 1 data; because of loop write and read
-assign empty = fifo_count <= (shift_din_last? 0 : WIDTH -1); 
-assign full  = fifo_count - WIDTH >= DEPTH;// !FULL: 
+// Write finished
+assign empty = !(cntWrChnGrp == WrBackStep*ByteWrStep + 1); // write assign TotalWord = WrBackStep*ByteWrStep;
+assign full  = !empty;// !FULL:
 assign push  = wvalid;
 assign pop   = arvalid;
 
@@ -102,7 +134,12 @@ assign shift_dout_vld       = rvalid;
 assign rready               = shift_dout_rdy;
 
 for( gen_j=0 ; gen_j < WIDTH; gen_j = gen_j+1 ) begin : ROW_BLOCK
-    assign waddr[gen_j]  = wr_pointer -gen_j;
+    assign waddr[gen_j]  = ByteWrIncr? 
+                            (((wr_pointer + ByteWrStep*gen_j) >= ByteWrStep*WrBackStep) ?
+                                (wr_pointer + ByteWrStep*gen_j) - ByteWrStep*WrBackStep
+                                : wr_pointer + ByteWrStep*gen_j
+                            ) // Write back to ByteWrIncr=Rectangle when WrRecTangle and >= ByteWrStep*WrBackStep
+                            : (wr_pointer - ByteWrStep*gen_j) + cntWrChnGrp;
     assign araddr[gen_j] = rd_pointer;
 end
 

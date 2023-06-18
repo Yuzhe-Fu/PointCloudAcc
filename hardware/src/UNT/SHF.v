@@ -81,15 +81,21 @@ wire [DATA_WIDTH*NUM            -1 : 0] shift_dout;
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgInAddr;
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgOutAddr;
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgNum;
+wire [4                         -1 : 0] CCUSHF_CfgByteWrIncr;
+wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgByteWrStep;
+wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgWrBackStep;
 
 //=====================================================================================================================
 // Logic Design: Cfg
 //=====================================================================================================================
 assign {
+    CCUSHF_CfgWrBackStep,
+    CCUSHF_CfgByteWrStep,
+    CCUSHF_CfgByteWrIncr,  
     CCUSHF_CfgInAddr,
     CCUSHF_CfgOutAddr,
     CCUSHF_CfgNum
-} = CCUSHF_CfgInfo[16 +: ADDR_WIDTH*4];
+} = CCUSHF_CfgInfo;
 
 //=====================================================================================================================
 // Logic Design: FSM
@@ -209,7 +215,10 @@ SHIFT #(
 ) u_SHIFT (               
     .clk                 ( clk           ),
     .rst_n               ( rst_n         ),
-    .Rst                 ( state == IDLE ),                     
+    .Rst                 ( state == IDLE ),   
+    .ByteWrIncr          ( CCUSHF_CfgByteWrIncr[0] ),  
+    .ByteWrStep          ( CCUSHF_CfgByteWrStep[0 +: SHF_ADDR_WIDTH] ),
+    .WrBackStep          ( CCUSHF_CfgWrBackStep[0 +: SHF_ADDR_WIDTH] ),
     .shift_din           ( GLBSHF_InRdDat),
     .shift_din_vld       ( vld_s1        ),
     .shift_din_last      ( overflow_CntAddr_s1), // for pop last NUM data (triangle)
