@@ -15,7 +15,7 @@
     ../../src/SYA/PE_BANK.v               
         ../../src/SYA/PE_ROW.v               
             ../../src/SYA/PE.v                                 
-    ../../src/SYA/SHIFT.v
+    ../../src/UNT/SHIFT.v
 ../../src/UNT/ADD.v
 ../../src/UNT/SHF.v
 ../../src/MON/MON.v
