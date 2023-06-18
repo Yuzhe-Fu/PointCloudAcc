@@ -17,6 +17,7 @@
             ../../src/SYA/PE.v                                 
     ../../src/UNT/SHIFT.v
 ../../src/UNT/ADD.v
+../../src/UNT/CAT.v
 ../../src/UNT/SHF.v
 ../../src/MON/MON.v
 ../../src/primitives/DELAY/DELAY.v
