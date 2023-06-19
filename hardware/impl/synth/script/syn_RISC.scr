@@ -85,6 +85,7 @@ elaborate $DESIGN
 #                              load sdf                                  #
 ##########################################################################
 read_sdc ${SDC_FILE}
+# suspend
 check_design -unresolved
 ##########################################################################
 #                          Setting constraints                           #
