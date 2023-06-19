@@ -6,7 +6,6 @@
 source -verbose ./config_temp.tcl
 
 set DESIGN      $DESIGN_NAME
-set clk         $clk
 
 set_attribute hdl_search_path "./"
 set_attribute script_search_path ./script
