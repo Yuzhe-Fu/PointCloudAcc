@@ -171,7 +171,7 @@ assign {
     CCUKNN_CfgCrdDim    ,   
     CCUKNN_CfgK         ,   // 8
     CCUKNN_CfgNip           // 16
-} = CCUKNN_CfgInfo;
+} = CCUKNN_CfgInfo[12 +: KNNISA_WIDTH -1];
 
 //=====================================================================================================================
 // Logic Design 1: FSM

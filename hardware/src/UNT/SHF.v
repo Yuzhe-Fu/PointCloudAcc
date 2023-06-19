@@ -17,7 +17,7 @@ module SHF #(
     parameter SRAM_WIDTH        = 256,
     parameter ADDR_WIDTH        = 16,
     parameter SHIFTISA_WIDTH    = 128,
-    parameter SHF_ADDR_WIDTH    = 5
+    parameter SHF_ADDR_WIDTH    = 8
     )(
     input                                       clk             ,
     input                                       rst_n           ,
@@ -95,7 +95,7 @@ assign {
     CCUSHF_CfgInAddr,
     CCUSHF_CfgOutAddr,
     CCUSHF_CfgNum
-} = CCUSHF_CfgInfo;
+} = CCUSHF_CfgInfo[12 +: SHIFTISA_WIDTH -1];
 
 //=====================================================================================================================
 // Logic Design: FSM

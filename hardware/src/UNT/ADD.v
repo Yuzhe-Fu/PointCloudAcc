@@ -13,8 +13,8 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module ADD #( // Channel-wise Add
-    parameter DATA_WIDTH        = 16,
-    parameter SRAM_WIDTH        = 6,
+    parameter DATA_WIDTH        = 8,
+    parameter SRAM_WIDTH        = 256,
     parameter ADDR_WIDTH        = 16,
     parameter ADDISA_WIDTH      = 128  
     )(
@@ -76,6 +76,8 @@ wire                                    ena_s0;
 wire                                    ena_s1;
 wire                                    ena_s2;
 wire [ADDR_WIDTH                -1 : 0] CntAddr;
+reg  [ADDR_WIDTH                -1 : 0] CntAddr_s1;
+reg  [ADDR_WIDTH                -1 : 0] CntAddr_s2;
 
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd0Addr;
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd1Addr;
@@ -90,7 +92,7 @@ assign {
     CCUADD_CfgAdd1Addr,
     CCUADD_CfgSumAddr,
     CCUADD_CfgNum
-} = CCUADD_CfgInfo[16 +: ADDR_WIDTH*4];
+} = CCUADD_CfgInfo[12 +: ADDR_WIDTH*4];
 
 //=====================================================================================================================
 // Logic Design: FSM
@@ -182,10 +184,13 @@ assign ADDGLB_Add1RdDatRdy = rdy_s1 & GLBADD_Add0RdDatVld;
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         overflow_CntAddr_s1 <= 0;
+        CntAddr_s1          <= 0;
     end else if( state == IDLE) begin
         overflow_CntAddr_s1 <= 0;
+        CntAddr_s1          <= 0;
     end else if(ena_s1) begin
         overflow_CntAddr_s1 <= overflow_CntAddr;
+        CntAddr_s1          <= CntAddr;
     end
 end
 
@@ -214,17 +219,20 @@ always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         vld_s2 <= 0;
         overflow_CntAddr_s2 <= 0;
+        CntAddr_s2          <= 0;
     end else if( state == IDLE) begin
-        vld_s2 <= 0;
+        vld_s2              <= 0;
         overflow_CntAddr_s2 <= 0;
+        CntAddr_s2          <= 0;
     end else if(ena_s2) begin
         vld_s2 <= handshake_s1;
         overflow_CntAddr_s2 <= overflow_CntAddr_s1;
+        CntAddr_s2          <= CntAddr_s1;
     end
 end
 
 assign ADDGLB_SumWrDat      = Sum;
-assign ADDGLB_SumWrAddr     = CCUADD_CfgSumAddr + CntAddr;
+assign ADDGLB_SumWrAddr     = CCUADD_CfgSumAddr + CntAddr_s2;
 assign ADDGLB_SumWrDatVld   = vld_s2;
 
 endmodule

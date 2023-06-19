@@ -89,7 +89,7 @@ assign {
     CCUCAT_CfgWord1     , // How many words occupied by all channels
     CCUCAT_CfgWord0     , // 
     CCUCAT_CfgNumPnt         // How many points
-} = CCUCAT_CfgInfo[16 +: ADDR_WIDTH*4];
+} = CCUCAT_CfgInfo[12 +: ADDR_WIDTH*4];
 
 //=====================================================================================================================
 // Logic Design: FSM

@@ -7,18 +7,19 @@
 ../../src/GLB/GLB.v
 ../../src/GLB/GIC.v
 ../../src/MAP/FPS.v
-../../src/MAP/KNN.v
+../../src/MAP/KUA.v
+    ../../src/MAP/KNN.v
+    ../../src/UNT/ADD.v
+    ../../src/UNT/CAT.v
+    ../../src/UNT/SHF.v
+        ../../src/UNT/SHIFT.v
 ../../src/MAP/INS.v
 ../../src/MAP/EDC.v
 ../../src/POL/POL.v
 ../../src/SYA/SYA.v               
     ../../src/SYA/PE_BANK.v               
         ../../src/SYA/PE_ROW.v               
-            ../../src/SYA/PE.v                                 
-    ../../src/UNT/SHIFT.v
-../../src/UNT/ADD.v
-../../src/UNT/CAT.v
-../../src/UNT/SHF.v
+            ../../src/SYA/PE.v  
 ../../src/MON/MON.v
 ../../src/primitives/DELAY/DELAY.v
 ../../src/primitives/DELAY/LATCH_DELAY.v

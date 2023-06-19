@@ -68,6 +68,9 @@ module TOP #(
     parameter GICISAFIFO_ADDR_WIDTH = 1,
     parameter MONISAFIFO_ADDR_WIDTH = 1,
 
+    // UNT
+    parameter SHF_ADDR_WIDTH= 8,
+
     // MON
     parameter GICMON_WIDTH  = 128,
     parameter GLBMON_WIDTH  = 128,
@@ -590,7 +593,7 @@ assign TOPGLB_WrPortDat[GLBWRIDX_KNNMAP]        = KNNGLB_MapWrDat;
 assign TOPGLB_WrPortDatVld[GLBWRIDX_KNNMAP]     = KNNGLB_MapWrDatVld;
 assign GLBKNN_MapWrDatRdy                       = GLBTOP_WrPortDatRdy[GLBWRIDX_KNNMAP];
 
-KNN#(
+KUA#(
     .KNNISA_WIDTH         ( KNNISA_WIDTH    ),
     .SRAM_WIDTH           ( SRAM_WIDTH      ),
     .SRAM_MAXPARA         ( SRAM_MAXPARA    ),
@@ -598,8 +601,12 @@ KNN#(
     .MAP_WIDTH            ( MAP_WIDTH       ),
     .CRD_WIDTH            ( CRD_WIDTH       ),
     .NUM_SORT_CORE        ( NUM_SORT_CORE   ),
-    .KNNMON_WIDTH         ( KNNMON_WIDTH    )
-)u_KNN(
+    .KNNMON_WIDTH         ( KNNMON_WIDTH    ),
+
+    .DATA_WIDTH           ( BYTE_WIDTH      ),
+    .SHF_ADDR_WIDTH       ( SHF_ADDR_WIDTH  ),
+    .ADDR_WIDTH           ( ADDR_WIDTH      ) 
+)u_KUA(
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .CCUKNN_CfgVld      ( CCUKNN_CfgVld         ),
