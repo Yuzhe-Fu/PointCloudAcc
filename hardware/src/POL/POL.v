@@ -114,7 +114,7 @@ assign {
     CCUPOL_CfgK            ,   // 8  X 8
     CCUPOL_CfgChn          ,   // 16 X 8
     CCUPOL_CfgNip              // 16 x 8  
-} = CCUPOL_CfgInfo;
+} = CCUPOL_CfgInfo[POLISA_WIDTH -1 : 12];
 
 //=====================================================================================================================
 // Logic Design

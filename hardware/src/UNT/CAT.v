@@ -89,13 +89,12 @@ assign {
     CCUCAT_CfgWord1     , // How many words occupied by all channels
     CCUCAT_CfgWord0     , // 
     CCUCAT_CfgNumPnt         // How many points
-} = CCUCAT_CfgInfo[12 +: ADDR_WIDTH*4];
+} = CCUCAT_CfgInfo[CATISA_WIDTH - 1 : 12];
 
 //=====================================================================================================================
 // Logic Design: FSM
 //=====================================================================================================================
 reg [ 3 -1:0 ]state;
-reg [ 3 -1:0 ]state_s1;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )

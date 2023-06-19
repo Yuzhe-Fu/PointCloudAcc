@@ -147,7 +147,7 @@ CCUFPS_CfgCrdBaseWrAddr,
 CCUFPS_CfgCrdBaseRdAddr,
 CCUFPS_CfgNop          ,
 CCUFPS_CfgNip           
-} = CCUFPS_CfgInfo;
+} = CCUFPS_CfgInfo[FPSISA_WIDTH -1 : 12];
 
 //=====================================================================================================================
 // Logic Design

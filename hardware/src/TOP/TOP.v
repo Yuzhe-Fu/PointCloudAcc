@@ -90,7 +90,7 @@ module TOP #(
     parameter QNTSL_WIDTH    = 16,
     parameter MASK_ADDR_WIDTH= $clog2(2**IDX_WIDTH*NUM_SORT_CORE/SRAM_WIDTH),
     parameter OPNUM          = NUM_MODULE
-    )( // 148 + 15 / 4 VG
+    )( // 5 + 6 + 128 + 20 = 159
     input                           I_BypAsysnFIFO_PAD,// Hyper
     input                           I_BypOE_PAD       , 
     input                           I_BypPLL_PAD      , 
@@ -156,29 +156,10 @@ localparam TOPMON_WIDTH = PORT_WIDTH*`CEIL(GICMON_WIDTH + GLBMON_WIDTH + POLMON_
 wire                            clk;
 wire                            rst_n;
 genvar                          gv_i;
-
-localparam INPUT_PAD = 1'b1, OUTPUT_PAD = 1'b0;
-
-wire                          I_SysRst_n    ; 
-wire                          I_SysClk      ; 
-wire                          I_OffClk      ; 
-wire                          I_BypAsysnFIFO; 
-wire [OPNUM           -1 : 0] CCUITF_CfgRdy ;
-wire                          I_ISAVld      ;
-wire                          O_DatOE       ;
-wire                          O_CmdVld     ;
-
-wire   [PORT_WIDTH          -1 : 0] I_Dat   ; 
-wire   [PORT_WIDTH          -1 : 0] O_Dat   ; 
-wire                                I_DatVld;
-wire                                O_DatVld;
-wire                                O_DatRdy; 
-wire                                I_DatRdy; 
+wire [OPNUM             -1 : 0] CCUITF_CfgRdy ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // CCU 
-wire                                  CCUTOP_NetFnh;
-
     // Configure
 wire [PORT_WIDTH              -1 : 0] ITFCCU_ISARdDat   ;             
 wire                                  ITFCCU_ISARdDatVld;          
@@ -197,7 +178,6 @@ wire  [POOL_CORE              -1 : 0] CCUPOL_CfgVld ;
 wire  [POOL_CORE              -1 : 0] POLCCU_CfgRdy ;
 
 wire                                  CCUMON_CfgVld;
-wire                                  MONCCU_CfgVld;
 
 wire  [GICISA_WIDTH           -1 : 0] CCUGIC_CfgInfo;
 wire  [FPSISA_WIDTH           -1 : 0] CCUFPS_CfgInfo;     
@@ -327,7 +307,6 @@ wire                                                  POLGLB_IdxMaskWrDatVld  ;
 wire                                                  GLBPOL_IdxMaskWrDatRdy  ;
 // --------------------------------------------------------------------------------------------------------------------
 // GIC
-wire                                                GICITF_DatOE    ;
 wire                                                GICITF_CmdVld   ;
 wire [PORT_WIDTH                            -1 : 0] GICITF_Dat      ;
 wire                                                GICITF_DatVld   ;
@@ -832,7 +811,6 @@ assign {
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD] 
 } = CCUFPS_CfgInfo[FPSISA_WIDTH -9 -: NUM_BANK*7];
 
-wire [BYTE_WIDTH    -1 : 0] CCUKNN_CfgK_tmp;
 assign {
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNMASK],
@@ -846,9 +824,6 @@ assign {
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ]
 } = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*4];
 
-wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgLopOrd_temp;
-wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgOfmPhaseShift_temp;
-wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgMod_tmp;
 assign {
     TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM +: 2            ], 
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT], 
@@ -860,7 +835,6 @@ assign {
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: 2]   
 } = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*4];
 
-wire [POOL_CORE     -1 : 0][BYTE_WIDTH    -1 : 0] CCUPOL_CfgK_tmp;
 assign {
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLMAP],

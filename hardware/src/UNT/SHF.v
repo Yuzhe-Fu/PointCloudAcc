@@ -95,7 +95,7 @@ assign {
     CCUSHF_CfgInAddr,
     CCUSHF_CfgOutAddr,
     CCUSHF_CfgNum
-} = CCUSHF_CfgInfo[12 +: SHIFTISA_WIDTH -1];
+} = CCUSHF_CfgInfo[SHIFTISA_WIDTH -1 : 12];
 
 //=====================================================================================================================
 // Logic Design: FSM
@@ -228,6 +228,7 @@ SHIFT #(
     .shift_dout_rdy      ( shift_dout_rdy),
     .fifo_count          ( fifo_count    ) 
 );
+assign shift_dout_rdy = rdy_s2;
 
 // overflow_CntAddr_s1? +(WIDTH - fifo_count)(0~WIDTH): -(fifo_count - WIDTH);
 assign CntAddr_s2           = CntAddr_s1 + NUM - fifo_count;

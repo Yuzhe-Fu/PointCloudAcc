@@ -92,7 +92,7 @@ assign {
     CCUADD_CfgAdd1Addr,
     CCUADD_CfgSumAddr,
     CCUADD_CfgNum
-} = CCUADD_CfgInfo[12 +: ADDR_WIDTH*4];
+} = CCUADD_CfgInfo[ADDISA_WIDTH -1 : 12];
 
 //=====================================================================================================================
 // Logic Design: FSM
