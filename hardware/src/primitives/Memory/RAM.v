@@ -52,7 +52,12 @@ module RAM #(
     assign #(DELAY) DI   = data_in;
     assign #(DELAY) WEB  = {SRAM_BYTE{~write_en}};
     assign #(DELAY) CSB  = (~write_en)&(~read_en);
-    assign #(DELAY) RTSEL= 2'b00;
+
+    `ifdef SIM
+        assign #(DELAY) RTSEL= 2'b10;
+    `else
+        assign #(DELAY) RTSEL= 2'b00;
+    `endif
     assign #(DELAY) WTSEL= 2'b00;
     assign #(DELAY) PTSEL= 2'b00;
 
