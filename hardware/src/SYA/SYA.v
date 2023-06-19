@@ -55,7 +55,7 @@ module SYA #(
 // Constant Definition :
 //=====================================================================================================================
 localparam  PSUM_WIDTH      = ACT_WIDTH + WGT_WIDTH + CHN_WIDTH;
-localparam  NUMDIAG_WIDTH   = $clog2(NUM_ROW*8);
+localparam  NUMDIAG_WIDTH   = $clog2(NUM_ROW*(NUM_BANK+1)); // 7
 
 localparam IDLE             = 3'b000;
 localparam COMP             = 3'b001;
@@ -477,7 +477,7 @@ assign fwftOfm_din_vld  = vld_s2;
 // OfmDiagConcat: Concate psums at Diag<32 of the next loop with Diag>32 of the current loop
 always @(*) begin 
     OfmDiagConcat = OfmDiag;
-    for(i=0; i<CurPsumOutDiagIdx_s2; i=i+1) begin
+    for(i=0; i<CurPsumOutDiagIdx_s2[0 +: $clog2(NUM_ROW*NUM_BANK)]; i=i+1) begin // ??????????? [0 +: 8] only for 2x2
         OfmDiagConcat[ACT_WIDTH*i +: ACT_WIDTH] = vld_s3? shift_dout[ACT_WIDTH*i +: ACT_WIDTH] : 0;
     end
 end
@@ -503,7 +503,7 @@ assign fwftOfm_dout_vld = !fwftOfm_empty;
 
 FIFO_FWFT#(
     .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK ), // 64B
-    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64
+    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64 : 4KB Need 64x128x4 UHDDPSRAM!!!!!!!!!!!!!!!!!
 )u_FIFO_FWFT_OFM(
     .clk        ( clk           ),
     .Reset      ( state == IDLE ),

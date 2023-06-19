@@ -219,7 +219,7 @@ assign oEPad       = I_BypOE? I_OffOE : O_DatVld;
 // Clk Generation
 CLK#(
     .FBDIV_WIDTH ( FBDIV_WIDTH )
-)u_CLK(
+) u_CLK(
     .I_BypAsysnFIFO(I_BypAsysnFIFO),
     .I_BypPLL    ( I_BypPLL     ),
     .I_SwClk     ( I_SwClk      ),

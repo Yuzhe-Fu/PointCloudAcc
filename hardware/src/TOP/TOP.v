@@ -942,7 +942,7 @@ ITF #(
     .OPNUM                  ( OPNUM                 ),
     .ASYNC_FIFO_ADDR_WIDTH  ( ASYNC_FIFO_ADDR_WIDTH ),
     .FBDIV_WIDTH            ( FBDIV_WIDTH           ) 
-)u_ITF(
+) u_ITF(
     .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO_PAD),
     .I_BypOE_PAD        ( I_BypOE_PAD       ),
     .I_BypPLL_PAD       ( I_BypPLL_PAD      ),
