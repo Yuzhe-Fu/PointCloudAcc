@@ -40,7 +40,10 @@ module SHIFT #(
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-genvar gen_j;
+genvar gv_i;
+localparam IDLE = 3'b000;
+localparam IN   = 3'b010;
+localparam OUT  = 3'b100;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -63,7 +66,37 @@ wire                            incCntWrChnGrp;
 wire [ADDR_WIDTH        -1 : 0] cntWrChnGrp;
 
 //=====================================================================================================================
-// Variable Definition :
+// Logic Design : 
+//=====================================================================================================================
+
+reg [ 3 -1:0 ]state;
+reg [ 3 -1:0 ]next_state;
+always @(*) begin
+    case ( state )
+        IN:   if(shift_din_last & (shift_din_vld & shift_din_rdy))
+                    next_state <= OUT;
+                else
+                    next_state <= IN;
+
+        OUT: if(Rst)
+                    next_state <= IN;
+                else
+                    next_state <= OUT;
+                
+        default: next_state <= IN;
+    endcase
+end
+
+always @ ( posedge clk or negedge rst_n ) begin
+    if ( !rst_n ) begin
+        state <= IN;
+    end else begin
+        state <= next_state;
+    end
+end
+
+//=====================================================================================================================
+// Logic Design : 
 //=====================================================================================================================
 counter#(
     .COUNT_WIDTH ( ADDR_WIDTH )
@@ -80,7 +113,7 @@ counter#(
     .UNDERFLOW (                    ),
     .COUNT     ( cntWrChnGrp        )
 );
-assign incCntWrChnGrp = (wr_pointer == WrBackStep -1) & (push && !full);
+assign incCntWrChnGrp = (wr_pointer%(WrBackStep*ByteWrStep) == WrBackStep -ByteWrStep) & (push && !full);
 
 //=====================================================================================================================
 // Logic Design : FIFO Control
@@ -118,8 +151,8 @@ always @ (posedge clk or negedge rst_n) begin : READ_PTR
 end
 
 // Write finished
-assign empty = !(cntWrChnGrp == WrBackStep*ByteWrStep + 1); // write assign TotalWord = WrBackStep*ByteWrStep;
-assign full  = !empty;// !FULL:
+assign empty = state == IN; // write assign TotalWord = WrBackStep*ByteWrStep;
+assign full  = state == OUT;// !FULL:
 assign push  = wvalid;
 assign pop   = arvalid;
 
@@ -132,36 +165,38 @@ assign shift_din_rdy        = !full | shift_dout_rdy; // write and read simultan
 assign arvalid              = !empty & ( (&rvalid) & rready | ~(&rvalid) );
 assign shift_dout_vld       = rvalid;
 assign rready               = shift_dout_rdy;
-
-for( gen_j=0 ; gen_j < WIDTH; gen_j = gen_j+1 ) begin : ROW_BLOCK
-    assign waddr[gen_j]  = ByteWrIncr? 
-                            (((wr_pointer + ByteWrStep*gen_j) >= ByteWrStep*WrBackStep) ?
-                                (wr_pointer + ByteWrStep*gen_j) - ByteWrStep*WrBackStep
-                                : wr_pointer + ByteWrStep*gen_j
-                            ) // Write back to ByteWrIncr=Rectangle when WrRecTangle and >= ByteWrStep*WrBackStep
-                            : (wr_pointer - ByteWrStep*gen_j) + cntWrChnGrp;
-    assign araddr[gen_j] = rd_pointer;
-end
-
 assign wvalid_array = shift_din_vld & wvalid; // Write a part
-RAM_HS#(
-    .SRAM_BIT     ( DATA_WIDTH  ),
-    .SRAM_BYTE    ( 1           ),
-    .SRAM_WORD    ( DEPTH       ),
-    .DUAL_PORT    ( 1           )
-)u_DPRAM_HS [WIDTH     -1 : 0](
-    .clk          ( clk          ),
-    .rst_n        ( rst_n        ),
-    .wvalid       ( wvalid_array ),
-    .wready       (              ),
-    .waddr        ( waddr        ),
-    .wdata        ( shift_din    ),
-    .arvalid      ( {WIDTH{arvalid}}),
-    .arready      (              ),
-    .araddr       ( araddr       ),
-    .rvalid       ( rvalid       ),
-    .rready       ( {WIDTH{rready}}),
-    .rdata        ( shift_dout)
-);
+
+generate
+    for( gv_i=0 ; gv_i < WIDTH; gv_i = gv_i+1 ) begin : ROW_BLOCK
+        assign waddr[gv_i]  = ByteWrIncr? 
+                                (((wr_pointer + ByteWrStep*gv_i) >= ByteWrStep*WrBackStep) ?
+                                    (wr_pointer + ByteWrStep*gv_i) - ByteWrStep*WrBackStep
+                                    : wr_pointer + ByteWrStep*gv_i
+                                ) // Write back to ByteWrIncr=Rectangle when WrRecTangle and >= ByteWrStep*WrBackStep
+                                : (wr_pointer - ByteWrStep*gv_i) + cntWrChnGrp;
+        assign araddr[gv_i] = rd_pointer;
+
+        RAM_HS#(
+            .SRAM_BIT     ( DATA_WIDTH  ),
+            .SRAM_BYTE    ( 1           ),
+            .SRAM_WORD    ( DEPTH       ),
+            .DUAL_PORT    ( 1           )
+        )u_DPRAM_HS (
+            .clk          ( clk         ),
+            .rst_n        ( rst_n       ),
+            .wvalid       ( wvalid_array),
+            .wready       (             ),
+            .waddr        ( waddr[gv_i] ),
+            .wdata        ( shift_din[gv_i] ),
+            .arvalid      ( arvalid     ),
+            .arready      (             ),
+            .araddr       ( araddr[gv_i]),
+            .rvalid       ( rvalid      ),
+            .rready       ( rready      ),
+            .rdata        ( shift_dout[gv_i] )
+        );
+    end
+endgenerate
 
 endmodule

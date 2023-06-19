@@ -78,6 +78,10 @@ wire                                    shift_dout_vld;
 wire                                    shift_dout_rdy;
 wire [DATA_WIDTH*NUM            -1 : 0] shift_dout;
 
+wire [ADDR_WIDTH                -1 : 0] MaxCntWrAddr;
+wire [ADDR_WIDTH                -1 : 0] CntWrAddr;
+wire                                    overflow_CntWrAddr;
+
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgInAddr;
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgOutAddr;
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgNum;
@@ -101,7 +105,6 @@ assign {
 // Logic Design: FSM
 //=====================================================================================================================
 reg [ 3 -1:0 ]state;
-reg [ 3 -1:0 ]state_s1;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
@@ -119,7 +122,7 @@ always @(*) begin
 
         WAITFNH:if(CCUSHF_CfgVld)
                     next_state <= IDLE;
-                else if (overflow_CntAddr_s2)
+                else if (overflow_CntWrAddr & handshake_s2)
                     next_state <= IDLE;
                 else
                     next_state <= WAITFNH;
@@ -193,7 +196,7 @@ always @ ( posedge clk or negedge rst_n ) begin
         CntAddr_s1          <= 0;
     end else if(ena_s1) begin
         overflow_CntAddr_s1 <= overflow_CntAddr;
-        CntAddr_s1          <= 0;
+        CntAddr_s1          <= CntAddr;
     end
 end
 
@@ -230,13 +233,28 @@ SHIFT #(
 );
 assign shift_dout_rdy = rdy_s2;
 
-// overflow_CntAddr_s1? +(WIDTH - fifo_count)(0~WIDTH): -(fifo_count - WIDTH);
-assign CntAddr_s2           = CntAddr_s1 + NUM - fifo_count;
 assign SHFGLB_OutWrDat      = vld_s2? shift_dout : 0;
-// CntAddr_s1 == 32 -> 32 data in shift, fifo_count = 32; -> write address = 0
-assign SHFGLB_OutWrAddr     = CCUSHF_CfgOutAddr + CntAddr_s2; 
+assign SHFGLB_OutWrAddr     = CCUSHF_CfgOutAddr + CntWrAddr; 
 assign SHFGLB_OutWrDatVld   = vld_s2;
 
-assign overflow_CntAddr_s2 = CntAddr_s2 == MaxCntAddr + NUM;
+assign MaxCntWrAddr = CCUSHF_CfgByteWrIncr[0]?
+                           CCUSHF_CfgNum -1 // format 0 -> 1
+                           : CCUSHF_CfgNum -1 - NUM; // format 2/3 -> 0
+counter#(
+    .COUNT_WIDTH ( ADDR_WIDTH )
+)u0_counter_CntWrAddr(
+    .CLK       ( clk            ),
+    .RESET_N   ( rst_n          ),
+    .CLEAR     ( state == IDLE  ),
+    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+    .INC       ( SHFGLB_OutWrDatVld & GLBSHF_OutWrDatRdy   ),
+    .DEC       ( 1'b0           ),
+    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+    .MAX_COUNT ( MaxCntWrAddr   ),
+    .OVERFLOW  ( overflow_CntWrAddr),
+    .UNDERFLOW (                ),
+    .COUNT     ( CntWrAddr      )
+);
+
 
 endmodule
