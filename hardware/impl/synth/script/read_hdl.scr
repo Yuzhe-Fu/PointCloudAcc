@@ -29,6 +29,7 @@ set VERILOG_FILES { \
 ../../src/primitives/Memory/RAM.v\
 ../../src/primitives/Memory/RAM_REG.v\
 ../../src/primitives/SIPO/SIPO.v\
+../../src/primitives/SIPO/SIPO_CUT.v\
 ../../src/primitives/PISO/PISO_NOCACHE.v\
 ../../src/primitives/PISO/PISO.v\
 ../../src/primitives/PISO/PISO_NOCACHE_FLEX.v\

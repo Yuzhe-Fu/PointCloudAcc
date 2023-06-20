@@ -642,13 +642,13 @@ assign TOPGLB_RdPortDatRdy[GLBRDIDX_SYAWGT]     = SYAGLB_WgtRdDatRdy;
 
 // Write Ofm
 generate 
-    for(gv_i=0; gv_i<ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK/SRAM_WIDTH; gv_i=gv_i+1) begin
-        assign TOPGLB_WrPortAddr  [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrAddr  ;
-        assign TOPGLB_WrPortDat   [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDat   ;
+    for(gv_i=0; gv_i<(ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK)/SRAM_WIDTH; gv_i=gv_i+1) begin
+        assign TOPGLB_WrPortAddr  [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrAddr;
+        assign TOPGLB_WrPortDat   [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDat[SRAM_WIDTH*gv_i +: SRAM_WIDTH];
         assign TOPGLB_WrPortDatVld[GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDatVld;
     end
 endgenerate
-assign GLBSYA_OfmWrDatRdy                       = GLBTOP_WrPortDatRdy[GLBWRIDX_SYAOFM];
+assign GLBSYA_OfmWrDatRdy                       = GLBTOP_WrPortDatRdy[GLBWRIDX_SYAOFM]; // 1 port is enough
 
 SYA#(
     .SYAISA_WIDTH(SYAISA_WIDTH  ),

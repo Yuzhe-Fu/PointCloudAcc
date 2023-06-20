@@ -180,7 +180,7 @@ end
 
 genvar gv;
 generate
-    for(gv=0; gv<OPNUM; gv=gv+1) begin
+    for(gv=0; gv<OPNUM; gv=gv+1) begin: GEN_ISADEC
         wire [ISA_WIDTH[gv]     -1 : 0] SIPO_OUT_DAT;
         wire [ISA_WIDTH[gv]     -1 : 0] FIFO_data_out;
         wire                            FIFO_Reset;

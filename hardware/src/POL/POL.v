@@ -339,7 +339,7 @@ generate
     assign ena_s2       = handshake_s2 | ~vld_s2;
 
     // Reg Update
-    SIPO#(
+    SIPO_CUT#(
         .DATA_IN_WIDTH   ( SRAM_WIDTH  ), 
         .DATA_OUT_WIDTH  ( IDX_WIDTH*(2**MAP_WIDTH)  )
     )u_SIPO_MAP(

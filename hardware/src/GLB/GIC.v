@@ -188,7 +188,7 @@ SIPO#(
 
 FIFO_FWFT#(
     .DATA_WIDTH ( SRAM_WIDTH + 1),
-    .ADDR_WIDTH ( 1          )
+    .ADDR_WIDTH ( 1 )
 )u_FIFO_FWFT_GIC2GLB(
     .clk        ( clk           ),
     .Reset      ( state == IDLE ),

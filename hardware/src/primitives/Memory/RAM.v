@@ -127,10 +127,24 @@ module RAM #(
             .Q      ( DO    )
             );
         end
+        else if( SRAM_WORD == 256 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
+            TS1N28HPCPUHDHVTB256X8M4SSO SHF_SPRAM(
+            .SLP    ( 1'b0  ),
+            .SD     ( 1'b0  ),
+            .CLK    ( clk   ),
+            .CEB    ( CSB   ),
+            .WEB    ( WEB   ),
+            .A      ( (&WEB)? AR : AW     ),
+            .D      ( DI    ),
+            .RTSEL  ( RTSEL ),
+            .WTSEL  ( WTSEL ),
+            .Q      ( DO    )
+            );
+        end
         else if( SRAM_WORD == 256 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 1)begin
             wire [10    -1 : 0] QA;
             assign DO = QA;
-            TSDN28HPCPUHDB256X10M4M SHF_RAM(
+            TSDN28HPCPUHDB256X10M4M SHF_DPRAM(
             .RTSEL ( RTSEL  ),
             .WTSEL ( WTSEL  ),
             .PTSEL ( PTSEL  ),

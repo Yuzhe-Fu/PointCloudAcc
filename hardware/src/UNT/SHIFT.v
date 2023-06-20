@@ -181,7 +181,7 @@ generate
             .SRAM_BIT     ( DATA_WIDTH  ),
             .SRAM_BYTE    ( 1           ),
             .SRAM_WORD    ( DEPTH       ),
-            .DUAL_PORT    ( 1           )
+            .DUAL_PORT    ( 0           )
         )u_DPRAM_HS (
             .clk          ( clk         ),
             .rst_n        ( rst_n       ),
