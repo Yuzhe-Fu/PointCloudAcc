@@ -77,6 +77,7 @@ wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgEle0Addr;
 wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgEle1Addr;
 wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgCatAddr;
 wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgWord0;
+wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgWord1;
 wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgNumPnt;
 
 //=====================================================================================================================

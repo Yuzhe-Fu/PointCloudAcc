@@ -213,22 +213,22 @@ generate
             .DATA_WIDTH ( ISA_WIDTH[gv] ),
             .ADDR_WIDTH ( ISAFIFO_ADDR_WIDTH[gv] )
         )u_FIFO_FWFT(
-            .clk        ( clk                   ),
+            .clk        ( clk            ),
             .Reset      ( FIFO_Reset     ),
-            .rst_n      ( rst_n                 ),
+            .rst_n      ( rst_n          ),
             .push       ( FIFO_push      ),
             .pop        ( FIFO_pop       ),
             .data_in    ( SIPO_OUT_DAT   ),
             .data_out   ( FIFO_data_out  ),
             .empty      ( FIFO_empty     ),
             .full       ( FIFO_full      ),
-            .fifo_count (                       )
+            .fifo_count (                )
         );
 
         assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
-        assign FIFO_pop = cfgRdy[gv];
+        assign FIFO_pop = cfgEnable;
 
-        assign  cfgEnable = FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[gv] & !FIFO_empty);
+        assign  cfgEnable = (FIFO_data_out[OPCODE_WIDTH] | cfgRdy[gv]) & !FIFO_empty; // Force reset or cfgrdy
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
                 cfgInfo[gv] <= 0;
