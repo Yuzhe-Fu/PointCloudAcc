@@ -40,8 +40,10 @@ set tech_lef { \
 	/materials/technology/tsmc28/TSMC_28_IP/STD_CELL/tcbn28hpcplusbwp7t30p140_190a/tcbn28hpcplusbwp7t30p140_110a_sef/digital/Back_End/lef/tcbn28hpcplusbwp7t30p140_110a/lef/tcbn28hpcplusbwp7t30p140.lef \
 	/materials/technology/tsmc28/TSMC_28_IP/STD_CELL/tcbn28hpcplusbwp7t30p140hvt_190a/tcbn28hpcplusbwp7t30p140hvt_110a_sef/digital/Back_End/lef/tcbn28hpcplusbwp7t30p140hvt_110a/lef/tcbn28hpcplusbwp7t30p140hvt.lef \
 	/materials/technology/tsmc28/TSMC_28_IP/STD_CELL/tcbn28hpcplusbwp7t30p140uhvt_190a/tcbn28hpcplusbwp7t30p140uhvt_140b_sef/digital/Back_End/lef/tcbn28hpcplusbwp7t30p140uhvt_140b/lef/tcbn28hpcplusbwp7t30p140uhvt.lef \
+    /materials/technology/tsmc28/TSMC_28_IP/STD_IO/tphn28hpcpgv18_170d/tphn28hpcpgv18_110a_sefu10lm/digital/Back_End/lef/tphn28hpcpgv18_110a/mt_2/10lm/lef/tphn28hpcpgv18_10lm.lef\
 	../../project/lib/mem/ts1n28hpcpuhdhvtb64x128m4sso_170a/LEF/ts1n28hpcpuhdhvtb64x128m4sso_170a.lef \
 	../../project/lib/mem/ts1n28hpcpuhdhvtb128x256m1sso_170a/LEF/ts1n28hpcpuhdhvtb128x256m1sso_170a.lef \
 	../../project/lib/mem/ts1n28hpcpuhdhvtb16x8m2sso_170a/LEF/ts1n28hpcpuhdhvtb16x8m2sso_170a.lef \
 	../../project/lib/mem/tsdn28hpcpuhdb256x10m4m_170a/LEF/tsdn28hpcpuhdb256x10m4m_170a.lef \
+    ../../project/lib/PLL/lef/PLLTS28HPMFRAC.lef \
 };
