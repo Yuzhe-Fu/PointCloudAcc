@@ -1,49 +1,43 @@
-// This is a simple example.
-// You can make a your own header file and set its path to settings.
-// (Preferences > Package Settings > Verilog Gadget > Settings - User)
-//
-//      "header": "Packages/Verilog Gadget/template/verilog_header.v"
-//
 // -----------------------------------------------------------------------------
 // Copyright (c) 2014-2020 All rights reserved
 // -----------------------------------------------------------------------------
 // Author : zhouchch@pku.edu.cn
-// File   : ADD.v
+// File   : CAT.v
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-module ADD #( // Channel-wise Add
-    parameter DATA_WIDTH        = 8,
-    parameter SRAM_WIDTH        = 256,
-    parameter ADDR_WIDTH        = 16,
-    parameter ADDISA_WIDTH      = 128  
+module CAT #(
+    parameter SRAM_WIDTH    = 256,
+    parameter ADDR_WIDTH    = 16,  
+    parameter CATISA_WIDTH  = 128  
     )(
-    input                                       clk                     ,
-    input                                       rst_n                   ,
+    input                               clk                     ,
+    input                               rst_n                   ,
 
     // Configure
-    input                                       CCUADD_CfgVld           ,
-    output                                      ADDCCU_CfgRdy           ,
-    input  [ADDISA_WIDTH                -1 : 0] CCUADD_CfgInfo          ,
+    input                                       CCUCAT_CfgVld           ,
+    output                                      CATCCU_CfgRdy           ,
+    input  [CATISA_WIDTH                -1 : 0] CCUCAT_CfgInfo          ,
 
-    output [ADDR_WIDTH                  -1 : 0] ADDGLB_Add0RdAddr       ,
-    output                                      ADDGLB_Add0RdAddrVld    ,
-    input                                       GLBADD_Add0RdAddrRdy    ,
-    input  [SRAM_WIDTH                  -1 : 0] GLBADD_Add0RdDat        ,    
-    input                                       GLBADD_Add0RdDatVld     ,    
-    output                                      ADDGLB_Add0RdDatRdy     ,    
-    output [ADDR_WIDTH                  -1 : 0] ADDGLB_Add1RdAddr       ,
-    output                                      ADDGLB_Add1RdAddrVld    ,
-    input                                       GLBADD_Add1RdAddrRdy    ,
-    input  [SRAM_WIDTH                  -1 : 0] GLBADD_Add1RdDat        ,    
-    input                                       GLBADD_Add1RdDatVld     ,    
-    output                                      ADDGLB_Add1RdDatRdy     ,     
-    output [ADDR_WIDTH                  -1 : 0] ADDGLB_SumWrAddr        ,
-    output [SRAM_WIDTH                  -1 : 0] ADDGLB_SumWrDat         ,   
-    output                                      ADDGLB_SumWrDatVld      ,
-    input                                       GLBADD_SumWrDatRdy       
+    output [ADDR_WIDTH                  -1 : 0] CATGLB_Ele0RdAddr       ,
+    output                                      CATGLB_Ele0RdAddrVld    ,
+    input                                       GLBCAT_Ele0RdAddrRdy    ,
+    input  [SRAM_WIDTH                  -1 : 0] GLBCAT_Ele0RdDat        ,    
+    input                                       GLBCAT_Ele0RdDatVld     ,    
+    output                                      CATGLB_Ele0RdDatRdy     ,    
+    output [ADDR_WIDTH                  -1 : 0] CATGLB_Ele1RdAddr       ,
+    output                                      CATGLB_Ele1RdAddrVld    ,
+    input                                       GLBCAT_Ele1RdAddrRdy    ,
+    input  [SRAM_WIDTH                  -1 : 0] GLBCAT_Ele1RdDat        ,    
+    input                                       GLBCAT_Ele1RdDatVld     ,    
+    output                                      CATGLB_Ele1RdDatRdy     ,     
+    output [ADDR_WIDTH                  -1 : 0] CATGLB_CatWrAddr        ,
+    output [SRAM_WIDTH                  -1 : 0] CATGLB_CatWrDat         ,   
+    output                                      CATGLB_CatWrDatVld      ,
+    input                                       GLBCAT_CatWrDatRdy       
 
 );
+
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
@@ -51,13 +45,11 @@ localparam IDLE    = 3'b000;
 localparam COMP    = 3'b010;
 localparam WAITFNH = 3'b100;
 
-localparam NUM = SRAM_WIDTH / DATA_WIDTH;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire [NUM   -1 : 0][DATA_WIDTH  -1 : 0] Add0;
-wire [NUM   -1 : 0][DATA_WIDTH  -1 : 0] Add1;
-reg  [NUM   -1 : 0][DATA_WIDTH  -1 : 0] Sum;
+wire [SRAM_WIDTH  -1 : 0] Ele;
+reg  [SRAM_WIDTH  -1 : 0] Cat;
 
 genvar                                  gv_i;
 wire                                    overflow_CntAddr;
@@ -78,43 +70,48 @@ wire                                    ena_s2;
 wire [ADDR_WIDTH                -1 : 0] CntAddr;
 reg  [ADDR_WIDTH                -1 : 0] CntAddr_s1;
 reg  [ADDR_WIDTH                -1 : 0] CntAddr_s2;
+wire                                    sel;
+reg                                     sel_s1;
 
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd0Addr;
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd1Addr;
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgSumAddr;
-wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgNum;
+wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgEle0Addr;
+wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgEle1Addr;
+wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgCatAddr;
+wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgWord0;
+wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgWord1;
+wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgNumPnt;
 
 //=====================================================================================================================
 // Logic Design: Cfg
 //=====================================================================================================================
 assign {
-    CCUADD_CfgAdd0Addr,
-    CCUADD_CfgAdd1Addr,
-    CCUADD_CfgSumAddr,
-    CCUADD_CfgNum
-} = CCUADD_CfgInfo[ADDISA_WIDTH -1 : 12];
+    CCUCAT_CfgEle0Addr  ,
+    CCUCAT_CfgEle1Addr  ,
+    CCUCAT_CfgCatAddr   ,
+    CCUCAT_CfgWord1     , // How many words occupied by all channels
+    CCUCAT_CfgWord0     , // 
+    CCUCAT_CfgNumPnt         // How many points
+} = CCUCAT_CfgInfo[CATISA_WIDTH - 1 : 12];
 
 //=====================================================================================================================
 // Logic Design: FSM
 //=====================================================================================================================
 reg [ 3 -1:0 ]state;
-reg [ 3 -1:0 ]state_s1;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
-        IDLE :  if(ADDCCU_CfgRdy & CCUADD_CfgVld)// 
+        IDLE :  if(CATCCU_CfgRdy & CCUCAT_CfgVld)// 
                     next_state <= COMP; //
                 else
                     next_state <= IDLE;
 
-        COMP:   if(CCUADD_CfgVld)
+        COMP:   if(CCUCAT_CfgVld)
                     next_state <= IDLE;
                 else if( overflow_CntAddr & handshake_s0 ) // wait pipeline finishing
                     next_state <= WAITFNH;
                 else
                     next_state <= COMP;
 
-        WAITFNH:if(CCUADD_CfgVld)
+        WAITFNH:if(CCUCAT_CfgVld)
                     next_state <= IDLE;
                 else if (overflow_CntAddr_s2)
                     next_state <= IDLE;
@@ -133,18 +130,19 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
-assign ADDCCU_CfgRdy = state==IDLE;
+assign CATCCU_CfgRdy = state==IDLE;
 
 //=====================================================================================================================
 // Logic Design: s0
 //=====================================================================================================================
-assign rdy_s0       = GLBADD_Add0RdAddrRdy & GLBADD_Add1RdAddrRdy;
+assign rdy_s0       = sel? GLBCAT_Ele0RdAddrRdy : GLBCAT_Ele1RdAddrRdy;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 
 assign vld_s0 = state == COMP;
 
-wire [ADDR_WIDTH     -1 : 0] MaxCntAddr = CCUADD_CfgNum -1;
+wire [ADDR_WIDTH    -1 : 0] TotalWord = CCUCAT_CfgWord0 + CCUCAT_CfgWord1;
+wire [ADDR_WIDTH     -1 : 0] MaxCntAddr = TotalWord*CCUCAT_CfgNumPnt -1;
 counter#(
     .COUNT_WIDTH ( ADDR_WIDTH )
 )u0_counter_CntAddr(
@@ -160,12 +158,12 @@ counter#(
     .UNDERFLOW (                ),
     .COUNT     ( CntAddr        )
 );
+assign sel = CntAddr % TotalWord < CCUCAT_CfgWord0;
+assign CATGLB_Ele0RdAddr = CCUCAT_CfgEle0Addr + CCUCAT_CfgWord0*(CntAddr/TotalWord) + CntAddr % TotalWord;
+assign CATGLB_Ele1RdAddr = CCUCAT_CfgEle1Addr + CCUCAT_CfgWord1*(CntAddr/TotalWord) + (CntAddr % TotalWord - CCUCAT_CfgWord0);
 
-assign ADDGLB_Add0RdAddr = CCUADD_CfgAdd0Addr + CntAddr;
-assign ADDGLB_Add1RdAddr = CCUADD_CfgAdd1Addr + CntAddr;
-
-assign ADDGLB_Add0RdAddrVld = vld_s0 & GLBADD_Add1RdAddrRdy;
-assign ADDGLB_Add1RdAddrVld = vld_s0 & GLBADD_Add0RdAddrRdy;
+assign CATGLB_Ele0RdAddrVld = vld_s0 &  sel;
+assign CATGLB_Ele1RdAddrVld = vld_s0 & !sel;
 
 //=====================================================================================================================
 // Logic Design: s1
@@ -173,23 +171,25 @@ assign ADDGLB_Add1RdAddrVld = vld_s0 & GLBADD_Add0RdAddrRdy;
 assign rdy_s1       = ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
-assign vld_s1       = GLBADD_Add0RdDatVld & GLBADD_Add1RdDatVld;
+assign vld_s1       = sel_s1? GLBCAT_Ele0RdDatVld : GLBCAT_Ele1RdDatVld;
 
-assign Add0             = GLBADD_Add0RdDat;
-assign Add1             = GLBADD_Add1RdDat;
+assign Ele             = sel_s1? GLBCAT_Ele0RdDat : GLBCAT_Ele1RdDat;
 
-assign ADDGLB_Add0RdDatRdy = rdy_s1 & GLBADD_Add1RdDatVld;
-assign ADDGLB_Add1RdDatRdy = rdy_s1 & GLBADD_Add0RdDatVld;
+assign CATGLB_Ele0RdDatRdy = rdy_s1 & sel_s1;
+assign CATGLB_Ele1RdDatRdy = rdy_s1 & !sel_s1;
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         overflow_CntAddr_s1 <= 0;
+        sel_s1              <= 0;
         CntAddr_s1          <= 0;
     end else if( state == IDLE) begin
         overflow_CntAddr_s1 <= 0;
+        sel_s1              <= 0;
         CntAddr_s1          <= 0;
     end else if(ena_s1) begin
         overflow_CntAddr_s1 <= overflow_CntAddr;
+        sel_s1              <= sel;
         CntAddr_s1          <= CntAddr;
     end
 end
@@ -197,27 +197,24 @@ end
 //=====================================================================================================================
 // Logic Design: s2
 //=====================================================================================================================
-assign rdy_s2       = GLBADD_SumWrDatRdy;
+assign rdy_s2       = GLBCAT_CatWrDatRdy;
 assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
 
-generate
-    for(gv_i=0; gv_i<NUM; gv_i=gv_i+1) begin
-        always @(posedge clk or negedge rst_n) begin
-            if(!rst_n) begin
-                Sum[gv_i] <= 0;
-            end else if( state == IDLE ) begin
-                Sum[gv_i] <= 0;
-            end else if(handshake_s1) begin
-                Sum[gv_i] <= Add0[gv_i] + Add1[gv_i];
-            end
-            
-        end
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        Cat <= 0;
+    end else if( state == IDLE ) begin
+        Cat <= 0;
+    end else if(handshake_s1) begin
+        Cat <= Ele;
     end
-endgenerate
+    
+end
+
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
-        vld_s2 <= 0;
+        vld_s2              <= 0;
         overflow_CntAddr_s2 <= 0;
         CntAddr_s2          <= 0;
     end else if( state == IDLE) begin
@@ -225,14 +222,14 @@ always @ ( posedge clk or negedge rst_n ) begin
         overflow_CntAddr_s2 <= 0;
         CntAddr_s2          <= 0;
     end else if(ena_s2) begin
-        vld_s2 <= handshake_s1;
+        vld_s2              <= handshake_s1;
         overflow_CntAddr_s2 <= overflow_CntAddr_s1;
         CntAddr_s2          <= CntAddr_s1;
     end
 end
 
-assign ADDGLB_SumWrDat      = Sum;
-assign ADDGLB_SumWrAddr     = CCUADD_CfgSumAddr + CntAddr_s2;
-assign ADDGLB_SumWrDatVld   = vld_s2;
+assign CATGLB_CatWrDat      = Cat;
+assign CATGLB_CatWrAddr     = CCUCAT_CfgCatAddr + CntAddr_s2;
+assign CATGLB_CatWrDatVld   = vld_s2;
 
 endmodule

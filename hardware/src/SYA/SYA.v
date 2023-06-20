@@ -55,7 +55,7 @@ module SYA #(
 // Constant Definition :
 //=====================================================================================================================
 localparam  PSUM_WIDTH      = ACT_WIDTH + WGT_WIDTH + CHN_WIDTH;
-localparam  NUMDIAG_WIDTH   = $clog2(NUM_ROW*8);
+localparam  NUMDIAG_WIDTH   = $clog2(NUM_ROW*(NUM_BANK+1)); // 7
 
 localparam IDLE             = 3'b000;
 localparam COMP             = 3'b001;
@@ -435,6 +435,7 @@ assign CurPsumOutDiagIdx_s2 = ( (CntMac - CCUSYA_CfgChn) % NumDiag ) - (DefaultR
 assign NumFltPal            = CCUSYA_CfgMod == 0? 32 : 16;
 assign Cho_s2               = CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt;
 
+reg [ACT_WIDTH     -1 : 0] OfmEle_Upd;
 always@(*) begin
     OfmDiag  = OfmDiag_r;
     for(bank=0; bank<NUM_BANK; bank=bank+1) begin
@@ -445,12 +446,13 @@ always@(*) begin
                                                     : SYA_OutPsum[bank][row][col][CCUSYA_CfgShift +: ACT_WIDTH] + CCUSYA_CfgZp; 
                                                     // ReLU and Quant at first.
                 // Only when 2x2 case: Diag of Current looped PE
-                travDiagIdx_tmp = ((bank/2)*NUM_ROW + row + (bank%2)*NUM_COL + col); 
-                if (travDiagIdx_tmp == CurPsumOutDiagIdx_s2) begin 
+                travDiagIdx_tmp = (bank/2)*NUM_ROW + row + (bank%2)*NUM_COL + col; 
+                if (travDiagIdx_tmp == CurPsumOutDiagIdx_s2) begin
                     // Match, Psum should be output
-                    OfmDiag[bank][row]   = SYA_OutPsum_RQ[bank][row][col];
+                    OfmEle_Upd = SYA_OutPsum_RQ[bank][row][col];
                 end
             end
+            OfmDiag[bank][row] = OfmEle_Upd;
         end
     end
 end
@@ -477,7 +479,7 @@ assign fwftOfm_din_vld  = vld_s2;
 // OfmDiagConcat: Concate psums at Diag<32 of the next loop with Diag>32 of the current loop
 always @(*) begin 
     OfmDiagConcat = OfmDiag;
-    for(i=0; i<CurPsumOutDiagIdx_s2; i=i+1) begin
+    for(i=0; i<CurPsumOutDiagIdx_s2[0 +: $clog2(NUM_ROW*NUM_BANK)]; i=i+1) begin // ??????????? [0 +: 8] only for 2x2
         OfmDiagConcat[ACT_WIDTH*i +: ACT_WIDTH] = vld_s3? shift_dout[ACT_WIDTH*i +: ACT_WIDTH] : 0;
     end
 end
@@ -503,7 +505,7 @@ assign fwftOfm_dout_vld = !fwftOfm_empty;
 
 FIFO_FWFT#(
     .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK ), // 64B
-    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64
+    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64 : 4KB Need 64x128x4 UHDDPSRAM!!!!!!!!!!!!!!!!!
 )u_FIFO_FWFT_OFM(
     .clk        ( clk           ),
     .Reset      ( state == IDLE ),

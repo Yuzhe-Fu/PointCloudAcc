@@ -339,11 +339,13 @@ generate
             .gnt (  ),
             .arb_port  ( WrPort1stBankIdx  )
         );
-        CNT1 #(
-            .DATA_WIDTH(NUM_BANK)
+        
+        SUM #(
+            .DATA_NUM   ( NUM_BANK ),
+            .DATA_WIDTH ( 1 )
         ) u_CNT1_WrPortNumBank(
-            .din(TOPGLB_CfgPortBankFlag[gv_j]),
-            .dout(WrPortNumBank)
+            .DIN        ( TOPGLB_CfgPortBankFlag[gv_j] ),
+            .DOUT       ( WrPortNumBank       )
         );
 
     end

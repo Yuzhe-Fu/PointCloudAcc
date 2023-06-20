@@ -171,7 +171,7 @@ assign {
     CCUKNN_CfgCrdDim    ,   
     CCUKNN_CfgK         ,   // 8
     CCUKNN_CfgNip           // 16
-} = CCUKNN_CfgInfo;
+} = CCUKNN_CfgInfo[KNNISA_WIDTH -1 : 12];
 
 //=====================================================================================================================
 // Logic Design 1: FSM
@@ -513,12 +513,12 @@ generate
             //     assign MapWrAddr = (NUM_SRAMWORD_MAP*(MaxCntCrdRdAddr + 1))*CntCpCrdRdAddr_s1 + NUM_SRAMWORD_MAP*CntLopCrdRdAddr_s1 + gv_wd;
             // `else
                 assign MapWrAddr = CCUKNN_CfgMapWrAddr + NUM_SRAMWORD_MAP*CpIdx_s2 + gv_wd;
-                assign MapFnh[gv_core] = CpVld_s2? INSKNN_MapVld[gv_core] : 1'b1;
+
             // `endif
 
             assign pisoMapInDat[gv_core][gv_wd] = {INSKNN_Map[gv_wd], MapWrAddr, CpVld_s2};
         end
-
+        assign MapFnh[gv_core] = CpVld_s2? INSKNN_MapVld[gv_core] : 1'b1;
         assign KNNINS_MapRdy[gv_core] = handshake_s2;
 
         // Reg Update

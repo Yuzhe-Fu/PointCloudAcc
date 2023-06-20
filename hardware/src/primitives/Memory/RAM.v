@@ -44,13 +44,22 @@ module RAM #(
     wire [ SRAM_BYTE                -1 : 0] WEB;
     wire                                    CSB;
     wire [2                         -1 : 0] RTSEL;
+    wire [2                         -1 : 0] WTSEL;
+    wire [2                         -1 : 0] PTSEL;
 
     assign #(DELAY) AR   = addr_r;
     assign #(DELAY) AW   = addr_w;
     assign #(DELAY) DI   = data_in;
     assign #(DELAY) WEB  = {SRAM_BYTE{~write_en}};
     assign #(DELAY) CSB  = (~write_en)&(~read_en);
-    assign #(DELAY) RTSEL= 2'b10;
+
+    `ifdef SIM
+        assign #(DELAY) RTSEL= 2'b10;
+    `else
+        assign #(DELAY) RTSEL= 2'b00;
+    `endif
+    assign #(DELAY) WTSEL= 2'b00;
+    assign #(DELAY) PTSEL= 2'b00;
 
     // Lock DO
     wire [ SRAM_WIDTH              -1 : 0] DO;
@@ -85,7 +94,7 @@ module RAM #(
             .A      ( (&WEB)? AR : AW ),
             .D      ( DI    ),
             .RTSEL  ( RTSEL ),
-            .WTSEL  ( 2'd0  ),
+            .WTSEL  ( WTSEL ),
             .Q      ( DO    )
             );
         end
@@ -99,8 +108,8 @@ module RAM #(
             .WEB    ( WEB   ),
             .A      ( (&WEB)? AR : AW     ),
             .D      ( DI    ),
-            .RTSEL  ( RTSEL  ),
-            .WTSEL  ( 2'd0  ),
+            .RTSEL  ( RTSEL ),
+            .WTSEL  ( WTSEL ),
             .Q      ( DO    )
             );
         end 
@@ -113,9 +122,43 @@ module RAM #(
             .WEB    ( WEB   ),
             .A      ( (&WEB)? AR : AW     ),
             .D      ( DI    ),
-            .RTSEL  ( RTSEL  ),
-            .WTSEL  ( 2'd0  ),
+            .RTSEL  ( RTSEL ),
+            .WTSEL  ( WTSEL ),
             .Q      ( DO    )
+            );
+        end
+        else if( SRAM_WORD == 256 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
+            TS1N28HPCPUHDHVTB256X8M4SSO SHF_SPRAM(
+            .SLP    ( 1'b0  ),
+            .SD     ( 1'b0  ),
+            .CLK    ( clk   ),
+            .CEB    ( CSB   ),
+            .WEB    ( WEB   ),
+            .A      ( (&WEB)? AR : AW     ),
+            .D      ( DI    ),
+            .RTSEL  ( RTSEL ),
+            .WTSEL  ( WTSEL ),
+            .Q      ( DO    )
+            );
+        end
+        else if( SRAM_WORD == 256 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 1)begin
+            wire [10    -1 : 0] QA;
+            assign DO = QA;
+            TSDN28HPCPUHDB256X10M4M SHF_DPRAM(
+            .RTSEL ( RTSEL  ),
+            .WTSEL ( WTSEL  ),
+            .PTSEL ( PTSEL  ),
+            .AA    ( AR     ),
+            .DA    (        ),
+            .WEBA  ( ~WEB   ), // read
+            .CEBA  ( ~WEB   ),
+            .CLK   ( clk    ),
+            .AB    ( AW     ),
+            .DB    ( {2'b00, DI}),
+            .WEBB  ( WEB    ),
+            .CEBB  ( WEB    ),
+            .QA    ( QA     ),
+            .QB    (        )
             );
         end
     endgenerate

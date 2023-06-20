@@ -25,16 +25,23 @@ parameter POLISA_WIDTH   = PORT_WIDTH*9 ;
 parameter GICISA_WIDTH   = PORT_WIDTH*2 ;
 parameter MONISA_WIDTH   = PORT_WIDTH*1 ;
 
+parameter FPSISANUM   = 1;
+parameter KNNISANUM   = 4;
+parameter SYAISANUM   = 1;
+parameter POLISANUM   = 1;
+parameter GICISANUM   = 1;
+parameter MONISANUM   = 1;
+
 localparam [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] ISABASEADDR = {
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH + KNNISA_WIDTH/PORT_WIDTH + SYAISA_WIDTH/PORT_WIDTH + POLISA_WIDTH/PORT_WIDTH + GICISA_WIDTH/PORT_WIDTH + MONISA_WIDTH/PORT_WIDTH,
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH + KNNISA_WIDTH/PORT_WIDTH + SYAISA_WIDTH/PORT_WIDTH + POLISA_WIDTH/PORT_WIDTH, //29
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH + KNNISA_WIDTH/PORT_WIDTH + SYAISA_WIDTH/PORT_WIDTH, 
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH + KNNISA_WIDTH/PORT_WIDTH, 
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH, 
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM + SYAISA_WIDTH/PORT_WIDTH*SYAISANUM + POLISA_WIDTH/PORT_WIDTH*POLISANUM + GICISA_WIDTH/PORT_WIDTH*GICISANUM,
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM + SYAISA_WIDTH/PORT_WIDTH*SYAISANUM + POLISA_WIDTH/PORT_WIDTH*POLISANUM, //29
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM + SYAISA_WIDTH/PORT_WIDTH*SYAISANUM, 
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM, 
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM, 
     32'd0
 };
 
-localparam [OPNUM -1 : 0][32 -1 : 0] ISANUM = {
+localparam [OPNUM -1 : 0][32 -1 : 0] ISANUMWORD = {
     MONISA_WIDTH/PORT_WIDTH,
     GICISA_WIDTH/PORT_WIDTH, 
     POLISA_WIDTH/PORT_WIDTH, 
@@ -228,7 +235,7 @@ generate
         )u_counter_MduISARdAddr(
             .CLK       ( I_OffClk       ),
             .RESET_N   ( rst_n          ),
-            .CLEAR     ( state == IDLE & next_state == ISASND ),
+            .CLEAR     ( 1'b0           ),
             .DEFAULT   ( Default        ),
             .INC       ( I_ISAVld & (I_DatVld & O_DatRdy) & (ISAIdx_d == gv_i) ),
             .DEC       ( 1'b0           ),
@@ -245,7 +252,7 @@ generate
                 ISAAddr_r <= ISAAddr[gv_i];
             end
         end
-        assign Overflow_ISA[gv_i] = ISAAddr[gv_i] - ISAAddr_r == ISANUM[ISAIdx_d] - 1;
+        assign Overflow_ISA[gv_i] = ISAAddr[gv_i] - ISAAddr_r == ISANUMWORD[ISAIdx_d] - 1;
 
     end
 endgenerate

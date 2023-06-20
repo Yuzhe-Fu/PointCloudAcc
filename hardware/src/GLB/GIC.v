@@ -86,6 +86,14 @@ wire [PORT_WIDTH    -1 : 0] PISO_DatOut;
 wire                        PISO_DatOutVld;
 wire                        PISO_DatOutLast;
 
+wire                            fwft_push; 
+wire                            fwft_pop;  
+wire [SRAM_WIDTH + 1    -1 : 0] fwft_din;  
+wire [SRAM_WIDTH + 1    -1 : 0] fwft_dout; 
+wire                            fwft_empty;
+wire                            fwft_full; 
+wire                            fwft_dout_last; 
+
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
@@ -118,7 +126,7 @@ always @(*) begin
                     next_state <= CMD;
         IN2CHIP:if(CCUGIC_CfgVld)
                     next_state <= IDLE;
-                else if( SIPO_DatOutLast & (GICGLB_WrDatVld & GLBGIC_WrDatRdy) ) // End
+                else if( fwft_dout_last & (GICGLB_WrDatVld & GLBGIC_WrDatRdy) ) // End
                     next_state <= IDLE;
                 else
                     next_state <= IN2CHIP;
@@ -177,10 +185,33 @@ SIPO#(
     .OUT_LAST     ( SIPO_DatOutLast),
     .OUT_RDY      ( SIPO_DatOutRdy )
 );
-assign GICGLB_WrDat     = state == IN2CHIP? SIPO_DatOut   : 0;
-assign GICGLB_WrDatVld  = state == IN2CHIP? SIPO_DatOutVld: 0;
-assign SIPO_DatOutRdy   = state == IN2CHIP? GLBGIC_WrDatRdy:0;
+
+FIFO_FWFT#(
+    .DATA_WIDTH ( SRAM_WIDTH + 1),
+    .ADDR_WIDTH ( 1 )
+)u_FIFO_FWFT_GIC2GLB(
+    .clk        ( clk           ),
+    .Reset      ( state == IDLE ),
+    .rst_n      ( rst_n         ),
+    .push       ( fwft_push     ),
+    .pop        ( fwft_pop      ),
+    .data_in    ( fwft_din      ),
+    .data_out   ( fwft_dout     ),
+    .empty      ( fwft_empty    ),
+    .full       ( fwft_full     ),
+    .fifo_count (               )
+);
+
+assign fwft_push        = !fwft_full & SIPO_DatOutVld;
+assign SIPO_DatOutRdy   = !fwft_full;
+assign fwft_din         = {SIPO_DatOut, SIPO_DatOutLast};
+
+assign GICGLB_WrDatVld  = state == IN2CHIP? !fwft_empty : 0;
+assign fwft_pop         = state == IN2CHIP? GLBGIC_WrDatRdy & GICGLB_WrDatVld : 0;
+assign GICGLB_WrDat     = state == IN2CHIP? fwft_dout[1 +: SRAM_WIDTH] : 0;
 assign GICGLB_WrAddr    = CntGLBAddr;
+
+assign fwft_dout_last   = state == IN2CHIP? fwft_dout[0] : 0;
 
 //=====================================================================================================================
 // Logic Design: Out to off-chip
