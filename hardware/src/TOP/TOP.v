@@ -24,7 +24,7 @@ module TOP #(
     parameter CUTMASK_WIDTH  = 64, // Reduce BW
     
     // KNN
-    parameter NUM_SORT_CORE  = 10, // Decided by SRAM/Crd
+    parameter NUM_SORT_CORE  = 8, //
     parameter SRAM_MAXPARA   = 1,
 
     // SYA
@@ -621,7 +621,7 @@ KUA#(
 //=====================================================================================================================
 // Read Act
 generate
-    for(gv_i=0; gv_i<2; gv_i =gv_i +1) begin
+    for(gv_i=0; gv_i<2; gv_i =gv_i +1) begin: GEN_SYAGLB_ActRdPort
         assign TOPGLB_RdPortAddrVld [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdAddrVld;
         assign TOPGLB_RdPortAddr    [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdAddr;
         assign TOPGLB_RdPortDatRdy  [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdDatRdy;
@@ -642,7 +642,7 @@ assign TOPGLB_RdPortDatRdy[GLBRDIDX_SYAWGT]     = SYAGLB_WgtRdDatRdy;
 
 // Write Ofm
 generate 
-    for(gv_i=0; gv_i<(ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK)/SRAM_WIDTH; gv_i=gv_i+1) begin
+    for(gv_i=0; gv_i<(ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK)/SRAM_WIDTH; gv_i=gv_i+1) begin: GEN_SYAGLB_OfmWrPort
         assign TOPGLB_WrPortAddr  [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrAddr;
         assign TOPGLB_WrPortDat   [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDat[SRAM_WIDTH*gv_i +: SRAM_WIDTH];
         assign TOPGLB_WrPortDatVld[GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDatVld;
@@ -701,7 +701,7 @@ assign TOPGLB_RdPortDatRdy[GLBRDIDX_POLMAP]     = POLGLB_MapRdDatRdy;
 
 // Read Ofm
 generate
-    for(gv_i = 0; gv_i < POOL_CORE; gv_i = gv_i + 1) begin: GEN_Port_GLBPOL_OfmRd
+    for(gv_i = 0; gv_i < POOL_CORE; gv_i = gv_i + 1) begin: GEN_POLGLB_OfmRdPort
         assign TOPGLB_RdPortAddr[GLBRDIDX_POLOFM + gv_i]    = POLGLB_OfmRdAddr[gv_i];
         assign GLBPOL_OfmRdDat  [gv_i]                      = GLBTOP_RdPortDat[GLBRDIDX_POLOFM + gv_i];
     end
