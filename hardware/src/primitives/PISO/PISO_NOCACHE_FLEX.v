@@ -33,9 +33,9 @@ integer                                 i;
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign num_shifts   = INP_BW / OUT_BW;
-assign IN_RDY       = OUT_RDY & count == 1; // must last data;
+assign IN_RDY       = OUT_RDY & (count == 1 | num_shifts == 1); // must last data;
 assign OUT_VLD      = IN_VLD;
-assign OUT_LAST     = IN_LAST & count == 1;
+assign OUT_LAST     = IN_LAST & (count == 1 | num_shifts == 1);
 
 always @(*) begin
     for(i=0; i<DATA_IN_WIDTH; i=i+1) begin
