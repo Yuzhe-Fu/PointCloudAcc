@@ -435,7 +435,6 @@ assign CurPsumOutDiagIdx_s2 = ( (CntMac - CCUSYA_CfgChn) % NumDiag ) - (DefaultR
 assign NumFltPal            = CCUSYA_CfgMod == 0? 32 : 16;
 assign Cho_s2               = CCUSYA_CfgNumGrpPerTile*CCUSYA_CfgNumTilFlt;
 
-reg [ACT_WIDTH     -1 : 0] OfmEle_Upd;
 always@(*) begin
     OfmDiag  = OfmDiag_r;
     for(bank=0; bank<NUM_BANK; bank=bank+1) begin
@@ -449,10 +448,9 @@ always@(*) begin
                 travDiagIdx_tmp = (bank/2)*NUM_ROW + row + (bank%2)*NUM_COL + col; 
                 if (travDiagIdx_tmp == CurPsumOutDiagIdx_s2) begin
                     // Match, Psum should be output
-                    OfmEle_Upd = SYA_OutPsum_RQ[bank][row][col];
+                    OfmDiag[bank][row] = SYA_OutPsum_RQ[bank][row][col];
                 end
             end
-            OfmDiag[bank][row] = OfmEle_Upd;
         end
     end
 end
