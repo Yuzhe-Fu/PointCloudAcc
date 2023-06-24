@@ -7,15 +7,15 @@ source -verbose ./config_temp.tcl
 
 set DESIGN      $DESIGN_NAME
 
-set_attribute hdl_search_path "./"
-set_attribute script_search_path ./script
-set_attribute information_level  9
+set_attribute hdl_search_path       "./"
+set_attribute script_search_path    ./script
+set_attribute information_level     9
 set_attribute hdl_error_on_blackbox true
-set_attribute hdl_max_loop_limit 8192
+set_attribute hdl_max_loop_limit    8192
 set_attribute hdl_track_filename_row_col true /
 
-set_attribute max_cpus_per_server 64
-set_attribute super_thread_servers [string repeat "localhost " 32]
+set_attribute max_cpus_per_server 16
+set_attribute super_thread_servers [string repeat "localhost " 16]
 ##########################################################################
 #                     Libraries and technology files                     #
 ##########################################################################

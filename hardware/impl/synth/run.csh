@@ -1,11 +1,11 @@
 set DESIGN_NAME = "TOP"
-set clk="I_SysClk"
+set clk="I_SysClk_PAD"
 
 ################################################################################
 set VT = "3vt"
-set PERIOD = "10"
+set PERIOD = "5"
 set UNGROUP = "group"
-set NOTE = "whole_opt_CTR_SYA"
+set NOTE = "v2"
 set SDC_FILE=./TOP.sdc 
 
 ################################################################################
@@ -33,13 +33,15 @@ cp -r ../../src ${SYNTH_PROJDIR}
 cp -r ../synth ${SYNTH_PROJDIR}
 
 rm ./config_temp.tcl
+rm -rf ./.st_launch_*
+rm -rf ./.pbs_*
 
-echo "set DESIGN_NAME $DESIGN_NAME" >> ./config_temp.tcl
-echo "set clk $clk" >> ./config_temp.tcl
-echo "set PERIOD $PERIOD" >> ./config_temp.tcl
-echo "set DATE_VALUE $DATE_VALUE" >> ./config_temp.tcl
-echo "set TECH_SETTING $TECH_SETTING" >> ./config_temp.tcl
-echo "set SDC_FILE $SDC_FILE" >> ./config_temp.tcl
+echo "set DESIGN_NAME   $DESIGN_NAME"   >> ./config_temp.tcl
+echo "set clk           $clk"           >> ./config_temp.tcl
+echo "set PERIOD        $PERIOD"        >> ./config_temp.tcl
+echo "set DATE_VALUE    $DATE_VALUE"    >> ./config_temp.tcl
+echo "set TECH_SETTING  $TECH_SETTING"  >> ./config_temp.tcl
+echo "set SDC_FILE      $SDC_FILE"      >> ./config_temp.tcl
 echo "set SYNTH_PROJDIR $SYNTH_PROJDIR" >> ./config_temp.tcl
 
 if( $UNGROUP == "group") then 
