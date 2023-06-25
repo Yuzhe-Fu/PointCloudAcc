@@ -100,16 +100,17 @@ set_attribute lp_clock_gating_max_flops 16 /designs/*
 ##########################################################################
 #                         Power optimization                             #
 ##########################################################################
+set_attribute max_dynamic_power $MAXPOWER $DESIGN
 set_attribute lp_power_optimization_weight 0.1 /des*/*
-set_attribute max_dynamic_power 0 $DESIGN
+
 
 
 ##########################################################################
 #                            check design                                #
 ##########################################################################
-check_design -all > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_check_pre_synth.rpt
-check_library                  > ${SYNTH_PROJDIR}/rpt/checkLibrary.rpt
-report timing -verbose -lint > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_pre_synth.rpt
+check_design -all               > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_check_pre_synth.rpt
+check_library                   > ${SYNTH_PROJDIR}/rpt/checkLibrary.rpt
+report timing -verbose -lint    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_pre_synth.rpt
 
 ##########################################################################
 #                             Synthesis                                  #
