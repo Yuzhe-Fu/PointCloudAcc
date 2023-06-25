@@ -141,6 +141,32 @@ module RAM #(
             .Q      ( DO    )
             );
         end
+        else if( SRAM_WORD == 64 && SRAM_BIT == 512 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
+            TS1N28HPCPUHDHVTB64X256M1SSO SYA_FWFT_SPSRAM0(
+            .SLP    ( 1'b0  ),
+            .SD     ( 1'b0  ),
+            .CLK    ( clk   ),
+            .CEB    ( CSB   ),
+            .WEB    ( WEB   ),
+            .A      ( (&WEB)? AR : AW   ),
+            .D      ( DI[0 +: SRAM_BIT/2] ),
+            .RTSEL  ( RTSEL ),
+            .WTSEL  ( WTSEL ),
+            .Q      ( DO[0 +: SRAM_BIT/2] )
+            );
+            TS1N28HPCPUHDHVTB64X256M1SSO SYA_FWFT_SPSRAM1(
+            .SLP    ( 1'b0  ),
+            .SD     ( 1'b0  ),
+            .CLK    ( clk   ),
+            .CEB    ( CSB   ),
+            .WEB    ( WEB   ),
+            .A      ( (&WEB)? AR : AW   ),
+            .D      ( DI[SRAM_BIT/2 +: SRAM_BIT/2]),
+            .RTSEL  ( RTSEL ),
+            .WTSEL  ( WTSEL ),
+            .Q      ( DO[SRAM_BIT/2 +: SRAM_BIT/2])
+            );
+        end       
         else if( SRAM_WORD == 256 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 1)begin
             wire [10    -1 : 0] QA;
             assign DO = QA;

@@ -12,6 +12,7 @@ set_attribute lib_search_path { \
 	../../project/lib/mem/ts1n28hpcpuhdhvtb16x8m2sso_170a/NLDM \
 	../../project/lib/mem/ts1n28hpcpuhdhvtb256x8m4sso_170a/NLDM \
 	../../project/lib/mem/tsdn28hpcpuhdb256x10m4m_170a/NLDM \
+	../../project/lib/mem/ts1n28hpcpuhdhvtb64x256m1sso_170a/NLDM \
     ../../project/lib/PLL/lib/ \
 	} ;
 
@@ -27,6 +28,7 @@ set_attribute library { \
 	ts1n28hpcpuhdhvtb16x8m2sso_170a_tt0p9v25c.lib \
 	ts1n28hpcpuhdhvtb256x8m4sso_170a_tt0p9v25c.lib \
 	tsdn28hpcpuhdb256x10m4m_170a_tt0p9v25c.lib \
+	ts1n28hpcpuhdhvtb64x256m1sso_170a_tt0p9v25c.lib \
     PLLTS28HPMFRAC_TT0P9V1P8V25C.lib \
 	} ;	
 	
@@ -51,5 +53,6 @@ set tech_lef { \
 	../../project/lib/mem/ts1n28hpcpuhdhvtb16x8m2sso_170a/LEF/ts1n28hpcpuhdhvtb16x8m2sso_170a.lef \
 	../../project/lib/mem/ts1n28hpcpuhdhvtb256x8m4sso_170a/LEF/ts1n28hpcpuhdhvtb256x8m4sso_170a.lef \
 	../../project/lib/mem/tsdn28hpcpuhdb256x10m4m_170a/LEF/tsdn28hpcpuhdb256x10m4m_170a.lef \
+	../../project/lib/mem/ts1n28hpcpuhdhvtb64x256m1sso_170a/LEF/ts1n28hpcpuhdhvtb64x256m1sso_170a.lef \
     ../../project/lib/PLL/lef/PLLTS28HPMFRAC.lef \
 };
