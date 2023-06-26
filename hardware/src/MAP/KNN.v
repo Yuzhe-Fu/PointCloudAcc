@@ -89,8 +89,6 @@ parameter CRDBYTE_WIDTH     = 8;
 wire[IDX_WIDTH          -1 : 0] CntCpCrdRdAddr;  
 reg [IDX_WIDTH          -1 : 0] CntCpCrdRdAddr_s1;  
 wire                            CntCpCrdRdAddrLast;
-reg                             CpLast_s1;
-reg                             CpLast_s2;
 
 wire                            CntLopCrdRdAddrLast;
 reg                             CntCpCrdRdAddrLast_s1;
@@ -141,7 +139,6 @@ wire                            INC_CntMaskAddr;
 wire                            INC_CntIdxMaskAddr;
 wire [MASK_ADDR_WIDTH   -1 : 0] CntMaskAddr;
 wire [IDX_WIDTH         -1 : 0] CntIdxMaskAddr;
-wire [NUM_SORT_CORE     -1 : 0] MapVld_s2;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgNip       ;
 wire [(MAP_WIDTH + 1)   -1 : 0] CCUKNN_CfgK         ; 
 wire [8                 -1 : 0] CCUKNN_CfgK_tmp     ; 
@@ -162,16 +159,16 @@ wire                                                        bwcCpCrdOutVld;
 wire                                                        bwcCpCrdOutLast;
 wire                                                        bwcCpCrdOutRdy;
 wire                                                        bwcCpCrdInVld;
-integer                         i;
-wire                            pisoMapOutVld;
-genvar                          gv_core;
-genvar                          gv_wd;
+integer                                     i;
+wire                                        pisoMapOutVld;
+genvar                                      gv_core;
+genvar                                      gv_wd;
 wire [SRAM_WIDTH/(IDX_WIDTH + 1)    -1 : 0][(IDX_WIDTH + 1) -1 : 0] IdxMaskRdDat_s1;
 wire [$clog2(CRDRDWIDTH) + 1        -1 : 0] pisoLopCrdOutBw;
 wire [$clog2(CRDRDWIDTH) + 1        -1 : 0] pisoLopCrdInpBw;
 wire [SRAM_WIDTH + IDX_WIDTH + 1    -1 : 0] pisoMapOutDat;
-wire [IDX_WIDTH    -1 : 0] CntMapWr;
-wire [IDX_WIDTH    -1 : 0] MaxCntMapWr;
+wire [IDX_WIDTH                     -1 : 0] CntMapWr;
+wire [IDX_WIDTH                     -1 : 0] MaxCntMapWr;
 
 //=====================================================================================================================
 // Logic Design: ISA Decode
@@ -205,7 +202,7 @@ always @(*) begin
 
         CP:     if(CCUKNN_CfgVld)
                     next_state <= IDLE;
-                else if( bwcCpCrdNfull ) // handshake_s0????????????
+                else if( bwcCpCrdNfull )
                     next_state <= LP;
                 else
                     next_state <= CP;
@@ -338,11 +335,6 @@ assign KNNGLB_IdxMaskRdAddrVld  = vld_s0 & (req_Idx & GLBKNN_MaskRdAddrRdy & GLB
 
 always @(*) begin
     case ( state_s1 )
-        // IDLE :  if( state == CP & next_state == LP)// 
-        //             next_state_s1 <= CP; //
-        //         else
-        //             next_state_s1 <= IDLE;
-
         CP:     if(state == IDLE)
                     next_state_s1 <= CP;
                 else if( bwcCpCrdOutVld & bwcCpCrdOutRdy ) // after CpCrd being output
@@ -413,7 +405,7 @@ assign crdRdDat_s1      = GLBKNN_CrdRdDat;
 assign MaskRdDat_s1     = GLBKNN_MaskRdDat;
 assign IdxMaskRdDat_s1  = GLBKNN_IdxMaskRdDat;
 
-assign KNNGLB_CrdRdDatRdy       = rdy_s1; //state_s1 == LP & pisoLopCrdInRdy | state_s1 == CP & 1'b1;
+assign KNNGLB_CrdRdDatRdy       = rdy_s1;
 assign KNNGLB_MaskRdDatRdy      = rdy_s1;
 assign KNNGLB_IdxMaskRdDatRdy   = rdy_s1;
 
@@ -510,7 +502,6 @@ counter#(
 //---------------------------------------------------------------------------------------------------------------------
 // HandShake
 assign rdy_s2       = pisoMapInRdy;
-// assign vld_s2       = &MapVld_s2;
 assign vld_s2       = state_s1 == OUT;
 assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
@@ -591,7 +582,6 @@ generate
             assign MapWrAddr_tmp = CCUKNN_CfgMapWrAddr + NUM_SRAMWORD_MAP*CpIdx_s2 + gv_wd;
             assign pisoMapInDat[gv_core][gv_wd] = {INSKNN_Map[gv_wd], MapWrAddr_tmp, CpVld_s2};
         end
-        // assign MapVld_s2    [gv_core]   = CpVld_s2? INSKNN_MapVld[gv_core] : 1'b1;
         assign KNNINS_MapRdy[gv_core]   = handshake_s2;
 
     end
