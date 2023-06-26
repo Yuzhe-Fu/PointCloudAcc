@@ -101,7 +101,7 @@ set_attribute lp_clock_gating_max_flops 16 /designs/*
 #                         Power optimization                             #
 ##########################################################################
 set_attribute max_dynamic_power $MAXPOWER $DESIGN
-set_attribute lp_power_optimization_weight 0.1 /des*/*
+set_attribute lp_power_optimization_weight $OPTWGT /des*/*
 
 
 
