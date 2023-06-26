@@ -19,7 +19,8 @@ module BWC // Bit Width Conversion
     output reg  [DATA_OUT_WIDTH         -1 : 0] OUT_DAT ,
     output wire                                 OUT_VLD ,
     output wire                                 OUT_LAST,
-    input  wire                                 OUT_RDY      
+    input  wire                                 OUT_RDY ,
+    output wire [$clog2(DATA_OUT_WIDTH)+ 1 -1 : 0] OUT_CNT     
 );
 
 //=====================================================================================================================
@@ -38,6 +39,7 @@ wire[DATA_IN_WIDTH+DATA_OUT_WIDTH-1: 0] serial_shift;
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
+assign OUT_CNT      = count;
 assign IN_RDY       = (count + INP_BW < CACHE_WIDTH) 
                         | (OUT_RDY & (count + INP_BW < CACHE_WIDTH + OUT_BW) ); // must last data;
 assign OUT_VLD      = count >= OUT_BW;
@@ -82,7 +84,10 @@ always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
                 end
         end
         last <= IN_LAST;
-    end
+    end else if( OUT_VLD & OUT_RDY) begin
+        count <= count - OUT_BW;
+        serial <= serial >> OUT_BW;
+    end 
 end
 
 assign serial_shift = serial >> OUT_BW;

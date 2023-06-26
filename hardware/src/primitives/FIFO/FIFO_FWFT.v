@@ -4,11 +4,12 @@ module FIFO_FWFT
 // Parameters
 // ******************************************************************
 #(
-    parameter           INIT                = "init.mif",
-    parameter    DATA_WIDTH          = 4,
-    parameter    ADDR_WIDTH          = 8,
-    parameter    RAM_DEPTH           = (1 << ADDR_WIDTH),
-    parameter           INITIALIZE_FIFO     = "no"
+    parameter    RAMREG         = 0,
+    parameter    INIT           = "init.mif",
+    parameter    DATA_WIDTH     = 4,
+    parameter    ADDR_WIDTH     = 8,
+    parameter    RAM_DEPTH      = (1 << ADDR_WIDTH),
+    parameter    INITIALIZE_FIFO= "no"
 )
 // ******************************************************************
 // Port Declarations
@@ -67,11 +68,11 @@ module FIFO_FWFT
 // FIFO
 //-----------------------------------
 FIFO #(
+        .RAMREG             ( RAMREG       ),
         .DATA_WIDTH         ( DATA_WIDTH   ),
         .ADDR_WIDTH         ( ADDR_WIDTH   ),
         .INIT               ( "init_x.mif" ),
         .INITIALIZE_FIFO    ( "no"         ))
-
     u_FIFO(
         .clk                ( clk           ),  //input
         .rst_n              ( rst_n         ),  //input

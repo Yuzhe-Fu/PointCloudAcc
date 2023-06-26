@@ -26,7 +26,7 @@ parameter GICISA_WIDTH   = PORT_WIDTH*2 ;
 parameter MONISA_WIDTH   = PORT_WIDTH*1 ;
 
 parameter FPSISANUM   = 1;
-parameter KNNISANUM   = 4;
+parameter KNNISANUM   = 5;
 parameter SYAISANUM   = 1;
 parameter POLISANUM   = 1;
 parameter GICISANUM   = 1;

@@ -23,6 +23,12 @@ set_false_path -from [list \
     [get_ports I_SysRst_n_PAD    ]\
     [get_ports I_FBDIV_PAD       ]\
     [get_ports I_SwClk_PAD       ]\
+    [get_ports I_SysClk_PAD      ]\
+    [get_ports I_OffClk_PAD      ]\
+
+]
+
+set_false_path -to [list \
     [get_ports O_SysClk_PAD      ]\
     [get_ports O_OffClk_PAD      ]\
     [get_ports O_PLLLock_PAD     ]\

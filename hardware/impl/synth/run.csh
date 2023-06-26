@@ -1,11 +1,11 @@
-set DESIGN_NAME = "TOP"
-set clk="I_SysClk"
-
+set DESIGN_NAME="TOP"
 ################################################################################
-set VT = "3vt"
-set PERIOD = "10"
-set UNGROUP = "group"
-set NOTE = "whole_opt_CTR_SYA"
+set VT="3vt"
+set PERIOD="5"
+set UNGROUP="group"
+set MAXPOWER=200000000 # 100MHz -> 100mW
+set OPTWGT="0.8" # Larger optimization weight, lower leakage(1/20~1/10 of Total Synth Power)
+set NOTE="16BANK&LVT&SYAFWFTSP"
 set SDC_FILE=./TOP.sdc 
 
 ################################################################################
@@ -25,7 +25,7 @@ endif
 
 set DATE_VALUE = `date "+%y%m%d" ` 
 set SYNTH_OUTDIR = ../../work/synth
-set SYNTH_PROJDIR = ${SYNTH_OUTDIR}/$DESIGN_NAME/Date${DATE_VALUE}_Period${PERIOD}_${UNGROUP}_Track${VT}_Note${NOTE}
+set SYNTH_PROJDIR = ${SYNTH_OUTDIR}/$DESIGN_NAME/Date${DATE_VALUE}_Period${PERIOD}_${UNGROUP}_Track${VT}_MaxDynPwr${MAXPOWER}_OptWgt${OPTWGT}_Note${NOTE}
 rm -rf ${SYNTH_PROJDIR}
 mkdir -p ${SYNTH_OUTDIR}/$DESIGN_NAME ${SYNTH_PROJDIR}
 
@@ -34,12 +34,13 @@ cp -r ../synth ${SYNTH_PROJDIR}
 
 rm ./config_temp.tcl
 
-echo "set DESIGN_NAME $DESIGN_NAME" >> ./config_temp.tcl
-echo "set clk $clk" >> ./config_temp.tcl
-echo "set PERIOD $PERIOD" >> ./config_temp.tcl
-echo "set DATE_VALUE $DATE_VALUE" >> ./config_temp.tcl
-echo "set TECH_SETTING $TECH_SETTING" >> ./config_temp.tcl
-echo "set SDC_FILE $SDC_FILE" >> ./config_temp.tcl
+echo "set DESIGN_NAME   $DESIGN_NAME"   >> ./config_temp.tcl
+echo "set PERIOD        $PERIOD"        >> ./config_temp.tcl
+echo "set MAXPOWER      $MAXPOWER"      >> ./config_temp.tcl
+echo "set OPTWGT        $OPTWGT"        >> ./config_temp.tcl
+echo "set DATE_VALUE    $DATE_VALUE"    >> ./config_temp.tcl
+echo "set TECH_SETTING  $TECH_SETTING"  >> ./config_temp.tcl
+echo "set SDC_FILE      $SDC_FILE"      >> ./config_temp.tcl
 echo "set SYNTH_PROJDIR $SYNTH_PROJDIR" >> ./config_temp.tcl
 
 if( $UNGROUP == "group") then 

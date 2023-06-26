@@ -1,6 +1,6 @@
 
 set SYNTH_PROJDIR = "../../work/synth/TOP/Date230417_Period10_group_Track3vt_NoteWoPAD&RTSEL10"
-set TCF_DUMP_NAME = "tcf_period20_120us_ITFWrGLB.dump"
+set TCF_DUMP_NAME = "tcf_period20_4.5us_KNN.dump"
 
 set NOTE = ${TCF_DUMP_NAME}_report
 set TCF_DUMP = ${SYNTH_PROJDIR}/report/${TCF_DUMP_NAME}

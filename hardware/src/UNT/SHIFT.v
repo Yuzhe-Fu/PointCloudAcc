@@ -59,7 +59,7 @@ wire    [WIDTH          -1 : 0][ADDR_WIDTH  -1 : 0] waddr;
 wire    [WIDTH          -1 : 0][ADDR_WIDTH  -1 : 0] araddr;
 wire                            arvalid;
 wire                            wvalid;
-wire                            rvalid;
+wire    [WIDTH          -1 : 0] rvalid;
 wire                            rready;
 
 wire                            incCntWrChnGrp;
@@ -163,9 +163,8 @@ assign wvalid               = shift_din_vld & shift_din_rdy;
 assign shift_din_rdy        = !full | shift_dout_rdy; // write and read simultaneously
 
 assign arvalid              = !empty & ( (&rvalid) & rready | ~(&rvalid) );
-assign shift_dout_vld       = rvalid;
+assign shift_dout_vld       = &rvalid;
 assign rready               = shift_dout_rdy;
-assign wvalid_array = shift_din_vld & wvalid; // Write a part
 
 generate
     for( gv_i=0 ; gv_i < WIDTH; gv_i = gv_i+1 ) begin : ROW_BLOCK
@@ -185,16 +184,16 @@ generate
         )u_DPRAM_HS (
             .clk          ( clk         ),
             .rst_n        ( rst_n       ),
-            .wvalid       ( wvalid_array),
+            .wvalid       ( wvalid      ),
             .wready       (             ),
             .waddr        ( waddr[gv_i] ),
             .wdata        ( shift_din[gv_i] ),
             .arvalid      ( arvalid     ),
             .arready      (             ),
             .araddr       ( araddr[gv_i]),
-            .rvalid       ( rvalid      ),
+            .rvalid       ( rvalid[gv_i]),
             .rready       ( rready      ),
-            .rdata        ( shift_dout[gv_i] )
+            .rdata        ( shift_dout[gv_i])
         );
     end
 endgenerate
