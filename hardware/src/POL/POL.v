@@ -90,7 +90,7 @@ wire [POOL_CORE                             -1 : 0] IdxMaskVld;
 genvar gv_plc;
 genvar gv_cmp;
 
-wire  [POOL_CORE   -1 : 0][(MAP_WIDTH+1)       -1 : 0] CCUPOL_CfgK              ; // 24
+wire  [POOL_CORE   -1 : 0][8                   -1 : 0] CCUPOL_CfgK              ; // 24
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgNip            ; // 1024
 wire  [POOL_CORE   -1 : 0][CHN_WIDTH           -1 : 0] CCUPOL_CfgChn            ; // 64
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmWrBaseAddr  ;
@@ -101,12 +101,14 @@ wire  [ACT_WIDTH                               -1 : 0] CCUPOL_CfgOfmTh;
 
 reg [POOL_CORE  -1 : 0][ 3     -1 : 0] state     ;
 reg [POOL_CORE  -1 : 0][ 3     -1 : 0] next_state ;
+wire                                                SIPO_IdxInRdy;
+wire [$clog2(POOL_CORE)                     -1 : 0] ArbIdxCore;
 
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign {
-    CCUPOL_CfgIdxMaskWrAddr,
+    CCUPOL_CfgIdxMaskWrAddr,   // 16 x 8
     CCUPOL_CfgOfmWrBaseAddr,   // 16 x 8 
     CCUPOL_CfgMapRdBaseAddr,   // 16 x 8
     CCUPOL_CfgOfmRdBaseAddr,   // 16 x 8
@@ -114,7 +116,7 @@ assign {
     CCUPOL_CfgK            ,   // 8  X 8
     CCUPOL_CfgChn          ,   // 16 X 8
     CCUPOL_CfgNip              // 16 x 8  
-} = CCUPOL_CfgInfo[POLISA_WIDTH -1 : 12];
+} = CCUPOL_CfgInfo[POLISA_WIDTH -1 : 16];
 
 //=====================================================================================================================
 // Logic Design
@@ -442,7 +444,8 @@ generate
     assign POLGLB_OfmRdDatRdy[gv_plc] = rdy_s3;
 
     // Handshake
-    assign rdy_s4       = GLBPOL_OfmWrDatRdy & (ArbPLCIdxWrOfm == gv_plc);
+    assign rdy_s4       = ( GLBPOL_OfmWrDatRdy & (ArbPLCIdxWrOfm == gv_plc) ); 
+                            // & (ArbIdxCore == gv_plc & SIPO_IdxInRdy );
     assign handshake_s4 = rdy_s4 & vld_s4;
     assign ena_s4       = handshake_s4 | ~vld_s4;
 
@@ -495,6 +498,7 @@ generate
 
     wire [IDX_WIDTH     -1 : 0] MaxSpIdx = CCUPOL_CfgNip[gv_plc] -1;
     wire [IDX_WIDTH     -1 : 0] SpIdx;
+    wire INC_SpIdx = sumOfm >= CCUPOL_CfgOfmTh & IdxMaskVld[gv_plc] & (ArbIdxCore == gv_plc & SIPO_IdxInRdy );
     counter#(
         .COUNT_WIDTH ( IDX_WIDTH )
     )u_Cnt_SpIdx(
@@ -502,7 +506,7 @@ generate
         .RESET_N   ( rst_n              ),
         .CLEAR     ( state[gv_plc] == IDLE),
         .DEFAULT   ( {IDX_WIDTH{1'd0}}  ),
-        .INC       (                    ),
+        .INC       ( INC_SpIdx          ),
         .DEC       ( 1'b0               ),
         .MIN_COUNT ( {IDX_WIDTH{1'd0}}  ),
         .MAX_COUNT ( MaxSpIdx           ),
@@ -513,7 +517,7 @@ generate
 
     assign sumOfm                   = sumOfmLast + sumMaxArray;
     assign IdxMask[gv_plc]          = {SpIdx, sumOfm >= CCUPOL_CfgOfmTh};
-    assign IdxMaskVld[gv_plc]       = vld_s4 & LastNp_s4; // No back pressure
+    assign IdxMaskVld[gv_plc]       = vld_s4; // No back pressure??????
 
     assign PLC_OfmWrDatVld[gv_plc]  = vld_s4;
     assign PLC_OfmWrAddr[gv_plc]    = CCUPOL_CfgOfmWrBaseAddr[gv_plc] + CntCp_s4;
@@ -521,9 +525,6 @@ generate
     
     end
 endgenerate
-
-wire                                                SIPO_IdxInRdy;
-wire [$clog2(POOL_CORE)                     -1 : 0] ArbIdxCore;
 
 RR_arbiter#(
     .REQ_WIDTH ( POOL_CORE )
@@ -545,7 +546,7 @@ SIPO#(
     .RST_N     ( rst_n              ),
     .RESET     ( |CCUPOL_CfgVld & |POLCCU_CfgRdy),
     .IN_VLD    ( IdxMaskVld[ArbIdxCore]),
-    .IN_LAST   (                    ),
+    .IN_LAST   ( 1'b0               ),
     .IN_DAT    ( IdxMask[ArbIdxCore]),
     .IN_RDY    ( SIPO_IdxInRdy      ),
     .OUT_DAT   ( SIPO_IdxOut        ),

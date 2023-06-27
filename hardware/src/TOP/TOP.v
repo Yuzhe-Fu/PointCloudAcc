@@ -57,7 +57,7 @@ module TOP #(
     parameter FPSISA_WIDTH   = PORT_WIDTH*16,
     parameter KNNISA_WIDTH   = PORT_WIDTH*2,
     parameter SYAISA_WIDTH   = PORT_WIDTH*3,
-    parameter POLISA_WIDTH   = PORT_WIDTH*9,
+    parameter POLISA_WIDTH   = PORT_WIDTH*10,
     parameter GICISA_WIDTH   = PORT_WIDTH*2,
     parameter MONISA_WIDTH   = PORT_WIDTH*1,
     parameter MAXISA_WIDTH   = PORT_WIDTH*16,
