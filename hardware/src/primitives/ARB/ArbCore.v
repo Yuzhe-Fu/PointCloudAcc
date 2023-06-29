@@ -27,9 +27,12 @@ module ArbCore #(
 //=====================================================================================================================
 // Arb
 // s0
-prior_arb#(
+RR_arbiter#(
     .REQ_WIDTH ( NUM_CORE )
-)u_prior_arb(
+)u_RR_arbiter(
+    .clk (clk),
+    .rst_n (rst_n),
+    .arb_round(TopOutVld & TOPInRdy),
     .req ( CoreOutVld ),
     .gnt (  ),
     .arb_port  ( ArbCoreIdx  )

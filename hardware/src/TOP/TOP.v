@@ -21,7 +21,7 @@ module TOP #(
 
     // FPS
     parameter NUM_FPC        = 16, 
-    parameter CUTMASK_WIDTH  = 64, // Reduce BW
+    parameter NUMMASK_PROC   = 64, // Reduce BW
     
     // KNN
     parameter NUM_SORT_CORE  = 8, //
@@ -494,7 +494,7 @@ FPS #(
     .CRD_WIDTH            ( CRD_WIDTH   ),
     .CRD_DIM              ( CRD_DIM     ),
     .NUM_FPC              ( NUM_FPC     ),
-    .CUTMASK_WIDTH        ( CUTMASK_WIDTH),
+    .NUMMASK_PROC        ( NUMMASK_PROC),
     .FPSMON_WIDTH         ( FPSMON_WIDTH)
 )u_FPS(
     .clk                    ( clk                   ),
