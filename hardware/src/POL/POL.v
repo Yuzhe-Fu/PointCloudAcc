@@ -252,7 +252,7 @@ generate
     assign POLCCU_CfgRdy[gv_plc] = state[gv_plc] == IDLE;
 
     // Handshake
-    assign rdy_s0       = GLBPOL_MapRdAddrRdy & (ArbPLCIdx_MapRd == gv_plc);
+    assign rdy_s0       = (state[gv_plc] == IDLE? 0 : GLBPOL_MapRdAddrRdy) & (ArbPLCIdx_MapRd == gv_plc);
     assign vld_s0       = state[gv_plc] == MAPIN  & (rdy_s1 & !vld_s1);
     assign handshake_s0 = rdy_s0 & vld_s0;
     assign ena_s0       = handshake_s0 | ~vld_s0;
@@ -305,12 +305,12 @@ generate
     // Logic Design: s1: Get Map 
     //=====================================================================================================================
     // Combinational Logic
-    assign PLC_MapRdAddr[gv_plc]    = CCUPOL_CfgMapRdBaseAddr[gv_plc] + (CntCp<<MAPWORD_WIDTH) + CntMapWord;
-    assign PLC_MapRdAddrVld[gv_plc] = vld_s0;
+    assign PLC_MapRdAddr[gv_plc]    = state[gv_plc] == IDLE? 0 : CCUPOL_CfgMapRdBaseAddr[gv_plc] + (CntCp<<MAPWORD_WIDTH) + CntMapWord;
+    assign PLC_MapRdAddrVld[gv_plc] = state[gv_plc] == IDLE? 0 :vld_s0;
 
     // Handshake
     assign rdy_s1       = SIPO_MapInRdy;
-    assign vld_s1       = GLBPOL_MapRdDatVld & gv_plc ==ArbPLCIdx_MapRd_d;
+    assign vld_s1       = (state[gv_plc] == IDLE? 0 : GLBPOL_MapRdDatVld) & gv_plc ==ArbPLCIdx_MapRd_d;
     assign handshake_s1 = rdy_s1 & vld_s1;
     assign ena_s1       = handshake_s1 | ~vld_s1;
 
@@ -332,10 +332,10 @@ generate
     // Logic Design: s2: Write Shape
     //=====================================================================================================================
     // Combinational Logic
-    assign PLC_MapRdDatRdy[gv_plc] = rdy_s1;
+    assign PLC_MapRdDatRdy[gv_plc] =  state[gv_plc] == IDLE? 0 : rdy_s1;
 
     // Handshake
-    assign rdy_s2       = GLBPOL_OfmRdAddrRdy[gv_plc];
+    assign rdy_s2       =  state[gv_plc] == IDLE? 0 : GLBPOL_OfmRdAddrRdy[gv_plc];
     assign vld_s2       = SIPO_MapOutVld;
     assign handshake_s2 = rdy_s2 & vld_s2;
     assign ena_s2       = handshake_s2 | ~vld_s2;
@@ -409,17 +409,17 @@ generate
     //=====================================================================================================================
     
     // Combination Logic-Last stage
-    assign POLGLB_OfmRdAddrVld[gv_plc] = vld_s2;
+    assign POLGLB_OfmRdAddrVld[gv_plc] =  state[gv_plc] == IDLE? 0 : vld_s2;
     `ifdef PSEUDO_DATA
         assign NpIdx_s2 = (CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE)*SIPO_MapOutDat[CntNp][0 +: 4] + CntChnGrp;
     `else
         assign NpIdx_s2 = (CCUPOL_CfgChn[gv_plc]/POOL_COMP_CORE)*SIPO_MapOutDat[CntNp] + CntChnGrp;
     `endif
-    assign POLGLB_OfmRdAddr[gv_plc] = CCUPOL_CfgOfmRdBaseAddr[gv_plc] + NpIdx_s2;
+    assign POLGLB_OfmRdAddr[gv_plc] =  state[gv_plc] == IDLE? 0 : CCUPOL_CfgOfmRdBaseAddr[gv_plc] + NpIdx_s2;
 
     // Handshake
     assign rdy_s3       = ena_s4;
-    assign vld_s3       = GLBPOL_OfmRdDatVld[gv_plc]; 
+    assign vld_s3       =  state[gv_plc] == IDLE? 0 : GLBPOL_OfmRdDatVld[gv_plc]; 
     assign handshake_s3 = rdy_s3 & vld_s3;
     assign ena_s3       = handshake_s3 | ~vld_s3;
 
@@ -441,10 +441,10 @@ generate
     // Logic Design: s4: Max
     //=====================================================================================================================
     // Combinational Logic 
-    assign POLGLB_OfmRdDatRdy[gv_plc] = rdy_s3;
+    assign POLGLB_OfmRdDatRdy[gv_plc] =  state[gv_plc] == IDLE? 0 : rdy_s3;
 
     // Handshake
-    assign rdy_s4       = ( GLBPOL_OfmWrDatRdy & (ArbPLCIdxWrOfm == gv_plc) ); 
+    assign rdy_s4       = ( ( state[gv_plc] == IDLE? 0 : GLBPOL_OfmWrDatRdy) & (ArbPLCIdxWrOfm == gv_plc) ); 
                             // & (ArbIdxCore == gv_plc & SIPO_IdxInRdy );
     assign handshake_s4 = rdy_s4 & vld_s4;
     assign ena_s4       = handshake_s4 | ~vld_s4;
@@ -454,7 +454,7 @@ generate
     reg [POOL_COMP_CORE  -1 : 0][ACT_WIDTH     -1 : 0] MaxArray;
     for(gv_cmp=0; gv_cmp<POOL_COMP_CORE; gv_cmp=gv_cmp+1) begin: GEN_CMP
         wire [ACT_WIDTH     -1 : 0] CMP_DatIn;
-        assign CMP_DatIn = GLBPOL_OfmRdDat[gv_plc][ACT_WIDTH*gv_cmp +: ACT_WIDTH];
+        assign CMP_DatIn =  state[gv_plc] == IDLE? 0 : GLBPOL_OfmRdDat[gv_plc][ACT_WIDTH*gv_cmp +: ACT_WIDTH];
         always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
                 MaxArray[gv_cmp] <= 0;
@@ -519,9 +519,9 @@ generate
     assign IdxMask[gv_plc]          = {SpIdx, sumOfm >= CCUPOL_CfgOfmTh};
     assign IdxMaskVld[gv_plc]       = vld_s4; // No back pressure??????
 
-    assign PLC_OfmWrDatVld[gv_plc]  = vld_s4;
-    assign PLC_OfmWrAddr[gv_plc]    = CCUPOL_CfgOfmWrBaseAddr[gv_plc] + CntCp_s4;
-    assign PLC_OfmWrDat[gv_plc]     = MaxArray;
+    assign PLC_OfmWrDatVld[gv_plc]  =  state[gv_plc] == IDLE? 0 : vld_s4;
+    assign PLC_OfmWrAddr[gv_plc]    =  state[gv_plc] == IDLE? 0 : CCUPOL_CfgOfmWrBaseAddr[gv_plc] + CntCp_s4;
+    assign PLC_OfmWrDat[gv_plc]     =  state[gv_plc] == IDLE? 0 : MaxArray;
     
     end
 endgenerate
@@ -544,7 +544,7 @@ SIPO#(
 )u_SIPO_IdxMaskWrDat(
     .CLK       ( clk                ),
     .RST_N     ( rst_n              ),
-    .RESET     ( |CCUPOL_CfgVld & |POLCCU_CfgRdy),
+    .RESET     ( &POLCCU_CfgRdy     ), // all state == IDLE
     .IN_VLD    ( IdxMaskVld[ArbIdxCore]),
     .IN_LAST   ( 1'b0               ),
     .IN_DAT    ( IdxMask[ArbIdxCore]),
@@ -562,7 +562,7 @@ counter#(
 )u_Cnt_IdxMaskWrAddr(
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     ( |CCUPOL_CfgVld & |POLCCU_CfgRdy),
+    .CLEAR     ( &POLCCU_CfgRdy     ),
     .DEFAULT   ( {IDX_WIDTH{1'd0}}  ),
     .INC       ( POLGLB_IdxMaskWrDatVld & GLBPOL_IdxMaskWrDatRdy ),
     .DEC       ( 1'b0               ),
