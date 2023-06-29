@@ -49,7 +49,7 @@ module KNN #(
     output                              KNNGLB_MaskRdAddrVld,
     input                               GLBKNN_MaskRdAddrRdy,
     input  [SRAM_WIDTH          -1 : 0] GLBKNN_MaskRdDat    ,    
-    input                               GLBKNN_MaskRdDatVld ,    
+    input                               GLBKNN_MaskRdDatVld ,  // ???????????????????? not used  
     output                              KNNGLB_MaskRdDatRdy ,   
 
     // Output Map of KNN
@@ -60,7 +60,7 @@ module KNN #(
 
     output [IDX_WIDTH           -1 : 0] KNNGLB_IdxMaskRdAddr   ,
     output                              KNNGLB_IdxMaskRdAddrVld,
-    input                               GLBKNN_IdxMaskRdAddrRdy,
+    input                               GLBKNN_IdxMaskRdAddrRdy,// ???????????????????? not used  
     input  [SRAM_WIDTH          -1 : 0] GLBKNN_IdxMaskRdDat    ,    
     input                               GLBKNN_IdxMaskRdDatVld ,    
     output                              KNNGLB_IdxMaskRdDatRdy ,  
@@ -209,7 +209,7 @@ always @(*) begin
 
         LP:     if(CCUKNN_CfgVld)
                     next_state <= IDLE;
-                else if ( CntLopCrdRdAddrLast & KNNGLB_CrdRdAddrVld & GLBKNN_CrdRdAddrRdy ) begin
+                else if ( CntLopCrdRdAddrLast & KNNGLB_CrdRdAddrVld & (state == IDLE? 0 : GLBKNN_CrdRdAddrRdy) ) begin
                     if ( CntCpCrdRdAddrLast )
                         next_state <= WAITFNH;
                     else //
@@ -219,7 +219,7 @@ always @(*) begin
                     
         WAITFNH:if(CCUKNN_CfgVld)
                     next_state <= IDLE;
-                else if(pisoMapOutLast & pisoMapOutVld & GLBKNN_MapWrDatRdy)
+                else if(pisoMapOutLast & pisoMapOutVld & (state == IDLE? 0 : GLBKNN_MapWrDatRdy) )
                     next_state <= IDLE;
                 else
                     next_state <= WAITFNH;
@@ -249,7 +249,7 @@ assign req_Mask = SRAM_WIDTH*CntMaskAddr                    <= NUM_SORT_CORE*Cnt
 assign req_Idx  = (SRAM_WIDTH/(IDX_WIDTH+1))*CntIdxMaskAddr <= NUM_SORT_CORE*CntCpCrdRdAddr;
 
 // HandShake
-assign rdy_s0       = GLBKNN_CrdRdAddrRdy & GLBKNN_MaskRdAddrRdy; // Two loads
+assign rdy_s0       = (state == IDLE? 0 : GLBKNN_CrdRdAddrRdy) & (state == IDLE? 0 : GLBKNN_MaskRdAddrRdy); // Two loads
 assign vld_s0       = state == CP | state == LP;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
@@ -325,13 +325,13 @@ counter#(
 // Logic Design: s1-Out Crd
 //=====================================================================================================================
 // Combinational Logic
-assign KNNGLB_CrdRdAddr     = CCUKNN_CfgCrdRdAddr + (state == CP ? CntCpCrdRdAddr : CntLopCrdRdAddr);
-assign KNNGLB_CrdRdAddrVld  = vld_s0 & (req_Mask? GLBKNN_MaskRdAddrRdy : 1'b1);
-assign KNNGLB_MaskRdAddr    = CCUKNN_CfgMaskRdAddr + CntMaskAddr;
-assign KNNGLB_MaskRdAddrVld = vld_s0 & (GLBKNN_CrdRdAddrRdy & req_Mask);
+assign KNNGLB_CrdRdAddr     = state == IDLE? 0 : CCUKNN_CfgCrdRdAddr + (state == CP ? CntCpCrdRdAddr : CntLopCrdRdAddr);
+assign KNNGLB_CrdRdAddrVld  = state == IDLE? 0 : vld_s0 & (req_Mask? (state == IDLE? 0 : GLBKNN_MaskRdAddrRdy) : 1'b1);
+assign KNNGLB_MaskRdAddr    = state == IDLE? 0 : CCUKNN_CfgMaskRdAddr + CntMaskAddr;
+assign KNNGLB_MaskRdAddrVld = state == IDLE? 0 : vld_s0 & ((state == IDLE? 0 : GLBKNN_CrdRdAddrRdy) & req_Mask);
 
-assign KNNGLB_IdxMaskRdAddr     = CCUKNN_CfgIdxMaskRdAddr + CntIdxMaskAddr;
-assign KNNGLB_IdxMaskRdAddrVld  = vld_s0 & (req_Idx & GLBKNN_MaskRdAddrRdy & GLBKNN_CrdRdAddrRdy);
+assign KNNGLB_IdxMaskRdAddr     = state == IDLE? 0 : CCUKNN_CfgIdxMaskRdAddr + CntIdxMaskAddr;
+assign KNNGLB_IdxMaskRdAddrVld  = state == IDLE? 0 : vld_s0 & (req_Idx & (state == IDLE? 0 : GLBKNN_MaskRdAddrRdy) & (state == IDLE? 0 : GLBKNN_CrdRdAddrRdy));
 
 always @(*) begin
     case ( state_s1 )
@@ -359,7 +359,7 @@ end
 
 // HandShake
 assign rdy_s1       = (state_s1 == CP & bwcCpCrdInRdy & state_ds1 == CP) | (state_s1 == LP & pisoLopCrdInRdy & state_ds1 == LP);
-assign vld_s1       = GLBKNN_CrdRdDatVld;
+assign vld_s1       = state == IDLE? 0 : GLBKNN_CrdRdDatVld;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
 
@@ -401,13 +401,13 @@ end
 // Logic Design: S2 (No cache)
 //=====================================================================================================================
 // Combinational Logic
-assign crdRdDat_s1      = GLBKNN_CrdRdDat;
-assign MaskRdDat_s1     = GLBKNN_MaskRdDat;
-assign IdxMaskRdDat_s1  = GLBKNN_IdxMaskRdDat;
+assign crdRdDat_s1      = state == IDLE? 0 : GLBKNN_CrdRdDat;
+assign MaskRdDat_s1     = state == IDLE? 0 : GLBKNN_MaskRdDat;
+assign IdxMaskRdDat_s1  = state == IDLE? 0 : GLBKNN_IdxMaskRdDat;
 
-assign KNNGLB_CrdRdDatRdy       = rdy_s1;
-assign KNNGLB_MaskRdDatRdy      = rdy_s1;
-assign KNNGLB_IdxMaskRdDatRdy   = rdy_s1;
+assign KNNGLB_CrdRdDatRdy       = state == IDLE? 0 : rdy_s1;
+assign KNNGLB_MaskRdDatRdy      = state == IDLE? 0 : rdy_s1;
+assign KNNGLB_IdxMaskRdDatRdy   = state == IDLE? 0 : rdy_s1;
 
 //---------------------------------------------------------------------------------------------------------------------
 // Crd Width Conversion
@@ -618,15 +618,15 @@ PISO_NOCACHE#(
     .OUT_LAST  ( pisoMapOutLast  ),
     .OUT_RDY   ( pisoMapOutRdy )
 );
-assign KNNGLB_MapWrDatVld= pisoMapOutVld & pisoMapOutDat[0];
-assign pisoMapOutRdy = KNNGLB_MapWrDatVld? GLBKNN_MapWrDatRdy : 1'b1;
+assign KNNGLB_MapWrDatVld= state == IDLE? 0 : pisoMapOutVld & pisoMapOutDat[0];
+assign pisoMapOutRdy = KNNGLB_MapWrDatVld? (state == IDLE? 0 : GLBKNN_MapWrDatRdy) : 1'b1;
 `ifdef PSEUDO_DATA
     assign KNNGLB_MapWrAddr = CntMapWr[0 +: 6]; // low 4 bit
 `else
-    assign KNNGLB_MapWrAddr = CCUKNN_CfgMapWrAddr + CntMapWr;
+    assign KNNGLB_MapWrAddr = state == IDLE? 0 : CCUKNN_CfgMapWrAddr + CntMapWr;
 `endif
 
-assign KNNGLB_MapWrDat  = KNNGLB_MapWrDatVld? pisoMapOutDat[1 + IDX_WIDTH +: SRAM_WIDTH] : 0;
+assign KNNGLB_MapWrDat  = state == IDLE? 0 : KNNGLB_MapWrDatVld? pisoMapOutDat[1 + IDX_WIDTH +: SRAM_WIDTH] : 0;
 
 assign MaxCntMapWr = 2**IDX_WIDTH -1;
 counter#(
@@ -636,7 +636,7 @@ counter#(
     .RESET_N   ( rst_n              ),
     .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}} ),
-    .INC       ( KNNGLB_MapWrDatVld & GLBKNN_MapWrDatRdy ),
+    .INC       ( KNNGLB_MapWrDatVld & (state == IDLE? 0 : GLBKNN_MapWrDatRdy) ),
     .DEC       ( 1'b0               ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}} ),
     .MAX_COUNT ( MaxCntMapWr        ),
