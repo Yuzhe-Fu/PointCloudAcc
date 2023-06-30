@@ -147,7 +147,7 @@ assign SHFCCU_CfgRdy = state==IDLE;
 // Combinational Logic
 
 // HandShake
-assign rdy_s0       = GLBSHF_InRdAddrRdy;
+assign rdy_s0       = state == IDLE? 0 : GLBSHF_InRdAddrRdy;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 
@@ -175,16 +175,16 @@ counter#(
 // Logic Design: s1
 //=====================================================================================================================
 // Combinational Logic
-assign SHFGLB_InRdAddr      = CCUSHF_CfgInAddr + CntAddr;
-assign SHFGLB_InRdAddrVld   = vld_s0;
+assign SHFGLB_InRdAddr      = state == IDLE? 0 : CCUSHF_CfgInAddr + CntAddr;
+assign SHFGLB_InRdAddrVld   = state == IDLE? 0 : vld_s0;
 
 // HandShake
 assign rdy_s1       = shift_din_rdy;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
-assign vld_s1       = GLBSHF_InRdDatVld;
+assign vld_s1       = state == IDLE? 0 : GLBSHF_InRdDatVld;
 
-assign SHFGLB_InRdDatRdy = rdy_s1;
+assign SHFGLB_InRdDatRdy = state == IDLE? 0 : rdy_s1;
 
 // Reg Update
 always @ ( posedge clk or negedge rst_n ) begin
@@ -205,7 +205,7 @@ end
 //=====================================================================================================================
 
 // HandShake
-assign rdy_s2       = GLBSHF_OutWrDatRdy;
+assign rdy_s2       = state == IDLE? 0 : GLBSHF_OutWrDatRdy;
 assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
 assign vld_s2       = shift_dout_vld;
@@ -222,7 +222,7 @@ SHIFT #(
     .ByteWrIncr          ( CCUSHF_CfgByteWrIncr[0] ),  
     .ByteWrStep          ( CCUSHF_CfgByteWrStep[0 +: SHF_ADDR_WIDTH] ),
     .WrBackStep          ( CCUSHF_CfgWrBackStep[0 +: SHF_ADDR_WIDTH] ),
-    .shift_din           ( GLBSHF_InRdDat),
+    .shift_din           ( state == IDLE? 0 : GLBSHF_InRdDat),
     .shift_din_vld       ( vld_s1        ),
     .shift_din_last      ( overflow_CntAddr_s1), // for pop last NUM data (triangle)
     .shift_din_rdy       ( shift_din_rdy ),                        
@@ -233,9 +233,9 @@ SHIFT #(
 );
 assign shift_dout_rdy = rdy_s2;
 
-assign SHFGLB_OutWrDat      = vld_s2? shift_dout : 0;
-assign SHFGLB_OutWrAddr     = CCUSHF_CfgOutAddr + CntWrAddr; 
-assign SHFGLB_OutWrDatVld   = vld_s2;
+assign SHFGLB_OutWrDat      = state == IDLE? 0 : vld_s2? shift_dout : 0;
+assign SHFGLB_OutWrAddr     = state == IDLE? 0 : CCUSHF_CfgOutAddr + CntWrAddr; 
+assign SHFGLB_OutWrDatVld   = state == IDLE? 0 : vld_s2;
 
 assign MaxCntWrAddr = CCUSHF_CfgByteWrIncr[0]?
                            CCUSHF_CfgNum -1 // format 0 -> 1
