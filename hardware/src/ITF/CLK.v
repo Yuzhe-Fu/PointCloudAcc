@@ -12,6 +12,7 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
+
 module CLK #(
     parameter FBDIV_WIDTH   = 5
     )(
@@ -51,34 +52,39 @@ assign FBDIV = {I_FBDIV, 4'd0};
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-PLLTS28HPMFRAC u_PLLTS28HPMFRAC (
-    .BYPASS         ( I_BypPLL  ),
-    .DACPD          ( 1'b0      ),
-    .DSMPD          ( 1'b1      ), // integer
-    .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 
-	.FRAC           ( 24'd0     ),
-    .FREF           ( I_SysClk  ),
-    .PD             ( 1'b0      ),
-    .REFDIV         ( 6'd1      ),
-    .POSTDIV1       ( 3'd1      ),
-    .POSTDIV2       ( 3'd1      ),
+`ifdef PLL
+    PLLTS28HPMFRAC u_PLLTS28HPMFRAC (
+        .BYPASS         ( I_BypPLL  ),
+        .DACPD          ( 1'b0      ),
+        .DSMPD          ( 1'b1      ), // integer
+        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 
+        .FRAC           ( 24'd0     ),
+        .FREF           ( I_SysClk  ),
+        .PD             ( 1'b0      ),
+        .REFDIV         ( 6'd1      ),
+        .POSTDIV1       ( 3'd1      ),
+        .POSTDIV2       ( 3'd1      ),
 
-    .LOCK           ( O_PLLLock ),
-    .FOUTPOSTDIV    ( PLLclk    ), // output clk = FREF*FBDIV
+        .LOCK           ( O_PLLLock ),
+        .FOUTPOSTDIV    ( PLLclk    ), // output clk = FREF*FBDIV
 
-    .FOUTPOSTDIVPD  ( 1'b0      ),
-    .FOUTVCOPD      ( 1'b0      ),
-    .FOUT4PHASEPD   ( 1'b1      ),
-    .FOUT1PH0       (           ),
-	.FOUT1PH90      (           ),
-    .FOUT1PH180     (           ),    
-    .FOUT1PH270     (           ),
-    .FOUT2          (           ),
-    .FOUT3          (           ),
-    .FOUT4          (           ),
-    .FOUTVCO        (           ),
-    .CLKSSCG        (           ) 
-    );
+        .FOUTPOSTDIVPD  ( 1'b0      ),
+        .FOUTVCOPD      ( 1'b0      ),
+        .FOUT4PHASEPD   ( 1'b1      ),
+        .FOUT1PH0       (           ),
+        .FOUT1PH90      (           ),
+        .FOUT1PH180     (           ),    
+        .FOUT1PH270     (           ),
+        .FOUT2          (           ),
+        .FOUT3          (           ),
+        .FOUT4          (           ),
+        .FOUTVCO        (           ),
+        .CLKSSCG        (           ) 
+        );
+`else
+    assign PLLclk = I_SysClk;
+    assign O_PLLLock = I_BypPLL & (&FBDIV); // use all bits
+`endif
 
 CLKREL u_CLKREL_SysClk(
     .sw     ( I_SwClk   ),
