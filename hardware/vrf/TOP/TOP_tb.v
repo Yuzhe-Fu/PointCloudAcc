@@ -2,6 +2,7 @@
 
 `define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
 `define OFFCLOCK_PERIOD 20 // 
+`define PLL
 `define SIM
 `define FUNC_SIM
 // `define POST_SIM

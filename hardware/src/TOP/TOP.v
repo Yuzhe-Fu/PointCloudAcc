@@ -48,7 +48,11 @@ module TOP #(
     parameter ADDR_WIDTH     = 16,
     parameter GLB_NUM_RDPORT = 12 + POOL_CORE - 1,
     parameter GLB_NUM_WRPORT = 10, 
-    parameter NUM_BANK       = 32,
+    `ifdef SIM
+        parameter NUM_BANK       = 32,
+    `else
+        parameter NUM_BANK       = 16,
+    `endif
 
     // CCU
     parameter NUM_MODULE     = 6,
