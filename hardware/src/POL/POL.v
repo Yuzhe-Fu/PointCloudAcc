@@ -332,7 +332,7 @@ generate
     // Logic Design: s2: Write Shape
     //=====================================================================================================================
     // Combinational Logic
-    assign PLC_MapRdDatRdy[gv_plc] =  state[gv_plc] == IDLE? 0 : rdy_s1;
+    assign PLC_MapRdDatRdy[gv_plc] =  state[gv_plc] == IDLE? 1 : rdy_s1;
 
     // Handshake
     assign rdy_s2       =  state[gv_plc] == IDLE? 0 : GLBPOL_OfmRdAddrRdy[gv_plc];
@@ -441,7 +441,7 @@ generate
     // Logic Design: s4: Max
     //=====================================================================================================================
     // Combinational Logic 
-    assign POLGLB_OfmRdDatRdy[gv_plc] =  state[gv_plc] == IDLE? 0 : rdy_s3;
+    assign POLGLB_OfmRdDatRdy[gv_plc] =  state[gv_plc] == IDLE? 1 : rdy_s3;
 
     // Handshake
     assign rdy_s4       = ( ( state[gv_plc] == IDLE? 0 : GLBPOL_OfmWrDatRdy) & (ArbPLCIdxWrOfm == gv_plc) ); 

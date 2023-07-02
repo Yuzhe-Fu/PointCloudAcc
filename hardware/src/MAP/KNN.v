@@ -405,9 +405,9 @@ assign crdRdDat_s1      = state == IDLE? 0 : GLBKNN_CrdRdDat;
 assign MaskRdDat_s1     = state == IDLE? 0 : GLBKNN_MaskRdDat;
 assign IdxMaskRdDat_s1  = state == IDLE? 0 : GLBKNN_IdxMaskRdDat;
 
-assign KNNGLB_CrdRdDatRdy       = state == IDLE? 0 : rdy_s1;
-assign KNNGLB_MaskRdDatRdy      = state == IDLE? 0 : rdy_s1;
-assign KNNGLB_IdxMaskRdDatRdy   = state == IDLE? 0 : rdy_s1;
+assign KNNGLB_CrdRdDatRdy       = state == IDLE? 1 : rdy_s1;
+assign KNNGLB_MaskRdDatRdy      = state == IDLE? 1 : rdy_s1;
+assign KNNGLB_IdxMaskRdDatRdy   = state == IDLE? 1 : rdy_s1;
 
 //---------------------------------------------------------------------------------------------------------------------
 // Crd Width Conversion
@@ -636,7 +636,7 @@ counter#(
     .RESET_N   ( rst_n              ),
     .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( {IDX_WIDTH{1'b0}} ),
-    .INC       ( KNNGLB_MapWrDatVld & (state == IDLE? 0 : GLBKNN_MapWrDatRdy) ),
+    .INC       ( KNNGLB_MapWrDatVld & (state == IDLE? 1'b0 : GLBKNN_MapWrDatRdy) ),
     .DEC       ( 1'b0               ),
     .MIN_COUNT ( {IDX_WIDTH{1'b0}} ),
     .MAX_COUNT ( MaxCntMapWr        ),

@@ -537,7 +537,7 @@ counter#(
     .RESET_N   ( rst_n              ),
     .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( CCUSYA_CfgOfmWrBaseAddr),
-    .INC       ( SYAGLB_OfmWrDatVld & (state == IDLE? 0 : GLBSYA_OfmWrDatRdy) ),
+    .INC       ( SYAGLB_OfmWrDatVld & (state == IDLE? 1'b0 : GLBSYA_OfmWrDatRdy) ),
     .DEC       ( 1'b0               ),
     .MIN_COUNT ( {ADDR_WIDTH{1'b0}} ),
     .MAX_COUNT ( {ADDR_WIDTH{1'b1}} ),
