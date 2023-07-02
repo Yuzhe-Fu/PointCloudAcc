@@ -945,7 +945,7 @@ generate
 
         // --------------------------------------------------------------------------------------------------------
         // Write Back Dist
-        assign FPC_DistWrDatVld[gv_fpc] = !vld_Dist_s2 & (VldArbMask_s1 & VldArbCrd_s1);// & MaskWrRdy);// When VldArbDist_next=0(finishes Current Dist) & other three loads is ready to update
+        assign FPC_DistWrDatVld[gv_fpc] = !vld_Dist_s2 & (VldArbMask_s1 & VldArbCrd_s1 & (VldArbDist_s1));//  & MaskWrRdy When vld_Dist_s2=0(finishes Current Dist) & other three loads is ready to update
         assign DistWrRdy                = (FPC_DistWrDatVld[gv_fpc]? GLBFPS_DistWrDatRdy & (gv_fpc == ArbFPCDistWrIdx) : 1'b1);
         assign FPC_DistWrAddr[gv_fpc]   = CCUFPS_CfgDistBaseAddr + (MaxCntDistRdAddr + 1)*CntCpDistRdAddr_s2 + CntDistRdAddr_s2;
         assign FPC_DistWrDat[gv_fpc]    = FPC_DistWrDat_s2;
