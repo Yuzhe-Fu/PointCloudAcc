@@ -2,6 +2,7 @@
 
 `define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
 `define OFFCLOCK_PERIOD 20 // 
+`define PLL
 `define SIM
 `define FUNC_SIM
 // `define POST_SIM
@@ -18,7 +19,7 @@ parameter ADDR_WIDTH        = 16    ;
 parameter DRAM_ADDR_WIDTH   = 32    ;
 parameter OPNUM             = 6     ;
 parameter FBDIV_WIDTH    = 5;
-parameter FPSISA_WIDTH   = PORT_WIDTH*16;
+parameter FPSISA_WIDTH   = PORT_WIDTH*17;
 parameter KNNISA_WIDTH   = PORT_WIDTH*2 ;
 parameter SYAISA_WIDTH   = PORT_WIDTH*3 ;
 parameter POLISA_WIDTH   = PORT_WIDTH*10 ;

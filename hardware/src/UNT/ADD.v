@@ -138,7 +138,7 @@ assign ADDCCU_CfgRdy = state==IDLE;
 //=====================================================================================================================
 // Logic Design: s0
 //=====================================================================================================================
-assign rdy_s0       = GLBADD_Add0RdAddrRdy & GLBADD_Add1RdAddrRdy;
+assign rdy_s0       = state == IDLE? 0 : GLBADD_Add0RdAddrRdy & GLBADD_Add1RdAddrRdy;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 
@@ -161,11 +161,11 @@ counter#(
     .COUNT     ( CntAddr        )
 );
 
-assign ADDGLB_Add0RdAddr = CCUADD_CfgAdd0Addr + CntAddr;
-assign ADDGLB_Add1RdAddr = CCUADD_CfgAdd1Addr + CntAddr;
+assign ADDGLB_Add0RdAddr = state == IDLE? 0 : CCUADD_CfgAdd0Addr + CntAddr;
+assign ADDGLB_Add1RdAddr = state == IDLE? 0 : CCUADD_CfgAdd1Addr + CntAddr;
 
-assign ADDGLB_Add0RdAddrVld = vld_s0 & GLBADD_Add1RdAddrRdy;
-assign ADDGLB_Add1RdAddrVld = vld_s0 & GLBADD_Add0RdAddrRdy;
+assign ADDGLB_Add0RdAddrVld = state == IDLE? 0 : vld_s0 & GLBADD_Add1RdAddrRdy;
+assign ADDGLB_Add1RdAddrVld = state == IDLE? 0 : vld_s0 & GLBADD_Add0RdAddrRdy;
 
 //=====================================================================================================================
 // Logic Design: s1
@@ -173,13 +173,13 @@ assign ADDGLB_Add1RdAddrVld = vld_s0 & GLBADD_Add0RdAddrRdy;
 assign rdy_s1       = ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
-assign vld_s1       = GLBADD_Add0RdDatVld & GLBADD_Add1RdDatVld;
+assign vld_s1       = state == IDLE? 0 : GLBADD_Add0RdDatVld & GLBADD_Add1RdDatVld;
 
-assign Add0             = GLBADD_Add0RdDat;
-assign Add1             = GLBADD_Add1RdDat;
+assign Add0             = state == IDLE? 0 : GLBADD_Add0RdDat;
+assign Add1             = state == IDLE? 0 : GLBADD_Add1RdDat;
 
-assign ADDGLB_Add0RdDatRdy = rdy_s1 & GLBADD_Add1RdDatVld;
-assign ADDGLB_Add1RdDatRdy = rdy_s1 & GLBADD_Add0RdDatVld;
+assign ADDGLB_Add0RdDatRdy = state == IDLE? 0 : rdy_s1 & GLBADD_Add1RdDatVld;
+assign ADDGLB_Add1RdDatRdy = state == IDLE? 0 : rdy_s1 & GLBADD_Add0RdDatVld;
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
@@ -197,7 +197,7 @@ end
 //=====================================================================================================================
 // Logic Design: s2
 //=====================================================================================================================
-assign rdy_s2       = GLBADD_SumWrDatRdy;
+assign rdy_s2       = state == IDLE? 0 : GLBADD_SumWrDatRdy;
 assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
 
@@ -231,8 +231,8 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
-assign ADDGLB_SumWrDat      = Sum;
-assign ADDGLB_SumWrAddr     = CCUADD_CfgSumAddr + CntAddr_s2;
-assign ADDGLB_SumWrDatVld   = vld_s2;
+assign ADDGLB_SumWrDat      = state == IDLE? 0 : Sum;
+assign ADDGLB_SumWrAddr     = state == IDLE? 0 : CCUADD_CfgSumAddr + CntAddr_s2;
+assign ADDGLB_SumWrDatVld   = state == IDLE? 0 : vld_s2;
 
 endmodule

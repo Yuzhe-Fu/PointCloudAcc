@@ -1,4 +1,5 @@
 set VERILOG_FILES { \
+./define.vh\
 ../../src/TOP/TOP.v\
 ../../src/ITF/ITF.v\
     ../../src/ITF/CLK.v\

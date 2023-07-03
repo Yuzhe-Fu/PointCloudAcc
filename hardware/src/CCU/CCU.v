@@ -234,6 +234,9 @@ generate
                 cfgInfo[gv] <= 0;
             end else if( cfgEnable) begin
                 cfgInfo[gv] <= FIFO_data_out;
+            end else if( cfgRdy[gv] & !cfgVld[gv] ) begin 
+                // After cfgEnable -> cfgVld&cfgRdy -> module finishes(cfgRdy=1) and not given cfgVld
+                cfgInfo[gv] <= 0;
             end
         end
         always @(posedge clk or negedge rst_n) begin
@@ -245,7 +248,7 @@ generate
                 cfgVld[gv] <= 1'b1;
             end
         end
-
+        
     end
 endgenerate
 

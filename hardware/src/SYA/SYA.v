@@ -253,7 +253,7 @@ assign MaxCntGrp    = CCUSYA_CfgNumGrpPerTile + 1- 1; // 1 More Grp, because las
 assign INC_CntGrp   = Overflow_CntChn & INC_CntChn;
 
 // HandShake
-assign rdy_s0       = state != IDLE & GLBSYA_ActRdAddrRdy & GLBSYA_WgtRdAddrRdy; // 2 loads
+assign rdy_s0       = (state != IDLE & GLBSYA_ActRdAddrRdy) & (state == IDLE? 0 : GLBSYA_WgtRdAddrRdy); // 2 loads
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 assign vld_s0       = state != IDLE;
@@ -313,7 +313,7 @@ assign SYAGLB_WgtRdDatRdy   = state == IDLE? 0 : rdy_s1;
 assign rdy_s1       = state != IDLE & ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
-assign vld_s1       = GLBSYA_ActRdDatVld & GLBSYA_WgtRdDatVld;
+assign vld_s1       = (state == IDLE? 0 : GLBSYA_ActRdDatVld) & (state == IDLE? 0 : GLBSYA_WgtRdDatVld);
 
 // --------------------------------------------------------------------------------------------------------------------
 // Reg Update
@@ -328,20 +328,20 @@ assign NumDiag  = CCUSYA_CfgMod == 0? 63 : 79; // 32 + 31 : 64 + 15;
 
 // Generate SYA Input signals: SYA_In
 // Bank[0]
-assign SYA_InAct_W          [0] = GLBSYA_ActRdDat[0];
-assign SYA_InWgt_N          [0] = GLBSYA_WgtRdDat[0];
+assign SYA_InAct_W          [0] = state == IDLE? 0 : GLBSYA_ActRdDat[0];
+assign SYA_InWgt_N          [0] = state == IDLE? 0 : GLBSYA_WgtRdDat[0];
 
 // Bank[1]
-assign SYA_InAct_W          [1] = CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[1]: SYA_OutAct_E[0];
-assign SYA_InWgt_N          [1] = CCUSYA_CfgMod == 1? SYA_OutWgt_S[0]   : GLBSYA_WgtRdDat[1];
+assign SYA_InAct_W          [1] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[1]: SYA_OutAct_E[0];
+assign SYA_InWgt_N          [1] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[0]   : GLBSYA_WgtRdDat[1];
 
 // Bank[2]
-assign SYA_InAct_W          [2] = CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[2] : GLBSYA_ActRdDat[1];
-assign SYA_InWgt_N          [2] = CCUSYA_CfgMod == 1? SYA_OutWgt_S[1] : SYA_OutWgt_S[0];
+assign SYA_InAct_W          [2] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[2] : GLBSYA_ActRdDat[1];
+assign SYA_InWgt_N          [2] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[1] : SYA_OutWgt_S[0];
 
 // Bank[3]
-assign SYA_InAct_W          [3] = CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[3] : SYA_OutAct_E[2];
-assign SYA_InWgt_N          [3] = CCUSYA_CfgMod == 1? SYA_OutWgt_S[2] : SYA_OutWgt_S[1];
+assign SYA_InAct_W          [3] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[3] : SYA_OutAct_E[2];
+assign SYA_InWgt_N          [3] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[2] : SYA_OutWgt_S[1];
 
 // Generate SYA Input signals: SYA_En, SYA_Reset
 assign SYA_En   = {NUM_COL*NUM_ROW*NUM_BANK{handshake_s1}} ;
@@ -364,7 +364,7 @@ endgenerate
 
 // HandShake
 // SYA_PsumOutRdy: 2 loads: shift_din or GLB
-assign rdy_s2       = GLBSYA_OfmWrDatRdy; 
+assign rdy_s2       = (state == IDLE? 0 : GLBSYA_OfmWrDatRdy); 
 // SYA_PsumOutVld
 assign vld_s2       = ( (CntMac >= CCUSYA_CfgChn) & 0 <= CntMac % CCUSYA_CfgChn & CntMac % CCUSYA_CfgChn <= NumDiag ) & CntRmDiagPsum > 0;
 assign handshake_s2 = rdy_s2 & vld_s2;
@@ -483,7 +483,7 @@ always @(*) begin
 end
 
 // HandShake
-assign rdy_s3       = GLBSYA_OfmWrDatRdy;
+assign rdy_s3       = (state == IDLE? 0 : GLBSYA_OfmWrDatRdy);
 assign vld_s3       = fwftOfm_dout_vld;
 assign handshake_s3 = rdy_s3 & vld_s3;
 assign ena_s3       = handshake_s3 | ~vld_s3;
@@ -537,7 +537,7 @@ counter#(
     .RESET_N   ( rst_n              ),
     .CLEAR     ( state == IDLE      ),
     .DEFAULT   ( CCUSYA_CfgOfmWrBaseAddr),
-    .INC       ( SYAGLB_OfmWrDatVld & GLBSYA_OfmWrDatRdy),
+    .INC       ( SYAGLB_OfmWrDatVld & (state == IDLE? 1'b0 : GLBSYA_OfmWrDatRdy) ),
     .DEC       ( 1'b0               ),
     .MIN_COUNT ( {ADDR_WIDTH{1'b0}} ),
     .MAX_COUNT ( {ADDR_WIDTH{1'b1}} ),

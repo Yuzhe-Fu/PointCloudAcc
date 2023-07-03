@@ -135,7 +135,7 @@ assign CATCCU_CfgRdy = state==IDLE;
 //=====================================================================================================================
 // Logic Design: s0
 //=====================================================================================================================
-assign rdy_s0       = sel? GLBCAT_Ele0RdAddrRdy : GLBCAT_Ele1RdAddrRdy;
+assign rdy_s0       = sel? (state == IDLE? 0 : GLBCAT_Ele0RdAddrRdy) : (state == IDLE? 0 : GLBCAT_Ele1RdAddrRdy);
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 
@@ -159,11 +159,11 @@ counter#(
     .COUNT     ( CntAddr        )
 );
 assign sel = CntAddr % TotalWord < CCUCAT_CfgWord0;
-assign CATGLB_Ele0RdAddr = CCUCAT_CfgEle0Addr + CCUCAT_CfgWord0*(CntAddr/TotalWord) + CntAddr % TotalWord;
-assign CATGLB_Ele1RdAddr = CCUCAT_CfgEle1Addr + CCUCAT_CfgWord1*(CntAddr/TotalWord) + (CntAddr % TotalWord - CCUCAT_CfgWord0);
+assign CATGLB_Ele0RdAddr = state == IDLE? 0 : CCUCAT_CfgEle0Addr + CCUCAT_CfgWord0*(CntAddr/TotalWord) + CntAddr % TotalWord;
+assign CATGLB_Ele1RdAddr = state == IDLE? 0 : CCUCAT_CfgEle1Addr + CCUCAT_CfgWord1*(CntAddr/TotalWord) + (CntAddr % TotalWord - CCUCAT_CfgWord0);
 
-assign CATGLB_Ele0RdAddrVld = vld_s0 &  sel;
-assign CATGLB_Ele1RdAddrVld = vld_s0 & !sel;
+assign CATGLB_Ele0RdAddrVld = state == IDLE? 0 : vld_s0 &  sel;
+assign CATGLB_Ele1RdAddrVld = state == IDLE? 0 : vld_s0 & !sel;
 
 //=====================================================================================================================
 // Logic Design: s1
@@ -171,12 +171,12 @@ assign CATGLB_Ele1RdAddrVld = vld_s0 & !sel;
 assign rdy_s1       = ena_s2;
 assign handshake_s1 = rdy_s1 & vld_s1;
 assign ena_s1       = handshake_s1 | ~vld_s1;
-assign vld_s1       = sel_s1? GLBCAT_Ele0RdDatVld : GLBCAT_Ele1RdDatVld;
+assign vld_s1       = sel_s1? (state == IDLE? 0 : GLBCAT_Ele0RdDatVld) : (state == IDLE? 0 : GLBCAT_Ele1RdDatVld);
 
-assign Ele             = sel_s1? GLBCAT_Ele0RdDat : GLBCAT_Ele1RdDat;
+assign Ele             = sel_s1? (state == IDLE? 0 : GLBCAT_Ele0RdDat) : (state == IDLE? 0 : GLBCAT_Ele1RdDat);
 
-assign CATGLB_Ele0RdDatRdy = rdy_s1 & sel_s1;
-assign CATGLB_Ele1RdDatRdy = rdy_s1 & !sel_s1;
+assign CATGLB_Ele0RdDatRdy = state == IDLE? 0 : rdy_s1 & sel_s1;
+assign CATGLB_Ele1RdDatRdy = state == IDLE? 0 : rdy_s1 & !sel_s1;
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
@@ -197,7 +197,7 @@ end
 //=====================================================================================================================
 // Logic Design: s2
 //=====================================================================================================================
-assign rdy_s2       = GLBCAT_CatWrDatRdy;
+assign rdy_s2       = state == IDLE? 0 : GLBCAT_CatWrDatRdy;
 assign handshake_s2 = rdy_s2 & vld_s2;
 assign ena_s2       = handshake_s2 | ~vld_s2;
 
@@ -228,8 +228,8 @@ always @ ( posedge clk or negedge rst_n ) begin
     end
 end
 
-assign CATGLB_CatWrDat      = Cat;
-assign CATGLB_CatWrAddr     = CCUCAT_CfgCatAddr + CntAddr_s2;
-assign CATGLB_CatWrDatVld   = vld_s2;
+assign CATGLB_CatWrDat      = state == IDLE? 0 : Cat;
+assign CATGLB_CatWrAddr     = state == IDLE? 0 : CCUCAT_CfgCatAddr + CntAddr_s2;
+assign CATGLB_CatWrDatVld   = state == IDLE? 0 : vld_s2;
 
 endmodule

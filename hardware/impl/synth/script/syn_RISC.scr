@@ -174,7 +174,8 @@ report gates            > ${SYNTH_PROJDIR}/rpt/${DESIGN}.gates.rpt
 report design_rules     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.rules.rpt
 report clock_gating     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.clkgating.rpt
 report summary          > ${SYNTH_PROJDIR}/rpt/${DESIGN}.summary.rpt
-report timing -num_paths 100     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing.rpt
+report timing -num_paths 100     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_100.rpt
+report timing -num_paths 1000     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_1000.rpt
 
 #### check design after synth
 check_design -all > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_post_synth.rpt
