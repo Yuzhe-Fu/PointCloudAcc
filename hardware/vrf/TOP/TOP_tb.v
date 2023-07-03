@@ -1,11 +1,11 @@
 `timescale  1 ns / 100 ps
 
 `define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
-`define OFFCLOCK_PERIOD 20 // 
+`define OFFCLOCK_PERIOD 200 // 
 `define PLL
 `define SIM
 `define FUNC_SIM
-// `define POST_SIM
+`define POST_SIM
 `define PSEUDO_DATA
 `define ASSERTION_ON
 // `define WITHPAD
@@ -72,10 +72,14 @@ wire                            O_CmdVld;
 // TOP Bidirs
 wire  [PORT_WIDTH       -1 : 0] IO_Dat;
 wire                            O_DatVld ;
-wire                            I_DatVld ;
-wire                            I_DatRdy ;
+wire                            I_DatVld_tmp ;
+wire                            I_DatRdy_tmp ;
 wire                            O_DatRdy ;
+wire                            I_DatLast_tmp;
+wire                            I_DatVld;
 wire                            I_DatLast;
+wire                            I_DatRdy;
+wire                            I_ISAVld;
 
 reg                             rst_n ;
 wire                            O_PLLLock;
@@ -87,7 +91,7 @@ reg [$clog2(OPNUM)      -1 : 0] ISAIdx_d;
 wire[OPNUM  -1 : 0][ADDR_WIDTH  -1 : 0] ISAAddr;
 wire[OPNUM              -1 : 0] Overflow_ISA;
 wire [OPNUM             -1 : 0] O_CfgRdy;
-wire                            I_ISAVld;
+wire                            I_ISAVld_tmp;
 wire                            Overflow_DatAddr;
 
 localparam IDLE         = 3'b000;
@@ -122,7 +126,7 @@ initial begin
 end
 
 initial begin
-    I_BypAsysnFIFO  = 1'b0;
+    I_BypAsysnFIFO  = 1'b1;
     I_BypOE         = 1'b0;
     I_BypPLL        = 1'b0;
     I_FBDIV         = 5'b1;
@@ -160,7 +164,7 @@ end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230417_Period10_group_Track3vt_NoteWoPAD&RTSEL10/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230703_Period5_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note32BANK/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
@@ -183,13 +187,13 @@ always @(*) begin
                     next_state <= IDLE;
 
         // ISA
-        ISASND: if( I_DatLast & I_DatVld & I_DatRdy )
+        ISASND: if( I_DatLast_tmp & I_DatVld_tmp & O_DatRdy )
                     next_state <= IDLE;
                 else
                     next_state <= ISASND;
 
         // Data
-        DATCMD :if( O_DatOE & O_DatVld & I_DatRdy) begin
+        DATCMD :if( O_DatOE & O_DatVld & I_DatRdy_tmp) begin
                     if ( IO_Dat[0] ) // 
                         next_state <= DATOUT2OFF;
                     else
@@ -238,7 +242,7 @@ generate
             .RESET_N   ( rst_n          ),
             .CLEAR     ( 1'b0           ),
             .DEFAULT   ( Default        ),
-            .INC       ( I_ISAVld & (I_DatVld & O_DatRdy) & (ISAIdx_d == gv_i) ),
+            .INC       ( I_ISAVld_tmp & (I_DatVld_tmp & O_DatRdy) & (ISAIdx_d == gv_i) ),
             .DEC       ( 1'b0           ),
             .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
             .MAX_COUNT ( MaxCnt         ),
@@ -257,8 +261,7 @@ generate
 
     end
 endgenerate
-
-assign #2 I_ISAVld = state == ISASND;
+assign I_ISAVld_tmp = state == ISASND;
 always @(posedge I_OffClk or rst_n) begin
     if (!rst_n) begin
         ISAIdx_d <= 0;
@@ -287,7 +290,7 @@ counter#(
     .RESET_N   ( rst_n          ),
     .CLEAR     ( state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) ),
     .DEFAULT   ( default_addr   ),
-    .INC       ( (state == DATIN2CHIP | state == DATOUT2OFF) & (I_DatVld & O_DatRdy | O_DatVld & I_DatRdy) ),
+    .INC       ( (state == DATIN2CHIP | state == DATOUT2OFF) & (I_DatVld_tmp & O_DatRdy | O_DatVld & I_DatRdy_tmp) ),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {DRAM_ADDR_WIDTH{1'b0}}),
     .MAX_COUNT ( MaxAddr        ),
@@ -299,7 +302,7 @@ counter#(
 `ifndef PSEUDO_DATA
     always @(posedge I_OffClk or rst_n) begin
         if(state == DATOUT2OFF) begin
-            if(O_DatVld & I_DatRdy)
+            if(O_DatVld & I_DatRdy_tmp)
                 Dram[DatAddr] <= IO_Dat;
         end
     end
@@ -309,17 +312,24 @@ counter#(
 // Logic Design : Interface
 //=====================================================================================================================
 // DRAM READ
-assign #2 I_DatVld  = state == ISASND | state== DATIN2CHIP;
-assign    I_DatLast = (I_ISAVld? Overflow_ISA[ISAIdx_d] : Overflow_DatAddr) & I_DatVld;
-assign #2 IO_Dat    = (state == ISASND | state == DATIN2CHIP)?
-                        (I_ISAVld? Dram[ISAAddr[ISAIdx_d]] : Dram[DatAddr[0 +: 13]])
-                        : {PORT_WIDTH{1'bz}}; // 8196
+assign I_DatVld_tmp  = state == ISASND | state== DATIN2CHIP;
+assign I_DatLast_tmp = (I_ISAVld_tmp? Overflow_ISA[ISAIdx_d] : Overflow_DatAddr);
+
 
 wire [PORT_WIDTH    -1 : 0] TEST28 = Dram[28];
 
 // DRAM WRITE
-assign #2 I_DatRdy = I_ISAVld? 1'bz : (O_DatOE? O_CmdVld & state==DATCMD | !O_CmdVld & state==DATOUT2OFF: 1'bz);
+assign I_DatRdy_tmp = I_ISAVld_tmp? 1'bz : (O_DatOE? O_CmdVld & state==DATCMD | !O_CmdVld & state==DATOUT2OFF: 1'bz);
 
+
+// Delay In2Chip
+assign #2 I_DatVld = I_DatVld_tmp;
+assign #2 I_DatLast= I_DatLast_tmp;
+assign #2 I_DatRdy = I_DatRdy_tmp;
+assign #2 I_ISAVld = I_ISAVld_tmp;
+assign #2 IO_Dat    = (state == ISASND | state == DATIN2CHIP)?
+                        (I_ISAVld_tmp? Dram[ISAAddr[ISAIdx_d]] : Dram[DatAddr[0 +: 13]])
+                        : {PORT_WIDTH{1'bz}}; // 8196
 TOP u_TOP (
     .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO),
     .I_BypOE_PAD        ( I_BypOE       ),
