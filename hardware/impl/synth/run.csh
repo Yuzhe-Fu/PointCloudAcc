@@ -1,3 +1,8 @@
+# Check List:
+# 1. TOP.v: parameter NUM_BANK       = 16,
+# 2. CLK.v: `define PLL
+# 3. RAM.v: `define RTSELDB (Debuging): RTSEL: 00 tapeout, 01: Only synth for Simulation
+
 set DESIGN_NAME="TOP"
 ################################################################################
 set VT="3vt"
@@ -6,7 +11,7 @@ set PLL="1"
 set UNGROUP="group"
 set MAXPOWER="0" # 100MHz -> 100mW
 set OPTWGT="0.5" # Larger optimization weight, lower leakage(1/20~1/10 of Total Synth Power)
-set NOTE="16BANK&NOLVT&OPTNOGLBEMPTYFULL"
+set NOTE="32BANK&RTSELDB"
 set SDC_FILE=./TOP.sdc
 
 ################################################################################
@@ -44,7 +49,7 @@ echo "set SYNTH_PROJDIR $SYNTH_PROJDIR" >> ./config_temp.tcl
 echo "              "                   >> ./define.vh # Create
 
 if( $PLL == "1") then
-    echo \`define PLL 1               >> ./define.vh
+    echo \`define PLL                   >> ./define.vh
 endif
 
 cp -r ../../src ${SYNTH_PROJDIR}
