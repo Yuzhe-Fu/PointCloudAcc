@@ -1,4 +1,4 @@
-./TOP_tb.v
+../TOP/TOP_tb.v
 ../../src/primitives/COUNTER/counter.v
 ../../work/synth/TOP/Date230704_Period5_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note32BANK&RTSELDB/p+r_enc/TOP_synth.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb128x256m1sso_170a/VERILOG/ts1n28hpcpuhdhvtb128x256m1sso_170a_tt0p9v25c.v

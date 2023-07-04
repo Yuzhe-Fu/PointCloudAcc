@@ -1,7 +1,7 @@
 `timescale  1 ns / 100 ps
 
 `define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
-`define OFFCLOCK_PERIOD 200 // 
+`define OFFCLOCK_PERIOD 20 // 
 `define PLL
 `define SIM
 `define FUNC_SIM
@@ -140,7 +140,7 @@ initial begin
 end
 
 initial begin
-    $readmemh("Dram.txt", Dram);
+    $readmemh("../TOP/Dram.txt", Dram);
 end
 
 initial begin
@@ -164,7 +164,7 @@ end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230703_Period5_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note32BANK/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230704_Period5_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note32BANK&RTSELDB/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
