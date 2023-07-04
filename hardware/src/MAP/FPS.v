@@ -1063,7 +1063,18 @@ endgenerate
 //=====================================================================================================================
 // Logic Design: Monitor
 //=====================================================================================================================
-assign FPSMON_Dat = {CCUFPS_CfgInfo, state};
+assign FPSMON_Dat = {
+    CCUFPS_CfgInfo,
+    CCUFPS_CfgVld,
+    FPSCCU_CfgRdy,
+    ArbFPCIdxWrIdx, 
+    ArbFPCMaskWrIdx, 
+    ArbFPCMaskRdIdx_d, 
+    ArbFPCDistWrIdx, 
+    ArbFPCDistRdIdx_d, 
+    ArbFPCCrdWrIdx, 
+    ArbFPCCrdRdIdx_d, // 4*7
+    state};
 
 //=====================================================================================================================
 // Logic Design: Statistic

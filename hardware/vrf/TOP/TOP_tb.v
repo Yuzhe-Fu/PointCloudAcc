@@ -5,11 +5,14 @@
 `define PLL
 `define SIM
 `define FUNC_SIM
-`define POST_SIM
+// `define POST_SIM
 `define PSEUDO_DATA
 `define ASSERTION_ON
 // `define WITHPAD
 
+`define CEIL(a, b) ( \
+ (a % b)? (a / b + 1) : (a / b) \
+)
 module TOP_tb();
 //=====================================================================================================================
 // Constant Definition :
@@ -30,8 +33,20 @@ parameter FPSISANUM   = 1;
 parameter KNNISANUM   = 5;
 parameter SYAISANUM   = 1;
 parameter POLISANUM   = 1;
-parameter GICISANUM   = 1;
-parameter MONISANUM   = 1;
+parameter GICISANUM   = 2;
+parameter MONISANUM   = 3;
+
+// MON
+parameter CCUMON_WIDTH  = 128*2;
+parameter GICMON_WIDTH  = 128*2;
+parameter GLBMON_WIDTH  = 128*11;
+parameter POLMON_WIDTH  = 128*2;
+parameter SYAMON_WIDTH  = 128*2;
+parameter KNNMON_WIDTH  = 128*2;
+parameter FPSMON_WIDTH  = 128*2;
+
+parameter MDUMONSUM_WIDTH  = CCUMON_WIDTH + GICMON_WIDTH + GLBMON_WIDTH + POLMON_WIDTH + SYAMON_WIDTH + KNNMON_WIDTH + FPSMON_WIDTH;
+parameter TOPMON_WIDTH     = PORT_WIDTH*`CEIL(MDUMONSUM_WIDTH, PORT_WIDTH);
 
 localparam [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] ISABASEADDR = {
     32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM + SYAISA_WIDTH/PORT_WIDTH*SYAISANUM + POLISA_WIDTH/PORT_WIDTH*POLISANUM + GICISA_WIDTH/PORT_WIDTH*GICISANUM,
@@ -181,6 +196,8 @@ always @(*) begin
     case ( state )
         IDLE:   if( O_CmdVld )
                     next_state <= DATCMD;
+                else if (O_DatVld ) // !CmdVld: MonDat
+                    next_state <= DATOUT2OFF;
                 else if ( ISAIdx <= 5 )
                     next_state <= ISASND;
                 else
@@ -280,6 +297,8 @@ always @(posedge I_OffClk or rst_n) begin
         MaxAddr <= 0;
     end else if(state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF)) begin
         MaxAddr <= IO_Dat[1 +: DRAM_ADDR_WIDTH] + IO_Dat[1 + DRAM_ADDR_WIDTH +: ADDR_WIDTH]*2 -1; // 256bit -> 128bit
+    end else if(state==IDLE & next_state == DATOUT2OFF) begin // Mondat
+        MaxAddr <= TOPMON_WIDTH/PORT_WIDTH -1; // 6 PORT_WIDTH
     end
 end
 assign default_addr = state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) ? IO_Dat[1 +: DRAM_ADDR_WIDTH] : 0;
@@ -288,7 +307,7 @@ counter#(
 )u_counter_addr(
     .CLK       ( I_OffClk       ),
     .RESET_N   ( rst_n          ),
-    .CLEAR     ( state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) ),
+    .CLEAR     ( state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) | state == IDLE & next_state == next_state == DATOUT2OFF ),
     .DEFAULT   ( default_addr   ),
     .INC       ( (state == DATIN2CHIP | state == DATOUT2OFF) & (I_DatVld_tmp & O_DatRdy | O_DatVld & I_DatRdy_tmp) ),
     .DEC       ( 1'b0           ),

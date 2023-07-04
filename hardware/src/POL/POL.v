@@ -578,6 +578,7 @@ assign POLGLB_IdxMaskWrAddr = CCUPOL_CfgIdxMaskWrAddr + CntIdxMaskWr;
 // Logic Design : Monitor
 //=====================================================================================================================
 assign POLMON_Dat = {
+CCUPOL_CfgInfo      ,
 CCUPOL_CfgVld       ,
 POLCCU_CfgRdy       , 
 POLGLB_MapRdAddrVld , 
@@ -590,7 +591,6 @@ GLBPOL_OfmRdDatVld  ,
 POLGLB_OfmRdDatRdy  ,
 POLGLB_OfmWrDatVld  ,
 GLBPOL_OfmWrDatRdy  ,
-CCUPOL_CfgInfo      ,
 state
 };
 

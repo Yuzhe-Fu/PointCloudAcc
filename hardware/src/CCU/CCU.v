@@ -47,8 +47,9 @@ module CCU #(
     parameter SYAISAFIFO_ADDR_WIDTH = 1,
     parameter POLISAFIFO_ADDR_WIDTH = 1,
     parameter GICISAFIFO_ADDR_WIDTH = 1,
-    parameter MONISAFIFO_ADDR_WIDTH = 1
+    parameter MONISAFIFO_ADDR_WIDTH = 1,
 
+    parameter CCUMON_WIDTH          = 128*2
     )(
     input                                   clk                 ,
     input                                   rst_n               ,
@@ -81,7 +82,9 @@ module CCU #(
 
     output                                  CCUMON_CfgVld       ,
     input                                   MONCCU_CfgRdy       ,  
-    output [MONISA_WIDTH            -1 : 0] CCUMON_CfgInfo          
+    output [MONISA_WIDTH            -1 : 0] CCUMON_CfgInfo      ,
+
+    output [CCUMON_WIDTH            -1 : 0] CCUMON_Dat               
 
 );
 //=====================================================================================================================
@@ -258,5 +261,13 @@ assign CCUSYA_CfgInfo = cfgInfo[2];
 assign CCUPOL_CfgInfo = cfgInfo[3];
 assign CCUGIC_CfgInfo = cfgInfo[4];
 assign CCUMON_CfgInfo = cfgInfo[5];
+
+assign CCUMON_Dat = {
+    ITFCCU_ISARdDat,
+    CCUITF_CfgRdy,          
+    ITFCCU_ISARdDatVld, 
+    ITFCCU_ISARdDatLast,
+    CCUITF_ISARdDatRdy 
+};
 
 endmodule

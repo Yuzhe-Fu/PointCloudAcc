@@ -550,6 +550,7 @@ counter#(
 // Logic Design: Monitor
 //=====================================================================================================================
 assign SYAMON_Dat = {
+    CCUSYA_CfgInfo      , 
     CCUSYA_CfgVld       ,
     SYACCU_CfgRdy       ,
     SYAGLB_ActRdAddrVld ,
@@ -566,7 +567,6 @@ assign SYAMON_Dat = {
     CntMac              , 
     CntGrp              , 
     CntChn              , 
-    CCUSYA_CfgInfo      , 
     state                
 };
 

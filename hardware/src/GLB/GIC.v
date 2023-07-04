@@ -273,6 +273,7 @@ assign Debug_IO_Uti = (GICITF_DatVld & ITFGIC_DatRdy) | (ITFGIC_DatVld & GICITF_
 // Logic Design : Monitor
 //=====================================================================================================================
 assign GICMON_Dat = {
+    CCUGIC_CfgInfo  ,
     CCUGIC_CfgVld   ,
     GICCCU_CfgRdy   , 
     GICITF_CmdVld   ,
@@ -291,7 +292,6 @@ assign GICMON_Dat = {
     GLBGIC_WrDatRdy ,
     GLBGIC_WrFull   ,
     CntGLBAddr      ,
-    CCUGIC_CfgInfo  ,
     state           
 };
 

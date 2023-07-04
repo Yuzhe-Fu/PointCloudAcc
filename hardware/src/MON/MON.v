@@ -80,7 +80,7 @@ assign MONCCU_CfgRdy = state == IDLE;
 // Logic Design:
 //=====================================================================================================================
 
-PISO#(
+PISO_NOCACHE#(
     .DATA_IN_WIDTH ( MON_WIDTH ),
     .DATA_OUT_WIDTH ( PORT_WIDTH )
 )u_PISO(

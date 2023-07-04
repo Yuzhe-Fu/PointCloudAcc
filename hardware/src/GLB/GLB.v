@@ -304,8 +304,8 @@ GLBTOP_RdPortAddrRdy,
 GLBTOP_RdPortDatVld ,
 TOPGLB_RdPortDatRdy ,
 GLBTOP_RdEmpty      ,
-TOPGLB_CfgPortOffEmptyFull,
-TOPGLB_CfgPortBankFlag
+TOPGLB_CfgPortOffEmptyFull, // 16*9
+TOPGLB_CfgPortBankFlag // 32*32
 
  };
 

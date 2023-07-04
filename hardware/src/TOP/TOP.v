@@ -74,12 +74,16 @@ module TOP #(
     parameter SHF_ADDR_WIDTH= 8,
 
     // MON
-    parameter GICMON_WIDTH  = 128,
-    parameter GLBMON_WIDTH  = 128,
-    parameter POLMON_WIDTH  = 128,
-    parameter SYAMON_WIDTH  = 128,
-    parameter KNNMON_WIDTH  = 128,
-    parameter FPSMON_WIDTH  = 128,
+    parameter CCUMON_WIDTH  = 128*2,
+    parameter GICMON_WIDTH  = 128*2,
+    parameter GLBMON_WIDTH  = 128*11,
+    parameter POLMON_WIDTH  = 128*2,
+    parameter SYAMON_WIDTH  = 128*2,
+    parameter KNNMON_WIDTH  = 128*2,
+    parameter FPSMON_WIDTH  = 128*2,
+
+    parameter MDUMONSUM_WIDTH  = CCUMON_WIDTH + GICMON_WIDTH + GLBMON_WIDTH + POLMON_WIDTH + SYAMON_WIDTH + KNNMON_WIDTH + FPSMON_WIDTH,
+    parameter TOPMON_WIDTH     = PORT_WIDTH*`CEIL(MDUMONSUM_WIDTH, PORT_WIDTH),
 
     // NetWork Parameters
     parameter NUM_LAYER_WIDTH= 20,
@@ -148,7 +152,6 @@ localparam GLBRDIDX_POLOFM = 13;
 
 localparam DISTSQR_WIDTH     =  CRD_WIDTH*2 + $clog2(CRD_DIM);
 
-localparam TOPMON_WIDTH = PORT_WIDTH*`CEIL(GICMON_WIDTH + GLBMON_WIDTH + POLMON_WIDTH + SYAMON_WIDTH + KNNMON_WIDTH + FPSMON_WIDTH, PORT_WIDTH);
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
@@ -188,6 +191,7 @@ wire  [SYAISA_WIDTH           -1 : 0] CCUSYA_CfgInfo;
 wire  [POLISA_WIDTH           -1 : 0] CCUPOL_CfgInfo;        
 wire  [MONISA_WIDTH           -1 : 0] CCUMON_CfgInfo;        
 
+wire [CCUMON_WIDTH            -1 : 0] CCUMON_Dat;
 // --------------------------------------------------------------------------------------------------------------------
 // FPS
 wire [IDX_WIDTH           -1 : 0] FPSGLB_MaskRdAddr       ;
@@ -407,7 +411,8 @@ CCU#(
     .SYAISAFIFO_ADDR_WIDTH   ( SYAISAFIFO_ADDR_WIDTH ),
     .POLISAFIFO_ADDR_WIDTH   ( POLISAFIFO_ADDR_WIDTH ),
     .GICISAFIFO_ADDR_WIDTH   ( GICISAFIFO_ADDR_WIDTH ),
-    .MONISAFIFO_ADDR_WIDTH   ( MONISAFIFO_ADDR_WIDTH )
+    .MONISAFIFO_ADDR_WIDTH   ( MONISAFIFO_ADDR_WIDTH ),
+    .CCUMON_WIDTH            ( CCUMON_WIDTH          )
 )u_CCU(
     .clk                     ( clk                  ),
     .rst_n                   ( rst_n                ),
@@ -433,7 +438,8 @@ CCU#(
     .CCUPOL_CfgInfo          ( CCUPOL_CfgInfo       ),
     .CCUMON_CfgVld           ( CCUMON_CfgVld        ),
     .CCUMON_CfgInfo          ( CCUMON_CfgInfo       ),
-    .MONCCU_CfgRdy           ( MONCCU_CfgRdy        )
+    .MONCCU_CfgRdy           ( MONCCU_CfgRdy        ),
+    .CCUMON_Dat              ( CCUMON_Dat           )
 );
 
 //=====================================================================================================================
@@ -930,27 +936,6 @@ GIC#(
 );
 
 //=====================================================================================================================
-// Logic Design: Monitor
-//=====================================================================================================================
-MON#(
-    .MONISA_WIDTH    ( MONISA_WIDTH ),
-    .PORT_WIDTH      ( PORT_WIDTH   ),
-    .MON_WIDTH       ( TOPMON_WIDTH )
-)u_MON(
-    .clk             ( clk             ),
-    .rst_n           ( rst_n           ),
-    .CCUMON_CfgVld   ( CCUMON_CfgVld   ),
-    .MONCCU_CfgRdy   ( MONCCU_CfgRdy   ),
-    .CCUMON_CfgInfo  ( CCUMON_CfgInfo  ),
-    .TOPMON_Dat      ( TOPMON_Dat      ),
-    .MONITF_Dat      ( MONITF_Dat      ),
-    .MONITF_DatVld   ( MONITF_DatVld   ),
-    .MONITF_DatLast  ( MONITF_DatLast  ),
-    .ITFMON_DatRdy   ( ITFMON_DatRdy   )
-);
-assign TOPMON_Dat = {GICMON_Dat, GLBMON_Dat, POLMON_Dat, SYAMON_Dat, KNNMON_Dat, FPSMON_Dat};
-
-//=====================================================================================================================
 // Logic Design: ITF
 //=====================================================================================================================
 ITF #(
@@ -1004,7 +989,25 @@ ITF #(
     .rst_n              ( rst_n             )
 );
 
-
-
+//=====================================================================================================================
+// Logic Design: Monitor
+//=====================================================================================================================
+MON#(
+    .MONISA_WIDTH    ( MONISA_WIDTH ),
+    .PORT_WIDTH      ( PORT_WIDTH   ),
+    .MON_WIDTH       ( TOPMON_WIDTH )
+)u_MON(
+    .clk             ( clk             ),
+    .rst_n           ( rst_n           ),
+    .CCUMON_CfgVld   ( CCUMON_CfgVld   ),
+    .MONCCU_CfgRdy   ( MONCCU_CfgRdy   ),
+    .CCUMON_CfgInfo  ( CCUMON_CfgInfo  ),
+    .TOPMON_Dat      ( TOPMON_Dat      ),
+    .MONITF_Dat      ( MONITF_Dat      ),
+    .MONITF_DatVld   ( MONITF_DatVld   ),
+    .MONITF_DatLast  ( MONITF_DatLast  ),
+    .ITFMON_DatRdy   ( ITFMON_DatRdy   )
+);
+assign TOPMON_Dat = {CCUMON_Dat, GICMON_Dat, GLBMON_Dat, POLMON_Dat, SYAMON_Dat, KNNMON_Dat, FPSMON_Dat};
 
 endmodule

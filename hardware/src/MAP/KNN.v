@@ -648,6 +648,14 @@ counter#(
 //=====================================================================================================================
 // Logic Design: Monitor
 //=====================================================================================================================
-assign KNNMON_Dat = {CntLopCrdByte, CntLopCrdRdAddr, CntMaskAddr, CntCpCrdRdAddr, CCUKNN_CfgInfo, state};
+assign KNNMON_Dat = {
+    CCUKNN_CfgInfo, 
+    CCUKNN_CfgVld,
+    KNNCCU_CfgRdy,
+    CntLopCrdByte, 
+    CntLopCrdRdAddr, 
+    CntMaskAddr, 
+    CntCpCrdRdAddr, 
+    state};
 
 endmodule
