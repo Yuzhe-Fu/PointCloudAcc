@@ -1,7 +1,9 @@
 # Check List:
 # 1. TOP.v: parameter NUM_BANK       = 16,
 # 2. CLK.v: `define PLL
-# 3. RAM.v: `define RTSELDB (Debuging): RTSEL: 00 tapeout, 01: Only synth for Simulation
+# 3. RAM.v: `define RTSELDB (Debuging)
+#    : TapeOut: ndef for synth and Force to 10 when Simulation
+#    : RTSEL: 00 tapeout, 10: Only synth for Simulation
 
 set DESIGN_NAME="TOP"
 ################################################################################
