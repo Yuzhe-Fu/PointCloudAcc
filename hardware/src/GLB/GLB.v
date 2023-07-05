@@ -209,7 +209,12 @@ generate
         assign PortRdBankAddrVld[gv_j] = {NUM_BANK{TOPGLB_RdPortAddrVld[gv_j]}} & RdPortHitBank; // 32bits, // addr handshake : enable of (add+1)
 
         // To Output (Addr)
-        assign  GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & Bank_arready[PortCur1stBankIdx];
+        assign  GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & 
+        (  TOPGLB_RdPortAddr[gv_j]%SRAM_WORD ==0 & PortCur1stBankIdx > RdPort1stBankIdx?  // First Addr of next bank? 
+            Bank_arready[PortCur1stBankIdx -1] & Bank_arready[PortCur1stBankIdx] 
+            // Last Bank arready=1: data has been read out; & Current Bank is ready to read.
+            : Bank_arready[PortCur1stBankIdx]
+        );
 
         // To Output (Data)
         assign  GLBTOP_RdPortDatVld[gv_j]   = RdPortAlloc & Bank_rvalid[PortCur1stBankIdx_d];
@@ -296,17 +301,16 @@ endgenerate
 // Logic Design: Monitor
 //=====================================================================================================================
 assign GLBMON_Dat = {
-TOPGLB_WrPortDatVld ,
-GLBTOP_WrPortDatRdy ,
-GLBTOP_WrFull       ,   
-TOPGLB_RdPortAddrVld,
-GLBTOP_RdPortAddrRdy,
-GLBTOP_RdPortDatVld ,
-TOPGLB_RdPortDatRdy ,
-GLBTOP_RdEmpty      ,
-TOPGLB_CfgPortOffEmptyFull, // 16*9
-TOPGLB_CfgPortBankFlag // 32*32
-
+    TOPGLB_WrPortDatVld ,
+    GLBTOP_WrPortDatRdy ,
+    GLBTOP_WrFull       ,   
+    TOPGLB_RdPortAddrVld,
+    GLBTOP_RdPortAddrRdy,
+    GLBTOP_RdPortDatVld ,
+    TOPGLB_RdPortDatRdy ,
+    GLBTOP_RdEmpty      ,
+    TOPGLB_CfgPortOffEmptyFull, // 16*9
+    TOPGLB_CfgPortBankFlag // 32*32
  };
 
 

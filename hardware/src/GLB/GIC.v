@@ -69,7 +69,7 @@ localparam OUT2OFF  = 3'b011;
 //=====================================================================================================================
 reg  [PORT_WIDTH            -1 : 0] Cmd;
 wire                                Out2Off;
-wire [ADDR_WIDTH            -1 : 0] CntGLBAddr;
+wire [ADDR_WIDTH +1         -1 : 0] CntGLBAddr;
 wire [BYTE_WIDTH    -1      -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
 wire [DRAM_ADDR_WIDTH       -1 : 0] CCUGIC_CfgDRAMBaseAddr;
 wire [ADDR_WIDTH            -1 : 0] CCUGIC_CfgGLBBaseAddr ;
@@ -220,7 +220,7 @@ assign GICGLB_RdAddr    = CntGLBAddr;
 assign GICGLB_RdAddrVld = state == OUT2OFF & CntGLBAddr < CCUGIC_CfgNum;
 assign GICGLB_RdDatRdy  = state == OUT2OFF & PISO_DatInRdy;
 
-assign PISO_DatInLast   = CntGLBAddr == CntGLBAddr == CCUGIC_CfgNum -1;
+assign PISO_DatInLast   = CntGLBAddr == CCUGIC_CfgNum; // Last Data follows Last Addr + 1
 
 PISO_NOCACHE #(
     .DATA_IN_WIDTH ( SRAM_WIDTH ),
@@ -246,17 +246,17 @@ assign GICITF_DatLast   = state==CMD? 1'b1  : state==OUT2OFF?   PISO_DatOutLast:
 //=====================================================================================================================
 // Logic Design: GLB Address Genration
 //=====================================================================================================================
-wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**ADDR_WIDTH - 1;
+wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**(ADDR_WIDTH + 1)- 1;
 counter#(
-    .COUNT_WIDTH ( ADDR_WIDTH )
+    .COUNT_WIDTH ( ADDR_WIDTH + 1)
 )u_counter_CntGLBAddr(
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
     .CLEAR     ( state == IDLE  ),
-    .DEFAULT   ( {ADDR_WIDTH{1'b0}}),
+    .DEFAULT   ( {ADDR_WIDTH + 1{1'b0}}),
     .INC       ( (GICGLB_WrDatVld & GLBGIC_WrDatRdy) | GICGLB_RdAddrVld & GLBGIC_RdAddrRdy),
     .DEC       ( 1'b0           ),
-    .MIN_COUNT ( {ADDR_WIDTH{1'b0}}),
+    .MIN_COUNT ( {ADDR_WIDTH + 1{1'b0}}),
     .MAX_COUNT ( MaxCnt         ),
     .OVERFLOW  (                ),
     .UNDERFLOW (                ),
