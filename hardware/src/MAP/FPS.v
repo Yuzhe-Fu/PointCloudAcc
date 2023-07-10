@@ -874,30 +874,39 @@ generate
 
         // --------------------------------------------------------------------------------------------------------
         // Write back Mask 
-        assign FPC_MaskWrAddr[gv_fpc] = state[gv_fpc] == IDLE? 0 : ( (MaxCntMaskProc + 1)*CntCpMask_s2 + CntMaskProc_s2 ) / (SRAM_WIDTH / NUMMASK_PROC);
+        assign FPC_MaskWrAddr[gv_fpc] = state[gv_fpc] == IDLE? 0 : CCUFPS_CfgMaskBaseAddr[gv_fpc] + ( (MaxCntMaskProc + 1)*CntCpMask_s2 + CntMaskProc_s2 ) / (SRAM_WIDTH / NUMMASK_PROC);
         wire MtnPntHitWord = (SRAM_WIDTH*(CntMaskProc_s2 / (SRAM_WIDTH / NUMMASK_PROC) )) <= FPS_MaxIdx_LastLoop 
                 & FPS_MaxIdx_LastLoop < (SRAM_WIDTH*(CntMaskProc_s2 / (SRAM_WIDTH / NUMMASK_PROC) + 1))
                 & CntCpMask_s2 != 0;
                 // Maintained point of LastCp is At current SRAM WORD (FPC_MaskRdDat)
+        integer i;
         always @ (*) begin
-            FPC_MaskWrDat[gv_fpc] = 0;
+            FPC_MaskWrDat[gv_fpc] = 0; 
             if(state[gv_fpc] == IDLE)
                 FPC_MaskWrDat[gv_fpc] = 0;
             else if ( FPC_MaskWrDatVld[gv_fpc] ) begin
-                FPC_MaskWrDat[gv_fpc]   =  FPC_MaskRdDat_s2;
-                if ( CntCpMask_s2 != 0 ) begin // Write 'd0 at First Cp 
+                FPC_MaskWrDat[gv_fpc] =  FPC_MaskRdDat_s2; // Assign Value
+                if(CntCpMask_s2 == 0) begin // At First Cp Set beyond CfgNip's bits to 1
+                    if ( CCUFPS_CfgNip[gv_fpc] % SRAM_WIDTH != 0 & NUMMASK_PROC*CntMaskProc_s2 / SRAM_WIDTH == CCUFPS_CfgNip[gv_fpc] % SRAM_WIDTH) begin // Beyond exist & Loop to when last CntMaskProc_s2
+                        for(i=0; i<SRAM_WIDTH; i=i+1) begin
+                            if( i>= CCUFPS_CfgNip[gv_fpc] % SRAM_WIDTH) begin
+                                FPC_MaskWrDat[gv_fpc][i] = 1'b1;
+                            end
+                        end
+                    end
+                end else begin // Not First Cp Set MaxLoop's bit to 1; CntCpMask_s2 != 0 
                     FPC_MaskWrDat[gv_fpc][FPS_MaxIdx_LastLoop % SRAM_WIDTH] = 1'b1; 
                     // set 1
                 end
             end
         end
         // wire InitWrMask = ((MaxCntMaskProc + 1)*CntCpMask_s2 + CntMaskProc_s2 ) % (SRAM_WIDTH / NUMMASK_PROC) == 0;
-        wire InitWrMask = CntCpMask_s2 == 0 & CntMaskProc_s2 % (SRAM_WIDTH / NUMMASK_PROC) == 0; // First Cp & First MaskRd
-        wire MaskShouldWr = ( (MtnPntHitWord & !FPC_MaskRdDat_s2[FPS_MaxIdx_LastLoop % SRAM_WIDTH])
-                | InitWrMask
-            );
-        assign FPC_MaskWrDatVld[gv_fpc] = ( VldArbCrd_s1 & VldArbDist_s1 & DistWrRdy) & (state[gv_fpc] != IDLE & vld_MaskWrDat_s2 & MaskShouldWr);
+        // wire InitWrMask = CntCpMask_s2 == 0 & CntMaskProc_s2 % (SRAM_WIDTH / NUMMASK_PROC) == 0; // First Cp & First MaskRd
+        wire MaskShouldWr;
+        assign  MaskShouldWr = (MtnPntHitWord & !FPC_MaskRdDat_s2[FPS_MaxIdx_LastLoop % SRAM_WIDTH]);
         // Need to Update (Write back): (The Maintained point is never been set 1 | Initialize when CntCpMask_s1 == 0) and first Mask of SRAM Word
+        assign FPC_MaskWrDatVld[gv_fpc] = state[gv_fpc] != IDLE & 
+        ( ( vld_MaskWrDat_s2 & MaskShouldWr) & ( VldArbCrd_s1 & VldArbDist_s1 & DistWrRdy) ); // Comb Loop: 
 
         // --------------------------------------------------------------------------------------------------------
         // Update Crd s2
@@ -1074,7 +1083,8 @@ assign FPSMON_Dat = {
     ArbFPCDistRdIdx_d, 
     ArbFPCCrdWrIdx, 
     ArbFPCCrdRdIdx_d, // 4*7
-    state};
+    state
+};
 
 //=====================================================================================================================
 // Logic Design: Statistic
