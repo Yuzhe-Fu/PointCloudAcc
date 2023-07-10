@@ -470,7 +470,7 @@ generate
     end
 endgenerate
 assign GLBFPS_CrdRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_FPSCRD]; // one of
-assign GLBFPS_CrdRdDat                          = GLBTOP_RdPortDat[GLBRDIDX_FPSCRD];
+assign GLBFPS_CrdRdDat                          = GLBTOP_RdPortDat[GLBRDIDX_FPSCRD +: NUMSRAM_RDCRD];
 assign GLBFPS_CrdRdDatVld                       = GLBTOP_RdPortDatVld[GLBRDIDX_FPSCRD];
 
 // Write Crd
@@ -488,14 +488,14 @@ generate
     end
 endgenerate
 assign GLBFPS_DistRdAddrRdy = GLBTOP_RdPortAddrRdy  [GLBRDIDX_FPSDST];
-assign GLBFPS_DistRdDat     = GLBTOP_RdPortDat      [GLBRDIDX_FPSDST];
+assign GLBFPS_DistRdDat     = GLBTOP_RdPortDat      [GLBRDIDX_FPSDST +: NUMSRAM_RDCRD];
 assign GLBFPS_DistRdDatVld  = GLBTOP_RdPortDatVld   [GLBRDIDX_FPSDST];
 
 // Write Dist
 generate
     for(gv_i=0; gv_i<NUMSRAM_DIST; gv_i =gv_i +1) begin: GEN_FPSGLB_DistWrPort
         assign TOPGLB_WrPortAddr    [GLBWRIDX_FPSDST + gv_i]    = FPSGLB_DistWrAddr;
-        assign TOPGLB_WrPortDat     [GLBWRIDX_FPSDST + gv_i]    = FPSGLB_DistWrDat;
+        assign TOPGLB_WrPortDat     [GLBWRIDX_FPSDST + gv_i]    = FPSGLB_DistWrDat[SRAM_WIDTH*gv_i +: SRAM_WIDTH];
         assign TOPGLB_WrPortDatVld  [GLBWRIDX_FPSDST + gv_i]    = FPSGLB_DistWrDatVld;
     end
 endgenerate
@@ -831,7 +831,7 @@ assign {
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSMSK                 ],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD+: NUMSRAM_RDCRD] 
-} = CCUFPS_CfgInfo[FPSISA_WIDTH -17 -: NUM_BANK*10];
+} = CCUFPS_CfgInfo[FPSISA_WIDTH -17 -: NUM_BANK*(4 + NUMSRAM_RDCRD + NUMSRAM_DIST*2)];
 
 assign {
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
