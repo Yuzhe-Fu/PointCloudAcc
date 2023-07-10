@@ -351,7 +351,7 @@ always @(*) begin
         OUT:    if( handshake_s2 ) // Map to PISO
                     next_state_s1 <= CP;
                 else 
-                    next_state <= OUT;
+                    next_state_s1 <= OUT;
 
         default: next_state_s1 <= CP;
     endcase
