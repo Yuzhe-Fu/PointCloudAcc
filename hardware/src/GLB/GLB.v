@@ -210,7 +210,7 @@ generate
 
         // To Output (Addr)
         assign  GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & 
-        (  TOPGLB_RdPortAddr[gv_j]%SRAM_WORD ==0 & PortCur1stBankIdx > RdPort1stBankIdx?  // First Addr of next bank? 
+        (  TOPGLB_RdPortAddr[gv_j]%SRAM_WORD ==0 & PortCur1stBankIdx != RdPort1stBankIdx?  // First Addr of next bank? 
             Bank_arready[PortCur1stBankIdx -1] & Bank_arready[PortCur1stBankIdx] 
             // Last Bank arready=1: data has been read out; & Current Bank is ready to read.
             : Bank_arready[PortCur1stBankIdx]
