@@ -246,14 +246,14 @@ assign GICITF_DatLast   = state==CMD? 1'b1  : state==OUT2OFF?   PISO_DatOutLast:
 //=====================================================================================================================
 // Logic Design: GLB Address Genration
 //=====================================================================================================================
-wire [ADDR_WIDTH     -1 : 0] MaxCnt= 2**(ADDR_WIDTH + 1)- 1;
+wire [ADDR_WIDTH + 1    -1 : 0] MaxCnt= 2**(ADDR_WIDTH + 1)- 1;
 counter#(
     .COUNT_WIDTH ( ADDR_WIDTH + 1)
 )u_counter_CntGLBAddr(
     .CLK       ( clk            ),
     .RESET_N   ( rst_n          ),
     .CLEAR     ( state == IDLE  ),
-    .DEFAULT   ( {ADDR_WIDTH + 1{1'b0}}),
+    .DEFAULT   ( {1'b0, CCUGIC_CfgGLBBaseAddr}),
     .INC       ( (GICGLB_WrDatVld & GLBGIC_WrDatRdy) | GICGLB_RdAddrVld & GLBGIC_RdAddrRdy),
     .DEC       ( 1'b0           ),
     .MIN_COUNT ( {ADDR_WIDTH + 1{1'b0}}),
