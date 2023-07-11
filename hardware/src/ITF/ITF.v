@@ -49,9 +49,9 @@ module ITF #(
 
     // CCU
     input  [OPNUM           -1 : 0] CCUITF_CfgRdy     ,
-    output reg[PORT_WIDTH    -1 : 0] ITFCCU_ISARdDat   ,       
-    output reg                         ITFCCU_ISARdDatVld,          
-    output reg                         ITFCCU_ISARdDatLast,          
+    output reg[PORT_WIDTH   -1 : 0] ITFCCU_ISARdDat   ,       
+    output reg                      ITFCCU_ISARdDatVld,          
+    output reg                      ITFCCU_ISARdDatLast,          
     input                           CCUITF_ISARdDatRdy,
 
     // GIC-Global Buffer Interface Controller
