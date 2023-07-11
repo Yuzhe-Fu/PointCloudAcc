@@ -335,17 +335,13 @@ assign KNNGLB_IdxMaskRdAddrVld  = state == IDLE? 0 : vld_s0 & (req_Idx & (state 
 
 always @(*) begin
     case ( state_s1 )
-        CP:     if(state == IDLE)
-                    next_state_s1 <= CP;
-                else if( bwcCpCrdOutVld & bwcCpCrdOutRdy ) // after CpCrd being output
+        CP:     if( bwcCpCrdOutVld & bwcCpCrdOutRdy ) // after CpCrd being output
                     next_state_s1 <= LP;
                 else
                     next_state_s1 <= CP;
 
-        LP:     if(state == IDLE)
-                    next_state_s1 <= CP;
-                else if (pisoLopCrdOutVld & pisoLopCrdOutLast & pisoLopCrdOutRdy) // Last LopCrd 
-                        next_state_s1 <= OUT;
+        LP:     if (pisoLopCrdOutVld & pisoLopCrdOutLast & pisoLopCrdOutRdy) // Last LopCrd 
+                    next_state_s1 <= OUT;
                 else
                     next_state_s1 <= LP;
         OUT:    if( handshake_s2 ) // Map to PISO
@@ -392,6 +388,8 @@ end
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
+        state_s1 <= CP;
+    end else if( state == IDLE ) begin
         state_s1 <= CP;
     end else begin
         state_s1 <= next_state_s1;

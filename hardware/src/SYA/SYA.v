@@ -356,7 +356,7 @@ generate
                                     : NUM_ROW*gv_bk + gv_row;
                 assign axis_y = CCUSYA_CfgMod == 0? NUM_COL*(gv_bk%2) + gv_col
                                     : gv_col;
-                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx_s2) & (handshake_s2);
+                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx_s2) & (handshake_s2) | state == IDLE ;
             end
         end
     end
