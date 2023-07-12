@@ -138,6 +138,7 @@ wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgCrdBaseWrAddr;
 wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgIdxBaseWrAddr;
 wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgMaskBaseAddr ;   
 wire  [NUM_FPC -1 : 0][IDX_WIDTH   -1 : 0] CCUFPS_CfgDistBaseAddr ;
+wire                                        CCUFPS_CfgStop;
 reg [NUM_FPC -1 : 0][3             -1 : 0] state;
 reg [NUM_FPC -1 : 0][3             -1 : 0] next_state;
 
@@ -153,7 +154,7 @@ CCUFPS_CfgCrdBaseRdAddr,// 16 x 16
 CCUFPS_CfgNop          ,// 16 x 16
 CCUFPS_CfgNip           // 16 x 16
 } = CCUFPS_CfgInfo[FPSISA_WIDTH -1 : 16];
-
+assign CCUFPS_CfgStop = CCUFPS_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
@@ -463,7 +464,7 @@ generate
         // --------------------------------------------------------------------------------------------------------
         always @(*) begin
             case ( state[gv_fpc] )
-                IDLE :  if(FPSCCU_CfgRdy[gv_fpc] & CCUFPS_CfgVld[gv_fpc])
+                IDLE :  if(FPSCCU_CfgRdy[gv_fpc] & (CCUFPS_CfgVld[gv_fpc] & !CCUFPS_CfgStop))
                             next_state[gv_fpc] <= WORK; //
                         else
                             next_state[gv_fpc] <= IDLE;

@@ -70,10 +70,11 @@ localparam OUT2OFF  = 3'b011;
 reg  [PORT_WIDTH            -1 : 0] Cmd;
 wire                                Out2Off;
 wire [ADDR_WIDTH +1         -1 : 0] CntGLBAddr;
-wire [BYTE_WIDTH    -1      -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
+wire [BYTE_WIDTH            -1 : 0] CCUGIC_CfgInOut       ; // 0: IN2CHIP; 1: OUT2OFF
 wire [DRAM_ADDR_WIDTH       -1 : 0] CCUGIC_CfgDRAMBaseAddr;
 wire [ADDR_WIDTH            -1 : 0] CCUGIC_CfgGLBBaseAddr ;
 wire [ADDR_WIDTH            -1 : 0] CCUGIC_CfgNum         ; 
+wire                                CCUGIC_CfgStop;
 
 wire                        SIPO_DatInRdy;
 wire [SRAM_WIDTH    -1 : 0] SIPO_DatOut;
@@ -101,9 +102,9 @@ assign {
     CCUGIC_CfgGLBBaseAddr   , // 16
     CCUGIC_CfgDRAMBaseAddr  , // 32
     CCUGIC_CfgNum           , // 16
-    CCUGIC_CfgInOut           // 7 0: IN2CHIP; 1: OUT2OFF
-} = CCUGIC_CfgInfo[GICISA_WIDTH -1 : BYTE_WIDTH + 1];
-
+    CCUGIC_CfgInOut           // 8 0: IN2CHIP; 1: OUT2OFF
+} = CCUGIC_CfgInfo[GICISA_WIDTH -1 : 16];
+assign CCUGIC_CfgStop = CCUGIC_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -111,14 +112,14 @@ reg [ 3     -1 : 0] state       ;
 reg [ 3     -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE:   if( CCUGIC_CfgVld ) // Start
+        IDLE:   if( (CCUGIC_CfgVld & !CCUGIC_CfgStop) & GICCCU_CfgRdy ) // Start
                     next_state <= CMD;
                 else
                     next_state <= IDLE;
         CMD :   if(CCUGIC_CfgVld)
                     next_state <= IDLE;
                 else if( ITFGIC_DatRdy) begin
-                    if ( CCUGIC_CfgInOut == 1)
+                    if ( CCUGIC_CfgInOut[0] )
                         next_state <= OUT2OFF;
                     else
                         next_state <= IN2CHIP;

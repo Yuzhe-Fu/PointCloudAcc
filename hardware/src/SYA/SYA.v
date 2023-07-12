@@ -155,7 +155,7 @@ integer                                         row;
 integer                                         col;
 integer                                         bank;
 
-reg                                             CCUSYA_CfgRstAll        ;
+reg   [2                                -1 : 0] CCUSYA_CfgRstAll        ;
 reg   [ACT_WIDTH                        -1 : 0] CCUSYA_CfgShift         ;
 reg   [ACT_WIDTH                        -1 : 0] CCUSYA_CfgZp            ;
 reg   [2                                -1 : 0] CCUSYA_CfgMod           ;
@@ -168,7 +168,7 @@ reg   [CHN_WIDTH                        -1 : 0] CCUSYA_CfgChn           ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgActRdBaseAddr ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgWgtRdBaseAddr ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgOfmWrBaseAddr ;
-
+wire                                            CCUSYA_CfgStop;
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
@@ -186,7 +186,7 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgOfmPhaseShift <=  0; // 3
         CCUSYA_CfgLopOrd        <=  0; // 1
         CCUSYA_CfgMod           <=  0; // 2
-        CCUSYA_CfgRstAll        <=  1; // 1
+        CCUSYA_CfgRstAll        <=  1; // 2
     end else if( state == IDLE & next_state == COMP) begin // Config
         {
         CCUSYA_CfgOfmWrBaseAddr ,   // 16
@@ -203,18 +203,17 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgLopOrd        ,   // 1
 
         CCUSYA_CfgMod           ,   // 2
-        CCUSYA_CfgRstAll            // 1
-        } <= CCUSYA_CfgInfo[SYAISA_WIDTH -1 : 9];
+        CCUSYA_CfgRstAll            // 2
+        } <= CCUSYA_CfgInfo[SYAISA_WIDTH -1 : 16];
     end
 end
-wire CCUSYA_CfgRstAll_wire = CCUSYA_CfgInfo[9];
-
+assign CCUSYA_CfgStop = CCUSYA_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design: FSM
 //=====================================================================================================================
 always @(*) begin
     case ( state )
-        IDLE :  if(CCUSYA_CfgVld & SYACCU_CfgRdy)
+        IDLE :  if( SYACCU_CfgRdy & (CCUSYA_CfgVld & !CCUSYA_CfgStop) )
                     next_state <= COMP; //
                 else
                     next_state <= IDLE;

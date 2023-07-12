@@ -148,6 +148,7 @@ wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgCrdRdAddr ;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgMaskRdAddr;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgMapWrAddr ;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgIdxMaskRdAddr ;
+wire                            CCUKNN_CfgStop;
 
 wire [$clog2(CRDRDWIDTH) + 1                        -1 : 0] bwcCpCrdInpBw;
 wire [$clog2(CRD_WIDTH*CRD_MAXDIM*NUM_SORT_CORE) + 1-1 : 0] bwcCpCrdOutBw;
@@ -174,16 +175,17 @@ wire [IDX_WIDTH                     -1 : 0] MaxCntMapWr;
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign {
-    CCUKNN_CfgIdxMaskRdAddr,
+    CCUKNN_CfgIdxMaskRdAddr,// 16
     CCUKNN_CfgMapWrAddr ,   // 16
-    CCUKNN_CfgMaskRdAddr,   
+    CCUKNN_CfgMaskRdAddr,   // 16
     CCUKNN_CfgCrdRdAddr ,   // 16
-    CCUKNN_CfgCrdNumBankPar,
+    CCUKNN_CfgCrdNumBankPar,// 8
     CCUKNN_CfgCrdDim    ,   // 8
     CCUKNN_CfgK_tmp     ,   // 8
     CCUKNN_CfgNip           // 16
 } = CCUKNN_CfgInfo[KNNISA_WIDTH -1 : 12];
 assign CCUKNN_CfgK = CCUKNN_CfgK_tmp;
+assign CCUKNN_CfgStop = CCUKNN_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -195,7 +197,7 @@ reg [ 3 -1:0 ]state_ds1;
 
 always @(*) begin
     case ( state )
-        IDLE :  if(KNNCCU_CfgRdy & CCUKNN_CfgVld)// 
+        IDLE :  if(KNNCCU_CfgRdy & (CCUKNN_CfgVld & !CCUKNN_CfgStop) )// 
                     next_state <= CP; //
                 else
                     next_state <= IDLE;

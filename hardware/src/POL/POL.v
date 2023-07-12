@@ -98,6 +98,7 @@ wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr  
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr  ;
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgIdxMaskWrAddr  ;
 wire  [ACT_WIDTH                               -1 : 0] CCUPOL_CfgOfmTh;
+wire                                                   CCUPOL_CfgStop;
 
 reg [POOL_CORE  -1 : 0][ 3     -1 : 0] state     ;
 reg [POOL_CORE  -1 : 0][ 3     -1 : 0] next_state ;
@@ -117,7 +118,7 @@ assign {
     CCUPOL_CfgChn          ,   // 16 X 8
     CCUPOL_CfgNip              // 16 x 8  
 } = CCUPOL_CfgInfo[POLISA_WIDTH -1 : 16];
-
+assign CCUPOL_CfgStop = CCUPOL_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
@@ -229,7 +230,7 @@ generate
     // Combination Logic
     always @(*) begin
         case ( state[gv_plc] )
-            IDLE :  if ( CCUPOL_CfgVld[gv_plc] & POLCCU_CfgRdy[gv_plc] )
+            IDLE :  if ( (CCUPOL_CfgVld[gv_plc] & !CCUPOL_CfgStop) & POLCCU_CfgRdy[gv_plc] )
                         next_state[gv_plc] <= MAPIN;
                     else
                         next_state[gv_plc] <= IDLE;

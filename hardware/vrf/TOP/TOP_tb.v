@@ -30,10 +30,10 @@ parameter GICISA_WIDTH   = PORT_WIDTH*2 ;
 parameter MONISA_WIDTH   = PORT_WIDTH*1 ;
 
 parameter FPSISANUM   = 1;
-parameter KNNISANUM   = 5;
+parameter KNNISANUM   = 6;
 parameter SYAISANUM   = 1;
 parameter POLISANUM   = 1;
-parameter GICISANUM   = 2;
+parameter GICISANUM   = 3;
 parameter MONISANUM   = 3;
 
 // MON
@@ -141,7 +141,7 @@ initial begin
 end
 
 initial begin
-    I_BypAsysnFIFO  = 1'b1;
+    I_BypAsysnFIFO  = 1'b0;
     I_BypOE         = 1'b0;
     I_BypPLL        = 1'b0;
     I_FBDIV         = 5'b1;
@@ -315,7 +315,7 @@ counter#(
     .MAX_COUNT ( MaxAddr        ),
     .OVERFLOW  ( Overflow_DatAddr),
     .UNDERFLOW (                ),
-    .COUNT     ( DatAddr           )
+    .COUNT     ( DatAddr        )
 );
 
 `ifndef PSEUDO_DATA

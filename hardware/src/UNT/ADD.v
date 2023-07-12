@@ -83,17 +83,18 @@ wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd0Addr;
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgAdd1Addr;
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgSumAddr;
 wire [ADDR_WIDTH                -1 : 0] CCUADD_CfgNum;
+wire                                    CCUADD_CfgStop;
 
 //=====================================================================================================================
 // Logic Design: Cfg
 //=====================================================================================================================
 assign {
-    CCUADD_CfgAdd0Addr,
-    CCUADD_CfgAdd1Addr,
-    CCUADD_CfgSumAddr,
-    CCUADD_CfgNum
-} = CCUADD_CfgInfo[ADDISA_WIDTH -1 : 12];
-
+    CCUADD_CfgAdd0Addr, // 16
+    CCUADD_CfgAdd1Addr, // 16
+    CCUADD_CfgSumAddr,  // 16
+    CCUADD_CfgNum       // 16
+} = CCUADD_CfgInfo[ADDISA_WIDTH -1 : 16];
+assign CCUADD_CfgStop = CCUADD_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design: FSM
 //=====================================================================================================================
@@ -102,7 +103,7 @@ reg [ 3 -1:0 ]state_s1;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
-        IDLE :  if(ADDCCU_CfgRdy & CCUADD_CfgVld)// 
+        IDLE :  if(ADDCCU_CfgRdy & (CCUADD_CfgVld & !CCUADD_CfgStop))// 
                     next_state <= COMP; //
                 else
                     next_state <= IDLE;
