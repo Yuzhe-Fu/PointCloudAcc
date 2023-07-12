@@ -183,7 +183,7 @@ assign {
     CCUKNN_CfgCrdDim    ,   // 8
     CCUKNN_CfgK_tmp     ,   // 8
     CCUKNN_CfgNip           // 16
-} = CCUKNN_CfgInfo[KNNISA_WIDTH -1 : 12];
+} = CCUKNN_CfgInfo[KNNISA_WIDTH -1 : 16];
 assign CCUKNN_CfgK = CCUKNN_CfgK_tmp;
 assign CCUKNN_CfgStop = CCUKNN_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
