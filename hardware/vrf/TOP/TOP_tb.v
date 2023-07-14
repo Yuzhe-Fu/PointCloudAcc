@@ -31,8 +31,8 @@ parameter MONISA_WIDTH   = PORT_WIDTH*1 ;
 
 parameter FPSISANUM   = 1;
 parameter KNNISANUM   = 6;
-parameter SYAISANUM   = 1;
-parameter POLISANUM   = 1;
+parameter SYAISANUM   = 4;
+parameter POLISANUM   = 3;
 parameter GICISANUM   = 3;
 parameter MONISANUM   = 3;
 
@@ -307,7 +307,7 @@ counter#(
 )u_counter_addr(
     .CLK       ( I_OffClk       ),
     .RESET_N   ( rst_n          ),
-    .CLEAR     ( state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) | state == IDLE & next_state == next_state == DATOUT2OFF ),
+    .CLEAR     ( state==DATCMD & (next_state == DATIN2CHIP | next_state == DATOUT2OFF) | state == IDLE & next_state == DATOUT2OFF ),
     .DEFAULT   ( default_addr   ),
     .INC       ( (state == DATIN2CHIP | state == DATOUT2OFF) & (I_DatVld_tmp & O_DatRdy | O_DatVld & I_DatRdy_tmp) ),
     .DEC       ( 1'b0           ),

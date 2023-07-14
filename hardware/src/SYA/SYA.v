@@ -155,15 +155,13 @@ integer                                         row;
 integer                                         col;
 integer                                         bank;
 
-reg   [2                                -1 : 0] CCUSYA_CfgRstAll        ;
 reg   [ACT_WIDTH                        -1 : 0] CCUSYA_CfgShift         ;
 reg   [ACT_WIDTH                        -1 : 0] CCUSYA_CfgZp            ;
 reg   [2                                -1 : 0] CCUSYA_CfgMod           ;
-reg   [3                                -1 : 0] CCUSYA_CfgOfmPhaseShift ;
 reg   [IDX_WIDTH                        -1 : 0] CCUSYA_CfgNumGrpPerTile ;
 reg   [IDX_WIDTH                        -1 : 0] CCUSYA_CfgNumTilIfm     ;
 reg   [IDX_WIDTH                        -1 : 0] CCUSYA_CfgNumTilFlt     ;
-reg                                             CCUSYA_CfgLopOrd        ;
+reg   [2                                -1 : 0] CCUSYA_CfgLopOrd        ;
 reg   [CHN_WIDTH                        -1 : 0] CCUSYA_CfgChn           ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgActRdBaseAddr ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgWgtRdBaseAddr ;
@@ -183,10 +181,8 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgChn           <=  1; // 16
         CCUSYA_CfgShift         <=  0; // 8
         CCUSYA_CfgZp            <=  0; // 8
-        CCUSYA_CfgOfmPhaseShift <=  0; // 3
-        CCUSYA_CfgLopOrd        <=  0; // 1
+        CCUSYA_CfgLopOrd        <=  0; // 2
         CCUSYA_CfgMod           <=  0; // 2
-        CCUSYA_CfgRstAll        <=  1; // 2
     end else if( state == IDLE & next_state == COMP) begin // Config
         {
         CCUSYA_CfgOfmWrBaseAddr ,   // 16
@@ -198,12 +194,8 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgChn           ,   // 16
         CCUSYA_CfgShift         ,   // 8
         CCUSYA_CfgZp            ,   // 8
-
-        CCUSYA_CfgOfmPhaseShift ,   // 3
-        CCUSYA_CfgLopOrd        ,   // 1
-
-        CCUSYA_CfgMod           ,   // 2
-        CCUSYA_CfgRstAll            // 2
+        CCUSYA_CfgLopOrd        ,   // 2
+        CCUSYA_CfgMod               // 2
         } <= CCUSYA_CfgInfo[SYAISA_WIDTH -1 : 16];
     end
 end
@@ -296,13 +288,13 @@ counter#(
 // Logic Design: S1: RdAct/WgtDat
 //=====================================================================================================================
 // Combinational Logic
-assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgLopOrd? 
+assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgLopOrd[0]? 
                                                     CntChn // Change Filter Group: Filter is inner loop
                                                     
                                                     // CntGrp%CCUSYA_CfgNumGrpPerTile : 0-NumGrp then turn back because rectangle
                                                     : CCUSYA_CfgChn*(CntGrp%CCUSYA_CfgNumGrpPerTile) + CntChn; 
 assign SYAGLB_ActRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_WgtRdAddrRdy; // other load are ready
-assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgLopOrd? 
+assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgLopOrd[0]? 
                                                     CCUSYA_CfgChn*(CntGrp%CCUSYA_CfgNumGrpPerTile) + CntChn
                                                     : CntChn;
 assign SYAGLB_WgtRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_ActRdAddrRdy; // other load are ready
