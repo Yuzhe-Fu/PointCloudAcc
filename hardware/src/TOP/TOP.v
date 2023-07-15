@@ -28,6 +28,7 @@ module TOP #(
     // KNN
     parameter NUM_SORT_CORE  = 8, //
     parameter KNNCRD_MAXPARA = 4, // Max Number of SRAM for CrdRd
+    parameter CRD_MAXDIM     = 64,
 
     // SYA
     parameter SYA_NUM_ROW    = 16,
@@ -605,7 +606,7 @@ KUA#(
     .CRD_WIDTH            ( CRD_WIDTH       ),
     .NUM_SORT_CORE        ( NUM_SORT_CORE   ),
     .KNNMON_WIDTH         ( KNNMON_WIDTH    ),
-
+    .CRD_MAXDIM           ( CRD_MAXDIM      ),
     .DATA_WIDTH           ( BYTE_WIDTH      ),
     .SHF_ADDR_WIDTH       ( SHF_ADDR_WIDTH  ),
     .ADDR_WIDTH           ( ADDR_WIDTH      ) 

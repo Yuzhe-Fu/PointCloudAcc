@@ -17,8 +17,8 @@ module KUA #(
     parameter CRD_WIDTH         = 8,
     parameter NUM_SORT_CORE     = 8,
     parameter KNNMON_WIDTH      = 128,
+    parameter CRD_MAXDIM        = 64,
     parameter CRDRDWIDTH        = SRAM_WIDTH*KNNCRD_MAXPARA,
-    parameter CRD_MAXDIM        = CRDRDWIDTH/CRD_WIDTH, // 64
     parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_MAXDIM),
 
     // UNT
@@ -339,7 +339,8 @@ KNN#(
     .MAP_WIDTH            ( MAP_WIDTH       ),
     .CRD_WIDTH            ( CRD_WIDTH       ),
     .NUM_SORT_CORE        ( NUM_SORT_CORE   ),
-    .KNNMON_WIDTH         ( KNNMON_WIDTH    )
+    .KNNMON_WIDTH         ( KNNMON_WIDTH    ),
+    .CRD_MAXDIM           ( CRD_MAXDIM      )
 )u_KNN(
     .clk                    ( clk                       ),
     .rst_n                  ( rst_n                     ),
