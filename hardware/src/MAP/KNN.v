@@ -18,13 +18,13 @@
 module KNN #(
     parameter KNNISA_WIDTH      = 128*2,
     parameter SRAM_WIDTH        = 256,
-    parameter SRAM_MAXPARA      = 1,
+    parameter KNNCRD_MAXPARA    = 4,
     parameter IDX_WIDTH         = 16,
     parameter MAP_WIDTH         = 5,
     parameter CRD_WIDTH         = 8,
     parameter NUM_SORT_CORE     = 8,
     parameter KNNMON_WIDTH      = 128,
-    parameter CRDRDWIDTH        = SRAM_WIDTH*SRAM_MAXPARA,
+    parameter CRDRDWIDTH        = SRAM_WIDTH*KNNCRD_MAXPARA,
     parameter CRD_MAXDIM        = CRDRDWIDTH/CRD_WIDTH, // 64
     parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_MAXDIM)
     )(
@@ -212,7 +212,7 @@ always @(*) begin
         LP:     if(CCUKNN_CfgVld)
                     next_state <= IDLE;
                 else if ( CntLopCrdRdAddrLast & KNNGLB_CrdRdAddrVld & (state == IDLE? 0 : GLBKNN_CrdRdAddrRdy) ) begin
-                    if ( CntCpCrdRdAddrLast )
+                    if ( CntCpCrdRdAddrLast & CntCpCrdRdAddrLast_s1)
                         next_state <= WAITFNH;
                     else //
                         next_state <= CP;
@@ -256,7 +256,12 @@ assign vld_s0       = state == CP | state == LP;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 
-wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = `CEIL(CRD_WIDTH*CCUKNN_CfgCrdDim*CCUKNN_CfgNip, SRAM_WIDTH*CCUKNN_CfgCrdNumBankPar) -1;
+wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr;
+wire [32            -1 : 0] MaxTotalBit_tmp;
+wire [16            -1 : 0] MaxParBit_tmp;
+assign MaxTotalBit_tmp  = CRD_WIDTH*CCUKNN_CfgCrdDim*CCUKNN_CfgNip;
+assign MaxParBit_tmp    = SRAM_WIDTH*CCUKNN_CfgCrdNumBankPar;
+assign MaxCntCrdRdAddr  = `CEIL(MaxTotalBit_tmp, MaxParBit_tmp) -1;
 counter#(
     .COUNT_WIDTH ( IDX_WIDTH )
 )u0_counter_CntCp(
@@ -369,8 +374,8 @@ always @(posedge clk or negedge rst_n) begin
         {CntLopCrdRdAddr_s1, CntLopCrdRdAddrLast_s1, CntCpCrdRdAddr_s1, CntCpCrdRdAddrLast_s1} <= 0;
     end else if(handshake_s0) begin
         if( state == CP ) begin
-        CntCpCrdRdAddr_s1       <= CntCpCrdRdAddr;
-        CntCpCrdRdAddrLast_s1   <= CntCpCrdRdAddrLast;
+            CntCpCrdRdAddr_s1       <= CntCpCrdRdAddr;
+            CntCpCrdRdAddrLast_s1   <= CntCpCrdRdAddrLast;
         end else if(state == LP) begin
             CntLopCrdRdAddr_s1      <= CntLopCrdRdAddr;
             CntLopCrdRdAddrLast_s1  <= CntLopCrdRdAddrLast;

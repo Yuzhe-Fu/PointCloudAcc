@@ -23,14 +23,14 @@ parameter DRAM_ADDR_WIDTH   = 32    ;
 parameter OPNUM             = 6     ;
 parameter FBDIV_WIDTH    = 5;
 parameter FPSISA_WIDTH   = PORT_WIDTH*17;
-parameter KNNISA_WIDTH   = PORT_WIDTH*2 ;
+parameter KNNISA_WIDTH   = PORT_WIDTH*3 ;
 parameter SYAISA_WIDTH   = PORT_WIDTH*3 ;
 parameter POLISA_WIDTH   = PORT_WIDTH*10 ;
 parameter GICISA_WIDTH   = PORT_WIDTH*2 ;
 parameter MONISA_WIDTH   = PORT_WIDTH*1 ;
 
 parameter FPSISANUM   = 1;
-parameter KNNISANUM   = 6;
+parameter KNNISANUM   = 7;
 parameter SYAISANUM   = 4;
 parameter POLISANUM   = 3;
 parameter GICISANUM   = 3;

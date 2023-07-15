@@ -27,7 +27,7 @@ module TOP #(
     
     // KNN
     parameter NUM_SORT_CORE  = 8, //
-    parameter SRAM_MAXPARA   = 1,
+    parameter KNNCRD_MAXPARA = 4, // Max Number of SRAM for CrdRd
 
     // SYA
     parameter SYA_NUM_ROW    = 16,
@@ -57,7 +57,7 @@ module TOP #(
     parameter BYTE_WIDTH     = 8,
     parameter CCUISA_WIDTH   = PORT_WIDTH*1,
     parameter FPSISA_WIDTH   = PORT_WIDTH*17,
-    parameter KNNISA_WIDTH   = PORT_WIDTH*2,
+    parameter KNNISA_WIDTH   = PORT_WIDTH*3,
     parameter SYAISA_WIDTH   = PORT_WIDTH*3,
     parameter POLISA_WIDTH   = PORT_WIDTH*10,
     parameter GICISA_WIDTH   = PORT_WIDTH*2,
@@ -241,7 +241,7 @@ wire                              GLBFPS_IdxWrDatRdy      ;
 wire [IDX_WIDTH           -1 : 0] KNNGLB_CrdRdAddr    ;   
 wire                              KNNGLB_CrdRdAddrVld ; 
 wire                              GLBKNN_CrdRdAddrRdy ;
-wire [SRAM_WIDTH          -1 : 0 ]GLBKNN_CrdRdDat     ;        
+wire [SRAM_WIDTH*KNNCRD_MAXPARA-1 : 0 ]GLBKNN_CrdRdDat     ;        
 wire                              GLBKNN_CrdRdDatVld  ;     
 wire                              KNNGLB_CrdRdDatRdy  ;
 
@@ -464,32 +464,32 @@ assign #0.2 GLBFPS_MaskWrDatRdy                      = GLBTOP_WrPortDatRdy[GLBWR
 // Read Crd
 generate
     for(gv_i=0; gv_i<NUMSRAM_RDCRD; gv_i =gv_i +1) begin: GEN_FPSGLB_CrdRdPort
-        assign #0.2 TOPGLB_RdPortAddr    [GLBRDIDX_FPSCRD + gv_i]    = FPSGLB_CrdRdAddr;
-        assign #0.2 TOPGLB_RdPortAddrVld [GLBRDIDX_FPSCRD + gv_i]    = FPSGLB_CrdRdAddrVld;
-        assign #0.2 TOPGLB_RdPortDatRdy  [GLBRDIDX_FPSCRD + gv_i]    = FPSGLB_CrdRdDatRdy;
+        assign #0.2 TOPGLB_RdPortAddr    [GLBRDIDX_FPSCRD + gv_i]    = CCUKNN_CfgInfo[10]? KNNGLB_CrdRdAddr     : FPSGLB_CrdRdAddr;
+        assign #0.2 TOPGLB_RdPortAddrVld [GLBRDIDX_FPSCRD + gv_i]    = CCUKNN_CfgInfo[10]? KNNGLB_CrdRdAddrVld  : FPSGLB_CrdRdAddrVld;
+        assign #0.2 TOPGLB_RdPortDatRdy  [GLBRDIDX_FPSCRD + gv_i]    = CCUKNN_CfgInfo[10]? KNNGLB_CrdRdDatRdy   : FPSGLB_CrdRdDatRdy;
     end
 endgenerate
 assign #0.2 GLBFPS_CrdRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_FPSCRD]; // one of
-assign #0.2 GLBFPS_CrdRdDat                          = GLBTOP_RdPortDat[GLBRDIDX_FPSCRD +: NUMSRAM_RDCRD];
-assign #0.2 GLBFPS_CrdRdDatVld                       = GLBTOP_RdPortDatVld[GLBRDIDX_FPSCRD];
+assign #0.2 GLBFPS_CrdRdDat                          = GLBTOP_RdPortDat    [GLBRDIDX_FPSCRD +: NUMSRAM_RDCRD];
+assign #0.2 GLBFPS_CrdRdDatVld                       = GLBTOP_RdPortDatVld [GLBRDIDX_FPSCRD];
+
+// Read Dist
+generate
+    for(gv_i=0; gv_i<NUMSRAM_DIST; gv_i =gv_i +1) begin: GEN_FPSGLB_DistRdPort
+        assign #0.2 TOPGLB_RdPortAddr    [GLBRDIDX_FPSDST + gv_i]   = CCUKNN_CfgInfo[10]? KNNGLB_CrdRdAddr     : FPSGLB_DistRdAddr;
+        assign #0.2 TOPGLB_RdPortAddrVld [GLBRDIDX_FPSDST + gv_i]   = CCUKNN_CfgInfo[10]? KNNGLB_CrdRdAddrVld  : FPSGLB_DistRdAddrVld;
+        assign #0.2 TOPGLB_RdPortDatRdy  [GLBRDIDX_FPSDST + gv_i]   = CCUKNN_CfgInfo[10]? KNNGLB_CrdRdDatRdy   : FPSGLB_DistRdDatRdy;
+    end
+endgenerate
+assign #0.2 GLBFPS_DistRdAddrRdy = GLBTOP_RdPortAddrRdy  [GLBRDIDX_FPSDST];
+assign #0.2 GLBFPS_DistRdDat     = GLBTOP_RdPortDat      [GLBRDIDX_FPSDST +: NUMSRAM_RDCRD];
+assign #0.2 GLBFPS_DistRdDatVld  = GLBTOP_RdPortDatVld   [GLBRDIDX_FPSDST];
 
 // Write Crd
 assign #0.2 TOPGLB_WrPortAddr[GLBWRIDX_FPSCRD]       = FPSGLB_CrdWrAddr;
 assign #0.2 TOPGLB_WrPortDat[GLBWRIDX_FPSCRD]        = FPSGLB_CrdWrDat;
 assign #0.2 TOPGLB_WrPortDatVld[GLBWRIDX_FPSCRD]     = FPSGLB_CrdWrDatVld;
 assign #0.2 GLBFPS_CrdWrDatRdy                       = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSCRD];
-
-// Read Dist
-generate
-    for(gv_i=0; gv_i<NUMSRAM_DIST; gv_i =gv_i +1) begin: GEN_FPSGLB_DistRdPort
-        assign #0.2 TOPGLB_RdPortAddr    [GLBRDIDX_FPSDST + gv_i]   = FPSGLB_DistRdAddr;
-        assign #0.2 TOPGLB_RdPortAddrVld [GLBRDIDX_FPSDST + gv_i]   = FPSGLB_DistRdAddrVld;
-        assign #0.2 TOPGLB_RdPortDatRdy  [GLBRDIDX_FPSDST + gv_i]    = FPSGLB_DistRdDatRdy;
-    end
-endgenerate
-assign #0.2 GLBFPS_DistRdAddrRdy = GLBTOP_RdPortAddrRdy  [GLBRDIDX_FPSDST];
-assign #0.2 GLBFPS_DistRdDat     = GLBTOP_RdPortDat      [GLBRDIDX_FPSDST +: NUMSRAM_RDCRD];
-assign #0.2 GLBFPS_DistRdDatVld  = GLBTOP_RdPortDatVld   [GLBRDIDX_FPSDST];
 
 // Write Dist
 generate
@@ -568,7 +568,7 @@ FPS #(
 assign #0.2 TOPGLB_RdPortAddr[GLBRDIDX_KNNCRD]       = KNNGLB_CrdRdAddr;
 assign #0.2 TOPGLB_RdPortAddrVld[GLBRDIDX_KNNCRD]    = KNNGLB_CrdRdAddrVld;
 assign #0.2 GLBKNN_CrdRdAddrRdy                      = GLBTOP_RdPortAddrRdy[GLBRDIDX_KNNCRD];
-assign #0.2 GLBKNN_CrdRdDat                          = GLBTOP_RdPortDat[GLBRDIDX_KNNCRD];
+assign #0.2 GLBKNN_CrdRdDat                          = {GLBTOP_RdPortDat[GLBRDIDX_FPSDST], GLBTOP_RdPortDat[GLBRDIDX_FPSCRD +: NUMSRAM_RDCRD], GLBTOP_RdPortDat[GLBRDIDX_KNNCRD]}; // Barray
 assign #0.2 GLBKNN_CrdRdDatVld                       = GLBTOP_RdPortDatVld[GLBRDIDX_KNNCRD];
 assign #0.2 TOPGLB_RdPortDatRdy[GLBRDIDX_KNNCRD]     = KNNGLB_CrdRdDatRdy;
 
@@ -597,7 +597,7 @@ assign #0.2 GLBKNN_MapWrDatRdy                       = GLBTOP_WrPortDatRdy[GLBWR
 KUA#(
     .KNNISA_WIDTH         ( KNNISA_WIDTH    ),
     .SRAM_WIDTH           ( SRAM_WIDTH      ),
-    .SRAM_MAXPARA         ( SRAM_MAXPARA    ),
+    .KNNCRD_MAXPARA       ( KNNCRD_MAXPARA  ),
     .IDX_WIDTH            ( IDX_WIDTH       ),
     .MAP_WIDTH            ( MAP_WIDTH       ),
     .CRD_WIDTH            ( CRD_WIDTH       ),
@@ -817,34 +817,37 @@ GLB#(
 assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSCRD                 ],
     TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSIDX                 ],
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST +: NUMSRAM_DIST],
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                  +: NUMSRAM_DIST],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSMSK                 ],
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                  +: NUMSRAM_DIST],
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST +: NUMSRAM_DIST],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSCRD +: NUMSRAM_RDCRD] 
-} = CCUFPS_CfgInfo[FPSISA_WIDTH -1 -: 16];
+} = CCUKNN_CfgInfo[10]? {CCUFPS_CfgInfo[FPSISA_WIDTH -1 -: 13],  CCUKNN_CfgInfo[KNNISA_WIDTH -5 -: 3]} // (-5 -6, -7)
+        : CCUFPS_CfgInfo[FPSISA_WIDTH -1 -: 16]; // Barray 3 Bank to KNN
+
 assign #0.2 {
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSCRD                 ],
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSIDX                 ],
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSDST+: NUMSRAM_DIST],
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSDST                 +: NUMSRAM_DIST],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSMSK                 ],
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSDST                 +: NUMSRAM_DIST],
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSDST+: NUMSRAM_DIST],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD+: NUMSRAM_RDCRD] 
-} = CCUFPS_CfgInfo[FPSISA_WIDTH -17 -: NUM_BANK*(4 + NUMSRAM_RDCRD + NUMSRAM_DIST*2)];
+} = CCUKNN_CfgInfo[10]?{CCUFPS_CfgInfo[FPSISA_WIDTH -17 -: NUM_BANK*(4 + NUMSRAM_DIST*2 -1)], CCUKNN_CfgInfo[KNNISA_WIDTH -9 -NUM_BANK*3 -: NUM_BANK*(KNNCRD_MAXPARA -1)] } 
+        : CCUFPS_CfgInfo[FPSISA_WIDTH -17 -: NUM_BANK*(4 + NUMSRAM_RDCRD + NUMSRAM_DIST*2)]; // Barray 3 Bank to KNN
 
 assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNMASK],
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ]
-} = CCUKNN_CfgInfo[KNNISA_WIDTH -1 -: 8];
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ],
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
+} = {CCUKNN_CfgInfo[KNNISA_WIDTH -1 -: 4], CCUKNN_CfgInfo[KNNISA_WIDTH -8]}; // CrdRd is // (-5 -6, -7, -8)
 assign #0.2 {
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNMASK],
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ]
-} = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*4];
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ],
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
+} = {CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*3], CCUKNN_CfgInfo[KNNISA_WIDTH -9 -NUM_BANK*(3 + KNNCRD_MAXPARA -1) -: NUM_BANK]};
 
 assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM +: 2            ], 
