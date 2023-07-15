@@ -16,7 +16,7 @@ module SYA #(
     parameter ACC_WIDTH  = ACT_WIDTH+ACT_WIDTH+10, //26
     parameter NUM_ROW    = 16,
     parameter NUM_COL    = 16,
-    parameter NUM_BANK   = 4,
+    parameter NUM_BANK   = 2,
     parameter SRAM_WIDTH = 256,
     parameter ADDR_WIDTH = 16,
     parameter QNTSL_WIDTH= 8,
@@ -326,14 +326,6 @@ assign SYA_InWgt_N          [0] = state == IDLE? 0 : GLBSYA_WgtRdDat[0];
 assign SYA_InAct_W          [1] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[1]: SYA_OutAct_E[0];
 assign SYA_InWgt_N          [1] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[0]   : GLBSYA_WgtRdDat[1];
 
-// Bank[2]
-assign SYA_InAct_W          [2] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[2] : GLBSYA_ActRdDat[1];
-assign SYA_InWgt_N          [2] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[1] : SYA_OutWgt_S[0];
-
-// Bank[3]
-assign SYA_InAct_W          [3] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[3] : SYA_OutAct_E[2];
-assign SYA_InWgt_N          [3] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[2] : SYA_OutWgt_S[1];
-
 // Generate SYA Input signals: SYA_En, SYA_Reset
 assign SYA_En   = {NUM_COL*NUM_ROW*NUM_BANK{handshake_s1}} ;
 generate
@@ -494,8 +486,8 @@ assign fwftOfm_dout_vld = !fwftOfm_empty;
 
 FIFO_FWFT#(
     .RAMREG     ( 1                         ),
-    .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK), // 64B
-    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64 : 4KB Need 64x256x2 UHDSPSRAM!!!!!!!!!!!!!!!!!
+    .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK), // 64B->32B=256bit
+    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64 : 4KB Need 64x256x2 UHDSPSRAM!!!!!!!!!!!!!!!!!->32x2561s
 )u_FIFO_FWFT_OFM(
     .clk        ( clk           ),
     .Reset      ( state == IDLE ),

@@ -114,35 +114,23 @@ module RAM #(
             .Q      ( DO    )
             );
         end
-        else if( SRAM_WORD == 64 && SRAM_BIT == 512 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
+        else if( SRAM_WORD == 32 && SRAM_BIT == 256 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
             `ifdef RTSELDB
                 assign #(DELAY) RTSEL= 2'b10;
             `else
                 assign #(DELAY) RTSEL= 2'b00;
             `endif
-            TS1N28HPCPUHDHVTB64X256M1SSO SYA_FWFT_SPSRAM0(
+            TS1N28HPCPUHDHVTB32X256M1SSO SYA_FWFT_SPSRAM(
             .SLP    ( 1'b0  ),
             .SD     ( 1'b0  ),
             .CLK    ( clk   ),
             .CEB    ( CSB   ),
             .WEB    ( WEB   ),
             .A      ( (&WEB)? AR : AW   ),
-            .D      ( DI[0 +: SRAM_BIT/2] ),
+            .D      ( DI    ),
             .RTSEL  ( RTSEL ),
             .WTSEL  ( WTSEL ),
-            .Q      ( DO[0 +: SRAM_BIT/2] )
-            );
-            TS1N28HPCPUHDHVTB64X256M1SSO SYA_FWFT_SPSRAM1(
-            .SLP    ( 1'b0  ),
-            .SD     ( 1'b0  ),
-            .CLK    ( clk   ),
-            .CEB    ( CSB   ),
-            .WEB    ( WEB   ),
-            .A      ( (&WEB)? AR : AW   ),
-            .D      ( DI[SRAM_BIT/2 +: SRAM_BIT/2]),
-            .RTSEL  ( RTSEL ),
-            .WTSEL  ( WTSEL ),
-            .Q      ( DO[SRAM_BIT/2 +: SRAM_BIT/2])
+            .Q      ( DO    )
             );
         end
     endgenerate
