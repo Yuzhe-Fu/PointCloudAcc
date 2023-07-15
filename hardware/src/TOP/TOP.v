@@ -32,7 +32,7 @@ module TOP #(
     // SYA
     parameter SYA_NUM_ROW    = 16,
     parameter SYA_NUM_COL    = 16,
-    parameter SYA_NUM_BANK   = 4,
+    parameter SYA_NUM_BANK   = 2,
 
     // POL
     parameter POOL_CORE      = 8,
@@ -49,8 +49,8 @@ module TOP #(
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
     parameter GLB_NUM_RDPORT = 14 + POOL_CORE - 1,
-    parameter GLB_NUM_WRPORT = 11, 
-    parameter NUM_BANK       = 32,
+    parameter GLB_NUM_WRPORT = 10, 
+    parameter NUM_BANK       = 16,
 
     // CCU
     parameter NUM_MODULE     = 6,
@@ -134,9 +134,9 @@ localparam GLBWRIDX_FPSCRD = 2;
 localparam GLBWRIDX_FPSDST = 3; // 2 SRAM BW 
 localparam GLBWRIDX_FPSIDX = 5; 
 localparam GLBWRIDX_KNNMAP = 6;
-localparam GLBWRIDX_SYAOFM = 7; // 2 SRAM BW
-localparam GLBWRIDX_POLOFM = 9;
-localparam GLBWRIDX_POLIDM = 10;
+localparam GLBWRIDX_SYAOFM = 7; // 1 SRAM BW
+localparam GLBWRIDX_POLOFM = 8;
+localparam GLBWRIDX_POLIDM = 9;
                                 
 localparam GLBRDIDX_GICGLB = 0; 
 localparam GLBRDIDX_FPSMSK = 1; 
