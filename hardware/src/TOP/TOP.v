@@ -50,7 +50,7 @@ module TOP #(
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
     parameter GLB_NUM_RDPORT = 13 + POOL_CORE - 1,
-    parameter GLB_NUM_WRPORT = 8, 
+    parameter GLB_NUM_WRPORT = 10, 
     parameter NUM_BANK       = 16,
 
     // CCU
@@ -130,22 +130,20 @@ module TOP #(
 // Constant Definition :
 //=====================================================================================================================
 localparam GLBWRIDX_GICGLB = 0; 
-localparam GLBWRIDX_FKNCIM = 1; // GLBWRIDX_FPSCRD + GLBWRIDX_FPSIDX + GLBWRIDX_KNNMAP
-localparam GLBWRIDX_FPSMSK = 2; 
-// localparam GLBWRIDX_FPSCRD = 2; 
+localparam GLBWRIDX_FPSMSK = 1; 
+localparam GLBWRIDX_FPSCRD = 2; 
 localparam GLBWRIDX_FPSDST = 3; // 2 SRAM BW 
-// localparam GLBWRIDX_FPSIDX = 4; 
-// localparam GLBWRIDX_KNNMAP = 6;
-localparam GLBWRIDX_SYAOFM = 5; // 1 SRAM BW
-localparam GLBWRIDX_POLOFM = 6;
-localparam GLBWRIDX_POLIDM = 7;
+localparam GLBWRIDX_FPSIDX = 5; 
+localparam GLBWRIDX_KNNMAP = 6;
+localparam GLBWRIDX_SYAOFM = 7;
+localparam GLBWRIDX_POLOFM = 8;
+localparam GLBWRIDX_POLIDM = 9;
                                 
 localparam GLBRDIDX_GICGLB = 0; 
 localparam GLBRDIDX_FPSMSK = 1; 
 localparam GLBRDIDX_FPSCRD = 2; // 2 SRAM BW
 localparam GLBRDIDX_FPSDST = 4; // 2 SRAM BW
 localparam GLBRDIDX_KNNCRD = 6; 
-// localparam GLBRDIDX_KNNMIM = 7; // GLBRDIDX_KNNMSK + GLBRDIDX_KNNIDM
 localparam GLBRDIDX_KNNMSK = 7; 
 localparam GLBRDIDX_KNNIDM = 8; 
 localparam GLBRDIDX_SYAACT = 9;
@@ -491,10 +489,10 @@ assign #0.2 GLBFPS_DistRdDat     = GLBTOP_RdPortDat      [GLBRDIDX_FPSDST +: NUM
 assign #0.2 GLBFPS_DistRdDatVld  = GLBTOP_RdPortDatVld   [GLBRDIDX_FPSDST];
 
 // Write Crd
-assign #0.2 TOPGLB_WrPortAddr   [GLBWRIDX_FKNCIM]   = ArbIdx_FKNCIM == 0? FPSGLB_CrdWrAddr  : ArbIdx_FKNCIM == 1? FPSGLB_IdxWrAddr  : KNNGLB_MapWrAddr;
-assign #0.2 TOPGLB_WrPortDat    [GLBWRIDX_FKNCIM]   = ArbIdx_FKNCIM == 0? FPSGLB_CrdWrDat   : ArbIdx_FKNCIM == 1? FPSGLB_IdxWrDat   : KNNGLB_MapWrDat;
-assign #0.2 TOPGLB_WrPortDatVld [GLBWRIDX_FKNCIM]   = ArbIdx_FKNCIM == 0? FPSGLB_CrdWrDatVld: ArbIdx_FKNCIM == 1? FPSGLB_IdxWrDatVld: KNNGLB_MapWrDatVld;
-assign #0.2 GLBFPS_CrdWrDatRdy                      = ArbIdx_FKNCIM == 0 & GLBTOP_WrPortDatRdy[GLBWRIDX_FKNCIM];
+assign #0.2 TOPGLB_WrPortAddr   [GLBWRIDX_FPSCRD]   = FPSGLB_CrdWrAddr  ;
+assign #0.2 TOPGLB_WrPortDat    [GLBWRIDX_FPSCRD]   = FPSGLB_CrdWrDat   ;
+assign #0.2 TOPGLB_WrPortDatVld [GLBWRIDX_FPSCRD]   = FPSGLB_CrdWrDatVld;
+assign #0.2 GLBFPS_CrdWrDatRdy                      = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSCRD];
 
 // Write Dist
 generate
@@ -507,7 +505,11 @@ endgenerate
 assign #0.2 GLBFPS_DistWrDatRdy  = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSDST];
 
 // Write Idx
-assign #0.2 GLBFPS_IdxWrDatRdy                       = ArbIdx_FKNCIM == 1 & GLBTOP_WrPortDatRdy[GLBWRIDX_FKNCIM];
+assign #0.2 TOPGLB_WrPortAddr   [GLBWRIDX_FPSIDX]   = FPSGLB_IdxWrAddr  ;
+assign #0.2 TOPGLB_WrPortDat    [GLBWRIDX_FPSIDX]   = FPSGLB_IdxWrDat   ;
+assign #0.2 TOPGLB_WrPortDatVld [GLBWRIDX_FPSIDX]   = FPSGLB_IdxWrDatVld;
+assign #0.2 GLBFPS_CrdWrDatRdy                      = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSIDX];
+assign #0.2 GLBFPS_IdxWrDatRdy                      = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSIDX];
 
 FPS #(
     .FPSISA_WIDTH         ( FPSISA_WIDTH),
@@ -592,7 +594,10 @@ assign #0.2 GLBKNN_IdxMaskRdDatVld                   = GLBTOP_RdPortDatVld [GLBR
 
 
 // Write Map
-assign #0.2 GLBKNN_MapWrDatRdy                       = ArbIdx_FKNCIM == 2 & GLBTOP_WrPortDatRdy[GLBWRIDX_FKNCIM];
+assign #0.2 TOPGLB_WrPortAddr   [GLBWRIDX_KNNMAP]   = KNNGLB_MapWrAddr;
+assign #0.2 TOPGLB_WrPortDat    [GLBWRIDX_KNNMAP]   = KNNGLB_MapWrDat;
+assign #0.2 TOPGLB_WrPortDatVld [GLBWRIDX_KNNMAP]   = KNNGLB_MapWrDatVld;
+assign #0.2 GLBKNN_MapWrDatRdy                      = GLBTOP_WrPortDatRdy[GLBWRIDX_KNNMAP];
 
 assign Cfg_KNNBorrowFPS = CCUKNN_CfgInfo[10];
 
@@ -818,46 +823,47 @@ GLB#(
 );
 
 assign #0.2 {
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FKNCIM                 ],
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSCRD                 ],
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSIDX                 ],
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST +: NUMSRAM_DIST],
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                  +: NUMSRAM_DIST],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSMSK                 ],
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                  +: NUMSRAM_DIST],
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST +: NUMSRAM_DIST],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSCRD +: NUMSRAM_RDCRD] 
-} = Cfg_KNNBorrowFPS? {CCUFPS_CfgInfo[FPSISA_WIDTH -1 -: 13],  CCUKNN_CfgInfo[KNNISA_WIDTH -5 -: 3]} // (-5 -6, -7)
-        : CCUFPS_CfgInfo[FPSISA_WIDTH -1 -: 16]; // Borrow 3 Bank to KNN
-
+} = CCUFPS_CfgInfo[FPSISA_WIDTH -1 -: 16];
 assign #0.2 {
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_FKNCIM                 ],
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSCRD                 ],
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSIDX                 ],
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSDST+: NUMSRAM_DIST],
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSDST                 +: NUMSRAM_DIST],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
     TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSMSK                 ],
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_FPSDST                 +: NUMSRAM_DIST],
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSDST+: NUMSRAM_DIST],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD+: NUMSRAM_RDCRD] 
-} = CCUFPS_CfgInfo[FPSISA_WIDTH -17 -: NUM_BANK*(3 + NUMSRAM_RDCRD + NUMSRAM_DIST*2)]; // Borrow 3 Bank to KNN
-assign ArbIdx_FKNCIM = CCUFPS_CfgInfo[FPSISA_WIDTH -17 - NUM_BANK*(3 + NUMSRAM_RDCRD + NUMSRAM_DIST*2) -: 2]; // ?? Temp: low 2bits
+} = CCUFPS_CfgInfo[FPSISA_WIDTH -17 -: NUM_BANK*(4 + NUMSRAM_RDCRD + NUMSRAM_DIST*2)];
 
 assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNMSK],
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
-} = {CCUKNN_CfgInfo[KNNISA_WIDTH -1 -: 4], CCUKNN_CfgInfo[KNNISA_WIDTH -8]}; // CrdRd is // (-5 -6, -7, -8)
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ]
+} = CCUKNN_CfgInfo[KNNISA_WIDTH -1 -: 8];
 assign #0.2 {
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNIDM],
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNMSK],
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD]
-} = {CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*2], CCUKNN_CfgInfo[KNNISA_WIDTH -9 -NUM_BANK*(2 + KNNCRD_MAXPARA -1) -: NUM_BANK]};
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ]
+} = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*4];
 
 assign #0.2 {
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM                 ], 
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM +: 2            ], 
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT], 
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT]  
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: 2]  
 } = CCUSYA_CfgInfo[SYAISA_WIDTH -1 -: 8];
 assign #0.2 {
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM                 ],  
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM +: 2            ],  
     TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],  
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT]   
-} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*3];
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: 2]   
+} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*4];
 
 assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
