@@ -29,7 +29,6 @@ module CCU #(
     parameter MAP_WIDTH             = 5,
     parameter NUM_LAYER_WIDTH       = 20,
     parameter NUM_MODULE            = 6,
-    parameter NUM_BANK              = 32,
     parameter NUM_FPC               = 8,
     parameter OPNUM                 = NUM_MODULE,
 

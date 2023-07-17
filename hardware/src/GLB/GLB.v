@@ -13,7 +13,7 @@
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
 module GLB #(
-    parameter NUM_BANK     = 32,
+    parameter NUM_BANK     = 16,
     parameter SRAM_WIDTH   = 256,
     parameter SRAM_WORD    = 128, // MUST 2**
     parameter ADDR_WIDTH   = 16,
