@@ -508,7 +508,6 @@ assign #0.2 GLBFPS_DistWrDatRdy  = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSDST];
 assign #0.2 TOPGLB_WrPortAddr   [GLBWRIDX_FPSIDX]   = FPSGLB_IdxWrAddr  ;
 assign #0.2 TOPGLB_WrPortDat    [GLBWRIDX_FPSIDX]   = FPSGLB_IdxWrDat   ;
 assign #0.2 TOPGLB_WrPortDatVld [GLBWRIDX_FPSIDX]   = FPSGLB_IdxWrDatVld;
-assign #0.2 GLBFPS_CrdWrDatRdy                      = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSIDX];
 assign #0.2 GLBFPS_IdxWrDatRdy                      = GLBTOP_WrPortDatRdy[GLBWRIDX_FPSIDX];
 
 FPS #(
@@ -855,15 +854,15 @@ assign #0.2 {
 } = CCUKNN_CfgInfo[KNNISA_WIDTH -9 -: NUM_BANK*4];
 
 assign #0.2 {
-    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM +: 2            ], 
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT], 
-    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: 2]  
+    TOPGLB_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM                  ], 
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT ], 
+    TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT ]  
 } = CCUSYA_CfgInfo[SYAISA_WIDTH -1 -: 8];
 assign #0.2 {
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM +: 2            ],  
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],  
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: 2]   
-} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*4];
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM                  ],  
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT ],  
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT ]   
+} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*3];
 
 assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
