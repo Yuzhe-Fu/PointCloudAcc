@@ -72,6 +72,7 @@ wire [NUM_BANK      -1 : 0][$clog2(NUM_WRPORT)      -1 : 0] BankWrPortIdx_d;
 wire [NUM_BANK      -1 : 0][$clog2(NUM_RDPORT)      -1 : 0] BankRdPortIdx;
 wire [NUM_BANK      -1 : 0][$clog2(NUM_RDPORT)      -1 : 0] BankRdPortIdx_d;
 wire [NUM_BANK      -1 : 0][(NUM_WRPORT+NUM_RDPORT) -1 : 0] BankPortFlag;
+// wire [NUM_BANK      -1 : 0][NUM_RDPORT              -1 : 0] BankRdPortAddrVld;
 
 genvar      gv_i;
 genvar      gv_j;
@@ -138,7 +139,11 @@ generate
         // Logic Design: Read
         //=====================================================================================================================
         // Bank
-        assign #0.2 arvalid              = RdBankAlloc & PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i];    
+        assign #0.2 arvalid              = RdBankAlloc & PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i];
+        // assign #0.2 arvalid              = RdBankAlloc & (TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + BankRdPortIdx[gv_i]]? // Enabled by the first RdPort
+        //                                     |BankRdPortAddrVld[gv_i] // OR of all allocated PortAddrVld; 
+        //                                     : PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i]
+        //                                     );
         assign #0.2 araddr               = TOPGLB_RdPortAddr[BankRdPortIdx[gv_i]]; 
         assign #0.2 Bank_arready[gv_i]   = arready;
 
@@ -168,6 +173,10 @@ generate
         for(gv_j=0; gv_j<NUM_WRPORT+NUM_RDPORT; gv_j=gv_j+1) begin
             assign #0.2 BankPortFlag[gv_i][gv_j] = TOPGLB_CfgPortBankFlag[gv_j][gv_i];
         end
+
+        // for(gv_j=0; gv_j<NUM_RDPORT; gv_j=gv_j+1) begin
+        //     assign #0.2 BankRdPortAddrVld[gv_i][gv_j] = PortRdBankAddrVld[gv_j][gv_i];
+        // end
 
     end
 endgenerate
@@ -209,15 +218,16 @@ generate
         assign #0.2 PortRdBankAddrVld[gv_j] = {NUM_BANK{TOPGLB_RdPortAddrVld[gv_j]}} & RdPortHitBank; // 32bits, // addr handshake : enable of (add+1)
 
         // To Output (Addr)
-        assign  #0.2 GLBTOP_RdPortAddrRdy[gv_j] = RdPortAlloc & 
-        (  TOPGLB_RdPortAddr[gv_j]%SRAM_WORD ==0 & PortCur1stBankIdx != RdPort1stBankIdx?  // First Addr of next bank? 
-            Bank_arready[PortCur1stBankIdx -1] & Bank_arready[PortCur1stBankIdx] 
-            // Last Bank arready=1: data has been read out; & Current Bank is ready to read.
-            : Bank_arready[PortCur1stBankIdx]
+        assign  #0.2 GLBTOP_RdPortAddrRdy[gv_j] = TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + gv_j] | (RdPortAlloc & // EmptyFull Bypass
+            (  TOPGLB_RdPortAddr[gv_j]%SRAM_WORD ==0 & PortCur1stBankIdx != RdPort1stBankIdx?  // First Addr of next bank? 
+                Bank_arready[PortCur1stBankIdx -1] & Bank_arready[PortCur1stBankIdx] 
+                // Last Bank arready=1: data has been read out; & Current Bank is ready to read.
+                : Bank_arready[PortCur1stBankIdx]
+            )
         );
 
         // To Output (Data)
-        assign  #0.2 GLBTOP_RdPortDatVld[gv_j]   = RdPortAlloc & Bank_rvalid[PortCur1stBankIdx_d];
+        assign  #0.2 GLBTOP_RdPortDatVld[gv_j]   = TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + gv_j] | (RdPortAlloc & Bank_rvalid[PortCur1stBankIdx_d]); // EmptyFull Bypass
         assign  #0.2 GLBTOP_RdPortDat[gv_j]      = GLBTOP_RdPortDatVld[gv_j]? Bank_rdata_array[PortCur1stBankIdx_d] : 0;
 
         prior_arb#(
@@ -276,7 +286,7 @@ generate
         assign #0.2 PortWrBankVld[gv_j] = {NUM_BANK{TOPGLB_WrPortDatVld[gv_j]}} & WrPortHitBank; // 32bits
 
         // To Output
-        assign #0.2 GLBTOP_WrPortDatRdy[gv_j] = WrPortAlloc & Bank_wready[PortCur1stBankIdx];
+        assign #0.2 GLBTOP_WrPortDatRdy[gv_j] = TOPGLB_CfgPortOffEmptyFull[gv_j] | (WrPortAlloc & Bank_wready[PortCur1stBankIdx]);
 
         prior_arb#(
             .REQ_WIDTH ( NUM_BANK )
