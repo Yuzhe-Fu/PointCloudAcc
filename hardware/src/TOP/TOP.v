@@ -100,15 +100,12 @@ module TOP #(
     )( // 5 + 6 + 128 + 20 = 159
     input                           I_BypAsysnFIFO_PAD,// Hyper
     input                           I_BypOE_PAD       , 
-    input                           I_BypPLL_PAD      , 
     input                           I_SysRst_n_PAD    , 
-    input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
     input                           I_SwClk_PAD       ,
     input                           I_SysClk_PAD      , 
     input                           I_OffClk_PAD      ,
     output                          O_SysClk_PAD      ,
     output                          O_OffClk_PAD      ,
-    output                          O_PLLLock_PAD     ,
 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
     output                          O_DatOE_PAD       ,
@@ -123,7 +120,11 @@ module TOP #(
 
     input                           I_ISAVld_PAD      , // Transfer-Data
     output                          O_CmdVld_PAD      ,
-    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD          
+    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD         
+
+    // input                           I_BypPLL_PAD      , 
+    // input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
+    // output                          O_PLLLock_PAD       
 
 );
 //=====================================================================================================================
@@ -151,8 +152,8 @@ localparam GLBRDIDX_SYAWGT = 10;
 localparam GLBRDIDX_POLMAP = 11;
 localparam GLBRDIDX_POLOFM = 12;
 
-localparam DISTSQR_WIDTH     =  CRD_WIDTH*2 + $clog2(CRD_DIM);
-
+localparam DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_DIM);
+localparam SYAIOMAXWIDTH     = ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK;
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
@@ -272,55 +273,55 @@ wire                              Cfg_PortSelPOL; // 1: Ports of FPS and KNN are
 wire                              ArbIdx_KNNMIM;
 // --------------------------------------------------------------------------------------------------------------------
 // SYA
-wire [ADDR_WIDTH                  -1:0] SYAGLB_ActRdAddr          ;
+wire [ADDR_WIDTH                -1 : 0] SYAGLB_ActRdAddr          ;
 wire                                    SYAGLB_ActRdAddrVld       ;
 wire                                    GLBSYA_ActRdAddrRdy       ;
-wire [ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK  -1:0] GLBSYA_ActRdDat           ;
+wire [SYAIOMAXWIDTH             -1 : 0] GLBSYA_ActRdDat           ;
 wire                                    GLBSYA_ActRdDatVld        ;
 wire                                    SYAGLB_ActRdDatRdy        ;
 
-wire [ADDR_WIDTH                  -1:0] SYAGLB_WgtRdAddr          ;
+wire [ADDR_WIDTH                -1 : 0] SYAGLB_WgtRdAddr          ;
 wire                                    SYAGLB_WgtRdAddrVld       ;
 wire                                    GLBSYA_WgtRdAddrRdy       ;
-wire [ACT_WIDTH*SYA_NUM_COL*SYA_NUM_BANK  -1:0] GLBSYA_WgtRdDat           ;
+wire [SYAIOMAXWIDTH             -1 : 0] GLBSYA_WgtRdDat           ;
 wire                                    GLBSYA_WgtRdDatVld        ;
 wire                                    SYAGLB_WgtRdDatRdy        ;
 
-wire [ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK  -1:0] SYAGLB_OfmWrDat           ;
-wire [ADDR_WIDTH                  -1:0] SYAGLB_OfmWrAddr          ;
+wire [SYAIOMAXWIDTH             -1 : 0] SYAGLB_OfmWrDat           ;
+wire [ADDR_WIDTH                -1 : 0] SYAGLB_OfmWrAddr          ;
 wire                                    SYAGLB_OfmWrDatVld        ;
 wire                                    GLBSYA_OfmWrDatRdy        ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // POL
-wire [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr    ;   
-wire                                                  POLGLB_MapRdAddrVld ; 
-wire                                                  GLBPOL_MapRdAddrRdy ;
-wire                                                  GLBPOL_MapRdDatVld     ;
-wire [SRAM_WIDTH                              -1 : 0] GLBPOL_MapRdDat     ;
-wire                                                  POLGLB_MapRdDatRdy     ;
+wire [IDX_WIDTH                               -1 : 0] POLGLB_MapRdAddr      ;   
+wire                                                  POLGLB_MapRdAddrVld   ; 
+wire                                                  GLBPOL_MapRdAddrRdy   ;
+wire                                                  GLBPOL_MapRdDatVld    ;
+wire [SRAM_WIDTH                              -1 : 0] GLBPOL_MapRdDat       ;
+wire                                                  POLGLB_MapRdDatRdy    ;
 
-wire [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld ;
-wire [POOL_CORE -1 : 0][IDX_WIDTH             -1 : 0] POLGLB_OfmRdAddr    ;
-wire [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy ;
-wire [POOL_CORE -1 : 0][(ACT_WIDTH*POOL_COMP_CORE) -1 : 0] GLBPOL_OfmRdDat     ;
-wire [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld     ;
-wire [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy     ;
+wire [POOL_CORE                               -1 : 0] POLGLB_OfmRdAddrVld   ;
+wire [POOL_CORE -1 : 0][IDX_WIDTH             -1 : 0] POLGLB_OfmRdAddr      ;
+wire [POOL_CORE                               -1 : 0] GLBPOL_OfmRdAddrRdy   ;
+wire [POOL_CORE -1 : 0][(ACT_WIDTH*POOL_COMP_CORE) -1 : 0] GLBPOL_OfmRdDat  ;
+wire [POOL_CORE                               -1 : 0] GLBPOL_OfmRdDatVld    ;
+wire [POOL_CORE                               -1 : 0] POLGLB_OfmRdDatRdy    ;
 
-wire [IDX_WIDTH                             -1 : 0] POLGLB_OfmWrAddr    ;
-wire [(ACT_WIDTH*POOL_COMP_CORE)            -1 : 0] POLGLB_OfmWrDat     ;
-wire                                                POLGLB_OfmWrDatVld     ;
-wire                                                GLBPOL_OfmWrDatRdy     ;
-wire [IDX_WIDTH                               -1 : 0] POLGLB_IdxMaskWrAddr    ;
-wire [IDX_WIDTH + 1                           -1 : 0] POLGLB_IdxMaskWrDat     ;
-wire                                                  POLGLB_IdxMaskWrDatVld  ;
-wire                                                  GLBPOL_IdxMaskWrDatRdy  ;
+wire [IDX_WIDTH                             -1 : 0] POLGLB_OfmWrAddr        ;
+wire [(ACT_WIDTH*POOL_COMP_CORE)            -1 : 0] POLGLB_OfmWrDat         ;
+wire                                                POLGLB_OfmWrDatVld      ;
+wire                                                GLBPOL_OfmWrDatRdy      ;
+wire [IDX_WIDTH                               -1 : 0] POLGLB_IdxMaskWrAddr  ;
+wire [IDX_WIDTH + 1                           -1 : 0] POLGLB_IdxMaskWrDat   ;
+wire                                                  POLGLB_IdxMaskWrDatVld;
+wire                                                  GLBPOL_IdxMaskWrDatRdy;
 // --------------------------------------------------------------------------------------------------------------------
 // GIC
 wire                                                GICITF_CmdVld   ;
 wire [PORT_WIDTH                            -1 : 0] GICITF_Dat      ;
 wire                                                GICITF_DatVld   ;
-wire                                                GICITF_DatLast   ;
+wire                                                GICITF_DatLast  ;
 wire                                                ITFGIC_DatRdy   ;
 
 wire [PORT_WIDTH                            -1 : 0] ITFGIC_Dat      ;
@@ -649,7 +650,7 @@ KUA#(
 //=====================================================================================================================
 // Read Act
 generate
-    for(gv_i=0; gv_i<ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK/SRAM_WIDTH; gv_i =gv_i +1) begin: GEN_SYAGLB_ActRdPort
+    for(gv_i=0; gv_i<SYAIOMAXWIDTH/SRAM_WIDTH; gv_i =gv_i +1) begin: GEN_SYAGLB_ActRdPort
         assign #0.2 TOPGLB_RdPortAddrVld [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdAddrVld;
         assign #0.2 TOPGLB_RdPortAddr    [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdAddr;
         assign #0.2 TOPGLB_RdPortDatRdy  [GLBRDIDX_SYAACT + gv_i]    = SYAGLB_ActRdDatRdy;
@@ -670,7 +671,7 @@ assign #0.2 TOPGLB_RdPortDatRdy[GLBRDIDX_SYAWGT]     = SYAGLB_WgtRdDatRdy;
 
 // Write Ofm
 generate 
-    for(gv_i=0; gv_i<(ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK)/SRAM_WIDTH; gv_i=gv_i+1) begin: GEN_SYAGLB_OfmWrPort
+    for(gv_i=0; gv_i<SYAIOMAXWIDTH/SRAM_WIDTH; gv_i=gv_i+1) begin: GEN_SYAGLB_OfmWrPort
         assign #0.2 TOPGLB_WrPortAddr  [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrAddr;
         assign #0.2 TOPGLB_WrPortDat   [GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDat[SRAM_WIDTH*gv_i +: SRAM_WIDTH];
         assign #0.2 TOPGLB_WrPortDatVld[GLBWRIDX_SYAOFM + gv_i]      = SYAGLB_OfmWrDatVld;
@@ -859,10 +860,10 @@ assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT ]  
 } = CCUSYA_CfgInfo[SYAISA_WIDTH -1 -: 8];
 assign #0.2 {
-    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM                  ],  
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT ],  
-    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT ]   
-} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*3];
+    TOPGLB_CfgPortBankFlag    [GLBWRIDX_SYAOFM +: SYAIOMAXWIDTH/SRAM_WIDTH],  
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT +: SYAIOMAXWIDTH/SRAM_WIDTH],  
+    TOPGLB_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT +: SYAIOMAXWIDTH/SRAM_WIDTH]   
+} = CCUSYA_CfgInfo[SYAISA_WIDTH -9 -: NUM_BANK*(SYAIOMAXWIDTH/SRAM_WIDTH)*3];
 
 assign #0.2 {
     TOPGLB_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,  
@@ -953,12 +954,9 @@ ITF #(
 ) u_ITF(
     .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO_PAD),
     .I_BypOE_PAD        ( I_BypOE_PAD       ),
-    .I_BypPLL_PAD       ( I_BypPLL_PAD      ),
-    .I_FBDIV_PAD        ( I_FBDIV_PAD       ),
     .I_SwClk_PAD        ( I_SwClk_PAD       ),
     .O_SysClk_PAD       ( O_SysClk_PAD      ),
     .O_OffClk_PAD       ( O_OffClk_PAD      ),
-    .O_PLLLock_PAD      ( O_PLLLock_PAD     ),
     .I_SysRst_n_PAD     ( I_SysRst_n_PAD    ),
     .I_SysClk_PAD       ( I_SysClk_PAD      ),
     .I_OffClk_PAD       ( I_OffClk_PAD      ),
@@ -974,6 +972,9 @@ ITF #(
     .I_ISAVld_PAD       ( I_ISAVld_PAD      ),
     .O_CmdVld_PAD       ( O_CmdVld_PAD      ),
     .IO_Dat_PAD         ( IO_Dat_PAD        ),
+    // .I_BypPLL_PAD       ( I_BypPLL_PAD      ),
+    // .I_FBDIV_PAD        ( I_FBDIV_PAD       ),
+    // .O_PLLLock_PAD      ( O_PLLLock_PAD     ),
     .CCUITF_CfgRdy      ( CCUITF_CfgRdy     ),
     .ITFCCU_ISARdDat    ( ITFCCU_ISARdDat   ),
     .ITFCCU_ISARdDatVld ( ITFCCU_ISARdDatVld),

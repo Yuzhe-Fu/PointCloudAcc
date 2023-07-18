@@ -143,15 +143,16 @@ end
 initial begin
     I_BypAsysnFIFO  = 1'b0;
     I_BypOE         = 1'b0;
-    I_BypPLL        = 1'b0;
-    I_FBDIV         = 5'b1;
-    I_SwClk         = 1'b0;
     I_OffOE         = 1'b0;
-    @(posedge rst_n);
-    if(!I_BypPLL) begin
-        wait(O_PLLLock);
-        I_SwClk     = 1'b1;
-    end
+
+    I_SwClk         = 1'b1;
+    // I_BypPLL        = 1'b0;
+    // I_FBDIV         = 5'b1;
+    // @(posedge rst_n);
+    // if(!I_BypPLL) begin
+    //     wait(O_PLLLock);
+    //     I_SwClk     = 1'b1;
+    // end
 end
 
 initial begin
@@ -352,15 +353,12 @@ assign #2 IO_Dat    = (state == ISASND | state == DATIN2CHIP)?
 TOP u_TOP (
     .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO),
     .I_BypOE_PAD        ( I_BypOE       ),
-    .I_BypPLL_PAD       ( I_BypPLL      ),
-    .I_FBDIV_PAD        ( I_FBDIV       ),
     .I_SwClk_PAD        ( I_SwClk       ),
     .I_SysRst_n_PAD     ( rst_n         ),
     .I_SysClk_PAD       ( I_SysClk      ),
     .I_OffClk_PAD       ( I_OffClk      ),
     .O_SysClk_PAD       (               ),
     .O_OffClk_PAD       (               ),
-    .O_PLLLock_PAD      ( O_PLLLock     ),
     .O_CfgRdy_PAD       ( O_CfgRdy      ),
     .O_DatOE_PAD        ( O_DatOE       ),
     .I_OffOE_PAD        ( I_OffOE       ),
@@ -372,7 +370,10 @@ TOP u_TOP (
     .I_DatRdy_PAD       ( I_DatRdy      ),
     .I_ISAVld_PAD       ( I_ISAVld      ),
     .O_CmdVld_PAD       ( O_CmdVld      ),
-    .IO_Dat_PAD         ( IO_Dat        ) 
+    .IO_Dat_PAD         ( IO_Dat        )
+    // .I_BypPLL_PAD       ( I_BypPLL      ),
+    // .I_FBDIV_PAD        ( I_FBDIV       ),
+    // .O_PLLLock_PAD      ( O_PLLLock     ), 
 );
 
 endmodule

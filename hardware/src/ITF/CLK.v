@@ -17,16 +17,16 @@ module CLK #(
     parameter FBDIV_WIDTH   = 5
     )(
     input                       I_BypAsysnFIFO,
-    input                       I_BypPLL    , 
     input                       I_SwClk     ,
     input                       I_SysRst_n  , 
     input                       I_SysClk    , 
     input                       I_OffClk    ,
-    input [FBDIV_WIDTH  -1 : 0] I_FBDIV     ,
     output                      SysRst_n    ,
     output                      SysClk      ,
-    output                      OffClk      ,
-    output                      O_PLLLock    
+    output                      OffClk       
+    // input                       I_BypPLL    ,
+    // input [FBDIV_WIDTH  -1 : 0] I_FBDIV     , 
+    // output                      O_PLLLock    
 );
 
 //=====================================================================================================================
@@ -37,8 +37,6 @@ module CLK #(
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                PLLclk;
-wire [12    -1 : 0] FBDIV;
 wire                SysClk_tmp;
 
 //=====================================================================================================================
@@ -46,14 +44,15 @@ wire                SysClk_tmp;
 //=====================================================================================================================
 assign SysRst_n = I_SysRst_n;
 
-assign SysClk_tmp = I_BypAsysnFIFO? I_OffClk : I_BypPLL? I_SysClk : PLLclk;
-
-assign FBDIV = {I_FBDIV, 4'd0};
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-`define PLL
+// `define PLL
 `ifdef PLL
+    wire                    PLLclk;
+    wire [12        -1 : 0] FBDIV;
+    assign SysClk_tmp   = I_BypAsysnFIFO? I_OffClk : I_BypPLL? I_SysClk : PLLclk;
+    assign FBDIV        = {I_FBDIV, 4'd0};
     PLLTS28HPMFRAC u_PLLTS28HPMFRAC (
         .BYPASS         ( I_BypPLL  ),
         .DACPD          ( 1'b0      ),
@@ -82,9 +81,9 @@ assign FBDIV = {I_FBDIV, 4'd0};
         .FOUTVCO        (           ),
         .CLKSSCG        (           ) 
         );
+
 `else
-    assign PLLclk = I_SysClk;
-    assign O_PLLLock = I_BypPLL & (&FBDIV); // use all bits
+    assign SysClk_tmp = I_BypAsysnFIFO? I_OffClk : I_SysClk;
 `endif
 
 CLKREL u_CLKREL_SysClk(
