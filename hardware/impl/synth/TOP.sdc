@@ -34,10 +34,10 @@ set_false_path -to [list \
 ]
 
 set_input_delay  -clock clock_clk -clock_fall -add_delay [expr 0*$period_clk] [all_inputs ]
-set_output_delay -clock clock_clk -clock_fall -add_delay [expr 0*$period_clk] [all_outputs]
-
 set_input_delay  -clock clock_sck -clock_fall -add_delay [expr 0*$period_sck] [all_inputs ]
-set_output_delay -clock clock_sck -clock_fall -add_delay [expr 0*$period_sck] [all_outputs]
+
+set_output_delay -clock clock_clk -clock_rise -add_delay [expr 0.33*$period_clk] [all_outputs]
+set_output_delay -clock clock_sck -clock_rise -add_delay [expr 0.33*$period_sck] [all_outputs]
 
 set_input_transition -min 0.05 [all_inputs]
 set_input_transition -max 0.2  [all_inputs]
