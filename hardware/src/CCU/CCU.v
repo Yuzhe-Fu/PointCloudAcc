@@ -135,11 +135,11 @@ reg [4      -1 : 0] state       ;
 reg [4      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE    :   if(ITFCCU_ISARdDatVld)
+        IDLE:   if(ITFCCU_ISARdDatVld)
                         next_state <= DEC; //
                     else
                         next_state <= IDLE;
-        DEC:   if (SIPO_OUT_VLD[opCode] & SIPO_OUT_RDY[opCode])
+        DEC:    if (SIPO_OUT_VLD[opCode] & SIPO_OUT_RDY[opCode])
                         next_state <= IDLE;
                     else
                         next_state <= DEC;
@@ -158,7 +158,7 @@ end
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
-assign CCUITF_ISARdDatRdy   = state == DEC & SIPO_InRdy[opCode];
+assign CCUITF_ISARdDatRdy   = state == DEC & !SIPO_OUT_VLD[opCode]; // SIPO Ready
 
 assign CCUITF_CfgRdy= cfgRdy;
 assign cfgRdy       = {MONCCU_CfgRdy, GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
@@ -230,7 +230,7 @@ generate
         assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
         assign FIFO_pop = cfgEnable;
 
-        assign  cfgEnable = (FIFO_data_out[OPCODE_WIDTH] | cfgRdy[gv]) & !FIFO_empty; // Force reset or cfgrdy
+        assign  cfgEnable = (FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[gv] & !cfgVld[gv]) ) & !FIFO_empty; // Force reset or cfgrdy: After cfgEnable -> cfgVld&cfgRdy -> module finishes(cfgRdy=1) and not given cfgVld
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
                 cfgInfo[gv] <= 0;
