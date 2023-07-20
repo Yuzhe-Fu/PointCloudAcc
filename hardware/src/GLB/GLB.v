@@ -205,6 +205,8 @@ generate
         wire                                RdPortAlloc;
         wire [$clog2(NUM_BANK)         : 0] RdPortNumBank;
         wire [ADDR_WIDTH            -1 : 0] RdPortAddrVldRange;
+        wire                                pseudo_arready;
+        wire                                pseudo_rvalid ;
 
         // Map RdPort to Bank
         assign #0.2 RdPortAddrVldRange =  RdPortAlloc? SRAM_WORD*RdPortNumBank : SRAM_WORD; // Cut address to a relative(valid) range in NumBank/ParBank; Default: SRAM_WORD
@@ -218,7 +220,7 @@ generate
         assign #0.2 PortRdBankAddrVld[gv_j] = {NUM_BANK{TOPGLB_RdPortAddrVld[gv_j]}} & RdPortHitBank; // 32bits, // addr handshake : enable of (add+1)
 
         // To Output (Addr)
-        assign  #0.2 GLBTOP_RdPortAddrRdy[gv_j] = TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + gv_j] | (RdPortAlloc & // EmptyFull Bypass
+        assign  #0.2 GLBTOP_RdPortAddrRdy[gv_j] = TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + gv_j]? pseudo_arready : (RdPortAlloc & // EmptyFull Bypass
             (  TOPGLB_RdPortAddr[gv_j]%SRAM_WORD ==0 & PortCur1stBankIdx != RdPort1stBankIdx?  // First Addr of next bank? 
                 Bank_arready[PortCur1stBankIdx -1] & Bank_arready[PortCur1stBankIdx] 
                 // Last Bank arready=1: data has been read out; & Current Bank is ready to read.
@@ -227,7 +229,7 @@ generate
         );
 
         // To Output (Data)
-        assign  #0.2 GLBTOP_RdPortDatVld[gv_j]   = TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + gv_j] | (RdPortAlloc & Bank_rvalid[PortCur1stBankIdx_d]); // EmptyFull Bypass
+        assign  #0.2 GLBTOP_RdPortDatVld[gv_j]   = TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + gv_j]? pseudo_rvalid : (RdPortAlloc & Bank_rvalid[PortCur1stBankIdx_d]); // EmptyFull Bypass
         assign  #0.2 GLBTOP_RdPortDat[gv_j]      = GLBTOP_RdPortDatVld[gv_j]? Bank_rdata_array[PortCur1stBankIdx_d] : 0;
 
         prior_arb#(
@@ -255,6 +257,16 @@ generate
             .DIN   ( PortCur1stBankIdx ),
             .DOUT  ( PortCur1stBankIdx_d  )
         );
+
+        PSERDRAM u_PSERDRAM(
+            .clk     ( clk     ),
+            .rst_n   ( rst_n   ),
+            .arvalid ( TOPGLB_RdPortAddrVld[gv_j] ),
+            .arready ( pseudo_arready ),
+            .rvalid  ( pseudo_rvalid  ),
+            .rready  ( TOPGLB_RdPortDatRdy[gv_j]  )
+        );
+
 
     end
 

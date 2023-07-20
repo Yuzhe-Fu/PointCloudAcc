@@ -28,6 +28,7 @@
 ../../src/primitives/Memory/RAM_HS.v
 ../../src/primitives/Memory/RAM.v
 ../../src/primitives/Memory/RAM_REG.v
+../../src/primitives/Memory/PSERDRAM.v
 ../../src/primitives/SIPO/SIPO.v
 ../../src/primitives/SIPO/SIPO_CUT.v
 ../../src/primitives/PISO/PISO_NOCACHE.v
