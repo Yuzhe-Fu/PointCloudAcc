@@ -2,7 +2,7 @@
 
 `define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
 `define OFFCLOCK_PERIOD 20 // 
-`define PLL
+// `define PLL
 `define SIM
 `define FUNC_SIM
 // `define POST_SIM
@@ -29,12 +29,12 @@ parameter POLISA_WIDTH   = PORT_WIDTH*9;
 parameter GICISA_WIDTH   = PORT_WIDTH*2;
 parameter MONISA_WIDTH   = PORT_WIDTH*1;
 
-parameter FPSISANUM   = 1;
-parameter KNNISANUM   = 7;
-parameter SYAISANUM   = 4;
-parameter POLISANUM   = 3;
-parameter GICISANUM   = 3;
-parameter MONISANUM   = 3;
+parameter FPSISANUM   = 5;
+parameter KNNISANUM   = 16;
+parameter SYAISANUM   = 8;
+parameter POLISANUM   = 7;
+parameter GICISANUM   = 9;
+parameter MONISANUM   = 6;
 
 // MON
 parameter CCUMON_WIDTH  = 128*2;
@@ -95,6 +95,7 @@ wire                            I_DatVld;
 wire                            I_DatLast;
 wire                            I_DatRdy;
 wire                            I_ISAVld;
+wire                            O_DatLast;
 
 reg                             rst_n ;
 wire                            O_PLLLock;
@@ -131,7 +132,8 @@ end
 initial begin
     I_SysClk = 1;
     @(posedge I_OffClk); // wait I_FBDIV
-    forever #(`CLOCK_PERIOD/2*{I_FBDIV, 4'd0})  I_SysClk=~I_SysClk;
+    // forever #(`CLOCK_PERIOD/2*{I_FBDIV, 4'd0})  I_SysClk=~I_SysClk;
+    forever #(`CLOCK_PERIOD/2*{5'b1, 4'd0})  I_SysClk=~I_SysClk;
 end
 
 initial begin
@@ -219,12 +221,12 @@ always @(*) begin
                 end else
                     next_state <= DATCMD;
 
-        DATIN2CHIP:   if( Overflow_DatAddr )
+        DATIN2CHIP:   if( I_DatLast_tmp & (I_DatVld_tmp & O_DatRdy) )
                     next_state <= IDLE;
                 else
                     next_state <= DATIN2CHIP;
 
-        DATOUT2OFF:   if( Overflow_DatAddr )
+        DATOUT2OFF:   if( O_DatLast & (O_DatVld & I_DatRdy_tmp) )
                     next_state <= IDLE;
                 else
                     next_state <= DATOUT2OFF;
