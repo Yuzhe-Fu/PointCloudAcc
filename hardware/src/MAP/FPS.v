@@ -462,9 +462,29 @@ generate
         // --------------------------------------------------------------------------------------------------------
         // Combinational Logic
         // --------------------------------------------------------------------------------------------------------
+
+        // --------------------------------------------------------------------------------------------------------
+        // Start Pulse Generate
+        // --------------------------------------------------------------------------------------------------------
+        wire                            Sta;
+        wire                            Cfg_fnh;
+        wire                            Cfg_fnh_d;
+        assign Cfg_fnh = CCUFPS_CfgVld[gv_fpc] & !CCUFPS_CfgStop;
+        DELAY#(
+            .NUM_STAGES ( 1 ),
+            .DATA_WIDTH ( 1 )
+        )u_DELAY(
+            .CLK        ( clk        ),
+            .RST_N      ( rst_n      ),
+            .DIN        ( Cfg_fnh    ),
+            .DOUT       ( Cfg_fnh_d  )
+        );
+        assign Sta = !Cfg_fnh & Cfg_fnh_d; // Negedge
+        // --------------------------------------------------------------------------------------------------------
+
         always @(*) begin
             case ( state[gv_fpc] )
-                IDLE :  if(FPSCCU_CfgRdy[gv_fpc] & (CCUFPS_CfgVld[gv_fpc] & !CCUFPS_CfgStop))
+                IDLE :  if( Sta ) // Negedge of CfgVld & !Stop
                             next_state[gv_fpc] <= WORK; //
                         else
                             next_state[gv_fpc] <= IDLE;
