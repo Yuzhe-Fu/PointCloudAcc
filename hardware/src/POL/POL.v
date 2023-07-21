@@ -226,30 +226,10 @@ generate
     //=====================================================================================================================
     // Logic Design: s0:  MapRdAddr
     //=====================================================================================================================
-
-    // --------------------------------------------------------------------------------------------------------
-    // Start Pulse Generate
-    // --------------------------------------------------------------------------------------------------------
-    wire                            Sta;
-    wire                            Cfg_fnh;
-    wire                            Cfg_fnh_d;
-    assign Cfg_fnh = CCUPOL_CfgVld[gv_plc] & !CCUPOL_CfgStop;
-    DELAY#(
-        .NUM_STAGES ( 1 ),
-        .DATA_WIDTH ( 1 )
-    )u_DELAY(
-        .CLK        ( clk        ),
-        .RST_N      ( rst_n      ),
-        .DIN        ( Cfg_fnh    ),
-        .DOUT       ( Cfg_fnh_d  )
-    );
-    assign Sta = !Cfg_fnh & Cfg_fnh_d; // Negedge
-    // --------------------------------------------------------------------------------------------------------
-
     // Combination Logic
     always @(*) begin
         case ( state[gv_plc] )
-            IDLE :  if ( Sta )
+            IDLE :  if ( &POLCCU_CfgRdy & (&CCUPOL_CfgVld & !CCUPOL_CfgStop ) ) // wait all core CfgRdy&CfgVld & !Stop
                         next_state[gv_plc] <= MAPIN;
                     else
                         next_state[gv_plc] <= IDLE;
