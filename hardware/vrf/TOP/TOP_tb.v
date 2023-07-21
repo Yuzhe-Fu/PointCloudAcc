@@ -29,12 +29,12 @@ parameter POLISA_WIDTH   = PORT_WIDTH*9;
 parameter GICISA_WIDTH   = PORT_WIDTH*2;
 parameter MONISA_WIDTH   = PORT_WIDTH*1;
 
-parameter FPSISANUM   = 5;
-parameter KNNISANUM   = 16;
-parameter SYAISANUM   = 8;
-parameter POLISANUM   = 7;
-parameter GICISANUM   = 9;
-parameter MONISANUM   = 6;
+parameter FPSISANUM   = 10;
+parameter KNNISANUM   = 32;
+parameter SYAISANUM   = 16;
+parameter POLISANUM   = 18;
+parameter GICISANUM   = 18;
+parameter MONISANUM   = 20;
 
 // MON
 parameter CCUMON_WIDTH  = 128*2;
@@ -103,7 +103,9 @@ reg [PORT_WIDTH         -1 : 0] Dram[0 : 2**18-1];
 wire[DRAM_ADDR_WIDTH    -1 : 0] DatAddr;
 
 reg [$clog2(OPNUM)      -1 : 0] ISAIdx;
+reg [$clog2(OPNUM)      -1 : 0] ISAIdx_tmp;
 reg [$clog2(OPNUM)      -1 : 0] ISAIdx_d;
+reg [32                 -1 : 0] ISADelay;
 wire[OPNUM  -1 : 0][ADDR_WIDTH  -1 : 0] ISAAddr;
 wire[OPNUM              -1 : 0] Overflow_ISA;
 wire [OPNUM             -1 : 0] O_CfgRdy;
@@ -133,11 +135,11 @@ initial begin
     I_SysClk = 1;
     @(posedge I_OffClk); // wait I_FBDIV
     // forever #(`CLOCK_PERIOD/2*{I_FBDIV, 4'd0})  I_SysClk=~I_SysClk;
-    forever #(`CLOCK_PERIOD/2*{5'b1, 4'd0})  I_SysClk=~I_SysClk;
+    forever #(`CLOCK_PERIOD)  I_SysClk=~I_SysClk;
 end
 
 initial begin
-    rst_n                      = 1;
+    rst_n                         = 1;
     #(`OFFCLOCK_PERIOD*2)  rst_n  =  0;
     #(`OFFCLOCK_PERIOD*10) rst_n  =  1;
 end
@@ -161,28 +163,54 @@ initial begin
     $readmemh("../TOP/Dram.txt", Dram);
 end
 
+reg [32 + 4     -1 : 0] ISA_Serial [0 : 2**8   -1];
+initial begin
+    $readmemh("../TOP/ISA.txt", ISA_Serial);
+end
+
 initial begin
     $shm_open("TEMPLATE.shm");
     $shm_probe(TOP_tb.u_TOP, "AS");
 end
 
+
+reg [16     -1 : 0] cntISA;
+reg                 TrigLoop;
 initial
 begin
+    cntISA = 0;
     ISAIdx = 7; // Invalid
+    ISADelay = 0;
+    TrigLoop = 0;
     @(posedge rst_n);
     repeat(10) @(posedge I_OffClk);
     forever begin
-        wait (state == IDLE & |O_CfgRdy & !O_CmdVld);
+        wait (state == IDLE & |O_CfgRdy & (!O_CmdVld & !O_DatVld));
+        if (cntISA >= 60) begin
+            TrigLoop = 1;
+            repeat(2) @(posedge I_OffClk);
+            TrigLoop = 0;
+            cntISA = 1;// Not Need Initialize banks again
+        end
+
         @ (negedge I_OffClk );
-        $stop;
-        wait (ISAIdx <= OPNUM -1);
-        repeat(2) @(posedge I_OffClk); // 
+        // $stop;
+        ISAIdx = ISA_Serial[cntISA][0 +: 4]; // Initial All SRAM Banks
+        ISADelay = ISA_Serial[cntISA][4 +: 32];
+        wait (state == ISASND);
+
+        // Delay
+        ISAIdx = 6;
+        ISAIdx_tmp = ISAIdx;
+        repeat(ISADelay) @(posedge I_OffClk);
+        ISAIdx = ISAIdx_tmp;
+        cntISA = cntISA + 1;
     end
 end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230704_Period5_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note32BANK&RTSELDB/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230720_1852_Period5_PLL0_group_Track3vt_MaxDynPwr0_OptWgt0.5_NoteRTSELDB&NOPLLSIGNALS&POL8&KNN2PAR/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
@@ -245,6 +273,8 @@ end
 //=====================================================================================================================
 // Logic Design: ISA 
 //=====================================================================================================================
+wire [OPNUM     -1 : 0][ADDR_WIDTH     -1 : 0] Mon_CntISA; 
+
 genvar gv_i;
 generate
     for(gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_ISAAddr
@@ -260,7 +290,7 @@ generate
         )u_counter_MduISARdAddr(
             .CLK       ( I_OffClk       ),
             .RESET_N   ( rst_n          ),
-            .CLEAR     ( 1'b0           ),
+            .CLEAR     ( TrigLoop       ),
             .DEFAULT   ( Default        ),
             .INC       ( I_ISAVld_tmp & (I_DatVld_tmp & O_DatRdy) & (ISAIdx_d == gv_i) ),
             .DEC       ( 1'b0           ),
@@ -268,7 +298,7 @@ generate
             .MAX_COUNT ( MaxCnt         ),
             .OVERFLOW  (                ),
             .UNDERFLOW (                ),
-            .COUNT     ( ISAAddr[gv_i])
+            .COUNT     ( ISAAddr[gv_i]  )
         );
         always @(posedge I_OffClk or rst_n) begin
             if (!rst_n) begin
@@ -278,6 +308,7 @@ generate
             end
         end
         assign Overflow_ISA[gv_i] = ISAAddr[gv_i] - ISAAddr_r == ISANUMWORD[ISAIdx_d] - 1;
+        assign Mon_CntISA[gv_i] = (ISAAddr[gv_i] - ISABASEADDR[gv_i])/ISANUMWORD[gv_i];
 
     end
 endgenerate
