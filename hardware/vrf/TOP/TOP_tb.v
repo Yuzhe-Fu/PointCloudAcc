@@ -1,12 +1,12 @@
 `timescale  1 ns / 100 ps
 
 `define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
-`define OFFCLOCK_PERIOD 20 // 
+`define OFFCLOCK_PERIOD 100 // 
 // `define PLL
 `define SIM
-`define FUNC_SIM
+// `define FUNC_SIM
 // `define POST_SIM
-`define PSEUDO_DATA
+// `define PSEUDO_DATA
 `define ASSERTION_ON
 // `define WITHPAD
 
@@ -29,12 +29,20 @@ parameter POLISA_WIDTH   = PORT_WIDTH*9;
 parameter GICISA_WIDTH   = PORT_WIDTH*2;
 parameter MONISA_WIDTH   = PORT_WIDTH*1;
 
-parameter FPSISANUM   = 10;
-parameter KNNISANUM   = 32;
-parameter SYAISANUM   = 16;
-parameter POLISANUM   = 18;
-parameter GICISANUM   = 18;
-parameter MONISANUM   = 20;
+// parameter ISANUM[0]   = 20;
+// parameter ISANUM[1]   = 32;
+// parameter ISANUM[2]   = 32;
+// parameter ISANUM[3]   = 18;
+// parameter ISANUM[4]   = 18;
+// parameter ISANUM[5]   = 20;
+localparam [OPNUM -1 : 0][32 -1 : 0] ISANUM = {
+    32'd20, // MON
+    32'd18, // GIC
+    32'd18, // POL
+    32'd32, // SYA
+    32'd32, // KNN
+    32'd20  // FPS
+};
 
 // MON
 parameter CCUMON_WIDTH  = 128*2;
@@ -49,11 +57,11 @@ parameter MDUMONSUM_WIDTH  = CCUMON_WIDTH + GICMON_WIDTH + GLBMON_WIDTH + POLMON
 parameter TOPMON_WIDTH     = PORT_WIDTH*`CEIL(MDUMONSUM_WIDTH, PORT_WIDTH);
 
 localparam [OPNUM -1 : 0][DRAM_ADDR_WIDTH -1 : 0] ISABASEADDR = {
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM + SYAISA_WIDTH/PORT_WIDTH*SYAISANUM + POLISA_WIDTH/PORT_WIDTH*POLISANUM + GICISA_WIDTH/PORT_WIDTH*GICISANUM,
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM + SYAISA_WIDTH/PORT_WIDTH*SYAISANUM + POLISA_WIDTH/PORT_WIDTH*POLISANUM, //29
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM + SYAISA_WIDTH/PORT_WIDTH*SYAISANUM, 
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM + KNNISA_WIDTH/PORT_WIDTH*KNNISANUM, 
-    32'd0 + FPSISA_WIDTH/PORT_WIDTH*FPSISANUM, 
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*ISANUM[0] + KNNISA_WIDTH/PORT_WIDTH*ISANUM[1] + SYAISA_WIDTH/PORT_WIDTH*ISANUM[2] + POLISA_WIDTH/PORT_WIDTH*ISANUM[3] + GICISA_WIDTH/PORT_WIDTH*ISANUM[4],
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*ISANUM[0] + KNNISA_WIDTH/PORT_WIDTH*ISANUM[1] + SYAISA_WIDTH/PORT_WIDTH*ISANUM[2] + POLISA_WIDTH/PORT_WIDTH*ISANUM[3], //29
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*ISANUM[0] + KNNISA_WIDTH/PORT_WIDTH*ISANUM[1] + SYAISA_WIDTH/PORT_WIDTH*ISANUM[2], 
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*ISANUM[0] + KNNISA_WIDTH/PORT_WIDTH*ISANUM[1], 
+    32'd0 + FPSISA_WIDTH/PORT_WIDTH*ISANUM[0], 
     32'd0
 };
 
@@ -111,6 +119,7 @@ wire[OPNUM              -1 : 0] Overflow_ISA;
 wire [OPNUM             -1 : 0] O_CfgRdy;
 wire                            I_ISAVld_tmp;
 wire                            Overflow_DatAddr;
+wire [OPNUM     -1 : 0][ADDR_WIDTH     -1 : 0] Mon_CntISA; 
 
 localparam IDLE         = 3'b000;
 localparam ISASND       = 3'b001;
@@ -135,7 +144,7 @@ initial begin
     I_SysClk = 1;
     @(posedge I_OffClk); // wait I_FBDIV
     // forever #(`CLOCK_PERIOD/2*{I_FBDIV, 4'd0})  I_SysClk=~I_SysClk;
-    forever #(`CLOCK_PERIOD)  I_SysClk=~I_SysClk;
+    forever #(`CLOCK_PERIOD/2)  I_SysClk=~I_SysClk;
 end
 
 initial begin
@@ -176,6 +185,7 @@ end
 
 reg [16     -1 : 0] cntISA;
 reg                 TrigLoop;
+wire                IsaSndEn;
 initial
 begin
     cntISA = 0;
@@ -185,7 +195,7 @@ begin
     @(posedge rst_n);
     repeat(10) @(posedge I_OffClk);
     forever begin
-        wait (state == IDLE & |O_CfgRdy & (!O_CmdVld & !O_DatVld));
+        wait (state == IDLE & IsaSndEn);
         if (cntISA >= 60) begin
             TrigLoop = 1;
             repeat(2) @(posedge I_OffClk);
@@ -195,16 +205,30 @@ begin
 
         @ (negedge I_OffClk );
         // $stop;
-        ISAIdx = ISA_Serial[cntISA][0 +: 4]; // Initial All SRAM Banks
-        ISADelay = ISA_Serial[cntISA][4 +: 32];
-        wait (state == ISASND);
+        ISAIdx  = ISA_Serial[cntISA][0 +: 4]; // Low 4 bit ISA
+        ISADelay= ISA_Serial[cntISA][4 +: 32];// High 32 bit Delay
+        if (ISAIdx <= 5) // Valid ISA
+            wait (state == ISASND);
 
         // Delay
-        ISAIdx = 6;
+        ISAIdx = 6; // DO NOT DELETE!
         ISAIdx_tmp = ISAIdx;
         repeat(ISADelay) @(posedge I_OffClk);
         ISAIdx = ISAIdx_tmp;
         cntISA = cntISA + 1;
+    end
+end
+
+integer i;
+initial begin
+    forever begin
+        @(posedge I_OffClk);
+        for(i=0; i<OPNUM; i=i+1) begin
+            if(Mon_CntISA[i] >= ISANUM[i]) begin
+                $stop;
+                $display("ISA out of range, [%d]", i);
+            end
+        end
     end
 end
 
@@ -223,19 +247,22 @@ end
 //=====================================================================================================================
 // Logic Design 1: FSM=ITF
 //=====================================================================================================================
+assign IsaSndEn = (!O_CmdVld & !O_DatVld) & O_CfgRdy[4] & O_CfgRdy[5]; // No output & No GIC and MON;
 always @(*) begin
     case ( state )
-        IDLE:   if( O_CmdVld )
+        IDLE:   if ( TrigLoop )
+                    next_state <= IDLE;
+                else if( O_CmdVld )
                     next_state <= DATCMD;
                 else if (O_DatVld ) // !CmdVld: MonDat
                     next_state <= DATOUT2OFF;
-                else if ( ISAIdx <= 5 )
+                else if ( IsaSndEn & ISAIdx <= 5 )
                     next_state <= ISASND;
                 else
                     next_state <= IDLE;
 
         // ISA
-        ISASND: if( I_DatLast_tmp & I_DatVld_tmp & O_DatRdy )
+        ISASND: if( (I_DatLast_tmp & I_DatVld_tmp & O_DatRdy) | O_DatVld ) // O_DatVld Forces state to shut down ISASND
                     next_state <= IDLE;
                 else
                     next_state <= ISASND;
@@ -273,8 +300,6 @@ end
 //=====================================================================================================================
 // Logic Design: ISA 
 //=====================================================================================================================
-wire [OPNUM     -1 : 0][ADDR_WIDTH     -1 : 0] Mon_CntISA; 
-
 genvar gv_i;
 generate
     for(gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_ISAAddr
@@ -302,7 +327,9 @@ generate
         );
         always @(posedge I_OffClk or rst_n) begin
             if (!rst_n) begin
-                ISAAddr_r <= 0;
+                ISAAddr_r <= Default;
+            end else if(TrigLoop) begin
+                ISAAddr_r <= Default;
             end else if(state == IDLE) begin
                 ISAAddr_r <= ISAAddr[gv_i];
             end
