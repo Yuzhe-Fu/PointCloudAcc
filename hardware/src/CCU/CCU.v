@@ -93,8 +93,8 @@ localparam OPCODE_WIDTH = 8;
 localparam NUMWORD_WIDTH= 8;
 
 localparam IDLE         = 4'b0000;
-localparam DEC          = 4'b0001;
-localparam CFG          = 4'b0010;
+localparam RECV         = 4'b0001; // Receive
+localparam REFN         = 4'b0010; // Receive Finish
 
 localparam [OPNUM    -1 : 0][16  -1 : 0] ISA_WIDTH = {
     MONISA_WIDTH[0 +: 16],
@@ -136,13 +136,20 @@ reg [4      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE:   if(ITFCCU_ISARdDatVld)
-                        next_state <= DEC; //
+                        next_state <= RECV; //
                     else
                         next_state <= IDLE;
-        DEC:    if (SIPO_OUT_VLD[opCode] & SIPO_OUT_RDY[opCode])
+        RECV:   if (SIPO_OUT_VLD[opCode]) begin
+                    if (SIPO_OUT_RDY[opCode])
                         next_state <= IDLE;
-                    else
-                        next_state <= DEC;
+                    else 
+                        next_state <= REFN;
+                end else
+                    next_state <= RECV;
+        REFN:   if (SIPO_OUT_RDY[opCode])
+                    next_state <= IDLE;
+                else 
+                    next_state <= REFN;
 
         default :       next_state <= IDLE;
     endcase
@@ -158,7 +165,7 @@ end
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
-assign CCUITF_ISARdDatRdy   = state == DEC & !SIPO_OUT_VLD[opCode]; // SIPO Ready
+assign CCUITF_ISARdDatRdy   = state == RECV & next_state == RECV; // SIPO Ready
 
 assign CCUITF_CfgRdy= cfgRdy;
 assign cfgRdy       = {MONCCU_CfgRdy, GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
@@ -175,7 +182,7 @@ always @(posedge clk or negedge rst_n) begin
         opCode <= {OPCODE_WIDTH{1'b1}};
     end else if(next_state == IDLE) begin // HS
         opCode <= {OPCODE_WIDTH{1'b1}};
-    end else if(state == IDLE & next_state == DEC) begin
+    end else if(state == IDLE & next_state == RECV) begin
         opCode <= ITFCCU_ISARdDat[0 +: OPCODE_WIDTH];
     end
 end
@@ -199,7 +206,7 @@ generate
             .CLK          ( clk            ),
             .RST_N        ( rst_n          ),
             .RESET        ( state == IDLE  ),
-            .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & opCode == gv ),
+            .IN_VLD       ( (ITFCCU_ISARdDatVld & CCUITF_ISARdDatRdy) & opCode == gv ), // Should Input & This ISA SIPO
             .IN_LAST      ( 1'b0           ),
             .IN_DAT       ( ITFCCU_ISARdDat),
             .IN_RDY       ( SIPO_InRdy[gv] ),
@@ -208,9 +215,10 @@ generate
             .OUT_LAST     (                ),
             .OUT_RDY      ( SIPO_OUT_RDY[gv])
         );
-        assign SIPO_OUT_RDY[gv] = !FIFO_Reset & !FIFO_full;
+        assign SIPO_OUT_RDY[gv] = FIFO_push;
 
-        assign FIFO_Reset = SIPO_OUT_DAT[OPCODE_WIDTH] & SIPO_OUT_VLD[gv] & !FIFO_empty;
+        assign FIFO_Reset = (SIPO_OUT_DAT[OPCODE_WIDTH] & SIPO_OUT_VLD[gv]) & !FIFO_empty; // empty == 1->FIFO_Reset==0->FIFO_push=1, SIPO_OUT_RDY=1
+        assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
         FIFO_FWFT#(
             .DATA_WIDTH ( ISA_WIDTH[gv] ),
             .ADDR_WIDTH ( ISAFIFO_ADDR_WIDTH[gv] )
@@ -226,10 +234,8 @@ generate
             .full       ( FIFO_full      ),
             .fifo_count (                )
         );
-
-        assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
+        
         assign FIFO_pop = cfgEnable;
-
         assign  cfgEnable = (FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[gv] & !cfgVld[gv]) ) & !FIFO_empty; // Force reset or cfgrdy: After cfgEnable -> cfgVld&cfgRdy -> module finishes(cfgRdy=1) and not given cfgVld
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
