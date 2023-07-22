@@ -33,6 +33,7 @@ module ITF #(
     // output                          O_PLLLock_PAD     ,
 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
+    output [6               -1 : 0] O_MonState_PAD    , // Monitor
     output                          O_DatOE_PAD       ,
 
     input                           I_OffOE_PAD       , // Transfer-Control
@@ -49,6 +50,7 @@ module ITF #(
 
     // CCU
     input  [OPNUM           -1 : 0] CCUITF_CfgRdy     ,
+    input  [2               -1 : 0] CCUITF_MonState   ,
     output reg[PORT_WIDTH   -1 : 0] ITFCCU_ISARdDat   ,       
     output reg                      ITFCCU_ISARdDatVld,          
     output reg                      ITFCCU_ISARdDatLast,          
@@ -84,9 +86,7 @@ localparam OUTPUT_PAD   = 1'b0;
 
 localparam IDLE     = 0;
 localparam IN2CHIP  = 1;
-localparam INWAIT   = 2;
-localparam OUT2OFF  = 3;
-localparam OUTWAIT  = 4;
+localparam OUT2OFF  = 2;
 
 //=====================================================================================================================
 // Variable Definition :
@@ -98,6 +98,7 @@ wire                          I_SysRst_n    ;
 wire                          I_SysClk      ;
 wire                          I_OffClk      ;
 wire [OPNUM           -1 : 0] O_CfgRdy      ;
+wire [2+2+2           -1 : 0] O_MonState    ;
 wire                          I_OffOE       ;
 wire                          I_DatVld      ;
 wire                          I_DatLast     ;
@@ -129,10 +130,10 @@ wire                        fifo_async_OUT2OFF_full ;
 wire                        oEPad;
 
 genvar                      gv_i;
-reg [ 3             -1 : 0] state_core       ;
-reg [ 3             -1 : 0] next_state_core  ;
-reg [ 3             -1 : 0] state_off       ;
-reg [ 3             -1 : 0] next_state_off  ;
+reg [2              -1 : 0] state_core       ;
+reg [2              -1 : 0] next_state_core  ;
+reg [2              -1 : 0] state_off       ;
+reg [2              -1 : 0] next_state_off  ;
 
 //=====================================================================================================================
 // Logic Design: OffClk Domain
@@ -170,6 +171,12 @@ PDUW08DGZ_V_G inst_O_CmdVld_PAD     (.I(O_CmdVld), .OEN(OUTPUT_PAD  ), .REN(1'b0
 generate
     for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
         PDUW08DGZ_V_G inst_O_CfgRdy_PAD     (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
+    end 
+endgenerate
+
+generate
+    for (gv_i = 0; gv_i < 6; gv_i = gv_i + 1) begin: GEN_O_MonState_PAD
+        PDUW08DGZ_H_G inst_O_MonState_PAD     (.I(O_MonState[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_MonState_PAD[gv_i]    ), .C( ));
     end 
 endgenerate
 
@@ -340,6 +347,15 @@ DELAY#(
     .RST_N      ( rst_n         ),
     .DIN        ( CCUITF_CfgRdy ),
     .DOUT       ( O_CfgRdy      )
+);
+DELAY#(
+    .NUM_STAGES ( 1     ),
+    .DATA_WIDTH ( 2 + 2 + 2 )
+)u_DELAY_O_MonState(
+    .CLK        ( clk           ),
+    .RST_N      ( rst_n         ),
+    .DIN        ( {state_off[0 +: 2], state_core[0 +: 2], CCUITF_MonState}),
+    .DOUT       ( O_MonState    )
 );
 
 // --------------------------------------------------------------------------------------------------------------------

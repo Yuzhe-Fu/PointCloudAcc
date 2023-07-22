@@ -54,7 +54,8 @@ module CCU #(
     input                                   rst_n               ,
 
     output [OPNUM                   -1 : 0] CCUITF_CfgRdy       ,
-    input   [PORT_WIDTH             -1 : 0] ITFCCU_ISARdDat     ,       
+    output [2                       -1 : 0] CCUITF_MonState       ,
+    input  [PORT_WIDTH              -1 : 0] ITFCCU_ISARdDat     ,       
     input                                   ITFCCU_ISARdDatVld  , 
     input                                   ITFCCU_ISARdDatLast ,         
     output                                  CCUITF_ISARdDatRdy  ,
@@ -169,6 +170,8 @@ assign CCUITF_ISARdDatRdy   = state == RECV & next_state == RECV; // SIPO Ready
 
 assign CCUITF_CfgRdy= cfgRdy;
 assign cfgRdy       = {MONCCU_CfgRdy, GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
+
+assign CCUITF_MonState = state;
 
 assign {CCUMON_CfgVld, CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld} = cfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};

@@ -108,6 +108,7 @@ module TOP #(
     output                          O_OffClk_PAD      ,
 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
+    output [6               -1 : 0] O_MonState_PAD    , // Monitor
     output                          O_DatOE_PAD       ,
 
     input                           I_OffOE_PAD       , // Transfer-Control
@@ -164,6 +165,7 @@ wire                            clk;
 wire                            rst_n;
 genvar                          gv_i;
 wire [OPNUM             -1 : 0] CCUITF_CfgRdy ;
+wire [2                 -1 : 0] CCUITF_MonState ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // CCU 
@@ -419,6 +421,7 @@ CCU#(
     .clk                     ( clk                  ),
     .rst_n                   ( rst_n                ),
     .CCUITF_CfgRdy           ( CCUITF_CfgRdy        ),
+    .CCUITF_MonState         ( CCUITF_MonState      ),
     .ITFCCU_ISARdDat         ( ITFCCU_ISARdDat      ),
     .ITFCCU_ISARdDatVld      ( ITFCCU_ISARdDatVld   ),
     .ITFCCU_ISARdDatLast     ( ITFCCU_ISARdDatLast  ),
@@ -960,6 +963,7 @@ ITF #(
     .I_SysClk_PAD       ( I_SysClk_PAD      ),
     .I_OffClk_PAD       ( I_OffClk_PAD      ),
     .O_CfgRdy_PAD       ( O_CfgRdy_PAD      ),
+    .O_MonState_PAD     ( O_MonState_PAD    ),
     .O_DatOE_PAD        ( O_DatOE_PAD       ),
     .I_OffOE_PAD        ( I_OffOE_PAD       ),
     .I_DatVld_PAD       ( I_DatVld_PAD      ),
@@ -975,6 +979,7 @@ ITF #(
     // .I_FBDIV_PAD        ( I_FBDIV_PAD       ),
     // .O_PLLLock_PAD      ( O_PLLLock_PAD     ),
     .CCUITF_CfgRdy      ( CCUITF_CfgRdy     ),
+    .CCUITF_MonState    ( CCUITF_MonState   ),
     .ITFCCU_ISARdDat    ( ITFCCU_ISARdDat   ),
     .ITFCCU_ISARdDatVld ( ITFCCU_ISARdDatVld),
     .ITFCCU_ISARdDatLast( ITFCCU_ISARdDatLast),
