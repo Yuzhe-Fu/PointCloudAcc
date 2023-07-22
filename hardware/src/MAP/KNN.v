@@ -149,6 +149,7 @@ wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgMaskRdAddr;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgMapWrAddr ;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgIdxMaskRdAddr ;
 wire                            CCUKNN_CfgStop;
+wire                            CCUKNN_CfgBpsMask;
 
 wire [$clog2(CRDRDWIDTH) + 1                        -1 : 0] bwcCpCrdInpBw;
 wire [$clog2(CRD_WIDTH*CRD_MAXDIM*NUM_SORT_CORE) + 1-1 : 0] bwcCpCrdOutBw;
@@ -184,8 +185,9 @@ assign {
     CCUKNN_CfgK_tmp     ,   // 8
     CCUKNN_CfgNip           // 16
 } = CCUKNN_CfgInfo[KNNISA_WIDTH -1 : 16];
-assign CCUKNN_CfgK = CCUKNN_CfgK_tmp;
-assign CCUKNN_CfgStop = CCUKNN_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
+assign CCUKNN_CfgK      = CCUKNN_CfgK_tmp;
+assign CCUKNN_CfgStop   = CCUKNN_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
+assign CCUKNN_CfgBpsMask= CCUKNN_CfgInfo[10];
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -407,7 +409,7 @@ end
 //=====================================================================================================================
 // Combinational Logic
 assign crdRdDat_s1      = state == IDLE? 0 : GLBKNN_CrdRdDat;
-assign MaskRdDat_s1     = state == IDLE? 0 : GLBKNN_MaskRdDat;
+assign MaskRdDat_s1     = state == IDLE? 0 : CCUKNN_CfgBpsMask? {SRAM_WIDTH{1'b1}} : GLBKNN_MaskRdDat;
 assign IdxMaskRdDat_s1  = state == IDLE? 0 : GLBKNN_IdxMaskRdDat;
 
 assign KNNGLB_CrdRdDatRdy       = state == IDLE? 1 : rdy_s1;
@@ -466,7 +468,7 @@ assign bwcCpCrdNfull = bwcCpCrdOutBw >= bwcCpCrdInpBw?
                         (bwcCpCrdInVld & bwcCpCrdInRdy) & (bwcCnt == bwcCpCrdOutBw - bwcCpCrdInpBw) // NearFull: Next clk is full
                         : (bwcCpCrdInVld & bwcCpCrdInRdy) | bwcCnt >= bwcCpCrdOutBw; // one word is enough
 BWC #( // Bit Width Conversion
-    .DATA_IN_WIDTH   ( CRDRDWIDTH ), // 256bit*4=1024bit
+    .DATA_IN_WIDTH   ( CRDRDWIDTH ), // 256bit*2=512bit
     .DATA_OUT_WIDTH  ( CRD_WIDTH*CRD_MAXDIM*NUM_SORT_CORE ) // 8bit*64*8=4096bit
 )u_BWC_CpCrd(
     .CLK       ( clk            ),
