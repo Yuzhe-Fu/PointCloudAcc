@@ -23,7 +23,7 @@ module TOP #(
     parameter NUM_FPC        = 16, 
     parameter NUMSRAM_RDCRD  = 2,
     parameter NUMSRAM_DIST   = 2,
-    parameter NUMMASK_PROC   = 64, // Reduce BW
+    parameter NUMMASK_PROC   = 64, // Reduce BW and Combinational Area
     
     // KNN
     parameter NUM_SORT_CORE  = 8, //
@@ -42,7 +42,7 @@ module TOP #(
     // ITF
     parameter PORT_WIDTH     = 128, 
     parameter DRAM_ADDR_WIDTH= 32, 
-    parameter ASYNC_FIFO_ADDR_WIDTH = 4,
+    parameter ASYNC_FIFO_ADDR_WIDTH = 5, // 200MHz -> 5MHz
     parameter FBDIV_WIDTH    = 5,
 
     // GLB
@@ -64,12 +64,12 @@ module TOP #(
     parameter GICISA_WIDTH   = PORT_WIDTH*2,
     parameter MONISA_WIDTH   = PORT_WIDTH*1,
     parameter MAXISA_WIDTH   = PORT_WIDTH*16,
-    parameter FPSISAFIFO_ADDR_WIDTH = 2,
-    parameter KNNISAFIFO_ADDR_WIDTH = 2,
-    parameter SYAISAFIFO_ADDR_WIDTH = 2,
-    parameter POLISAFIFO_ADDR_WIDTH = 2,
-    parameter GICISAFIFO_ADDR_WIDTH = 2,
-    parameter MONISAFIFO_ADDR_WIDTH = 2,
+    parameter FPSISAFIFO_ADDR_WIDTH = 4,
+    parameter KNNISAFIFO_ADDR_WIDTH = 4,
+    parameter SYAISAFIFO_ADDR_WIDTH = 4,
+    parameter POLISAFIFO_ADDR_WIDTH = 4,
+    parameter GICISAFIFO_ADDR_WIDTH = 4,
+    parameter MONISAFIFO_ADDR_WIDTH = 4,
 
     // UNT
     parameter SHF_ADDR_WIDTH= 8,
