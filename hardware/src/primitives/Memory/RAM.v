@@ -78,7 +78,7 @@ module RAM #(
     end
     assign data_out = read_en_d? DO : DO_d;
 
-    `define RTSELDB
+    // `define RTSELDB
     generate
         if( SRAM_WORD == 128 && SRAM_BIT == 256 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
             `ifdef RTSELDB
@@ -114,23 +114,39 @@ module RAM #(
             .Q      ( DO    )
             );
         end
-        else if( SRAM_WORD == 32 && SRAM_BIT == 256 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
-            `ifdef RTSELDB
-                assign #(DELAY) RTSEL= 2'b10;
-            `else
-                assign #(DELAY) RTSEL= 2'b00;
-            `endif
-            TS1N28HPCPUHDHVTB32X256M1SSO SYA_FWFT_SPSRAM(
-            .SLP    ( 1'b0  ),
-            .SD     ( 1'b0  ),
-            .CLK    ( clk   ),
-            .CEB    ( CSB   ),
-            .WEB    ( WEB   ),
-            .A      ( (&WEB)? AR : AW   ),
-            .D      ( DI    ),
-            .RTSEL  ( RTSEL ),
-            .WTSEL  ( WTSEL ),
-            .Q      ( DO    )
+        else if( SRAM_WORD == 32 && SRAM_BIT == 256 && SRAM_BYTE == 1 && DUAL_PORT == 1)begin
+            assign #(DELAY) RTSEL= 2'b00;
+            TSDN28HPCPUHDB32X128M4M SYA_FWFT_DPSRAM0(
+            .RTSEL ( RTSEL  ),
+            .WTSEL ( WTSEL  ),
+            .PTSEL ( PTSEL  ),
+            .AA    ( AR     ),
+            .DA    (        ),
+            .WEBA  ( ~WEB   ), // A Read
+            .CEBA  ( CSB    ),
+            .CLK   ( clk    ),
+            .AB    ( AW     ),
+            .DB    ( DI[0 +: SRAM_BIT/2]),
+            .WEBB  ( WEB    ), // B Write
+            .CEBB  ( WEB    ),
+            .QA    ( DO[0 +: SRAM_BIT/2]),
+            .QB    (        )
+            );
+            TSDN28HPCPUHDB32X128M4M SYA_FWFT_DPSRAM1(
+            .RTSEL ( RTSEL  ),
+            .WTSEL ( WTSEL  ),
+            .PTSEL ( PTSEL  ),
+            .AA    ( AR     ),
+            .DA    (        ),
+            .WEBA  ( ~WEB   ), // A Read
+            .CEBA  ( CSB    ),
+            .CLK   ( clk    ),
+            .AB    ( AW     ),
+            .DB    ( DI[SRAM_BIT/2 +: SRAM_BIT/2]),
+            .WEBB  ( WEB    ), // B Write
+            .CEBB  ( WEB    ),
+            .QA    ( DO[SRAM_BIT/2 +: SRAM_BIT/2]),
+            .QB    (        )
             );
         end
     endgenerate

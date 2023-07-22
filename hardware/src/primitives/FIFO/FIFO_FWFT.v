@@ -5,6 +5,7 @@ module FIFO_FWFT
 // ******************************************************************
 #(
     parameter    RAMREG         = 0,
+    parameter    DUAL_PORT      = 0,
     parameter    INIT           = "init.mif",
     parameter    DATA_WIDTH     = 4,
     parameter    ADDR_WIDTH     = 8,
@@ -69,6 +70,7 @@ module FIFO_FWFT
 //-----------------------------------
 FIFO #(
         .RAMREG             ( RAMREG       ),
+        .DUAL_PORT          ( DUAL_PORT    ),
         .DATA_WIDTH         ( DATA_WIDTH   ),
         .ADDR_WIDTH         ( ADDR_WIDTH   ),
         .INIT               ( "init_x.mif" ),

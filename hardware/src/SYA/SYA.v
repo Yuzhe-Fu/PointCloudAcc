@@ -486,6 +486,7 @@ assign fwftOfm_dout_vld = !fwftOfm_empty;
 
 FIFO_FWFT#(
     .RAMREG     ( 1                         ),
+    .DUAL_PORT  ( 1                         ),
     .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK), // 64B->32B=256bit
     .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64 : 4KB Need 64x256x2 UHDSPSRAM!!!!!!!!!!!!!!!!!->32x2561s
 )u_FIFO_FWFT_OFM(
