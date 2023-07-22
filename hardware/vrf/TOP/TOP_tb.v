@@ -1,10 +1,10 @@
 `timescale  1 ns / 100 ps
 
-`define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
+`define CLOCK_PERIOD 5 // Core clock: <= 1000/16=60 when PLL
 `define OFFCLOCK_PERIOD 100 // 
 // `define PLL
 `define SIM
-// `define FUNC_SIM
+`define FUNC_SIM
 // `define POST_SIM
 // `define PSEUDO_DATA
 `define ASSERTION_ON
@@ -196,11 +196,13 @@ begin
     repeat(10) @(posedge I_OffClk);
     forever begin
         wait (state == IDLE & IsaSndEn);
-        if (cntISA >= 60) begin
+        if (cntISA >= 50) begin
             TrigLoop = 1;
             repeat(2) @(posedge I_OffClk);
             TrigLoop = 0;
             cntISA = 1;// Not Need Initialize banks again
+            #(`OFFCLOCK_PERIOD*2)  rst_n  =  0;
+            #(`OFFCLOCK_PERIOD*10) rst_n  =  1;
         end
 
         @ (negedge I_OffClk );
@@ -213,7 +215,7 @@ begin
         // Delay
         ISAIdx = 6; // DO NOT DELETE!
         ISAIdx_tmp = ISAIdx;
-        repeat(ISADelay) @(posedge I_OffClk);
+        repeat(ISADelay) @(posedge I_SysClk);
         ISAIdx = ISAIdx_tmp;
         cntISA = cntISA + 1;
     end
