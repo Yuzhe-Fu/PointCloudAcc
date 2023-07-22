@@ -72,7 +72,7 @@ wire [NUM_BANK      -1 : 0][$clog2(NUM_WRPORT)      -1 : 0] BankWrPortIdx_d;
 wire [NUM_BANK      -1 : 0][$clog2(NUM_RDPORT)      -1 : 0] BankRdPortIdx;
 wire [NUM_BANK      -1 : 0][$clog2(NUM_RDPORT)      -1 : 0] BankRdPortIdx_d;
 wire [NUM_BANK      -1 : 0][(NUM_WRPORT+NUM_RDPORT) -1 : 0] BankPortFlag;
-// wire [NUM_BANK      -1 : 0][NUM_RDPORT              -1 : 0] BankRdPortAddrVld;
+wire [NUM_BANK      -1 : 0][NUM_RDPORT              -1 : 0] BankRdPortAddrVld;
 
 genvar      gv_i;
 genvar      gv_j;
@@ -138,12 +138,9 @@ generate
         //=====================================================================================================================
         // Logic Design: Read
         //=====================================================================================================================
-        // Bank
-        assign #0.2 arvalid              = RdBankAlloc & PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i];
-        // assign #0.2 arvalid              = RdBankAlloc & (TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT + BankRdPortIdx[gv_i]]? // Enabled by the first RdPort
-        //                                     |BankRdPortAddrVld[gv_i] // OR of all allocated PortAddrVld; 
-        //                                     : PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i]
-        //                                     );
+        // Bank                                             
+        assign #0.2 arvalid              = RdBankAlloc & ( |(TOPGLB_CfgPortOffEmptyFull[NUM_WRPORT +: NUM_RDPORT] & BankRdPortAddrVld[gv_i]) // Enabled by any RdPort's EmptyFull and PortAddrVld
+                                            | PortRdBankAddrVld[BankRdPortIdx[gv_i]][gv_i]);
         assign #0.2 araddr               = TOPGLB_RdPortAddr[BankRdPortIdx[gv_i]]; 
         assign #0.2 Bank_arready[gv_i]   = arready;
 
@@ -174,9 +171,9 @@ generate
             assign #0.2 BankPortFlag[gv_i][gv_j] = TOPGLB_CfgPortBankFlag[gv_j][gv_i];
         end
 
-        // for(gv_j=0; gv_j<NUM_RDPORT; gv_j=gv_j+1) begin
-        //     assign #0.2 BankRdPortAddrVld[gv_i][gv_j] = PortRdBankAddrVld[gv_j][gv_i];
-        // end
+        for(gv_j=0; gv_j<NUM_RDPORT; gv_j=gv_j+1) begin
+            assign #0.2 BankRdPortAddrVld[gv_i][gv_j] = PortRdBankAddrVld[gv_j][gv_i];
+        end
 
     end
 endgenerate
