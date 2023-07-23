@@ -12,12 +12,12 @@ set DESIGN_NAME="TOP"
 ################################################################################
 set VT="3vt"
 set PERIOD_CLK="3.3"
-set PERIOD_SCK="20" # <= 40MHz
+set PERIOD_SCK="10" # <= 100MHz
 set PLL="0"
 set UNGROUP="group"
 set MAXPOWER="0" # 100MHz -> 100mW
 set OPTWGT="0.5" # Larger optimization weight, lower leakage(1/20~1/10 of Total Synth Power)
-set NOTE="TAPEOUT&NOPLLSIGNALS&POL8&KNN1PAR&LOOPRUN&MONCCUITF&MaxDelayI_OffOE_PAD&IODELAY25&MinusDELAY"
+set NOTE="FROZEN_V7_&KNN2PAR32DIM&MEDIUMFIFO&IOPath7ns"
 set SDC_FILE=./TOP.sdc
 
 ################################################################################
