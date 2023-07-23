@@ -33,7 +33,7 @@ module ITF #(
     // output                          O_PLLLock_PAD     ,
 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
-    output [6               -1 : 0] O_MonState_PAD    , // Monitor
+    output [8               -1 : 0] O_MonState_PAD    , // Monitor
     output                          O_DatOE_PAD       ,
 
     input                           I_OffOE_PAD       , // Transfer-Control
@@ -50,7 +50,7 @@ module ITF #(
 
     // CCU
     input  [OPNUM           -1 : 0] CCUITF_CfgRdy     ,
-    input  [2               -1 : 0] CCUITF_MonState   ,
+    input  [4               -1 : 0] CCUITF_MonState   ,
     output reg[PORT_WIDTH   -1 : 0] ITFCCU_ISARdDat   ,       
     output reg                      ITFCCU_ISARdDatVld,          
     output reg                      ITFCCU_ISARdDatLast,          
@@ -98,7 +98,7 @@ wire                          I_SysRst_n    ;
 wire                          I_SysClk      ;
 wire                          I_OffClk      ;
 wire [OPNUM           -1 : 0] O_CfgRdy      ;
-wire [2+2+2           -1 : 0] O_MonState    ;
+wire [2+2+4           -1 : 0] O_MonState    ;
 wire                          I_OffOE       ;
 wire                          I_DatVld      ;
 wire                          I_DatLast     ;
@@ -175,7 +175,7 @@ generate
 endgenerate
 
 generate
-    for (gv_i = 0; gv_i < 6; gv_i = gv_i + 1) begin: GEN_O_MonState_PAD
+    for (gv_i = 0; gv_i < 8; gv_i = gv_i + 1) begin: GEN_O_MonState_PAD
         PDUW08DGZ_H_G inst_O_MonState_PAD     (.I(O_MonState[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_MonState_PAD[gv_i]    ), .C( ));
     end 
 endgenerate
@@ -350,7 +350,7 @@ DELAY#(
 );
 DELAY#(
     .NUM_STAGES ( 1     ),
-    .DATA_WIDTH ( 2 + 2 + 2 )
+    .DATA_WIDTH ( 2 + 2 + 4 )
 )u_DELAY_O_MonState(
     .CLK        ( clk           ),
     .RST_N      ( rst_n         ),

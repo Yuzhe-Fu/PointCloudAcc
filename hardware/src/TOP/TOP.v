@@ -27,7 +27,7 @@ module TOP #(
     
     // KNN
     parameter NUM_SORT_CORE  = 8, //
-    parameter KNNCRD_MAXPARA = 1, // Max Number of SRAM for CrdRd
+    parameter KNNCRD_MAXPARA = 2, // Max Number of SRAM for CrdRd
     parameter CRD_MAXDIM     = 32,
 
     // SYA
@@ -49,7 +49,7 @@ module TOP #(
     parameter SRAM_WIDTH     = 256, 
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
-    parameter GLB_NUM_RDPORT = 13 + POOL_CORE - 1,
+    parameter GLB_NUM_RDPORT = 14 + POOL_CORE - 1,
     parameter GLB_NUM_WRPORT = 10, 
     parameter NUM_BANK       = 16,
 
@@ -108,7 +108,7 @@ module TOP #(
     output                          O_OffClk_PAD      ,
 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
-    output [6               -1 : 0] O_MonState_PAD    , // Monitor
+    output [8               -1 : 0] O_MonState_PAD    , // Monitor
     output                          O_DatOE_PAD       ,
 
     input                           I_OffOE_PAD       , // Transfer-Control
@@ -145,13 +145,13 @@ localparam GLBRDIDX_GICGLB = 0;
 localparam GLBRDIDX_FPSMSK = 1; 
 localparam GLBRDIDX_FPSCRD = 2; // 2 SRAM BW
 localparam GLBRDIDX_FPSDST = 4; // 2 SRAM BW
-localparam GLBRDIDX_KNNCRD = 6; 
-localparam GLBRDIDX_KNNMSK = 7; 
-localparam GLBRDIDX_KNNIDM = 8; 
-localparam GLBRDIDX_SYAACT = 9;
-localparam GLBRDIDX_SYAWGT = 10; 
-localparam GLBRDIDX_POLMAP = 11;
-localparam GLBRDIDX_POLOFM = 12;
+localparam GLBRDIDX_KNNCRD = 6; // 2 SRAM BW
+localparam GLBRDIDX_KNNMSK = 8; 
+localparam GLBRDIDX_KNNIDM = 9;
+localparam GLBRDIDX_SYAACT = 10; 
+localparam GLBRDIDX_SYAWGT = 11; 
+localparam GLBRDIDX_POLMAP = 12;
+localparam GLBRDIDX_POLOFM = 13;
 
 localparam DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_DIM);
 localparam SYAIOMAXWIDTH     = ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK;
@@ -165,7 +165,7 @@ wire                            clk;
 wire                            rst_n;
 genvar                          gv_i;
 wire [OPNUM             -1 : 0] CCUITF_CfgRdy ;
-wire [2                 -1 : 0] CCUITF_MonState ;
+wire [4                 -1 : 0] CCUITF_MonState ;
 
 // --------------------------------------------------------------------------------------------------------------------
 // CCU 

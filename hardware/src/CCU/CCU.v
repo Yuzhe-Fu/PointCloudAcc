@@ -54,7 +54,7 @@ module CCU #(
     input                                   rst_n               ,
 
     output [OPNUM                   -1 : 0] CCUITF_CfgRdy       ,
-    output [2                       -1 : 0] CCUITF_MonState       ,
+    output [4                       -1 : 0] CCUITF_MonState     , // {|POLCCU_CfgRdy, |FPSCCU_CfgRdy, state}
     input  [PORT_WIDTH              -1 : 0] ITFCCU_ISARdDat     ,       
     input                                   ITFCCU_ISARdDatVld  , 
     input                                   ITFCCU_ISARdDatLast ,         
@@ -93,9 +93,9 @@ module CCU #(
 localparam OPCODE_WIDTH = 8;
 localparam NUMWORD_WIDTH= 8;
 
-localparam IDLE         = 4'b0000;
-localparam RECV         = 4'b0001; // Receive
-localparam REFN         = 4'b0010; // Receive Finish
+localparam IDLE         = 2'b00;
+localparam RECV         = 2'b01; // Receive
+localparam REFN         = 2'b10; // Receive Finish
 
 localparam [OPNUM    -1 : 0][16  -1 : 0] ISA_WIDTH = {
     MONISA_WIDTH[0 +: 16],
@@ -132,8 +132,8 @@ wire [OPNUM                         -1 : 0] SIPO_OUT_RDY;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
-reg [4      -1 : 0] state       ;
-reg [4      -1 : 0] next_state  ;
+reg [2      -1 : 0] state       ;
+reg [2      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
         IDLE:   if(ITFCCU_ISARdDatVld)
@@ -171,7 +171,7 @@ assign CCUITF_ISARdDatRdy   = state == RECV & next_state == RECV; // SIPO Ready
 assign CCUITF_CfgRdy= cfgRdy;
 assign cfgRdy       = {MONCCU_CfgRdy, GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
 
-assign CCUITF_MonState = state;
+assign CCUITF_MonState = {|POLCCU_CfgRdy, |FPSCCU_CfgRdy, state};
 
 assign {CCUMON_CfgVld, CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld} = cfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
