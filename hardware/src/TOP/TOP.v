@@ -27,8 +27,8 @@ module TOP #(
     
     // KNN
     parameter NUM_SORT_CORE  = 8, //
-    parameter KNNCRD_MAXPARA = 2, // Max Number of SRAM for CrdRd
-    parameter CRD_MAXDIM     = 64,
+    parameter KNNCRD_MAXPARA = 1, // Max Number of SRAM for CrdRd
+    parameter CRD_MAXDIM     = 32,
 
     // SYA
     parameter SYA_NUM_ROW    = 16,
@@ -42,14 +42,14 @@ module TOP #(
     // ITF
     parameter PORT_WIDTH     = 128, 
     parameter DRAM_ADDR_WIDTH= 32, 
-    parameter ASYNC_FIFO_ADDR_WIDTH = 5, // 200MHz -> 5MHz
+    parameter ASYNC_FIFO_ADDR_WIDTH = 4, // 200MHz -> 5MHz
     parameter FBDIV_WIDTH    = 5,
 
     // GLB
     parameter SRAM_WIDTH     = 256, 
     parameter SRAM_WORD      = 128,
     parameter ADDR_WIDTH     = 16,
-    parameter GLB_NUM_RDPORT = 14 + POOL_CORE - 1,
+    parameter GLB_NUM_RDPORT = 13 + POOL_CORE - 1,
     parameter GLB_NUM_WRPORT = 10, 
     parameter NUM_BANK       = 16,
 
@@ -64,12 +64,12 @@ module TOP #(
     parameter GICISA_WIDTH   = PORT_WIDTH*2,
     parameter MONISA_WIDTH   = PORT_WIDTH*1,
     parameter MAXISA_WIDTH   = PORT_WIDTH*16,
-    parameter FPSISAFIFO_ADDR_WIDTH = 4,
-    parameter KNNISAFIFO_ADDR_WIDTH = 4,
-    parameter SYAISAFIFO_ADDR_WIDTH = 4,
-    parameter POLISAFIFO_ADDR_WIDTH = 4,
-    parameter GICISAFIFO_ADDR_WIDTH = 4,
-    parameter MONISAFIFO_ADDR_WIDTH = 4,
+    parameter FPSISAFIFO_ADDR_WIDTH = 1,
+    parameter KNNISAFIFO_ADDR_WIDTH = 3,
+    parameter SYAISAFIFO_ADDR_WIDTH = 3,
+    parameter POLISAFIFO_ADDR_WIDTH = 1,
+    parameter GICISAFIFO_ADDR_WIDTH = 3,
+    parameter MONISAFIFO_ADDR_WIDTH = 1,
 
     // UNT
     parameter SHF_ADDR_WIDTH= 8,
@@ -146,12 +146,12 @@ localparam GLBRDIDX_FPSMSK = 1;
 localparam GLBRDIDX_FPSCRD = 2; // 2 SRAM BW
 localparam GLBRDIDX_FPSDST = 4; // 2 SRAM BW
 localparam GLBRDIDX_KNNCRD = 6; 
-localparam GLBRDIDX_KNNMSK = 8; 
-localparam GLBRDIDX_KNNIDM = 9; 
-localparam GLBRDIDX_SYAACT = 10;
-localparam GLBRDIDX_SYAWGT = 11; 
-localparam GLBRDIDX_POLMAP = 12;
-localparam GLBRDIDX_POLOFM = 13;
+localparam GLBRDIDX_KNNMSK = 7; 
+localparam GLBRDIDX_KNNIDM = 8; 
+localparam GLBRDIDX_SYAACT = 9;
+localparam GLBRDIDX_SYAWGT = 10; 
+localparam GLBRDIDX_POLMAP = 11;
+localparam GLBRDIDX_POLOFM = 12;
 
 localparam DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_DIM);
 localparam SYAIOMAXWIDTH     = ACT_WIDTH*SYA_NUM_ROW*SYA_NUM_BANK;
