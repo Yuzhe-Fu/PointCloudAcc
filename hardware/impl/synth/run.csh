@@ -1,19 +1,23 @@
 # Check List:
-# 1. TOP.v: parameter NUM_BANK       = 16,
-# 2. CLK.v: `define PLL
-# 3. RAM.v: `define RTSELDB (Debuging)
-#    : TapeOut: ndef for synth and Force to 10 when Simulation
-#    : RTSEL: 00 tapeout, 10: Only synth for Simulation
+# 1. PLL: 
+#   CLK.v: `define PLL; 
+#   TOP.v, ITF.v: Annotation Signals; 
+#   TOP.sdc: False Path
+# 2. RAM.v: `define RTSELDB (Debuging)
+#    TapeOut: ndef for synth and Force to 10 when Simulation
+#    RTSEL: 00 tapeout, 10: Only synth for Simulation
+# 3. PERIOD_CLK
 
 set DESIGN_NAME="TOP"
 ################################################################################
 set VT="3vt"
-set PERIOD="5"
-set PLL="1"
+set PERIOD_CLK="3.3"
+set PERIOD_SCK="20" # <= 40MHz
+set PLL="0"
 set UNGROUP="group"
 set MAXPOWER="0" # 100MHz -> 100mW
 set OPTWGT="0.5" # Larger optimization weight, lower leakage(1/20~1/10 of Total Synth Power)
-set NOTE="32BANK&RTSELDB"
+set NOTE="TAPEOUT&NOPLLSIGNALS&POL8&KNN1PAR&LOOPRUN&MONCCUITF&MaxDelayI_OffOE_PAD&IODELAY25&MinusDELAY"
 set SDC_FILE=./TOP.sdc
 
 ################################################################################
@@ -26,14 +30,14 @@ else
     exit  
 endif 
 
-if($PERIOD == "") then 
-    echo "<<<<<<<<<<<<<<<<<<<empty PERIOD>>>>>>>>>>>>>>>>>>>>>>"
+if($PERIOD_CLK == "") then 
+    echo "<<<<<<<<<<<<<<<<<<<empty PERIOD_CLK>>>>>>>>>>>>>>>>>>>>>>"
     exit
 endif
 
-set DATE_VALUE = `date "+%y%m%d" ` 
+set DATE_VALUE = `date "+%y%m%d_%H%M" ` 
 set SYNTH_OUTDIR = ../../work/synth
-set SYNTH_PROJDIR = ${SYNTH_OUTDIR}/$DESIGN_NAME/Date${DATE_VALUE}_Period${PERIOD}_PLL${PLL}_${UNGROUP}_Track${VT}_MaxDynPwr${MAXPOWER}_OptWgt${OPTWGT}_Note${NOTE}
+set SYNTH_PROJDIR = ${SYNTH_OUTDIR}/$DESIGN_NAME/Date${DATE_VALUE}_Periodclk${PERIOD_CLK}_Periodsck${PERIOD_SCK}_PLL${PLL}_${UNGROUP}_Track${VT}_MaxDynPwr${MAXPOWER}_OptWgt${OPTWGT}_Note${NOTE}
 rm -rf ${SYNTH_PROJDIR}
 mkdir -p ${SYNTH_OUTDIR}/$DESIGN_NAME ${SYNTH_PROJDIR}
 
@@ -41,7 +45,8 @@ rm ./config_temp.tcl
 rm ./define.vh
 
 echo "set DESIGN_NAME   $DESIGN_NAME"   >> ./config_temp.tcl
-echo "set PERIOD        $PERIOD"        >> ./config_temp.tcl
+echo "set PERIOD_CLK    $PERIOD_CLK"    >> ./config_temp.tcl
+echo "set PERIOD_SCK    $PERIOD_SCK"    >> ./config_temp.tcl
 echo "set MAXPOWER      $MAXPOWER"      >> ./config_temp.tcl
 echo "set OPTWGT        $OPTWGT"        >> ./config_temp.tcl
 echo "set DATE_VALUE    $DATE_VALUE"    >> ./config_temp.tcl

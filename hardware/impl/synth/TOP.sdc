@@ -1,5 +1,5 @@
-set period_clk $PERIOD
-set period_sck $PERIOD
+set period_clk $PERIOD_CLK
+set period_sck $PERIOD_SCK
 set DESIGN     $DESIGN_NAME
 
 create_clock -period $period_clk -add -name clock_clk -waveform [list 0 [expr $period_clk*0.5]] [get_pins u_ITF/u_CLK/u_CLKREL_SysClk/clk_out]
@@ -33,12 +33,17 @@ set_false_path -to [list \
     [get_ports O_OffClk_PAD      ]\
 ]
     # [get_ports O_PLLLock_PAD     ]\
+# Margin 0.66*$period_sck
+set_input_delay  -clock clock_clk -clock_rise -add_delay [expr $period_clk - 0.66*$period_sck] [all_inputs ]
+# Margin 0.66*$period_sck
+set_output_delay -clock clock_clk -clock_rise -add_delay [expr $period_clk - 0.66*$period_sck] [all_outputs]
 
-set_input_delay  -clock clock_clk -clock_fall -add_delay [expr 0*$period_clk] [all_inputs ]
-set_input_delay  -clock clock_sck -clock_fall -add_delay [expr 0*$period_sck] [all_inputs ]
-
-set_output_delay -clock clock_clk -clock_rise -add_delay [expr 0.33*$period_clk] [all_outputs]
+# Margin 0.66*$period_sck
+set_input_delay  -clock clock_sck -clock_rise -add_delay [expr 0.33*$period_sck] [all_inputs ]
+# Margin 0.66*$period_sck
 set_output_delay -clock clock_sck -clock_rise -add_delay [expr 0.33*$period_sck] [all_outputs]
+
+set_max_delay [expr 0.6*$period_sck] -from [get_ports I_OffOE_PAD] -to [get_ports IO_Dat_PAD*]
 
 set_input_transition -min 0.05 [all_inputs]
 set_input_transition -max 0.2  [all_inputs]
