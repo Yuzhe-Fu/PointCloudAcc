@@ -33,17 +33,18 @@ set_false_path -to [list \
     [get_ports O_OffClk_PAD      ]\
 ]
     # [get_ports O_PLLLock_PAD     ]\
-# Margin Fixed 0.8*$period_sck: 7ns
-set_input_delay  -clock clock_clk -clock_rise -add_delay [expr $period_clk - 0.7*$period_sck] [all_inputs ]
-# Margin 0.7*$period_sck
-set_output_delay -clock clock_clk -clock_rise -add_delay [expr $period_clk - 0.7*$period_sck] [all_outputs]
+# Margin Fixed 7ns
+set_input_delay  -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [all_inputs ]
+# Margin Fixed 7ns
+set_output_delay -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [all_outputs]
 
-# Margin 0.7*$period_sck
-set_input_delay  -clock clock_sck -clock_rise -add_delay [expr 0.3*$period_sck] [all_inputs ]
-# Margin 0.7*$period_sck
-set_output_delay -clock clock_sck -clock_rise -add_delay [expr 0.3*$period_sck] [all_outputs]
+# Margin Fixed 7ns
+set_input_delay  -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [all_inputs ]
+# Margin Fixed 7ns
+set_output_delay -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [all_outputs]
 
-set_max_delay [expr 0.7*$period_sck] -from [get_ports I_OffOE_PAD] -to [get_ports IO_Dat_PAD*]
+# Margin Fixed 4ns (report_timing < 2ns)
+set_max_delay [expr 4] -from [get_ports I_OffOE_PAD] -to [get_ports IO_Dat_PAD*]
 
 set_input_transition -min 0.05 [all_inputs]
 set_input_transition -max 0.2  [all_inputs]
