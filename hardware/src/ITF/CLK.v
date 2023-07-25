@@ -12,7 +12,7 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-
+`define PLL
 module CLK #(
     parameter FBDIV_WIDTH   = 5
     )(
@@ -21,12 +21,16 @@ module CLK #(
     input                       I_SysRst_n  , 
     input                       I_SysClk    , 
     input                       I_OffClk    ,
+
+    `ifdef PLL 
+        input                       I_BypPLL    ,
+        input [FBDIV_WIDTH  -1 : 0] I_FBDIV     , 
+        output                      O_PLLLock   ,
+    `endif 
+
     output                      SysRst_n    ,
     output                      SysClk      ,
-    output                      OffClk       
-    // input                       I_BypPLL    ,
-    // input [FBDIV_WIDTH  -1 : 0] I_FBDIV     , 
-    // output                      O_PLLLock    
+    output                      OffClk      
 );
 
 //=====================================================================================================================
@@ -47,7 +51,6 @@ assign SysRst_n = I_SysRst_n;
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
-// `define PLL
 `ifdef PLL
     wire                    PLLclk;
     wire [12        -1 : 0] FBDIV;
@@ -57,7 +60,7 @@ assign SysRst_n = I_SysRst_n;
         .BYPASS         ( I_BypPLL  ),
         .DACPD          ( 1'b0      ),
         .DSMPD          ( 1'b1      ), // integer
-        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 
+        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 1M Div to 300 M -> 300 -> shift 4'd0; 
         .FRAC           ( 24'd0     ),
         .FREF           ( I_SysClk  ),
         .PD             ( 1'b0      ),

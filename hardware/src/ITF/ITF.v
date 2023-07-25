@@ -12,6 +12,7 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
+`define PLL
 module ITF #(
     parameter PORT_WIDTH            = 128,
     parameter OPNUM                 = 5,
@@ -28,9 +29,11 @@ module ITF #(
     input                           I_OffClk_PAD      ,
     output                          O_SysClk_PAD      ,
     output                          O_OffClk_PAD      ,
-    // input                           I_BypPLL_PAD      , 
-    // input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
-    // output                          O_PLLLock_PAD     ,
+    `ifdef PLL
+        input                           I_BypPLL_PAD      , 
+        input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
+        output                          O_PLLLock_PAD     ,
+    `endif
 
     output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
     output [8               -1 : 0] O_MonState_PAD    , // Monitor
@@ -109,10 +112,11 @@ wire                          I_ISAVld      ;
 wire                          O_CmdVld      ;
 wire  [PORT_WIDTH     -1 : 0] I_Dat         ;
 wire  [PORT_WIDTH     -1 : 0] O_Dat         ;
-// wire                          I_BypPLL      ;
-// wire [FBDIV_WIDTH     -1 : 0] I_FBDIV       ;
-// wire                          O_PLLLock     ;
-
+`ifdef PLL
+    wire                          I_BypPLL      ;
+    wire [FBDIV_WIDTH     -1 : 0] I_FBDIV       ;
+    wire                          O_PLLLock     ;
+`endif
 wire                        fifo_async_IN2CHIP_push ;
 wire                        fifo_async_IN2CHIP_pop  ;
 wire [PORT_WIDTH + 2-1 : 0] fifo_async_IN2CHIP_din  ;
@@ -160,19 +164,21 @@ PDUW08DGZ_V_G inst_O_DatLast_PAD    (.I(O_DatLast),.OEN(OUTPUT_PAD  ), .REN(1'b0
 PDUW08DGZ_V_G inst_O_DatRdy_PAD     (.I(O_DatRdy), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_DatRdy_PAD        ), .C(              ));
 PDUW08DGZ_V_G inst_O_CmdVld_PAD     (.I(O_CmdVld), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_CmdVld_PAD        ), .C(              ));
 
-// PDUW08DGZ_V_G inst_I_BypPLL_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_BypPLL_PAD        ), .C(I_BypPLL      ));
-// generate
-//     for (gv_i = 0; gv_i < FBDIV_WIDTH; gv_i = gv_i + 1) begin: GEN_I_FBDIV_PAD
-//         PDUW08DGZ_V_G inst_I_FBDIV_PAD      (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_FBDIV_PAD[gv_i]         ), .C(I_FBDIV[gv_i] ));
-//     end 
-// endgenerate
-// PDUW08DGZ_V_G inst_O_PLLLock_PAD    (.I(O_PLLLock), .OEN(OUTPUT_PAD ), .REN(1'b0), .PAD(O_PLLLock_PAD       ), .C(              ));
-
 generate
     for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
         PDUW08DGZ_V_G inst_O_CfgRdy_PAD     (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
     end 
 endgenerate
+
+`ifdef PLL
+    PDUW08DGZ_H_G inst_I_BypPLL_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_BypPLL_PAD        ), .C(I_BypPLL      ));
+    generate
+        for (gv_i = 0; gv_i < FBDIV_WIDTH; gv_i = gv_i + 1) begin: GEN_I_FBDIV_PAD
+            PDUW08DGZ_H_G inst_I_FBDIV_PAD      (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_FBDIV_PAD[gv_i]         ), .C(I_FBDIV[gv_i] ));
+        end 
+    endgenerate
+    PDUW08DGZ_H_G inst_O_PLLLock_PAD    (.I(O_PLLLock), .OEN(OUTPUT_PAD ), .REN(1'b0), .PAD(O_PLLLock_PAD       ), .C(              ));
+`endif
 
 generate
     for (gv_i = 0; gv_i < 8; gv_i = gv_i + 1) begin: GEN_O_MonState_PAD
@@ -232,12 +238,14 @@ CLK#(
     .I_SysRst_n  ( I_SysRst_n   ),
     .I_SysClk    ( I_SysClk     ),
     .I_OffClk    ( I_OffClk     ),
+    `ifdef PLL
+        .I_BypPLL    ( I_BypPLL     ),
+        .I_FBDIV     ( I_FBDIV      ),
+        .O_PLLLock   ( O_PLLLock    ),
+    `endif 
     .SysRst_n    ( rst_n        ),
     .SysClk      ( clk          ),
-    .OffClk      ( OffClk       )
-    // .I_BypPLL    ( I_BypPLL     ),
-    // .I_FBDIV     ( I_FBDIV      ),
-    // .O_PLLLock   ( O_PLLLock    ) 
+    .OffClk      ( OffClk       ) 
 );
 // --------------------------------------------------------------------------------------------------------------------
 // FSM

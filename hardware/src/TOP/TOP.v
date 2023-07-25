@@ -15,7 +15,7 @@
 `define CEIL(a, b) ( \
  (a % b)? (a / b + 1) : (a / b) \
 )
-
+`define PLL
 module TOP #(
     // HW-Modules
 
@@ -104,6 +104,13 @@ module TOP #(
     input                           I_SwClk_PAD       ,
     input                           I_SysClk_PAD      , 
     input                           I_OffClk_PAD      ,
+
+    `ifdef PLL
+        input                           I_BypPLL_PAD      , 
+        input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
+        output                          O_PLLLock_PAD     ,
+    `endif
+
     output                          O_SysClk_PAD      ,
     output                          O_OffClk_PAD      ,
 
@@ -121,12 +128,7 @@ module TOP #(
 
     input                           I_ISAVld_PAD      , // Transfer-Data
     output                          O_CmdVld_PAD      ,
-    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD         
-
-    // input                           I_BypPLL_PAD      , 
-    // input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
-    // output                          O_PLLLock_PAD       
-
+    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD          
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -975,9 +977,11 @@ ITF #(
     .I_ISAVld_PAD       ( I_ISAVld_PAD      ),
     .O_CmdVld_PAD       ( O_CmdVld_PAD      ),
     .IO_Dat_PAD         ( IO_Dat_PAD        ),
-    // .I_BypPLL_PAD       ( I_BypPLL_PAD      ),
-    // .I_FBDIV_PAD        ( I_FBDIV_PAD       ),
-    // .O_PLLLock_PAD      ( O_PLLLock_PAD     ),
+    `ifdef PLL
+        .I_BypPLL_PAD       ( I_BypPLL_PAD      ),
+        .I_FBDIV_PAD        ( I_FBDIV_PAD       ),
+        .O_PLLLock_PAD      ( O_PLLLock_PAD     ),
+    `endif
     .CCUITF_CfgRdy      ( CCUITF_CfgRdy     ),
     .CCUITF_MonState    ( CCUITF_MonState   ),
     .ITFCCU_ISARdDat    ( ITFCCU_ISARdDat   ),
