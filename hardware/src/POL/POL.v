@@ -357,9 +357,10 @@ generate
         .OUT_LAST  ( SIPO_MapOutLast    ),
         .OUT_RDY   ( SIPO_MapOutRdy     )
     );
-    assign SIPO_MapOutRdy = rdy_s2 & overflow_CntNp;
+    assign SIPO_MapOutRdy = rdy_s2 & (overflow_CntNp & overflow_CntChnGrp);
     // All the time fetching, for addr + 1
-    // Until map array is used up for CntNp(inner loop)   
+    // Until map array is used up for CntNp(inner loop) and CntGrp (outer loop)
+    // When last Np and Last CntGrp
 
     wire [MAP_WIDTH     -1 : 0] MaxCntNp = CCUPOL_CfgK[gv_plc] -1;
     counter#(
