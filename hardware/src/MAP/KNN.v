@@ -465,7 +465,7 @@ assign bwcCpCrdInpBw = SRAM_WIDTH*CCUKNN_CfgCrdNumBankPar;
 assign bwcCpCrdOutBw = CRD_WIDTH*CCUKNN_CfgCrdDim*NUM_SORT_CORE;
 assign bwcCpCrdInVld = state_s1 == CP & vld_s1 & state_ds1 == CP;
 assign bwcCpCrdNfull = bwcCpCrdOutBw >= bwcCpCrdInpBw?
-                        (bwcCpCrdInVld & bwcCpCrdInRdy) & (bwcCnt == bwcCpCrdOutBw - bwcCpCrdInpBw) // NearFull: Next clk is full
+                        (bwcCpCrdInVld & bwcCpCrdInRdy) & (bwcCnt >= bwcCpCrdOutBw - bwcCpCrdInpBw) // NearFull: Next clk is full
                         : (bwcCpCrdInVld & bwcCpCrdInRdy) | bwcCnt >= bwcCpCrdOutBw; // one word is enough
 BWC #( // Bit Width Conversion
     .DATA_IN_WIDTH   ( CRDRDWIDTH ), // 256bit*2=512bit
