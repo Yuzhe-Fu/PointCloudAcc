@@ -39,9 +39,9 @@ localparam [OPNUM -1 : 0][32 -1 : 0] ISANUM = {
     32'd20, // MON
     32'd18, // GIC
     32'd18, // POL
-    32'd32, // SYA
+    32'd64, // SYA
     32'd32, // KNN
-    32'd20  // FPS
+    32'd22  // FPS
 };
 
 // MON
@@ -196,7 +196,7 @@ begin
     repeat(10) @(posedge I_OffClk);
     forever begin
         wait (state == IDLE & IsaSndEn);
-        if (cntISA >= 50) begin
+        if (cntISA >= 150) begin
             TrigLoop = 1;
             repeat(2) @(posedge I_OffClk);
             TrigLoop = 0;
@@ -207,7 +207,7 @@ begin
 
         @ (negedge I_OffClk );
         // $stop;
-        ISAIdx  = ISA_Serial[cntISA][0 +: 4]; // Low 4 bit ISA
+        ISAIdx  = ISA_Serial[cntISA][0 +:  4]; // Low 4 bit ISA
         ISADelay= ISA_Serial[cntISA][4 +: 32];// High 32 bit Delay
         if (ISAIdx <= 5) // Valid ISA
             wait (state == ISASND);
@@ -236,7 +236,7 @@ end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230720_1852_Period5_PLL0_group_Track3vt_MaxDynPwr0_OptWgt0.5_NoteRTSELDB&NOPLLSIGNALS&POL8&KNN2PAR/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/songxj/PointAccPLLV6/APR/for_post_sim/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
