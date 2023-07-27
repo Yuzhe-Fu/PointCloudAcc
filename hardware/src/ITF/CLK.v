@@ -55,12 +55,12 @@ assign SysRst_n = I_SysRst_n;
     wire                    PLLclk;
     wire [12        -1 : 0] FBDIV;
     assign SysClk_tmp   = I_BypAsysnFIFO? I_OffClk : I_BypPLL? I_SysClk : PLLclk;
-    assign FBDIV        = {I_FBDIV, 4'd0};
-    PLLTS28HPMFRAC u_PLLTS28HPMFRAC (
+    assign FBDIV        = {I_FBDIV, 4'd0}; // Constraint: FBDIV: 16-3200
+    PLLTS28HPMFRAC u_PLLTS28HPMFRAC (// Constraint: Input 1MHz-1200MHz, Ouput: 16 MHz->3200 MHz; 
         .BYPASS         ( I_BypPLL  ),
         .DACPD          ( 1'b0      ),
         .DSMPD          ( 1'b1      ), // integer
-        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 1M Div to 300 M -> 300 -> shift 4'd0; 
+        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 1M Div to 300 M -> 300 -> shift; 4'd0; 
         .FRAC           ( 24'd0     ),
         .FREF           ( I_SysClk  ),
         .PD             ( 1'b0      ),
