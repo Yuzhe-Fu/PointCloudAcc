@@ -1,0 +1,110 @@
+model_encoder_encoder_0_0_convs_0_0
+act size is  torch.Size([3, 1024])
+sparsity is  0.0
+model_encoder_encoder_1_0_skipconv_0
+act size is  torch.Size([32, 512])
+sparsity is  0.0015869140625
+model_encoder_encoder_1_0_convs_0_0
+act size is  torch.Size([35, 16384])
+sparsity is  0.0022914341517857144
+model_encoder_encoder_1_0_convs_1_0
+act size is  torch.Size([2, 16384])
+sparsity is  0.0
+model_encoder_encoder_2_0_skipconv_0
+act size is  torch.Size([16, 256])
+sparsity is  0.0
+model_encoder_encoder_2_0_convs_0_0
+act size is  torch.Size([19, 8192])
+sparsity is  0.0009058902138157895
+model_encoder_encoder_2_0_convs_1_0
+act size is  torch.Size([14, 8192])
+sparsity is  0.10967145647321429
+model_encoder_encoder_3_0_skipconv_0
+act size is  torch.Size([34, 128])
+sparsity is  0.0006893382352941177
+model_encoder_encoder_3_0_convs_0_0
+act size is  torch.Size([37, 4096])
+sparsity is  0.001438450168918919
+model_encoder_encoder_3_0_convs_1_0
+act size is  torch.Size([31, 4096])
+sparsity is  0.0
+model_encoder_encoder_4_0_skipconv_0
+act size is  torch.Size([22, 64])
+sparsity is  0.0
+model_encoder_encoder_4_0_convs_0_0
+act size is  torch.Size([25, 2048])
+sparsity is  0.00052734375
+model_encoder_encoder_4_0_convs_1_0
+act size is  torch.Size([118, 2048])
+sparsity is  0.6035445908368644
+model_encoder_encoder_5_0_convs_0_0
+act size is  torch.Size([60, 64])
+sparsity is  0.10546875
+model_encoder_encoder_5_0_convs_1_0
+act size is  torch.Size([113, 64])
+sparsity is  0.4500829646017699
+model_prediction_head_0_0
+act size is  torch.Size([1, 144])
+sparsity is  0.020833333333333332
+model_prediction_head_2_0
+act size is  torch.Size([1, 128])
+sparsity is  0.71875
+model_prediction_head_4_0
+act size is  torch.Size([1, 128])
+sparsity is  0.390625
+
+
+model_encoder_encoder_0_0_convs_0_0
+weight size is  torch.Size([32, 3, 1])
+sparsity is  0.010416666666666666
+model_encoder_encoder_1_0_skipconv_0
+weight size is  torch.Size([13, 32, 1])
+sparsity is  0.002403846153846154
+model_encoder_encoder_1_0_convs_0_0
+weight size is  torch.Size([2, 35, 1])
+sparsity is  0.04285714285714286
+model_encoder_encoder_1_0_convs_1_0
+weight size is  torch.Size([13, 2, 1])
+sparsity is  0.3076923076923077
+model_encoder_encoder_2_0_skipconv_0
+weight size is  torch.Size([40, 16, 1])
+sparsity is  0.0015625
+model_encoder_encoder_2_0_convs_0_0
+weight size is  torch.Size([18, 19, 1])
+sparsity is  0.04093567251461988
+model_encoder_encoder_2_0_convs_1_0
+weight size is  torch.Size([40, 14, 1])
+sparsity is  0.0625
+model_encoder_encoder_3_0_skipconv_0
+weight size is  torch.Size([39, 34, 1])
+sparsity is  0.0007541478129713424
+model_encoder_encoder_3_0_convs_0_0
+weight size is  torch.Size([36, 37, 1])
+sparsity is  0.02702702702702703
+model_encoder_encoder_3_0_convs_1_0
+weight size is  torch.Size([39, 31, 1])
+sparsity is  0.028949545078577336
+model_encoder_encoder_4_0_skipconv_0
+weight size is  torch.Size([47, 22, 1])
+sparsity is  0.0009671179883945841
+model_encoder_encoder_4_0_convs_0_0
+weight size is  torch.Size([118, 25, 1])
+sparsity is  0.03694915254237288
+model_encoder_encoder_4_0_convs_1_0
+weight size is  torch.Size([47, 118, 1])
+sparsity is  0.008113956004327443
+model_encoder_encoder_5_0_convs_0_0
+weight size is  torch.Size([169, 60, 1])
+sparsity is  0.013313609467455622
+model_encoder_encoder_5_0_convs_1_0
+weight size is  torch.Size([144, 113, 1])
+sparsity is  0.007681907571288102
+model_prediction_head_0_0
+weight size is  torch.Size([128, 144, 1])
+sparsity is  0.006184895833333333
+model_prediction_head_2_0
+weight size is  torch.Size([128, 128, 1])
+sparsity is  0.00714111328125
+model_prediction_head_4_0
+weight size is  torch.Size([40, 128, 1])
+sparsity is  0.0068359375
