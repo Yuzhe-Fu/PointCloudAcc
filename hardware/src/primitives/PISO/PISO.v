@@ -1,11 +1,12 @@
 
-module PISO 
+module PISO // With ERROR?????????|!1!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #( // INPUT PARAMETERS
     parameter DATA_IN_WIDTH  = 64,
     parameter DATA_OUT_WIDTH = 16
 )( // PORTS
     input  wire                         CLK     ,
     input  wire                         RST_N   ,
+    input  wire                         RESET   ,
     input  wire                         IN_VLD  ,
     input  wire                         IN_LAST ,
     input  wire [DATA_IN_WIDTH -1 : 0]  IN_DAT  ,
@@ -40,6 +41,8 @@ module PISO
   always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
     if (!RST_N)
         shift_count <= 0;
+    else if (RESET)
+        shift_count <= 0;
     else if (IN_VLD & IN_RDY) begin
         if (bypass) // Bypass
             shift_count <= {shift_count[NUM_SHIFTS==2? 0 : NUM_SHIFTS - 3 :0], 1'b1, 1'b0};// ahead shift 1
@@ -51,6 +54,9 @@ module PISO
 
 always @(posedge CLK or negedge RST_N) begin: DATA_SHIFT
     if (!RST_N) begin
+        serial <= 0;
+        last   <= 0;
+    end else if (RESET) begin
         serial <= 0;
         last   <= 0;
     end else begin

@@ -29,72 +29,62 @@ module CCU #(
     parameter MAP_WIDTH             = 5,
     parameter NUM_LAYER_WIDTH       = 20,
     parameter NUM_MODULE            = 6,
-
-    parameter MAXPAR                = 32,
-    parameter NUM_BANK              = 32,
     parameter NUM_FPC               = 8,
     parameter OPNUM                 = NUM_MODULE,
-    parameter MAXPAR_WIDTH          = $clog2(MAXPAR) + 1 // MAXPAR=2 -> 2
 
+    parameter CCUISA_WIDTH          = PORT_WIDTH*1,
+    parameter FPSISA_WIDTH          = PORT_WIDTH*16,
+    parameter KNNISA_WIDTH          = PORT_WIDTH*2,
+    parameter SYAISA_WIDTH          = PORT_WIDTH*3,
+    parameter POLISA_WIDTH          = PORT_WIDTH*9,
+    parameter GICISA_WIDTH          = PORT_WIDTH*2,
+    parameter MONISA_WIDTH          = PORT_WIDTH*1,
+    parameter MAXISA_WIDTH          = PORT_WIDTH*16,
+
+    parameter FPSISAFIFO_ADDR_WIDTH = 1,
+    parameter KNNISAFIFO_ADDR_WIDTH = 1,
+    parameter SYAISAFIFO_ADDR_WIDTH = 1,
+    parameter POLISAFIFO_ADDR_WIDTH = 1,
+    parameter GICISAFIFO_ADDR_WIDTH = 1,
+    parameter MONISAFIFO_ADDR_WIDTH = 1,
+
+    parameter CCUMON_WIDTH          = 128*2
     )(
-    input                                   clk                     ,
-    input                                   rst_n                   ,
+    input                                   clk                 ,
+    input                                   rst_n               ,
 
-    input   [PORT_WIDTH             -1 : 0] TOPCCU_ISARdDat         ,       
-    input                                   TOPCCU_ISARdDatVld      ,          
-    output                                  CCUTOP_ISARdDatRdy      ,
+    output [OPNUM                   -1 : 0] CCUITF_CfgRdy       ,
+    output [4                       -1 : 0] CCUITF_MonState     , // {|POLCCU_CfgRdy, |FPSCCU_CfgRdy, state}
+    input  [PORT_WIDTH              -1 : 0] ITFCCU_ISARdDat     ,       
+    input                                   ITFCCU_ISARdDatVld  , 
+    input                                   ITFCCU_ISARdDatLast ,         
+    output                                  CCUITF_ISARdDatRdy  ,
 
-    output                                  CCUITF_CfgVld           ,
-    input                                   ITFCCU_CfgRdy           ,  
-    output  [BYTE_WIDTH             -1 : 0] CCUITF_CfgInOut            , 
-    output  [DRAM_ADDR_WIDTH        -1 : 0] CCUITF_CfgDRAMBaseAddr     ,
-    output  [IDX_WIDTH              -1 : 0] CCUITF_CfgGLBBaseAddr      ,
-    output  [IDX_WIDTH              -1 : 0] CCUITF_CfgNum              , 
+    output                                  CCUGIC_CfgVld       ,
+    input                                   GICCCU_CfgRdy       ,  
+    output [GICISA_WIDTH            -1 : 0] CCUGIC_CfgInfo      ,
                 
+    output  [NUM_FPC                -1 : 0] CCUFPS_CfgVld       ,
+    input   [NUM_FPC                -1 : 0] FPSCCU_CfgRdy       ,   
+    output [FPSISA_WIDTH            -1 : 0] CCUFPS_CfgInfo      ,     
 
-    output  [NUM_FPC                -1 : 0] CCUFPS_CfgVld           ,
-    input   [NUM_FPC                -1 : 0] FPSCCU_CfgRdy           ,        
-    output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgNip           ,                    
-    output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgNop           , 
-    output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgCrdBaseRdAddr ,
-    output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgCrdBaseWrAddr ,
-    output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgIdxBaseWrAddr ,
-    output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgMaskBaseAddr  ,   
-    output  [IDX_WIDTH*NUM_FPC      -1 : 0] CCUFPS_CfgDistBaseAddr  ,
+    output                                  CCUKNN_CfgVld       ,
+    input                                   KNNCCU_CfgRdy       ,  
+    output [KNNISA_WIDTH            -1 : 0] CCUKNN_CfgInfo      ,        
 
-    output                                  CCUKNN_CfgVld        ,
-    input                                   KNNCCU_CfgRdy        ,        
-    output  [IDX_WIDTH              -1 : 0] CCUKNN_CfgNip           ,                    
-    output  [(MAP_WIDTH + 1)        -1 : 0] CCUKNN_CfgK             , 
-    output  [IDX_WIDTH              -1 : 0] CCUKNN_CfgCrdRdAddr     ,
-    output  [IDX_WIDTH              -1 : 0] CCUKNN_CfgMapWrAddr     ,
-
-    output                                  CCUSYA_CfgVld        ,
-    input                                   SYACCU_CfgRdy        ,
-    output  [2                      -1 : 0] CCUSYA_CfgMod           ,
-    output                                  CCUSYA_CfgOfmPhaseShift ,
-    output  [CHN_WIDTH              -1 : 0] CCUSYA_CfgChn           ,         
-    output  [QNTSL_WIDTH            -1 : 0] CCUSYA_CfgScale         ,        
-    output  [ACT_WIDTH              -1 : 0] CCUSYA_CfgShift         ,        
-    output  [ACT_WIDTH              -1 : 0] CCUSYA_CfgZp            ,
-    output  [IDX_WIDTH              -1 : 0] CCUSYA_CfgNumGrpPerTile ,
-    output  [IDX_WIDTH              -1 : 0] CCUSYA_CfgNumTilIfm     ,
-    output  [IDX_WIDTH              -1 : 0] CCUSYA_CfgNumTilFlt     ,
-    output                                  CCUSYA_CfgLopOrd        ,
-    output  [ADDR_WIDTH             -1 : 0] CCUSYA_CfgActRdBaseAddr ,
-    output  [ADDR_WIDTH             -1 : 0] CCUSYA_CfgWgtRdBaseAddr ,
-    output  [ADDR_WIDTH             -1 : 0] CCUSYA_CfgOfmWrBaseAddr ,
+    output                                  CCUSYA_CfgVld       ,
+    input                                   SYACCU_CfgRdy       ,
+    output [SYAISA_WIDTH            -1 : 0] CCUSYA_CfgInfo      , 
 
     output  [POOL_CORE              -1 : 0] CCUPOL_CfgVld       ,
     input   [POOL_CORE              -1 : 0] POLCCU_CfgRdy       ,
-    output  [(MAP_WIDTH+1)*POOL_CORE-1 : 0] CCUPOL_CfgK         ,
-    output  [IDX_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgNip       ,
-    output  [CHN_WIDTH*POOL_CORE    -1 : 0] CCUPOL_CfgChn       ,
-             
-    output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][NUM_BANK    -1 : 0] CCUTOP_CfgPortBankFlag ,
-    output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)  -1 : 0][MAXPAR_WIDTH-1 : 0] CCUTOP_CfgPortParBank,
-    output  [(GLB_NUM_RDPORT + GLB_NUM_WRPORT)                   -1 : 0] CCUTOP_CfgPortOffEmptyFull,
-    output [OPNUM                   -1 : 0] CCUTOP_CfgRdy
+    output  [POLISA_WIDTH           -1 : 0] CCUPOL_CfgInfo      , 
+
+    output                                  CCUMON_CfgVld       ,
+    input                                   MONCCU_CfgRdy       ,  
+    output [MONISA_WIDTH            -1 : 0] CCUMON_CfgInfo      ,
+
+    output [CCUMON_WIDTH            -1 : 0] CCUMON_Dat               
 
 );
 //=====================================================================================================================
@@ -103,68 +93,64 @@ module CCU #(
 localparam OPCODE_WIDTH = 8;
 localparam NUMWORD_WIDTH= 8;
 
-localparam IDLE         = 4'b0000;
-localparam DEC          = 4'b0001;
-localparam CFG          = 4'b0010;
+localparam IDLE         = 2'b00;
+localparam RECV         = 2'b01; // Receive
+localparam REFN         = 2'b10; // Receive Finish
 
-localparam OPCODE_CCU   = 0;
-localparam OPCODE_FPS   = 1;
-localparam OPCODE_KNN   = 2;
-localparam OPCODE_SYA   = 3;
-localparam OPCODE_POL   = 4;
-localparam OPCODE_ITF   = 5;
-
-localparam NUMPORT_CCU   = 1;
-localparam NUMPORT_FPS   = 16;
-localparam NUMPORT_KNN   = 2;
-localparam NUMPORT_SYA   = 3;
-localparam NUMPORT_POL   = 6;
-localparam NUMPORT_ITF   = 2;
-
-localparam GLBWRIDX_ITFGLB = 0; 
-localparam GLBWRIDX_FPSMSK = 1; 
-localparam GLBWRIDX_FPSCRD = 2; 
-localparam GLBWRIDX_FPSDST = 3; 
-localparam GLBWRIDX_FPSIDX = 4; 
-localparam GLBWRIDX_KNNMAP = 5;
-localparam GLBWRIDX_SYAOFM = 6;
-localparam GLBWRIDX_POLOFM = 7;
-                                
-localparam GLBRDIDX_ITFGLB = 0; 
-localparam GLBRDIDX_FPSMSK = 1; 
-localparam GLBRDIDX_FPSCRD = 2; 
-localparam GLBRDIDX_FPSDST = 3; 
-localparam GLBRDIDX_KNNCRD = 4; 
-localparam GLBRDIDX_SYAACT = 5; 
-localparam GLBRDIDX_SYAWGT = 6; 
-localparam GLBRDIDX_POLMAP = 7;
-localparam GLBRDIDX_POLOFM = 8;
+localparam [OPNUM    -1 : 0][16  -1 : 0] ISA_WIDTH = {
+    MONISA_WIDTH[0 +: 16],
+    GICISA_WIDTH[0 +: 16], 
+    POLISA_WIDTH[0 +: 16], 
+    SYAISA_WIDTH[0 +: 16], 
+    KNNISA_WIDTH[0 +: 16], 
+    FPSISA_WIDTH[0 +: 16]
+};
+localparam [OPNUM    -1 : 0][8   -1 : 0] ISAFIFO_ADDR_WIDTH = {
+    MONISAFIFO_ADDR_WIDTH[0 +: 8],
+    GICISAFIFO_ADDR_WIDTH[0 +: 8], 
+    POLISAFIFO_ADDR_WIDTH[0 +: 8], 
+    SYAISAFIFO_ADDR_WIDTH[0 +: 8], 
+    KNNISAFIFO_ADDR_WIDTH[0 +: 8], 
+    FPSISAFIFO_ADDR_WIDTH[0 +: 8]
+};
 
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-reg [OPCODE_WIDTH                   -1 : 0] OpCode;
+reg   [OPCODE_WIDTH                 -1 : 0] opCode;
 integer                                     int_i;
-wire  [OPNUM                        -1 : 0] CfgVld; 
-wire  [OPNUM                        -1 : 0] SIPO_InRdy; 
-wire                                        CCUTOP_CfgVld;  
+reg   [OPNUM                        -1 : 0] cfgVld; 
+wire [OPNUM                         -1 : 0] cfgRdy;
+reg  [OPNUM    -1 : 0][MAXISA_WIDTH -1 : 0] cfgInfo;
+
+wire                                        FPS_CfgVld;
+wire                                        POL_CfgVld;
+wire  [OPNUM                        -1 : 0] SIPO_InRdy;
+wire [OPNUM                         -1 : 0] SIPO_OUT_VLD;
+wire [OPNUM                         -1 : 0] SIPO_OUT_RDY;
 
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
-reg [4      -1 : 0] state       ;
-reg [4      -1 : 0] next_state  ;
+reg [2      -1 : 0] state       ;
+reg [2      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE    :   if(TOPCCU_ISARdDatVld)
-                        next_state <= DEC; //
+        IDLE:   if(ITFCCU_ISARdDatVld)
+                        next_state <= RECV; //
                     else
                         next_state <= IDLE;
-
-        DEC:        if (CfgVld[OpCode] & CCUTOP_CfgRdy[OpCode])
+        RECV:   if (SIPO_OUT_VLD[opCode]) begin
+                    if (SIPO_OUT_RDY[opCode])
                         next_state <= IDLE;
                     else 
-                        next_state <= DEC;
+                        next_state <= REFN;
+                end else
+                    next_state <= RECV;
+        REFN:   if (SIPO_OUT_RDY[opCode])
+                    next_state <= IDLE;
+                else 
+                    next_state <= REFN;
 
         default :       next_state <= IDLE;
     endcase
@@ -180,17 +166,14 @@ end
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
-// CCUTOP_CfgRdy -> Req
-// `ifdef PSEUDO_DATA
-//     assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, 1'b0, 1'b0, 1'b0, &FPSCCU_CfgRdy, 1'b0};
-// `else
-    assign CCUTOP_CfgRdy = {ITFCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy, 1'b0};
-// `endif
+assign CCUITF_ISARdDatRdy   = state == RECV & next_state == RECV; // SIPO Ready
 
-wire        FPS_CfgVld;
-wire        POL_CfgVld;
+assign CCUITF_CfgRdy= cfgRdy;
+assign cfgRdy       = {MONCCU_CfgRdy, GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
 
-assign {CCUITF_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld, CCUTOP_CfgVld} = CfgVld;
+assign CCUITF_MonState = {|POLCCU_CfgRdy, |FPSCCU_CfgRdy, state};
+
+assign {CCUMON_CfgVld, CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld} = cfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
 assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 
@@ -199,214 +182,100 @@ assign CCUPOL_CfgVld = {POOL_CORE{POL_CfgVld}};
 //=====================================================================================================================
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        OpCode <= {OPCODE_WIDTH{1'b1}};
+        opCode <= {OPCODE_WIDTH{1'b1}};
     end else if(next_state == IDLE) begin // HS
-        OpCode <= {OPCODE_WIDTH{1'b1}};
-    end else if(state == IDLE & next_state == DEC) begin
-        OpCode <= TOPCCU_ISARdDat[0 +: OPCODE_WIDTH];
+        opCode <= {OPCODE_WIDTH{1'b1}};
+    end else if(state == IDLE & next_state == RECV) begin
+        opCode <= ITFCCU_ISARdDat[0 +: OPCODE_WIDTH];
     end
 end
 
-wire [PORT_WIDTH*NUMPORT_CCU    -1 : 0] ISA_CCU;
-wire [PORT_WIDTH*NUMPORT_FPS    -1 : 0] ISA_FPS;
-wire [PORT_WIDTH*NUMPORT_KNN    -1 : 0] ISA_KNN;
-wire [PORT_WIDTH*NUMPORT_SYA    -1 : 0] ISA_SYA;
-wire [PORT_WIDTH*NUMPORT_POL    -1 : 0] ISA_POL;
-wire [PORT_WIDTH*NUMPORT_ITF    -1 : 0] ISA_ITF;
+genvar gv;
+generate
+    for(gv=0; gv<OPNUM; gv=gv+1) begin: GEN_ISADEC
+        wire [ISA_WIDTH[gv]     -1 : 0] SIPO_OUT_DAT;
+        wire [ISA_WIDTH[gv]     -1 : 0] FIFO_data_out;
+        wire                            FIFO_Reset;
+        wire                            FIFO_push;
+        wire                            FIFO_pop;
+        wire                            FIFO_empty;
+        wire                            FIFO_full;
+        wire                            cfgEnable;
 
-wire                                    SIPO_CCU_InRdy;
-wire                                    SIPO_FPS_InRdy;
-wire                                    SIPO_KNN_InRdy;
-wire                                    SIPO_SYA_InRdy;
-wire                                    SIPO_POL_InRdy;
-wire                                    SIPO_ITF_InRdy;
+        SIPO#(
+            .DATA_IN_WIDTH ( PORT_WIDTH  ),
+            .DATA_OUT_WIDTH ( ISA_WIDTH[gv]  )
+        )u_SIPO_ISA(
+            .CLK          ( clk            ),
+            .RST_N        ( rst_n          ),
+            .RESET        ( state == IDLE  ),
+            .IN_VLD       ( (ITFCCU_ISARdDatVld & CCUITF_ISARdDatRdy) & opCode == gv ), // Should Input & This ISA SIPO
+            .IN_LAST      ( 1'b0           ),
+            .IN_DAT       ( ITFCCU_ISARdDat),
+            .IN_RDY       ( SIPO_InRdy[gv] ),
+            .OUT_DAT      ( SIPO_OUT_DAT   ),
+            .OUT_VLD      ( SIPO_OUT_VLD[gv]   ),
+            .OUT_LAST     (                ),
+            .OUT_RDY      ( SIPO_OUT_RDY[gv])
+        );
+        assign SIPO_OUT_RDY[gv] = FIFO_push;
 
-SIPO#(
-    .DATA_IN_WIDTH ( PORT_WIDTH               ),
-    .DATA_OUT_WIDTH ( PORT_WIDTH*NUMPORT_FPS  )
-)u_SIPO_ISA_FPS(
-    .CLK          ( clk            ),
-    .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_FPS ),
-    .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
-    .IN_RDY       ( SIPO_FPS_InRdy ),
-    .OUT_DAT      ( ISA_FPS        ),
-    .OUT_VLD      ( CfgVld[OPCODE_FPS] ),
-    .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_FPS])
-);
+        assign FIFO_Reset = (SIPO_OUT_DAT[OPCODE_WIDTH] & SIPO_OUT_VLD[gv]) & !FIFO_empty; // empty == 1->FIFO_Reset==0->FIFO_push=1, SIPO_OUT_RDY=1
+        assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
+        FIFO_FWFT#(
+            .DATA_WIDTH ( ISA_WIDTH[gv] ),
+            .ADDR_WIDTH ( ISAFIFO_ADDR_WIDTH[gv] )
+        )u_FIFO_FWFT(
+            .clk        ( clk            ),
+            .Reset      ( FIFO_Reset     ),
+            .rst_n      ( rst_n          ),
+            .push       ( FIFO_push      ),
+            .pop        ( FIFO_pop       ),
+            .data_in    ( SIPO_OUT_DAT   ),
+            .data_out   ( FIFO_data_out  ),
+            .empty      ( FIFO_empty     ),
+            .full       ( FIFO_full      ),
+            .fifo_count (                )
+        );
+        
+        assign FIFO_pop = cfgEnable;
+        assign  cfgEnable = (FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[gv] & !cfgVld[gv]) ) & !FIFO_empty; // Force reset or cfgrdy: After cfgEnable -> cfgVld&cfgRdy -> module finishes(cfgRdy=1) and not given cfgVld
+        always @(posedge clk or negedge rst_n) begin
+            if(!rst_n) begin
+                cfgInfo[gv] <= 0;
+            end else if( cfgEnable) begin
+                cfgInfo[gv] <= FIFO_data_out;
+            end else if( cfgRdy[gv] & !cfgVld[gv] ) begin 
+                // After cfgEnable -> cfgVld&cfgRdy -> module finishes(cfgRdy=1) and not given cfgVld
+                cfgInfo[gv] <= 0;
+            end
+        end
+        always @(posedge clk or negedge rst_n) begin
+            if(!rst_n) begin
+                cfgVld[gv] <= 0;
+            end else if( cfgVld[gv] & cfgRdy[gv] ) begin
+                cfgVld[gv] <= 1'b0;
+            end else if( cfgEnable ) begin
+                cfgVld[gv] <= 1'b1;
+            end
+        end
+        
+    end
+endgenerate
 
-SIPO#(
-    .DATA_IN_WIDTH ( PORT_WIDTH               ),
-    .DATA_OUT_WIDTH ( PORT_WIDTH*NUMPORT_KNN  )
-)u_SIPO_ISA_KNN(
-    .CLK          ( clk            ),
-    .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_KNN ),
-    .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
-    .IN_RDY       ( SIPO_KNN_InRdy ),
-    .OUT_DAT      ( ISA_KNN        ),
-    .OUT_VLD      ( CfgVld[OPCODE_KNN] ),
-    .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_KNN])
-);
+assign CCUFPS_CfgInfo = cfgInfo[0];
+assign CCUKNN_CfgInfo = cfgInfo[1];
+assign CCUSYA_CfgInfo = cfgInfo[2];
+assign CCUPOL_CfgInfo = cfgInfo[3];
+assign CCUGIC_CfgInfo = cfgInfo[4];
+assign CCUMON_CfgInfo = cfgInfo[5];
 
-SIPO#(
-    .DATA_IN_WIDTH ( PORT_WIDTH               ),
-    .DATA_OUT_WIDTH ( PORT_WIDTH*NUMPORT_SYA  )
-)u_SIPO_ISA_SYA(
-    .CLK          ( clk            ),
-    .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_SYA ),
-    .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
-    .IN_RDY       ( SIPO_SYA_InRdy ),
-    .OUT_DAT      ( ISA_SYA        ),
-    .OUT_VLD      ( CfgVld[OPCODE_SYA] ),
-    .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_SYA])
-);
-SIPO#(
-    .DATA_IN_WIDTH ( PORT_WIDTH               ),
-    .DATA_OUT_WIDTH ( PORT_WIDTH*NUMPORT_POL  )
-)u_SIPO_ISA_POL(
-    .CLK          ( clk            ),
-    .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_POL ),
-    .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
-    .IN_RDY       ( SIPO_POL_InRdy ),
-    .OUT_DAT      ( ISA_POL        ),
-    .OUT_VLD      ( CfgVld[OPCODE_POL] ),
-    .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_POL])
-);
-SIPO#(
-    .DATA_IN_WIDTH ( PORT_WIDTH               ),
-    .DATA_OUT_WIDTH ( PORT_WIDTH*NUMPORT_ITF  )
-)u_SIPO_ISA_ITF(
-    .CLK          ( clk            ),
-    .RST_N        ( rst_n          ),
-    .IN_VLD       ( state == DEC & TOPCCU_ISARdDatVld & OpCode == OPCODE_ITF ),
-    .IN_LAST      ( 1'b0           ),
-    .IN_DAT       ( TOPCCU_ISARdDat),
-    .IN_RDY       ( SIPO_ITF_InRdy ),
-    .OUT_DAT      ( ISA_ITF        ),
-    .OUT_VLD      ( CfgVld[OPCODE_ITF] ),
-    .OUT_LAST     (                ),
-    .OUT_RDY      ( CCUTOP_CfgRdy[OPCODE_ITF])
-);
-
-assign SIPO_InRdy           = {SIPO_ITF_InRdy, SIPO_POL_InRdy, SIPO_SYA_InRdy, SIPO_KNN_InRdy, SIPO_FPS_InRdy, 1'b1};
-assign CCUTOP_ISARdDatRdy   = state == DEC & (SIPO_InRdy[OpCode] & !CfgVld[OpCode]);
-
-assign {
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSCRD                 ],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSIDX                 ],
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSDST],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSDST                 ],
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_FPSMSK                 ],
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_FPSCRD], // 1 x 7
-    CCUTOP_CfgPortParBank     [GLBWRIDX_FPSCRD                 ],
-    CCUTOP_CfgPortParBank     [GLBWRIDX_FPSIDX                 ],
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_FPSDST],
-    CCUTOP_CfgPortParBank     [GLBWRIDX_FPSDST                 ],
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
-    CCUTOP_CfgPortParBank     [GLBWRIDX_FPSMSK                 ],
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD], // 2 x 7
-    CCUTOP_CfgPortBankFlag    [GLBWRIDX_FPSCRD                 ],
-    CCUTOP_CfgPortBankFlag    [GLBWRIDX_FPSIDX                 ],
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSDST],
-    CCUTOP_CfgPortBankFlag    [GLBWRIDX_FPSDST                 ],
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSMSK],
-    CCUTOP_CfgPortBankFlag    [GLBWRIDX_FPSMSK                 ],
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_FPSCRD], // 32 X 7
-    CCUFPS_CfgDistBaseAddr                                      ,
-    CCUFPS_CfgMaskBaseAddr                                      ,
-    CCUFPS_CfgIdxBaseWrAddr                                      ,
-    CCUFPS_CfgCrdBaseWrAddr                                     ,
-    CCUFPS_CfgCrdBaseRdAddr                                     ,
-    CCUFPS_CfgNop                                               , 
-    CCUFPS_CfgNip                                                 // 16 x 16 x 7
-} = ISA_FPS[PORT_WIDTH*NUMPORT_FPS -1 : OPCODE_WIDTH];
-
-wire [BYTE_WIDTH    -1 : 0] CCUKNN_CfgK_tmp;
-assign {
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_KNNMAP                 ],
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],   // 2
-    CCUTOP_CfgPortParBank     [GLBWRIDX_KNNMAP                 ],   // 2
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_KNNCRD],   // 32
-    CCUTOP_CfgPortBankFlag    [GLBWRIDX_KNNMAP                 ],   // 32
-    CCUKNN_CfgMapWrAddr                                         ,   // 16
-    CCUKNN_CfgCrdRdAddr                                         ,   // 16
-    CCUKNN_CfgK_tmp                                             ,   // 8
-    CCUKNN_CfgNip                                                   // 16
-} = ISA_KNN[PORT_WIDTH*NUMPORT_KNN -1 : OPCODE_WIDTH];
-assign CCUKNN_CfgK = CCUKNN_CfgK_tmp;
-
-wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgLopOrd_temp;
-wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgOfmPhaseShift_temp;
-wire [BYTE_WIDTH    -1 : 0] CCUSYA_CfgMod_tmp;
-assign {
-    CCUTOP_CfgPortOffEmptyFull[GLBWRIDX_SYAOFM                 ],   // 
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],   // 
-    CCUTOP_CfgPortOffEmptyFull[GLB_NUM_WRPORT + GLBRDIDX_SYAACT],   // 1 x 3
-    CCUTOP_CfgPortParBank     [GLBWRIDX_SYAOFM                 ],   // 
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],   // 
-    CCUTOP_CfgPortParBank     [GLB_NUM_WRPORT + GLBRDIDX_SYAACT],   // 2 x 3
-    CCUTOP_CfgPortBankFlag    [GLBWRIDX_SYAOFM                 ],   // 
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAWGT],   // 
-    CCUTOP_CfgPortBankFlag    [GLB_NUM_WRPORT + GLBRDIDX_SYAACT],   // 32 x 3
-    CCUSYA_CfgOfmWrBaseAddr                                     ,   // 16
-    CCUSYA_CfgWgtRdBaseAddr                                     ,   // 16
-    CCUSYA_CfgActRdBaseAddr                                     ,   // 16
-    CCUSYA_CfgLopOrd_temp                                       ,   // 8
-    CCUSYA_CfgNumTilIfm                                         ,   // 16
-    CCUSYA_CfgNumTilFlt                                         ,   // 16
-    CCUSYA_CfgNumGrpPerTile                                     ,   // 16
-    CCUSYA_CfgChn                                               ,   // 16   
-    CCUSYA_CfgZp                                                ,   // 8
-    CCUSYA_CfgShift                                             ,   // 8   
-    CCUSYA_CfgOfmPhaseShift_temp                                ,   // 8
-    CCUSYA_CfgMod_tmp                                               // 8
-} = ISA_SYA[PORT_WIDTH*NUMPORT_SYA -1 : OPCODE_WIDTH];
-assign CCUSYA_CfgLopOrd         = CCUSYA_CfgLopOrd_temp;
-assign CCUSYA_CfgOfmPhaseShift  = CCUSYA_CfgOfmPhaseShift_temp;
-assign CCUSYA_CfgMod            = CCUSYA_CfgMod_tmp;
-
-wire [POOL_CORE     -1 : 0][BYTE_WIDTH    -1 : 0] CCUPOL_CfgK_tmp;
-assign {
-    CCUTOP_CfgPortOffEmptyFull  [GLBWRIDX_POLOFM                 ]              ,   // 1
-    CCUTOP_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,   // 1 X 8
-    CCUTOP_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]              ,   // 1
-    CCUTOP_CfgPortParBank       [GLBWRIDX_POLOFM                 ]              ,   // 2
-    CCUTOP_CfgPortParBank       [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,   // 2 X 8
-    CCUTOP_CfgPortParBank       [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]              ,   // 2
-    CCUTOP_CfgPortBankFlag      [GLBWRIDX_POLOFM                 ]              ,   // 32
-    CCUTOP_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLOFM +: POOL_CORE] ,   // 32 X 8
-    CCUTOP_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_POLMAP]              ,   // 32
-    CCUPOL_CfgK_tmp                                                             ,   // 8 X 8
-    CCUPOL_CfgChn                                                               ,   // 16 X 8
-    CCUPOL_CfgNip                                                                   // 16 x 8  
-} = ISA_POL[PORT_WIDTH*NUMPORT_POL -1 : OPCODE_WIDTH];
-assign CCUPOL_CfgK = CCUPOL_CfgK_tmp;
-
-
-assign { 
-    CCUTOP_CfgPortOffEmptyFull  [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
-    CCUTOP_CfgPortOffEmptyFull  [GLBWRIDX_ITFGLB                    ],
-    CCUTOP_CfgPortParBank       [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
-    CCUTOP_CfgPortParBank       [GLBWRIDX_ITFGLB                    ],
-    CCUTOP_CfgPortBankFlag      [GLB_NUM_WRPORT + GLBRDIDX_ITFGLB   ],
-    CCUTOP_CfgPortBankFlag      [GLBWRIDX_ITFGLB                    ],
-    CCUITF_CfgNum,          // 16
-    CCUITF_CfgGLBBaseAddr,  // 16
-    CCUITF_CfgDRAMBaseAddr, // 32
-    CCUITF_CfgInOut // 8 0: IN2CHIP; 1: OUT2OFF
-} = ISA_ITF[PORT_WIDTH*NUMPORT_ITF -1 : OPCODE_WIDTH];
+assign CCUMON_Dat = {
+    ITFCCU_ISARdDat,
+    CCUITF_CfgRdy,          
+    ITFCCU_ISARdDatVld, 
+    ITFCCU_ISARdDatLast,
+    CCUITF_ISARdDatRdy 
+};
 
 endmodule

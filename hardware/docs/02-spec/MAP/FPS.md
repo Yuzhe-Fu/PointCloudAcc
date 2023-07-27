@@ -66,8 +66,8 @@
     - 经FPS剩余的Idx需要用来取上一层有用的数，实际上是给POL的
     - 由于第一层1024才是FPS时间最长的，因此需要16个核计算分的16块
 - FPS输入有
-    - Crd：每个SRAM5个Crd顺序排列
-    - Dist: 每个SRAM有3个Dist顺序排列
+    - Crd：每个SRAM10个Crd顺序排列
+    - Dist: 每个SRAM有6个Dist顺序排列
     - Mask: 每个SRAM有256个bit顺序排列，bit=1表示这个点被视为最远点被保留下来，不再参与当前层FPS的计算了
 - FPS输出有
     - Idx: 给MLP说明原始点中哪些点是保留下来的，即在原始点集中的Idx

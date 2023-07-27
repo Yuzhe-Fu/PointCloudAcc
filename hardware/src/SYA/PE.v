@@ -18,67 +18,36 @@ module PE #(
     input                           clk,
     input                           rst_n,
 
-    input                           InActVld_W,
-    input                           InActChnLast_W,
+    input                           En,
+    input                           Reset,
+
     input [ACT_WIDTH        -1 : 0] InAct_W,
-    output                          OutActRdy_W,
-
-    input                           InWgtVld_N,
-    input                           InWgtChnLast_N,
     input [WGT_WIDTH        -1 : 0] InWgt_N,
-    output                          OutWgtRdy_N,
 
-    output                          OutActVld_E,
-    output                          OutActChnLast_E,
     output reg[ACT_WIDTH    -1 : 0] OutAct_E,
-    input                           InActRdy_E,
-
-    output                          OutWgtVld_S,
-    output                          OutWgtChnLast_S,
     output reg [WGT_WIDTH   -1 : 0] OutWgt_S,
-    input                           InWgtRdy_S,
 
-    output                          OutPsumVld,
-    output reg signed [PSUM_WIDTH  -1 : 0] OutPsum,
-    input                           InPsumRdy
+    output reg signed [PSUM_WIDTH  -1 : 0] OutPsum
 
   );
 //=====================================================================================================================
 // Constant Definition :
 //=====================================================================================================================
-wire                InVld;
-wire                rdy;
-reg                 vld;
-wire                ena;
-reg                 OutChnLast;
-// 
-assign InVld        = InActVld_W & InWgtVld_N;
-assign OutActRdy_W  = ena;
-assign OutWgtRdy_N  = ena;
-
 wire signed [PSUM_WIDTH     -1 : 0] Signed_Mul = $signed(InAct_W) * $signed(InWgt_N);
-//
-assign rdy          = InActRdy_E & InWgtRdy_S & (OutPsumVld? InPsumRdy : 1'b1);
-assign handshake    = rdy & vld;
-assign ena          = handshake | ~vld;
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
-        {OutPsum, OutWgt_S, OutAct_E, OutChnLast, vld} <= 0;
-    end else if(ena) begin
-        {OutPsum, OutAct_E, OutAct_E, OutChnLast, vld} <= {
-            InVld? (OutChnLast? Signed_Mul : OutPsum + Signed_Mul) : OutPsum, 
-            InWgt_N, 
-            InAct_W, 
-            InVld & (InActChnLast_W & InWgtChnLast_N), 
-            InVld};
+        OutPsum     <= 0;
+        OutWgt_S    <= 0;
+        OutAct_E    <= 0;
+    end else if(En) begin
+        if(Reset)
+            OutPsum <= Signed_Mul;
+        else
+            OutPsum <= OutPsum + Signed_Mul;
+        OutWgt_S    <= InWgt_N;
+        OutAct_E    <= InAct_W;
     end
 end
-
-assign OutActVld_E      = vld;
-assign OutWgtVld_S      = vld;
-assign OutPsumVld       = vld & (OutWgtChnLast_S & OutActChnLast_E) & (InActRdy_E & InWgtRdy_S);
-assign OutActChnLast_E  = OutChnLast;
-assign OutWgtChnLast_S  = OutChnLast;
 
 endmodule

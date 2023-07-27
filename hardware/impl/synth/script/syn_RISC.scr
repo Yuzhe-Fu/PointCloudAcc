@@ -6,16 +6,15 @@
 source -verbose ./config_temp.tcl
 
 set DESIGN      $DESIGN_NAME
-set clk         $clk
 
-set_attribute hdl_search_path "./"
-set_attribute script_search_path ./script
-set_attribute information_level  9
+set_attribute hdl_search_path       "./"
+set_attribute script_search_path    ./script
+set_attribute information_level     9
 set_attribute hdl_error_on_blackbox true
-set_attribute hdl_max_loop_limit 8192
+set_attribute hdl_max_loop_limit    8192
 set_attribute hdl_track_filename_row_col true /
 
-set_attribute max_cpus_per_server 64
+set_attribute max_cpus_per_server 32
 set_attribute super_thread_servers [string repeat "localhost " 64]
 ##########################################################################
 #                     Libraries and technology files                     #
@@ -86,6 +85,7 @@ elaborate $DESIGN
 #                              load sdf                                  #
 ##########################################################################
 read_sdc ${SDC_FILE}
+# suspend
 check_design -unresolved
 ##########################################################################
 #                          Setting constraints                           #
@@ -100,16 +100,17 @@ set_attribute lp_clock_gating_max_flops 16 /designs/*
 ##########################################################################
 #                         Power optimization                             #
 ##########################################################################
-set_attribute lp_power_optimization_weight 0.1 /des*/*
-set_attribute max_dynamic_power 0 $DESIGN
+set_attribute max_dynamic_power $MAXPOWER $DESIGN
+set_attribute lp_power_optimization_weight $OPTWGT /des*/*
+
 
 
 ##########################################################################
 #                            check design                                #
 ##########################################################################
-check_design -all > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_check_pre_synth.rpt
-check_library                  > ${SYNTH_PROJDIR}/rpt/checkLibrary.rpt
-report timing -verbose -lint > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_pre_synth.rpt
+check_design -all               > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_check_pre_synth.rpt
+check_library                   > ${SYNTH_PROJDIR}/rpt/checkLibrary.rpt
+report timing -verbose -lint    > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_pre_synth.rpt
 
 ##########################################################################
 #                             Synthesis                                  #
@@ -137,40 +138,49 @@ write -m ${DESIGN} > ${SYNTH_PROJDIR}/gate/${DESIGN}.v
 foreach clock_name $clock_list {
 	define_cost_group -name ${clock_name}_in2reg -design $DESIGN
 	path_group -from [all_inputs] -to $clock_name -group ${clock_name}_in2reg
-	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_in2reg > ${SYNTH_PROJDIR}/rpt/${clock_name}_in2reg.rpt
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_in2reg > ${SYNTH_PROJDIR}/rpt/path_group/${clock_name}_in2reg.rpt
 }
 
 #register to output
 foreach clock_name $clock_list {
 	define_cost_group -name ${clock_name}_reg2out -design $DESIGN
 	path_group -from $clock_name -to [all_outputs] -group ${clock_name}_reg2out
-	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2out > ${SYNTH_PROJDIR}/rpt/${clock_name}_reg2out.rpt
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2out > ${SYNTH_PROJDIR}/rpt/path_group/${clock_name}_reg2out.rpt
 }
 
 #register to register
 foreach clock_name $clock_list {
 	define_cost_group -name ${clock_name}_reg2reg -design $DESIGN
 	path_group -from $clock_name -to $clock_name -group ${clock_name}_reg2reg
-	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2reg > ${SYNTH_PROJDIR}/rpt/${clock_name}_reg2reg.rpt
+	report timing -encounter -full_pin_names -num_paths 100 -cost_group ${clock_name}_reg2reg > ${SYNTH_PROJDIR}/rpt/path_group/${clock_name}_reg2reg.rpt
 }
 
-report power        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.power.rpt
-report area         > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area.rpt
-report gates        > ${SYNTH_PROJDIR}/rpt/${DESIGN}.gates.rpt
-report design_rules > ${SYNTH_PROJDIR}/rpt/${DESIGN}.rules.rpt
-report clock_gating > ${SYNTH_PROJDIR}/rpt/${DESIGN}.clkgating.rpt
-report summary      > ${SYNTH_PROJDIR}/rpt/${DESIGN}.summary.rpt
-report timing -num_paths 100     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing.rpt
+report power            > ${SYNTH_PROJDIR}/rpt/power/${DESIGN}.power.rpt
+report power -depth 1   > ${SYNTH_PROJDIR}/rpt/power/${DESIGN}.power_depth1.rpt
+report power -depth 2   > ${SYNTH_PROJDIR}/rpt/power/${DESIGN}.power_depth2.rpt
+report power -depth 3   > ${SYNTH_PROJDIR}/rpt/power/${DESIGN}.power_depth3.rpt
+report power -depth 4   > ${SYNTH_PROJDIR}/rpt/power/${DESIGN}.power_depth4.rpt
+report power -depth 5   > ${SYNTH_PROJDIR}/rpt/power/${DESIGN}.power_depth5.rpt
+report power -depth 6   > ${SYNTH_PROJDIR}/rpt/power/${DESIGN}.power_depth6.rpt
+report area             > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area.rpt
+report area -depth 1    > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area_depth1.rpt
+report area -depth 2    > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area_depth2.rpt
+report area -depth 3    > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area_depth3.rpt
+report area -depth 4    > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area_depth4.rpt
+report area -depth 5    > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area_depth5.rpt
+report area -depth 6    > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area_depth6.rpt
+report area -depth 7    > ${SYNTH_PROJDIR}/rpt/area/${DESIGN}.area_depth7.rpt
+report gates            > ${SYNTH_PROJDIR}/rpt/${DESIGN}.gates.rpt
+report design_rules     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.rules.rpt
+report clock_gating     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.clkgating.rpt
+report summary          > ${SYNTH_PROJDIR}/rpt/${DESIGN}.summary.rpt
+report timing -num_paths 100     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_100.rpt
+report timing -num_paths 1000     > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_1000.rpt
 
 #### check design after synth
 check_design -all > ${SYNTH_PROJDIR}/rpt/${DESIGN}.design_post_synth.rpt
 report timing -verbose -lint > ${SYNTH_PROJDIR}/rpt/${DESIGN}.timing_check_post_synth.rpt
 
-report area -depth 2       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth2.rpt
-report area -depth 3       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth3.rpt
-report area -depth 4       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth4.rpt
-report area -depth 5       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth5.rpt
-report area -depth 6       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth6.rpt
-report area -depth 7       > ${SYNTH_PROJDIR}/rpt/${DESIGN}.area_depth7.rpt
+
 
 puts "The RUNTIME is [get_attr runtime /] seconds"
