@@ -8,7 +8,6 @@
 // `define POST_SIM
 // `define PSEUDO_DATA
 `define ASSERTION_ON
-// `define WITHPAD
 
 `define CEIL(a, b) ( \
  (a % b)? (a / b + 1) : (a / b) \
@@ -38,10 +37,10 @@ parameter MONISA_WIDTH   = PORT_WIDTH*1;
 localparam [OPNUM -1 : 0][32 -1 : 0] ISANUM = {
     32'd20, // MON
     32'd18, // GIC
-    32'd18, // POL
-    32'd64, // SYA
+    32'd19, // POL
+    32'd65, // SYA
     32'd32, // KNN
-    32'd22  // FPS
+    32'd23  // FPS
 };
 
 // MON
@@ -83,7 +82,8 @@ reg                             I_BypOE;
 reg                             I_OffOE;
 reg                             I_SysClk;
 reg                             I_OffClk;
-
+wire                            O_SysClk;
+wire                            O_OffClk;
       
 reg                             I_BypPLL;      
 reg [FBDIV_WIDTH        -1 : 0] I_FBDIV;       
@@ -144,7 +144,7 @@ initial begin
     I_SysClk = 1;
     @(posedge I_OffClk); // wait I_FBDIV
     `ifdef PLL
-        forever #(`CLOCK_PERIOD/2*{1'b1, 4'd0})   I_SysClk=~I_SysClk;
+        forever #(`CLOCK_PERIOD*{I_FBDIV, 4'd0}/2)   I_SysClk=~I_SysClk;
     `else
         forever #(`CLOCK_PERIOD/2)  I_SysClk=~I_SysClk;
     `endif
@@ -162,7 +162,7 @@ initial begin
     I_OffOE         = 1'b0;
     I_SwClk         = 1'b0;
     I_BypPLL        = 1'b0;
-    I_FBDIV         = 5'd4;
+    I_FBDIV         = 5'd1;
 
     @(posedge rst_n);
     `ifdef PLL
@@ -204,7 +204,7 @@ begin
     repeat(10) @(posedge I_OffClk);
     forever begin
         wait (state == IDLE & IsaSndEn);
-        if (cntISA >= 150) begin
+        if (cntISA >= 120) begin
             TrigLoop = 1;
             repeat(2) @(posedge I_OffClk);
             TrigLoop = 0;
@@ -223,7 +223,7 @@ begin
         // Delay
         ISAIdx = 6; // DO NOT DELETE!
         ISAIdx_tmp = ISAIdx;
-        repeat(ISADelay) @(posedge I_SysClk);
+        repeat(ISADelay) @(posedge O_SysClk);
         ISAIdx = ISAIdx_tmp;
         cntISA = cntISA + 1;
     end
@@ -235,8 +235,8 @@ initial begin
         @(posedge I_OffClk);
         for(i=0; i<OPNUM; i=i+1) begin
             if(Mon_CntISA[i] >= ISANUM[i]) begin
-                $stop;
                 $display("ISA out of range, [%d]", i);
+                $stop;
             end
         end
     end
@@ -244,7 +244,7 @@ end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/songxj/PointAccPLLV6/APR/for_post_sim/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/postend/0_Maintained_AlreadyTapeOut_100M_Date230724_0748_Periodclk3.3_Periodsck10_PLL0_group_Track3vt_MaxDynPwr0_OptWgt0.5_NoteFROZEN_V7_&KNN2PAR32DIM&MEDIUMFIFO&IOPath7ns/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
@@ -389,14 +389,14 @@ counter#(
     .COUNT     ( DatAddr        )
 );
 
-`ifndef PSEUDO_DATA
-    always @(posedge I_OffClk or rst_n) begin
-        if(state == DATOUT2OFF) begin
-            if(O_DatVld & I_DatRdy_tmp)
-                Dram[DatAddr] <= IO_Dat;
-        end
-    end
-`endif
+// `ifndef PSEUDO_DATA
+//     always @(posedge I_OffClk or rst_n) begin
+//         if(state == DATOUT2OFF) begin
+//             if(O_DatVld & I_DatRdy_tmp)
+//                 Dram[DatAddr] <= IO_Dat;
+//         end
+//     end
+// `endif
 
 //=====================================================================================================================
 // Logic Design : Interface
@@ -432,8 +432,8 @@ TOP u_TOP (
         .I_FBDIV_PAD        ( I_FBDIV       ),
         .O_PLLLock_PAD      ( O_PLLLock     ), 
     `endif
-    .O_SysClk_PAD       (               ),
-    .O_OffClk_PAD       (               ),
+    .O_SysClk_PAD       ( O_SysClk      ),
+    .O_OffClk_PAD       ( O_OffClk      ),
     .O_CfgRdy_PAD       ( O_CfgRdy      ),
     .O_MonState_PAD     (               ),
     .O_DatOE_PAD        ( O_DatOE       ),
