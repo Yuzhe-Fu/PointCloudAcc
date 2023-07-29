@@ -1,11 +1,11 @@
 `timescale  1 ns / 100 ps
 
-`define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
+`define CLOCK_PERIOD 5 // Core clock: <= 1000/16=60 when PLL
 `define OFFCLOCK_PERIOD 100 // 
 `define PLL
 `define SIM
-`define FUNC_SIM
-// `define POST_SIM
+// `define FUNC_SIM
+`define POST_SIM
 // `define PSEUDO_DATA
 `define ASSERTION_ON
 
@@ -20,7 +20,7 @@ parameter PORT_WIDTH        = 128   ;
 parameter ADDR_WIDTH        = 16    ;
 parameter DRAM_ADDR_WIDTH   = 32    ;
 parameter OPNUM             = 6     ;
-parameter FBDIV_WIDTH    = 5;
+parameter FBDIV_WIDTH    = 3;
 parameter FPSISA_WIDTH   = PORT_WIDTH*16;
 parameter KNNISA_WIDTH   = PORT_WIDTH*2;
 parameter SYAISA_WIDTH   = PORT_WIDTH*3;
@@ -87,7 +87,9 @@ wire                            O_OffClk;
       
 reg                             I_BypPLL;      
 reg [FBDIV_WIDTH        -1 : 0] I_FBDIV;       
-reg                             I_SwClk;                  
+reg                             I_SwClk;  
+
+reg [4                  -1 : 0] I_MonSel;
 // TOP Outputs
 wire                            O_DatOE;
 wire                            O_CmdVld;
@@ -144,7 +146,7 @@ initial begin
     I_SysClk = 1;
     @(posedge I_OffClk); // wait I_FBDIV
     `ifdef PLL
-        forever #(`CLOCK_PERIOD*{I_FBDIV, 4'd0}/2)   I_SysClk=~I_SysClk;
+        forever #(`CLOCK_PERIOD*{I_FBDIV, 5'd0}/2)   I_SysClk=~I_SysClk;
     `else
         forever #(`CLOCK_PERIOD/2)  I_SysClk=~I_SysClk;
     `endif
@@ -162,7 +164,8 @@ initial begin
     I_OffOE         = 1'b0;
     I_SwClk         = 1'b0;
     I_BypPLL        = 1'b0;
-    I_FBDIV         = 5'd1;
+    I_FBDIV         = 3'd1;
+    I_MonSel        = 4'd0;
 
     @(posedge rst_n);
     `ifdef PLL
@@ -223,7 +226,7 @@ begin
         // Delay
         ISAIdx = 6; // DO NOT DELETE!
         ISAIdx_tmp = ISAIdx;
-        repeat(ISADelay) @(posedge O_SysClk);
+        repeat(ISADelay) @(posedge u_TOP.clk);
         ISAIdx = ISAIdx_tmp;
         cntISA = cntISA + 1;
     end
@@ -244,7 +247,7 @@ end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/postend/0_Maintained_AlreadyTapeOut_100M_Date230724_0748_Periodclk3.3_Periodsck10_PLL0_group_Track3vt_MaxDynPwr0_OptWgt0.5_NoteFROZEN_V7_&KNN2PAR32DIM&MEDIUMFIFO&IOPath7ns/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/synth/TOP/Date230729_0931_Periodclk3.3_Periodsck10_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note_FROZEN_V9_PLL&REDUCEPAD/gate/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
@@ -257,7 +260,7 @@ end
 //=====================================================================================================================
 // Logic Design 1: FSM=ITF
 //=====================================================================================================================
-assign IsaSndEn = (!O_CmdVld & !O_DatVld) & O_CfgRdy[4] & O_CfgRdy[5]; // No output & No GIC and MON;
+assign IsaSndEn = (!O_CmdVld & !O_DatVld) & u_TOP.u_ITF.O_CfgRdy[4] & u_TOP.u_ITF.O_CfgRdy[5]; // No output & No GIC and MON;
 always @(*) begin
     case ( state )
         IDLE:   if ( TrigLoop )
@@ -432,10 +435,10 @@ TOP u_TOP (
         .I_FBDIV_PAD        ( I_FBDIV       ),
         .O_PLLLock_PAD      ( O_PLLLock     ), 
     `endif
-    .O_SysClk_PAD       ( O_SysClk      ),
-    .O_OffClk_PAD       ( O_OffClk      ),
-    .O_CfgRdy_PAD       ( O_CfgRdy      ),
-    .O_MonState_PAD     (               ),
+    // .O_SysClk_PAD       ( O_SysClk      ),
+    // .O_OffClk_PAD       ( O_OffClk      ),
+    // .O_CfgRdy_PAD       ( O_CfgRdy      ),
+    // .O_MonState_PAD     (               ),
     .O_DatOE_PAD        ( O_DatOE       ),
     .I_OffOE_PAD        ( I_OffOE       ),
     .I_DatVld_PAD       ( I_DatVld      ),
@@ -446,7 +449,9 @@ TOP u_TOP (
     .I_DatRdy_PAD       ( I_DatRdy      ),
     .I_ISAVld_PAD       ( I_ISAVld      ),
     .O_CmdVld_PAD       ( O_CmdVld      ),
-    .IO_Dat_PAD         ( IO_Dat        )
+    .IO_Dat_PAD         ( IO_Dat        ),
+    .I_MonSel_PAD       ( I_MonSel      ),
+    .O_MonDat_PAD       ( O_MonDat      )
 );
 
 endmodule

@@ -25,26 +25,27 @@ set_false_path -from [list \
     [get_ports I_OffClk_PAD      ]\
     [get_ports I_BypPLL_PAD      ]\
     [get_ports I_FBDIV_PAD       ]\
-
 ]
 
 set_false_path -to [list \
-    [get_ports O_SysClk_PAD      ]\
-    [get_ports O_OffClk_PAD      ]\
     [get_ports O_PLLLock_PAD     ]\
 ]
-# Margin Fixed 7ns
-set_input_delay  -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [filter_collection [all_inputs] "full_name !~I_OffOE_PAD"]
-# Margin Fixed 7ns
-set_output_delay -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [all_outputs]
+    # [get_ports O_SysClk_PAD      ]\
+    # [get_ports O_OffClk_PAD      ]\
 
 # Margin Fixed 7ns
-set_input_delay  -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [filter_collection [all_inputs] "full_name !~I_OffOE_PAD"]
+set_input_delay  -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [filter_collection [all_inputs] "full_name !~I_OffOE_PAD && full_name !~I_MonSel_PAD"]
 # Margin Fixed 7ns
-set_output_delay -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [all_outputs]
+set_output_delay -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [filter_collection [all_outputs] "full_name !~O_MonDat_PAD"]
 
-# Margin Fixed 4ns (report_timing < 2ns)
-set_max_delay 4 -from [get_ports I_OffOE_PAD] -to [get_ports IO_Dat_PAD*]
+# Margin Fixsed 7ns
+set_input_delay  -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [filter_collection [all_inputs] "full_name !~I_OffOE_PAD && full_name !~I_MonSel_PAD"]
+# Margin Fixed 7ns
+set_output_delay -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [filter_collection [all_outputs] "full_name !~O_MonDat_PAD"]
+
+# Margin Fixed 7ns (report_timing < 2ns)
+set_max_delay 7 -from [get_ports I_OffOE_PAD] -to [get_ports IO_Dat_PAD*]
+set_max_delay 7 -from [get_ports I_MonSel_PAD] -to [get_ports O_MonDat_PAD*]
 
 set_input_transition -min 0.05 [all_inputs]
 set_input_transition -max 0.2  [all_inputs]

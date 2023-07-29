@@ -55,7 +55,7 @@ assign SysRst_n = I_SysRst_n;
     wire                    PLLclk;
     wire [12        -1 : 0] FBDIV;
     assign SysClk_tmp   = I_BypAsysnFIFO? I_OffClk : I_BypPLL? I_SysClk : PLLclk;
-    assign FBDIV        = {I_FBDIV, 4'd0}; // Constraint: FBDIV: 16-3200
+    assign FBDIV        = {I_FBDIV, 5'd0}; // Constraint: FBDIV: 16-3200
     PLLTS28HPMFRAC u_PLLTS28HPMFRAC (// Constraint: Input 1MHz-1200MHz, Ouput: 16 MHz->3200 MHz; 
         .BYPASS         ( I_BypPLL  ),
         .DACPD          ( 1'b0      ),

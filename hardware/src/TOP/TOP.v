@@ -43,7 +43,7 @@ module TOP #(
     parameter PORT_WIDTH     = 128, 
     parameter DRAM_ADDR_WIDTH= 32, 
     parameter ASYNC_FIFO_ADDR_WIDTH = 4, // 200MHz -> 5MHz
-    parameter FBDIV_WIDTH    = 5,
+    parameter FBDIV_WIDTH    = 3,
 
     // GLB
     parameter SRAM_WIDTH     = 256, 
@@ -86,6 +86,9 @@ module TOP #(
     parameter MDUMONSUM_WIDTH  = CCUMON_WIDTH + GICMON_WIDTH + GLBMON_WIDTH + POLMON_WIDTH + SYAMON_WIDTH + KNNMON_WIDTH + FPSMON_WIDTH,
     parameter TOPMON_WIDTH     = PORT_WIDTH*`CEIL(MDUMONSUM_WIDTH, PORT_WIDTH),
 
+    // Direct Output Mon
+    parameter MONSEL_WIDTH   = 4,
+
     // NetWork Parameters
     parameter NUM_LAYER_WIDTH= 20,
     parameter CRD_WIDTH      = 8,   
@@ -106,16 +109,11 @@ module TOP #(
     input                           I_OffClk_PAD      ,
 
     `ifdef PLL
-        input                           I_BypPLL_PAD      , 
-        input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
-        output                          O_PLLLock_PAD     ,
+        input                           I_BypPLL_PAD  , 
+        input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD   ,
+        output                          O_PLLLock_PAD ,
     `endif
 
-    output                          O_SysClk_PAD      ,
-    output                          O_OffClk_PAD      ,
-
-    output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
-    output [8               -1 : 0] O_MonState_PAD    , // Monitor
     output                          O_DatOE_PAD       ,
 
     input                           I_OffOE_PAD       , // Transfer-Control
@@ -128,7 +126,15 @@ module TOP #(
 
     input                           I_ISAVld_PAD      , // Transfer-Data
     output                          O_CmdVld_PAD      ,
-    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD          
+    inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD        ,
+
+    // output                          O_SysClk_PAD      ,
+    // output                          O_OffClk_PAD      ,
+
+    // output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor-6bit
+    // output [8               -1 : 0] O_MonState_PAD    , // Monitor-8bit
+    input [MONSEL_WIDTH     -1 : 0] I_MonSel_PAD      ,
+    output                          O_MonDat_PAD         
 );
 //=====================================================================================================================
 // Constant Definition :
@@ -954,18 +960,19 @@ ITF #(
     .PORT_WIDTH             ( PORT_WIDTH            ),
     .OPNUM                  ( OPNUM                 ),
     .ASYNC_FIFO_ADDR_WIDTH  ( ASYNC_FIFO_ADDR_WIDTH ),
-    .FBDIV_WIDTH            ( FBDIV_WIDTH           ) 
+    .FBDIV_WIDTH            ( FBDIV_WIDTH           ),
+    .MONSEL_WIDTH           ( MONSEL_WIDTH          ) 
 ) u_ITF(
     .I_BypAsysnFIFO_PAD ( I_BypAsysnFIFO_PAD),
     .I_BypOE_PAD        ( I_BypOE_PAD       ),
     .I_SwClk_PAD        ( I_SwClk_PAD       ),
-    .O_SysClk_PAD       ( O_SysClk_PAD      ),
-    .O_OffClk_PAD       ( O_OffClk_PAD      ),
+    // .O_SysClk_PAD       ( O_SysClk_PAD      ),
+    // .O_OffClk_PAD       ( O_OffClk_PAD      ),
     .I_SysRst_n_PAD     ( I_SysRst_n_PAD    ),
     .I_SysClk_PAD       ( I_SysClk_PAD      ),
     .I_OffClk_PAD       ( I_OffClk_PAD      ),
-    .O_CfgRdy_PAD       ( O_CfgRdy_PAD      ),
-    .O_MonState_PAD     ( O_MonState_PAD    ),
+    // .O_CfgRdy_PAD       ( O_CfgRdy_PAD      ),
+    // .O_MonState_PAD     ( O_MonState_PAD    ),
     .O_DatOE_PAD        ( O_DatOE_PAD       ),
     .I_OffOE_PAD        ( I_OffOE_PAD       ),
     .I_DatVld_PAD       ( I_DatVld_PAD      ),
@@ -977,6 +984,8 @@ ITF #(
     .I_ISAVld_PAD       ( I_ISAVld_PAD      ),
     .O_CmdVld_PAD       ( O_CmdVld_PAD      ),
     .IO_Dat_PAD         ( IO_Dat_PAD        ),
+    .I_MonSel_PAD       ( I_MonSel_PAD      ),
+    .O_MonDat_PAD       ( O_MonDat_PAD      ),
     `ifdef PLL
         .I_BypPLL_PAD       ( I_BypPLL_PAD      ),
         .I_FBDIV_PAD        ( I_FBDIV_PAD       ),

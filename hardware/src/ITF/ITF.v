@@ -17,7 +17,8 @@ module ITF #(
     parameter PORT_WIDTH            = 128,
     parameter OPNUM                 = 5,
     parameter ASYNC_FIFO_ADDR_WIDTH = 4,
-    parameter FBDIV_WIDTH           = 5
+    parameter FBDIV_WIDTH           = 5,
+    parameter MONSEL_WIDTH          = 4
     )(
         
     // PAD
@@ -27,16 +28,16 @@ module ITF #(
     input                           I_SwClk_PAD       ,
     input                           I_SysClk_PAD      , 
     input                           I_OffClk_PAD      ,
-    output                          O_SysClk_PAD      ,
-    output                          O_OffClk_PAD      ,
+    // output                          O_SysClk_PAD      ,
+    // output                          O_OffClk_PAD      ,
     `ifdef PLL
         input                           I_BypPLL_PAD      , 
         input [FBDIV_WIDTH      -1 : 0] I_FBDIV_PAD       ,
         output                          O_PLLLock_PAD     ,
     `endif
 
-    output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
-    output [8               -1 : 0] O_MonState_PAD    , // Monitor
+    // output [OPNUM           -1 : 0] O_CfgRdy_PAD      , // Monitor
+    // output [8               -1 : 0] O_MonState_PAD    , // Monitor
     output                          O_DatOE_PAD       ,
 
     input                           I_OffOE_PAD       , // Transfer-Control
@@ -50,6 +51,9 @@ module ITF #(
     input                           I_ISAVld_PAD      , // Transfer-Data
     output                          O_CmdVld_PAD      ,
     inout   [PORT_WIDTH     -1 : 0] IO_Dat_PAD        , 
+
+    input [MONSEL_WIDTH     -1 : 0] I_MonSel_PAD      ,
+    output                          O_MonDat_PAD      ,
 
     // CCU
     input  [OPNUM           -1 : 0] CCUITF_CfgRdy     ,
@@ -102,6 +106,8 @@ wire                          I_SysClk      ;
 wire                          I_OffClk      ;
 wire [OPNUM           -1 : 0] O_CfgRdy      ;
 wire [2+2+4           -1 : 0] O_MonState    ;
+reg                           O_MonDat;
+wire [MONSEL_WIDTH      -1 : 0] I_MonSel;
 wire                          I_OffOE       ;
 wire                          I_DatVld      ;
 wire                          I_DatLast     ;
@@ -156,19 +162,19 @@ PDUW08DGZ_V_G inst_I_DatVld_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0
 PDUW08DGZ_V_G inst_I_DatRdy_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_DatRdy_PAD        ), .C(I_DatRdy      ));
 PDUW08DGZ_V_G inst_I_ISAVld_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_ISAVld_PAD        ), .C(I_ISAVld      ));
 
-PDUW08DGZ_V_G inst_O_SysClk_PAD     (.I(clk     ), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_SysClk_PAD        ), .C(              ));
-PDUW08DGZ_V_G inst_O_OffClk_PAD     (.I(OffClk  ), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_OffClk_PAD        ), .C(              ));
+// PDUW08DGZ_V_G inst_O_SysClk_PAD     (.I(clk     ), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_SysClk_PAD        ), .C(              ));
+// PDUW08DGZ_V_G inst_O_OffClk_PAD     (.I(OffClk  ), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_OffClk_PAD        ), .C(              ));
 PDUW08DGZ_V_G inst_O_DatOE_PAD      (.I(oEPad   ), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_DatOE_PAD         ), .C(              ));
 PDUW08DGZ_V_G inst_O_DatVld_PAD     (.I(O_DatVld), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_DatVld_PAD        ), .C(              ));
 PDUW08DGZ_V_G inst_O_DatLast_PAD    (.I(O_DatLast),.OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_DatLast_PAD       ), .C(              ));
 PDUW08DGZ_V_G inst_O_DatRdy_PAD     (.I(O_DatRdy), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_DatRdy_PAD        ), .C(              ));
 PDUW08DGZ_V_G inst_O_CmdVld_PAD     (.I(O_CmdVld), .OEN(OUTPUT_PAD  ), .REN(1'b0), .PAD(O_CmdVld_PAD        ), .C(              ));
 
-generate
-    for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
-        PDUW08DGZ_V_G inst_O_CfgRdy_PAD     (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
-    end 
-endgenerate
+// generate
+//     for (gv_i = 0; gv_i < OPNUM; gv_i = gv_i + 1) begin: GEN_O_CfgRdy_PAD
+//         PDUW08DGZ_V_G inst_O_CfgRdy_PAD     (.I(O_CfgRdy[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_CfgRdy_PAD[gv_i]    ), .C( ));
+//     end 
+// endgenerate
 
 `ifdef PLL
     PDUW08DGZ_H_G inst_I_BypPLL_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_BypPLL_PAD        ), .C(I_BypPLL      ));
@@ -180,11 +186,11 @@ endgenerate
     PDUW08DGZ_H_G inst_O_PLLLock_PAD    (.I(O_PLLLock), .OEN(OUTPUT_PAD ), .REN(1'b0), .PAD(O_PLLLock_PAD       ), .C(              ));
 `endif
 
-generate
-    for (gv_i = 0; gv_i < 8; gv_i = gv_i + 1) begin: GEN_O_MonState_PAD
-        PDUW08DGZ_H_G inst_O_MonState_PAD     (.I(O_MonState[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_MonState_PAD[gv_i]    ), .C( ));
-    end 
-endgenerate
+// generate
+//     for (gv_i = 0; gv_i < 8; gv_i = gv_i + 1) begin: GEN_O_MonState_PAD
+//         PDUW08DGZ_H_G inst_O_MonState_PAD     (.I(O_MonState[gv_i]    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_MonState_PAD[gv_i]    ), .C( ));
+//     end 
+// endgenerate
 
 generate
     for (gv_i = 0; gv_i < 20; gv_i = gv_i + 1) begin: IO_Dat_PAD_0_19
@@ -209,6 +215,14 @@ generate
         PDUW08DGZ_H_G inst_IO_Dat_PAD_90_127(.I(O_Dat[gv_i]), .OEN(!oEPad), .REN(1'b0), .PAD(IO_Dat_PAD[gv_i]), .C(I_Dat[gv_i]));
     end
 endgenerate
+
+generate
+    for (gv_i = 0; gv_i < MONSEL_WIDTH; gv_i = gv_i + 1) begin: GEN_I_MonSel_PAD
+        PDUW08DGZ_H_G inst_I_MonSel_PAD     (.I(1'b0    ), .OEN(INPUT_PAD   ), .REN(1'b0), .PAD(I_MonSel_PAD[gv_i]        ), .C(I_MonSel[gv_i]      ));
+    end
+endgenerate
+PDUW08DGZ_H_G inst_O_MonDat_PAD     (.I(O_MonDat    ), .OEN(OUTPUT_PAD), .REN(1'b0),  .PAD(O_MonDat_PAD    ), .C( ));
+
  // module PDUW08DGZ_H_G (
 //     input  I, 
 //     input  OEN, 
@@ -365,6 +379,28 @@ DELAY#(
     .DIN        ( {state_off[0 +: 2], state_core[0 +: 2], CCUITF_MonState}),
     .DOUT       ( O_MonState    )
 );
+always@(*) begin
+    case(I_MonSel)
+        4'd0 : O_MonDat = O_CfgRdy  [0];
+        4'd1 : O_MonDat = O_CfgRdy  [1];
+        4'd2 : O_MonDat = O_CfgRdy  [2];
+        4'd3 : O_MonDat = O_CfgRdy  [3];
+        4'd4 : O_MonDat = O_CfgRdy  [4];
+        4'd5 : O_MonDat = O_CfgRdy  [5];
+        4'd6 : O_MonDat = O_MonState[0];
+        4'd7 : O_MonDat = O_MonState[1];
+        4'd8 : O_MonDat = O_MonState[2];
+        4'd9 : O_MonDat = O_MonState[3];
+        4'd10: O_MonDat = O_MonState[4];
+        4'd11: O_MonDat = O_MonState[5];
+        4'd12: O_MonDat = O_MonState[6];
+        4'd13: O_MonDat = O_MonState[7];
+        4'd14: O_MonDat = OffClk;
+        4'd15: O_MonDat = clk;
+
+        default: O_MonDat = clk;
+    endcase
+end
 
 // --------------------------------------------------------------------------------------------------------------------
 // IN2CHIP
