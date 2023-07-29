@@ -1,5 +1,5 @@
 
-module PISO 
+module PISO_FLEX 
 #( // INPUT PARAMETERS
     parameter DATA_IN_WIDTH  = 64
 )( // PORTS

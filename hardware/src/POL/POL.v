@@ -98,6 +98,7 @@ wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgMapRdBaseAddr  
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgOfmRdBaseAddr  ;
 wire  [POOL_CORE   -1 : 0][IDX_WIDTH           -1 : 0] CCUPOL_CfgIdxMaskWrAddr  ;
 wire  [ACT_WIDTH                               -1 : 0] CCUPOL_CfgOfmTh;
+wire                                                   CCUPOL_CfgStop;
 
 reg [POOL_CORE  -1 : 0][ 3     -1 : 0] state     ;
 reg [POOL_CORE  -1 : 0][ 3     -1 : 0] next_state ;
@@ -117,7 +118,7 @@ assign {
     CCUPOL_CfgChn          ,   // 16 X 8
     CCUPOL_CfgNip              // 16 x 8  
 } = CCUPOL_CfgInfo[POLISA_WIDTH -1 : 16];
-
+assign CCUPOL_CfgStop = CCUPOL_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
@@ -225,11 +226,10 @@ generate
     //=====================================================================================================================
     // Logic Design: s0:  MapRdAddr
     //=====================================================================================================================
-
     // Combination Logic
     always @(*) begin
         case ( state[gv_plc] )
-            IDLE :  if ( CCUPOL_CfgVld[gv_plc] & POLCCU_CfgRdy[gv_plc] )
+            IDLE :  if ( &POLCCU_CfgRdy & (&CCUPOL_CfgVld & !CCUPOL_CfgStop ) ) // wait all core CfgRdy&CfgVld & !Stop
                         next_state[gv_plc] <= MAPIN;
                     else
                         next_state[gv_plc] <= IDLE;
@@ -357,9 +357,10 @@ generate
         .OUT_LAST  ( SIPO_MapOutLast    ),
         .OUT_RDY   ( SIPO_MapOutRdy     )
     );
-    assign SIPO_MapOutRdy = rdy_s2 & overflow_CntNp;
+    assign SIPO_MapOutRdy = rdy_s2 & (overflow_CntNp & overflow_CntChnGrp);
     // All the time fetching, for addr + 1
-    // Until map array is used up for CntNp(inner loop)   
+    // Until map array is used up for CntNp(inner loop) and CntGrp (outer loop)
+    // When last Np and Last CntGrp
 
     wire [MAP_WIDTH     -1 : 0] MaxCntNp = CCUPOL_CfgK[gv_plc] -1;
     counter#(
@@ -578,20 +579,20 @@ assign POLGLB_IdxMaskWrAddr = CCUPOL_CfgIdxMaskWrAddr + CntIdxMaskWr;
 // Logic Design : Monitor
 //=====================================================================================================================
 assign POLMON_Dat = {
-CCUPOL_CfgVld       ,
-POLCCU_CfgRdy       , 
-POLGLB_MapRdAddrVld , 
-GLBPOL_MapRdAddrRdy ,
-GLBPOL_MapRdDatVld  ,
-POLGLB_MapRdDatRdy  ,
-POLGLB_OfmRdAddrVld ,
-GLBPOL_OfmRdAddrRdy ,
-GLBPOL_OfmRdDatVld  ,
-POLGLB_OfmRdDatRdy  ,
-POLGLB_OfmWrDatVld  ,
-GLBPOL_OfmWrDatRdy  ,
-CCUPOL_CfgInfo      ,
-state
+    CCUPOL_CfgInfo      ,
+    CCUPOL_CfgVld       ,
+    POLCCU_CfgRdy       , 
+    POLGLB_MapRdAddrVld , 
+    GLBPOL_MapRdAddrRdy ,
+    GLBPOL_MapRdDatVld  ,
+    POLGLB_MapRdDatRdy  ,
+    POLGLB_OfmRdAddrVld ,
+    GLBPOL_OfmRdAddrRdy ,
+    GLBPOL_OfmRdDatVld  ,
+    POLGLB_OfmRdDatRdy  ,
+    POLGLB_OfmWrDatVld  ,
+    GLBPOL_OfmWrDatRdy  ,
+    state
 };
 
 endmodule

@@ -79,19 +79,20 @@ wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgCatAddr;
 wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgWord0;
 wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgWord1;
 wire [ADDR_WIDTH                -1 : 0] CCUCAT_CfgNumPnt;
+wire                                    CCUCAT_CfgStop;
 
 //=====================================================================================================================
 // Logic Design: Cfg
 //=====================================================================================================================
 assign {
-    CCUCAT_CfgEle0Addr  ,
-    CCUCAT_CfgEle1Addr  ,
-    CCUCAT_CfgCatAddr   ,
+    CCUCAT_CfgEle0Addr  , // 16
+    CCUCAT_CfgEle1Addr  , // 16
+    CCUCAT_CfgCatAddr   , // 16
     CCUCAT_CfgWord1     , // How many words occupied by all channels
-    CCUCAT_CfgWord0     , // 
+    CCUCAT_CfgWord0     , // 16
     CCUCAT_CfgNumPnt         // How many points
-} = CCUCAT_CfgInfo[CATISA_WIDTH - 1 : 12];
-
+} = CCUCAT_CfgInfo[CATISA_WIDTH - 1 : 16];
+assign CCUCAT_CfgStop = CCUCAT_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design: FSM
 //=====================================================================================================================
@@ -99,7 +100,7 @@ reg [ 3 -1:0 ]state;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
-        IDLE :  if(CATCCU_CfgRdy & CCUCAT_CfgVld)// 
+        IDLE :  if(CATCCU_CfgRdy & (CCUCAT_CfgVld & !CCUCAT_CfgStop))// 
                     next_state <= COMP; //
                 else
                     next_state <= IDLE;

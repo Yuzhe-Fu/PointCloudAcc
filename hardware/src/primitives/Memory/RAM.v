@@ -53,11 +53,6 @@ module RAM #(
     assign #(DELAY) WEB  = {SRAM_BYTE{~write_en}};
     assign #(DELAY) CSB  = (~write_en)&(~read_en);
 
-    `ifdef SIM
-        assign #(DELAY) RTSEL= 2'b10;
-    `else
-        assign #(DELAY) RTSEL= 2'b00;
-    `endif
     assign #(DELAY) WTSEL= 2'b00;
     assign #(DELAY) PTSEL= 2'b00;
 
@@ -83,8 +78,14 @@ module RAM #(
     end
     assign data_out = read_en_d? DO : DO_d;
 
+    // `define RTSELDB
     generate
         if( SRAM_WORD == 128 && SRAM_BIT == 256 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
+            `ifdef RTSELDB
+                assign #(DELAY) RTSEL= 2'b10;
+            `else
+                assign #(DELAY) RTSEL= 2'b00;
+            `endif
             TS1N28HPCPUHDHVTB128X256M1SSO GLB_BANK(
             .SLP    ( 1'b0  ),
             .SD     ( 1'b0  ),
@@ -98,36 +99,8 @@ module RAM #(
             .Q      ( DO    )
             );
         end
-
-        else if( SRAM_WORD == 64 && SRAM_BIT == 128 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
-            TS1N28HPCPUHDHVTB64X128M4SSO CCU_ISARAM(
-            .SLP    ( 1'b0  ),
-            .SD     ( 1'b0  ),
-            .CLK    ( clk   ),
-            .CEB    ( CSB   ),
-            .WEB    ( WEB   ),
-            .A      ( (&WEB)? AR : AW     ),
-            .D      ( DI    ),
-            .RTSEL  ( RTSEL ),
-            .WTSEL  ( WTSEL ),
-            .Q      ( DO    )
-            );
-        end 
-        else if( SRAM_WORD == 16 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
-            TS1N28HPCPUHDHVTB16X8M2SSO SYA_RAM(
-            .SLP    ( 1'b0  ),
-            .SD     ( 1'b0  ),
-            .CLK    ( clk   ),
-            .CEB    ( CSB   ),
-            .WEB    ( WEB   ),
-            .A      ( (&WEB)? AR : AW     ),
-            .D      ( DI    ),
-            .RTSEL  ( RTSEL ),
-            .WTSEL  ( WTSEL ),
-            .Q      ( DO    )
-            );
-        end
         else if( SRAM_WORD == 256 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
+            assign #(DELAY) RTSEL= 2'b00;
             TS1N28HPCPUHDHVTB256X8M4SSO SHF_SPRAM(
             .SLP    ( 1'b0  ),
             .SD     ( 1'b0  ),
@@ -141,49 +114,38 @@ module RAM #(
             .Q      ( DO    )
             );
         end
-        else if( SRAM_WORD == 64 && SRAM_BIT == 512 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
-            TS1N28HPCPUHDHVTB64X256M1SSO SYA_FWFT_SPSRAM0(
-            .SLP    ( 1'b0  ),
-            .SD     ( 1'b0  ),
-            .CLK    ( clk   ),
-            .CEB    ( CSB   ),
-            .WEB    ( WEB   ),
-            .A      ( (&WEB)? AR : AW   ),
-            .D      ( DI[0 +: SRAM_BIT/2] ),
-            .RTSEL  ( RTSEL ),
-            .WTSEL  ( WTSEL ),
-            .Q      ( DO[0 +: SRAM_BIT/2] )
-            );
-            TS1N28HPCPUHDHVTB64X256M1SSO SYA_FWFT_SPSRAM1(
-            .SLP    ( 1'b0  ),
-            .SD     ( 1'b0  ),
-            .CLK    ( clk   ),
-            .CEB    ( CSB   ),
-            .WEB    ( WEB   ),
-            .A      ( (&WEB)? AR : AW   ),
-            .D      ( DI[SRAM_BIT/2 +: SRAM_BIT/2]),
-            .RTSEL  ( RTSEL ),
-            .WTSEL  ( WTSEL ),
-            .Q      ( DO[SRAM_BIT/2 +: SRAM_BIT/2])
-            );
-        end       
-        else if( SRAM_WORD == 256 && SRAM_BIT == 8 && SRAM_BYTE == 1 && DUAL_PORT == 1)begin
-            wire [10    -1 : 0] QA;
-            assign DO = QA;
-            TSDN28HPCPUHDB256X10M4M SHF_DPRAM(
+        else if( SRAM_WORD == 32 && SRAM_BIT == 256 && SRAM_BYTE == 1 && DUAL_PORT == 1)begin
+            assign #(DELAY) RTSEL= 2'b00;
+            TSDN28HPCPUHDB32X128M4M SYA_FWFT_DPSRAM0(
             .RTSEL ( RTSEL  ),
             .WTSEL ( WTSEL  ),
             .PTSEL ( PTSEL  ),
             .AA    ( AR     ),
             .DA    (        ),
-            .WEBA  ( ~WEB   ), // read
-            .CEBA  ( ~WEB   ),
+            .WEBA  ( ~WEB   ), // A Read
+            .CEBA  ( CSB    ),
             .CLK   ( clk    ),
             .AB    ( AW     ),
-            .DB    ( {2'b00, DI}),
-            .WEBB  ( WEB    ),
+            .DB    ( DI[0 +: SRAM_BIT/2]),
+            .WEBB  ( WEB    ), // B Write
             .CEBB  ( WEB    ),
-            .QA    ( QA     ),
+            .QA    ( DO[0 +: SRAM_BIT/2]),
+            .QB    (        )
+            );
+            TSDN28HPCPUHDB32X128M4M SYA_FWFT_DPSRAM1(
+            .RTSEL ( RTSEL  ),
+            .WTSEL ( WTSEL  ),
+            .PTSEL ( PTSEL  ),
+            .AA    ( AR     ),
+            .DA    (        ),
+            .WEBA  ( ~WEB   ), // A Read
+            .CEBA  ( CSB    ),
+            .CLK   ( clk    ),
+            .AB    ( AW     ),
+            .DB    ( DI[SRAM_BIT/2 +: SRAM_BIT/2]),
+            .WEBB  ( WEB    ), // B Write
+            .CEBB  ( WEB    ),
+            .QA    ( DO[SRAM_BIT/2 +: SRAM_BIT/2]),
             .QB    (        )
             );
         end

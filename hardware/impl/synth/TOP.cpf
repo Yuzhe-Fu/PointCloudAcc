@@ -1,0 +1,106 @@
+#############################################################
+# CPF for power gating
+#############################################################
+set_cpf_version 2.0
+set_hierarchy_separator /
+set_design pulpino_top_edac
+#############################################################################################
+##                                  Define WC library sets                                 ## 
+#############################################################################################
+
+source ./script/mmmc.tcl
+define_library_set  -name umc55_wc0p35_lib  -libraries "$worst_0p35_125_standard_libs $worst_0p35_125_ls_libs"
+define_library_set  -name umc55_wc1p08_lib   -libraries "$worst_0p35_125_memory_libs $worst_0p35_125_ls_libs $worst_125_standard_libs"
+
+############################
+## Defining Power Domains ##
+############################
+
+## default one: SRAM macro
+create_power_domain -name DEFAULT -default
+
+create_power_domain -name HIGH_DOMAIN -instances { pad_o* IPOC_cell pulpino_top_i/core_region_i/instr_mem/sp_ram_wrap_i \
+											pulpino_top_i/core_region_i/instr_mem/boot_rom_wrap_i \
+											pulpino_top_i/core_region_i/data_mem}
+# create_power_domain -name HIGH_DOMAIN -instances { pad_o* IPOC_cell pulpino_top_i/core_region_i/instr_mem/sp_ram_wrap_i/sp_ram_i \
+# 											pulpino_top_i/core_region_i/instr_mem/boot_rom_wrap_i/boot_code_i \
+# 											pulpino_top_i/core_region_i/data_mem/sp_ram_i }
+
+################################
+## Defining Power/Ground Nets ##
+################################
+
+create_power_nets -nets VDD  -voltage 1.2
+create_power_nets -nets VDD_ANA_LOW -voltage 0.35
+create_power_nets -nets VDD_ANA_HIGH -voltage 1.2
+create_power_nets -nets VDDIO  -voltage 3.3
+create_power_nets -nets PORE
+
+create_ground_nets -nets VSS -voltage 0.0
+create_ground_nets -nets VSS_ANA_LOW -voltage 0.0
+create_ground_nets -nets VSS_ANA_HIGH -voltage 0.0
+
+update_power_domain -name DEFAULT  	   -primary_power_net VDD_ANA_LOW  -primary_ground_net VSS_ANA_LOW
+update_power_domain -name HIGH_DOMAIN  -primary_power_net VDD_ANA_HIGH -primary_ground_net VSS_ANA_HIGH
+
+
+create_global_connection -net VDD_ANA_LOW   -pins VDD -domain DEFAULT
+create_global_connection -net VDD_ANA_HIGH  -pins VCC -domain HIGH_DOMAIN
+
+create_global_connection -net VSS_ANA_LOW  -pins VSS -domain DEFAULT
+create_global_connection -net VSS_ANA_HIGH  -pins GND -domain HIGH_DOMAIN
+
+create_global_connection -instances pad*  -net VDDIO -pins VDDIO
+create_global_connection -instances pad*  -net VDD -pins VDD 
+create_global_connection -instances pad* -net VSS -pins VSSIO
+create_global_connection -instances pad*  -net VSS -pins VSS
+
+
+##############################
+## Define Nominal Condition ##
+##############################
+
+create_nominal_condition -name low  -voltage 0.35
+update_nominal_condition -name low  -library_set  umc55_wc0p35_lib
+create_nominal_condition -name high -voltage 1.2
+update_nominal_condition -name high -library_set  umc55_wc1p08_lib
+
+#######################
+## Define Power Mode ##
+#######################
+
+create_power_mode -name default_mode -domain_conditions { DEFAULT@low HIGH_DOMAIN@high } -default
+
+
+##########################
+## Define Level Shifter ##
+##########################
+
+define_level_shifter_cell -cells { C3MLS } \
+			  -input_voltage_range 0.35 \
+			  -output_voltage_range 1.08:1.32 \
+			  -input_power_pin VDD1 \
+			  -output_power_pin VDD \
+			  -ground VSS \
+			  -direction up \
+			  -valid_location any
+
+create_level_shifter_rule -name lsr_low_to_high -to {HIGH_DOMAIN} -from {DEFAULT}
+update_level_shifter_rules -names lsr_low_to_high -cells "C3MLS" -location any -within_hierarchy /
+
+
+# define_level_shifter_cell -cells { LSHLM2TM LSHLM8TM } \
+# 			  -input_voltage_range 1.08:1.32 \
+# 			  -output_voltage_range 0.35 \
+# 			  -output_power_pin VDD \
+# 			  -ground VSS \
+# 			  -direction down \
+# 			  -valid_location to
+
+# create_level_shifter_rule -name lsr_high_to_low -to {DEFAULT} -from {SRAM}
+# update_level_shifter_rules -names lsr_high_to_low -cells "LSHLM2TM LSHLM8TM" -location to
+
+
+
+end_design
+

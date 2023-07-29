@@ -73,15 +73,12 @@ reg [ 3 -1:0 ]state;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
-        IN:   if(shift_din_last & (shift_din_vld & shift_din_rdy))
-                    next_state <= OUT;
-                else
-                    next_state <= IN;
+        IN: if(shift_din_last & (shift_din_vld & shift_din_rdy))
+                next_state <= OUT;
+            else
+                next_state <= IN;
 
-        OUT: if(Rst)
-                    next_state <= IN;
-                else
-                    next_state <= OUT;
+        OUT: next_state <= OUT; // Hold
                 
         default: next_state <= IN;
     endcase
@@ -89,6 +86,8 @@ end
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
+        state <= IN;
+    end else if( Rst ) begin
         state <= IN;
     end else begin
         state <= next_state;
@@ -103,7 +102,7 @@ counter#(
 )u1_counter_WrChnGrp( 
     .CLK       ( clk                ),
     .RESET_N   ( rst_n              ),
-    .CLEAR     (                    ),
+    .CLEAR     ( Rst                ),
     .DEFAULT   ( {ADDR_WIDTH{1'b0}} ),
     .INC       ( incCntWrChnGrp     ),
     .DEC       ( 1'b0               ),

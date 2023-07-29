@@ -16,7 +16,7 @@ module SYA #(
     parameter ACC_WIDTH  = ACT_WIDTH+ACT_WIDTH+10, //26
     parameter NUM_ROW    = 16,
     parameter NUM_COL    = 16,
-    parameter NUM_BANK   = 4,
+    parameter NUM_BANK   = 2,
     parameter SRAM_WIDTH = 256,
     parameter ADDR_WIDTH = 16,
     parameter QNTSL_WIDTH= 8,
@@ -155,20 +155,18 @@ integer                                         row;
 integer                                         col;
 integer                                         bank;
 
-reg                                             CCUSYA_CfgRstAll        ;
 reg   [ACT_WIDTH                        -1 : 0] CCUSYA_CfgShift         ;
 reg   [ACT_WIDTH                        -1 : 0] CCUSYA_CfgZp            ;
 reg   [2                                -1 : 0] CCUSYA_CfgMod           ;
-reg   [3                                -1 : 0] CCUSYA_CfgOfmPhaseShift ;
 reg   [IDX_WIDTH                        -1 : 0] CCUSYA_CfgNumGrpPerTile ;
 reg   [IDX_WIDTH                        -1 : 0] CCUSYA_CfgNumTilIfm     ;
 reg   [IDX_WIDTH                        -1 : 0] CCUSYA_CfgNumTilFlt     ;
-reg                                             CCUSYA_CfgLopOrd        ;
+reg   [2                                -1 : 0] CCUSYA_CfgLopOrd        ;
 reg   [CHN_WIDTH                        -1 : 0] CCUSYA_CfgChn           ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgActRdBaseAddr ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgWgtRdBaseAddr ;
 reg   [ADDR_WIDTH                       -1 : 0] CCUSYA_CfgOfmWrBaseAddr ;
-
+wire                                            CCUSYA_CfgStop;
 //=====================================================================================================================
 // Logic Design: ISA Decode
 //=====================================================================================================================
@@ -183,10 +181,8 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgChn           <=  1; // 16
         CCUSYA_CfgShift         <=  0; // 8
         CCUSYA_CfgZp            <=  0; // 8
-        CCUSYA_CfgOfmPhaseShift <=  0; // 3
-        CCUSYA_CfgLopOrd        <=  0; // 1
+        CCUSYA_CfgLopOrd        <=  0; // 2
         CCUSYA_CfgMod           <=  0; // 2
-        CCUSYA_CfgRstAll        <=  1; // 1
     end else if( state == IDLE & next_state == COMP) begin // Config
         {
         CCUSYA_CfgOfmWrBaseAddr ,   // 16
@@ -198,23 +194,18 @@ always @(posedge clk or negedge rst_n) begin
         CCUSYA_CfgChn           ,   // 16
         CCUSYA_CfgShift         ,   // 8
         CCUSYA_CfgZp            ,   // 8
-
-        CCUSYA_CfgOfmPhaseShift ,   // 3
-        CCUSYA_CfgLopOrd        ,   // 1
-
-        CCUSYA_CfgMod           ,   // 2
-        CCUSYA_CfgRstAll            // 1
-        } <= CCUSYA_CfgInfo[SYAISA_WIDTH -1 : 9];
+        CCUSYA_CfgLopOrd        ,   // 2
+        CCUSYA_CfgMod               // 2
+        } <= CCUSYA_CfgInfo[SYAISA_WIDTH -1 : 16];
     end
 end
-wire CCUSYA_CfgRstAll_wire = CCUSYA_CfgInfo[9];
-
+assign CCUSYA_CfgStop = CCUSYA_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design: FSM
 //=====================================================================================================================
 always @(*) begin
     case ( state )
-        IDLE :  if(CCUSYA_CfgVld & SYACCU_CfgRdy)
+        IDLE :  if( SYACCU_CfgRdy & (CCUSYA_CfgVld & !CCUSYA_CfgStop) )
                     next_state <= COMP; //
                 else
                     next_state <= IDLE;
@@ -297,13 +288,13 @@ counter#(
 // Logic Design: S1: RdAct/WgtDat
 //=====================================================================================================================
 // Combinational Logic
-assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgLopOrd? 
+assign SYAGLB_ActRdAddr     = state == IDLE? 0 : CCUSYA_CfgActRdBaseAddr + CCUSYA_CfgLopOrd[0]? 
                                                     CntChn // Change Filter Group: Filter is inner loop
                                                     
                                                     // CntGrp%CCUSYA_CfgNumGrpPerTile : 0-NumGrp then turn back because rectangle
                                                     : CCUSYA_CfgChn*(CntGrp%CCUSYA_CfgNumGrpPerTile) + CntChn; 
 assign SYAGLB_ActRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_WgtRdAddrRdy; // other load are ready
-assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgLopOrd? 
+assign SYAGLB_WgtRdAddr     = state == IDLE? 0 : CCUSYA_CfgWgtRdBaseAddr + CCUSYA_CfgLopOrd[0]? 
                                                     CCUSYA_CfgChn*(CntGrp%CCUSYA_CfgNumGrpPerTile) + CntChn
                                                     : CntChn;
 assign SYAGLB_WgtRdAddrVld  = state == IDLE? 0 : vld_s0 & GLBSYA_ActRdAddrRdy; // other load are ready
@@ -335,14 +326,6 @@ assign SYA_InWgt_N          [0] = state == IDLE? 0 : GLBSYA_WgtRdDat[0];
 assign SYA_InAct_W          [1] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[1]: SYA_OutAct_E[0];
 assign SYA_InWgt_N          [1] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[0]   : GLBSYA_WgtRdDat[1];
 
-// Bank[2]
-assign SYA_InAct_W          [2] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[2] : GLBSYA_ActRdDat[1];
-assign SYA_InWgt_N          [2] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[1] : SYA_OutWgt_S[0];
-
-// Bank[3]
-assign SYA_InAct_W          [3] = state == IDLE? 0 : CCUSYA_CfgMod == 1? GLBSYA_ActRdDat[3] : SYA_OutAct_E[2];
-assign SYA_InWgt_N          [3] = state == IDLE? 0 : CCUSYA_CfgMod == 1? SYA_OutWgt_S[2] : SYA_OutWgt_S[1];
-
 // Generate SYA Input signals: SYA_En, SYA_Reset
 assign SYA_En   = {NUM_COL*NUM_ROW*NUM_BANK{handshake_s1}} ;
 generate
@@ -356,7 +339,7 @@ generate
                                     : NUM_ROW*gv_bk + gv_row;
                 assign axis_y = CCUSYA_CfgMod == 0? NUM_COL*(gv_bk%2) + gv_col
                                     : gv_col;
-                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx_s2) & (handshake_s2);
+                assign SYA_Reset[gv_bk][gv_row][gv_col] = (axis_x + axis_y == CurPsumOutDiagIdx_s2) & (handshake_s2) | state == IDLE ;
             end
         end
     end
@@ -503,8 +486,9 @@ assign fwftOfm_dout_vld = !fwftOfm_empty;
 
 FIFO_FWFT#(
     .RAMREG     ( 1                         ),
-    .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK), // 64B
-    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64 : 4KB Need 64x256x2 UHDSPSRAM!!!!!!!!!!!!!!!!!
+    .DUAL_PORT  ( 1                         ),
+    .DATA_WIDTH ( ACT_WIDTH*NUM_ROW*NUM_BANK), // 64B->32B=256bit
+    .ADDR_WIDTH ( $clog2(NUM_ROW*NUM_BANK)  )   // Max: 64 : 4KB Need 64x256x2 UHDSPSRAM!!!!!!!!!!!!!!!!!->32x2561s
 )u_FIFO_FWFT_OFM(
     .clk        ( clk           ),
     .Reset      ( state == IDLE ),
@@ -550,6 +534,7 @@ counter#(
 // Logic Design: Monitor
 //=====================================================================================================================
 assign SYAMON_Dat = {
+    CCUSYA_CfgInfo      , 
     CCUSYA_CfgVld       ,
     SYACCU_CfgRdy       ,
     SYAGLB_ActRdAddrVld ,
@@ -562,11 +547,30 @@ assign SYAMON_Dat = {
     SYAGLB_WgtRdDatRdy  , 
     SYAGLB_OfmWrDatVld  ,
     GLBSYA_OfmWrDatRdy  , 
+    CurPsumOutDiagIdx_s2,
+    DefaultRmDiagPsum,
+    NumDiag,
     CntRmDiagPsum       , 
     CntMac              , 
     CntGrp              , 
-    CntChn              , 
-    CCUSYA_CfgInfo      , 
+    CntChn              ,
+    rdy_s0,
+    vld_s0,
+    ena_s0,
+    handshake_s0,
+    rdy_s1,
+    vld_s1,
+    ena_s1,
+    handshake_s1,
+    rdy_s2,
+    vld_s2,
+    ena_s2,
+    handshake_s2,
+    rdy_s3,
+    vld_s3,
+    ena_s3,
+    handshake_s3,
+    handshake_Ofm, 
     state                
 };
 

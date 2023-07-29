@@ -2,6 +2,7 @@
 module FIFO
 #(  // Parameters
     parameter   RAMREG              = 0,
+    parameter   DUAL_PORT           = 0,
     parameter   DATA_WIDTH          = 64,
     parameter   ADDR_WIDTH          = 4,
     parameter   INIT                = "init.mif",
@@ -103,7 +104,7 @@ generate
             .SRAM_BIT   ( DATA_WIDTH),
             .SRAM_BYTE  ( 1         ),
             .SRAM_WORD  ( RAM_DEPTH ),
-            .DUAL_PORT  ( 0         )
+            .DUAL_PORT  ( DUAL_PORT )
         ) u_RAM(
             .clk        ( clk        ),
             .rst_n      ( rst_n      ),

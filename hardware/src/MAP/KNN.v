@@ -18,14 +18,14 @@
 module KNN #(
     parameter KNNISA_WIDTH      = 128*2,
     parameter SRAM_WIDTH        = 256,
-    parameter SRAM_MAXPARA      = 1,
+    parameter KNNCRD_MAXPARA    = 4,
     parameter IDX_WIDTH         = 16,
     parameter MAP_WIDTH         = 5,
     parameter CRD_WIDTH         = 8,
     parameter NUM_SORT_CORE     = 8,
     parameter KNNMON_WIDTH      = 128,
-    parameter CRDRDWIDTH        = SRAM_WIDTH*SRAM_MAXPARA,
-    parameter CRD_MAXDIM        = CRDRDWIDTH/CRD_WIDTH, // 64
+    parameter CRD_MAXDIM        = 64,
+    parameter CRDRDWIDTH        = SRAM_WIDTH*KNNCRD_MAXPARA,
     parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_MAXDIM)
     )(
     input                               clk                 ,
@@ -148,6 +148,8 @@ wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgCrdRdAddr ;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgMaskRdAddr;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgMapWrAddr ;
 wire [IDX_WIDTH         -1 : 0] CCUKNN_CfgIdxMaskRdAddr ;
+wire                            CCUKNN_CfgStop;
+wire                            CCUKNN_CfgBpsMask;
 
 wire [$clog2(CRDRDWIDTH) + 1                        -1 : 0] bwcCpCrdInpBw;
 wire [$clog2(CRD_WIDTH*CRD_MAXDIM*NUM_SORT_CORE) + 1-1 : 0] bwcCpCrdOutBw;
@@ -174,16 +176,18 @@ wire [IDX_WIDTH                     -1 : 0] MaxCntMapWr;
 // Logic Design: ISA Decode
 //=====================================================================================================================
 assign {
-    CCUKNN_CfgIdxMaskRdAddr,
+    CCUKNN_CfgIdxMaskRdAddr,// 16
     CCUKNN_CfgMapWrAddr ,   // 16
-    CCUKNN_CfgMaskRdAddr,   
+    CCUKNN_CfgMaskRdAddr,   // 16
     CCUKNN_CfgCrdRdAddr ,   // 16
-    CCUKNN_CfgCrdNumBankPar,
+    CCUKNN_CfgCrdNumBankPar,// 8
     CCUKNN_CfgCrdDim    ,   // 8
     CCUKNN_CfgK_tmp     ,   // 8
     CCUKNN_CfgNip           // 16
-} = CCUKNN_CfgInfo[KNNISA_WIDTH -1 : 12];
-assign CCUKNN_CfgK = CCUKNN_CfgK_tmp;
+} = CCUKNN_CfgInfo[KNNISA_WIDTH -1 : 16];
+assign CCUKNN_CfgK      = CCUKNN_CfgK_tmp;
+assign CCUKNN_CfgStop   = CCUKNN_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
+assign CCUKNN_CfgBpsMask= CCUKNN_CfgInfo[10];
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
@@ -195,7 +199,7 @@ reg [ 3 -1:0 ]state_ds1;
 
 always @(*) begin
     case ( state )
-        IDLE :  if(KNNCCU_CfgRdy & CCUKNN_CfgVld)// 
+        IDLE :  if(KNNCCU_CfgRdy & (CCUKNN_CfgVld & !CCUKNN_CfgStop) )// 
                     next_state <= CP; //
                 else
                     next_state <= IDLE;
@@ -210,7 +214,7 @@ always @(*) begin
         LP:     if(CCUKNN_CfgVld)
                     next_state <= IDLE;
                 else if ( CntLopCrdRdAddrLast & KNNGLB_CrdRdAddrVld & (state == IDLE? 0 : GLBKNN_CrdRdAddrRdy) ) begin
-                    if ( CntCpCrdRdAddrLast )
+                    if ( CntCpCrdRdAddrLast & CntCpCrdRdAddrLast_s1)
                         next_state <= WAITFNH;
                     else //
                         next_state <= CP;
@@ -254,7 +258,12 @@ assign vld_s0       = state == CP | state == LP;
 assign handshake_s0 = rdy_s0 & vld_s0;
 assign ena_s0       = handshake_s0 | ~vld_s0;
 
-wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr = `CEIL(CRD_WIDTH*CCUKNN_CfgCrdDim*CCUKNN_CfgNip, SRAM_WIDTH*CCUKNN_CfgCrdNumBankPar) -1;
+wire [IDX_WIDTH     -1 : 0] MaxCntCrdRdAddr;
+wire [32            -1 : 0] MaxTotalBit_tmp;
+wire [16            -1 : 0] MaxParBit_tmp;
+assign MaxTotalBit_tmp  = CRD_WIDTH*CCUKNN_CfgCrdDim*CCUKNN_CfgNip;
+assign MaxParBit_tmp    = SRAM_WIDTH*CCUKNN_CfgCrdNumBankPar;
+assign MaxCntCrdRdAddr  = `CEIL(MaxTotalBit_tmp, MaxParBit_tmp) -1;
 counter#(
     .COUNT_WIDTH ( IDX_WIDTH )
 )u0_counter_CntCp(
@@ -335,23 +344,19 @@ assign KNNGLB_IdxMaskRdAddrVld  = state == IDLE? 0 : vld_s0 & (req_Idx & (state 
 
 always @(*) begin
     case ( state_s1 )
-        CP:     if(state == IDLE)
-                    next_state_s1 <= CP;
-                else if( bwcCpCrdOutVld & bwcCpCrdOutRdy ) // after CpCrd being output
+        CP:     if( bwcCpCrdOutVld & bwcCpCrdOutRdy ) // after CpCrd being output
                     next_state_s1 <= LP;
                 else
                     next_state_s1 <= CP;
 
-        LP:     if(state == IDLE)
-                    next_state_s1 <= CP;
-                else if (pisoLopCrdOutVld & pisoLopCrdOutLast & pisoLopCrdOutRdy) // Last LopCrd 
-                        next_state_s1 <= OUT;
+        LP:     if (pisoLopCrdOutVld & pisoLopCrdOutLast & pisoLopCrdOutRdy) // Last LopCrd 
+                    next_state_s1 <= OUT;
                 else
                     next_state_s1 <= LP;
         OUT:    if( handshake_s2 ) // Map to PISO
                     next_state_s1 <= CP;
                 else 
-                    next_state <= OUT;
+                    next_state_s1 <= OUT;
 
         default: next_state_s1 <= CP;
     endcase
@@ -371,8 +376,8 @@ always @(posedge clk or negedge rst_n) begin
         {CntLopCrdRdAddr_s1, CntLopCrdRdAddrLast_s1, CntCpCrdRdAddr_s1, CntCpCrdRdAddrLast_s1} <= 0;
     end else if(handshake_s0) begin
         if( state == CP ) begin
-        CntCpCrdRdAddr_s1       <= CntCpCrdRdAddr;
-        CntCpCrdRdAddrLast_s1   <= CntCpCrdRdAddrLast;
+            CntCpCrdRdAddr_s1       <= CntCpCrdRdAddr;
+            CntCpCrdRdAddrLast_s1   <= CntCpCrdRdAddrLast;
         end else if(state == LP) begin
             CntLopCrdRdAddr_s1      <= CntLopCrdRdAddr;
             CntLopCrdRdAddrLast_s1  <= CntLopCrdRdAddrLast;
@@ -393,6 +398,8 @@ end
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
         state_s1 <= CP;
+    end else if( state == IDLE ) begin
+        state_s1 <= CP;
     end else begin
         state_s1 <= next_state_s1;
     end
@@ -402,7 +409,7 @@ end
 //=====================================================================================================================
 // Combinational Logic
 assign crdRdDat_s1      = state == IDLE? 0 : GLBKNN_CrdRdDat;
-assign MaskRdDat_s1     = state == IDLE? 0 : GLBKNN_MaskRdDat;
+assign MaskRdDat_s1     = state == IDLE? 0 : CCUKNN_CfgBpsMask? {SRAM_WIDTH{1'b1}} : GLBKNN_MaskRdDat;
 assign IdxMaskRdDat_s1  = state == IDLE? 0 : GLBKNN_IdxMaskRdDat;
 
 assign KNNGLB_CrdRdDatRdy       = state == IDLE? 1 : rdy_s1;
@@ -458,10 +465,10 @@ assign bwcCpCrdInpBw = SRAM_WIDTH*CCUKNN_CfgCrdNumBankPar;
 assign bwcCpCrdOutBw = CRD_WIDTH*CCUKNN_CfgCrdDim*NUM_SORT_CORE;
 assign bwcCpCrdInVld = state_s1 == CP & vld_s1 & state_ds1 == CP;
 assign bwcCpCrdNfull = bwcCpCrdOutBw >= bwcCpCrdInpBw?
-                        (bwcCpCrdInVld & bwcCpCrdInRdy) & (bwcCnt == bwcCpCrdOutBw - bwcCpCrdInpBw) // NearFull: Next clk is full
+                        (bwcCpCrdInVld & bwcCpCrdInRdy) & (bwcCnt >= bwcCpCrdOutBw - bwcCpCrdInpBw) // NearFull: Next clk is full
                         : (bwcCpCrdInVld & bwcCpCrdInRdy) | bwcCnt >= bwcCpCrdOutBw; // one word is enough
 BWC #( // Bit Width Conversion
-    .DATA_IN_WIDTH   ( CRDRDWIDTH ), // 256bit*4=1024bit
+    .DATA_IN_WIDTH   ( CRDRDWIDTH ), // 256bit*2=512bit
     .DATA_OUT_WIDTH  ( CRD_WIDTH*CRD_MAXDIM*NUM_SORT_CORE ) // 8bit*64*8=4096bit
 )u_BWC_CpCrd(
     .CLK       ( clk            ),
@@ -648,6 +655,36 @@ counter#(
 //=====================================================================================================================
 // Logic Design: Monitor
 //=====================================================================================================================
-assign KNNMON_Dat = {CntLopCrdByte, CntLopCrdRdAddr, CntMaskAddr, CntCpCrdRdAddr, CCUKNN_CfgInfo, state};
+assign KNNMON_Dat = {
+    CCUKNN_CfgInfo, 
+    CCUKNN_CfgVld,
+    KNNCCU_CfgRdy,
+    MaskRdDat_s1[0 +: 16],
+    CntMapWr,
+    CntLopCrdByte, 
+    CntLopCrdRdAddr, 
+    CntMaskAddr, 
+    CntCpCrdRdAddr,
+    CntCpCrdRdAddrLast, 
+    CntCpCrdRdAddrLast_s1, 
+    CntCpCrdRdAddrLast_s2, 
+    pisoMapOutLast,
+    pisoMapOutVld,
+    pisoLopCrdOutVld,
+    pisoLopCrdOutLast,
+    pisoLopCrdOutRdy,
+    rdy_s0,
+    rdy_s1,
+    rdy_s2,
+    vld_s0,
+    vld_s1,
+    vld_s2,
+    handshake_s0,
+    handshake_s1,
+    handshake_s2,
+    ena_s0,
+    ena_s1,
+    ena_s2,
+    state};
 
 endmodule

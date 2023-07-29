@@ -29,7 +29,6 @@ module CCU #(
     parameter MAP_WIDTH             = 5,
     parameter NUM_LAYER_WIDTH       = 20,
     parameter NUM_MODULE            = 6,
-    parameter NUM_BANK              = 32,
     parameter NUM_FPC               = 8,
     parameter OPNUM                 = NUM_MODULE,
 
@@ -47,14 +46,16 @@ module CCU #(
     parameter SYAISAFIFO_ADDR_WIDTH = 1,
     parameter POLISAFIFO_ADDR_WIDTH = 1,
     parameter GICISAFIFO_ADDR_WIDTH = 1,
-    parameter MONISAFIFO_ADDR_WIDTH = 1
+    parameter MONISAFIFO_ADDR_WIDTH = 1,
 
+    parameter CCUMON_WIDTH          = 128*2
     )(
     input                                   clk                 ,
     input                                   rst_n               ,
 
     output [OPNUM                   -1 : 0] CCUITF_CfgRdy       ,
-    input   [PORT_WIDTH             -1 : 0] ITFCCU_ISARdDat     ,       
+    output [4                       -1 : 0] CCUITF_MonState     , // {|POLCCU_CfgRdy, |FPSCCU_CfgRdy, state}
+    input  [PORT_WIDTH              -1 : 0] ITFCCU_ISARdDat     ,       
     input                                   ITFCCU_ISARdDatVld  , 
     input                                   ITFCCU_ISARdDatLast ,         
     output                                  CCUITF_ISARdDatRdy  ,
@@ -81,7 +82,9 @@ module CCU #(
 
     output                                  CCUMON_CfgVld       ,
     input                                   MONCCU_CfgRdy       ,  
-    output [MONISA_WIDTH            -1 : 0] CCUMON_CfgInfo          
+    output [MONISA_WIDTH            -1 : 0] CCUMON_CfgInfo      ,
+
+    output [CCUMON_WIDTH            -1 : 0] CCUMON_Dat               
 
 );
 //=====================================================================================================================
@@ -90,9 +93,9 @@ module CCU #(
 localparam OPCODE_WIDTH = 8;
 localparam NUMWORD_WIDTH= 8;
 
-localparam IDLE         = 4'b0000;
-localparam DEC          = 4'b0001;
-localparam CFG          = 4'b0010;
+localparam IDLE         = 2'b00;
+localparam RECV         = 2'b01; // Receive
+localparam REFN         = 2'b10; // Receive Finish
 
 localparam [OPNUM    -1 : 0][16  -1 : 0] ISA_WIDTH = {
     MONISA_WIDTH[0 +: 16],
@@ -129,18 +132,25 @@ wire [OPNUM                         -1 : 0] SIPO_OUT_RDY;
 //=====================================================================================================================
 // Logic Design 1: FSM
 //=====================================================================================================================
-reg [4      -1 : 0] state       ;
-reg [4      -1 : 0] next_state  ;
+reg [2      -1 : 0] state       ;
+reg [2      -1 : 0] next_state  ;
 always @(*) begin
     case ( state )
-        IDLE    :   if(ITFCCU_ISARdDatVld)
-                        next_state <= DEC; //
+        IDLE:   if(ITFCCU_ISARdDatVld)
+                        next_state <= RECV; //
                     else
                         next_state <= IDLE;
-        DEC:   if (SIPO_OUT_VLD[opCode] & SIPO_OUT_RDY[opCode])
+        RECV:   if (SIPO_OUT_VLD[opCode]) begin
+                    if (SIPO_OUT_RDY[opCode])
                         next_state <= IDLE;
-                    else
-                        next_state <= DEC;
+                    else 
+                        next_state <= REFN;
+                end else
+                    next_state <= RECV;
+        REFN:   if (SIPO_OUT_RDY[opCode])
+                    next_state <= IDLE;
+                else 
+                    next_state <= REFN;
 
         default :       next_state <= IDLE;
     endcase
@@ -156,10 +166,12 @@ end
 //=====================================================================================================================
 // Logic Design
 //=====================================================================================================================
-assign CCUITF_ISARdDatRdy   = state == DEC & SIPO_InRdy[opCode];
+assign CCUITF_ISARdDatRdy   = state == RECV & next_state == RECV; // SIPO Ready
 
 assign CCUITF_CfgRdy= cfgRdy;
 assign cfgRdy       = {MONCCU_CfgRdy, GICCCU_CfgRdy, &POLCCU_CfgRdy, SYACCU_CfgRdy, KNNCCU_CfgRdy, &FPSCCU_CfgRdy};
+
+assign CCUITF_MonState = {|POLCCU_CfgRdy, |FPSCCU_CfgRdy, state};
 
 assign {CCUMON_CfgVld, CCUGIC_CfgVld, POL_CfgVld, CCUSYA_CfgVld, CCUKNN_CfgVld, FPS_CfgVld} = cfgVld;
 assign CCUFPS_CfgVld = {NUM_FPC{FPS_CfgVld}};
@@ -173,7 +185,7 @@ always @(posedge clk or negedge rst_n) begin
         opCode <= {OPCODE_WIDTH{1'b1}};
     end else if(next_state == IDLE) begin // HS
         opCode <= {OPCODE_WIDTH{1'b1}};
-    end else if(state == IDLE & next_state == DEC) begin
+    end else if(state == IDLE & next_state == RECV) begin
         opCode <= ITFCCU_ISARdDat[0 +: OPCODE_WIDTH];
     end
 end
@@ -197,7 +209,7 @@ generate
             .CLK          ( clk            ),
             .RST_N        ( rst_n          ),
             .RESET        ( state == IDLE  ),
-            .IN_VLD       ( state == DEC & ITFCCU_ISARdDatVld & opCode == gv ),
+            .IN_VLD       ( (ITFCCU_ISARdDatVld & CCUITF_ISARdDatRdy) & opCode == gv ), // Should Input & This ISA SIPO
             .IN_LAST      ( 1'b0           ),
             .IN_DAT       ( ITFCCU_ISARdDat),
             .IN_RDY       ( SIPO_InRdy[gv] ),
@@ -206,9 +218,10 @@ generate
             .OUT_LAST     (                ),
             .OUT_RDY      ( SIPO_OUT_RDY[gv])
         );
-        assign SIPO_OUT_RDY[gv] = !FIFO_Reset & !FIFO_full;
+        assign SIPO_OUT_RDY[gv] = FIFO_push;
 
-        assign FIFO_Reset = SIPO_OUT_DAT[OPCODE_WIDTH] & SIPO_OUT_VLD[gv] & !FIFO_empty;
+        assign FIFO_Reset = (SIPO_OUT_DAT[OPCODE_WIDTH] & SIPO_OUT_VLD[gv]) & !FIFO_empty; // empty == 1->FIFO_Reset==0->FIFO_push=1, SIPO_OUT_RDY=1
+        assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
         FIFO_FWFT#(
             .DATA_WIDTH ( ISA_WIDTH[gv] ),
             .ADDR_WIDTH ( ISAFIFO_ADDR_WIDTH[gv] )
@@ -224,11 +237,9 @@ generate
             .full       ( FIFO_full      ),
             .fifo_count (                )
         );
-
-        assign FIFO_push= !FIFO_Reset & SIPO_OUT_VLD[gv] & !FIFO_full;
+        
         assign FIFO_pop = cfgEnable;
-
-        assign  cfgEnable = (FIFO_data_out[OPCODE_WIDTH] | cfgRdy[gv]) & !FIFO_empty; // Force reset or cfgrdy
+        assign  cfgEnable = (FIFO_data_out[OPCODE_WIDTH] | (cfgRdy[gv] & !cfgVld[gv]) ) & !FIFO_empty; // Force reset or cfgrdy: After cfgEnable -> cfgVld&cfgRdy -> module finishes(cfgRdy=1) and not given cfgVld
         always @(posedge clk or negedge rst_n) begin
             if(!rst_n) begin
                 cfgInfo[gv] <= 0;
@@ -258,5 +269,13 @@ assign CCUSYA_CfgInfo = cfgInfo[2];
 assign CCUPOL_CfgInfo = cfgInfo[3];
 assign CCUGIC_CfgInfo = cfgInfo[4];
 assign CCUMON_CfgInfo = cfgInfo[5];
+
+assign CCUMON_Dat = {
+    ITFCCU_ISARdDat,
+    CCUITF_CfgRdy,          
+    ITFCCU_ISARdDatVld, 
+    ITFCCU_ISARdDatLast,
+    CCUITF_ISARdDatRdy 
+};
 
 endmodule

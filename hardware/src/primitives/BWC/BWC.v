@@ -48,7 +48,7 @@ assign OUT_LAST     = last & count <= OUT_BW;
 assign IN_NFULL     = IN_RDY & IN_VLD & ( count + INP_BW > CACHE_WIDTH | (OUT_RDY & (count + INP_BW > CACHE_WIDTH + OUT_BW) ) );
 
 always @(*) begin
-    for(i=0; i<DATA_IN_WIDTH; i=i+1) begin
+    for(i=0; i<DATA_OUT_WIDTH; i=i+1) begin
         if (i < OUT_BW)
             OUT_DAT[i] = serial[i];
         else
@@ -77,8 +77,8 @@ always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
         end else begin
                 count <= count + INP_BW;
                 for(i=0; i<DATA_IN_WIDTH+DATA_OUT_WIDTH; i=i+1) begin
-                    if(count <= i & i < count + INP_BW) // Insert
-                        serial[i] <= IN_DAT[i-count];
+                    if(count <= i & i < count + INP_BW) // Insert: Right Side Input
+                        serial[i] <= IN_DAT[i-count]; // 
                     else
                         serial[i] <= serial[i];
                 end
@@ -86,7 +86,7 @@ always @(posedge CLK or negedge RST_N) begin: SHIFTER_COUNT
         last <= IN_LAST;
     end else if( OUT_VLD & OUT_RDY) begin
         count <= count - OUT_BW;
-        serial <= serial >> OUT_BW;
+        serial <= serial >> OUT_BW; // Right Output
     end 
 end
 

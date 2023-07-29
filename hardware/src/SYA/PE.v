@@ -37,10 +37,16 @@ wire signed [PSUM_WIDTH     -1 : 0] Signed_Mul = $signed(InAct_W) * $signed(InWg
 
 always @ ( posedge clk or negedge rst_n ) begin
     if ( !rst_n ) begin
-        {OutPsum, OutWgt_S, OutAct_E} <= 0;
+        OutPsum     <= 0;
+        OutWgt_S    <= 0;
+        OutAct_E    <= 0;
     end else if(En) begin
-        {OutPsum, OutWgt_S, OutAct_E} <= {
-            Reset? Signed_Mul : OutPsum + Signed_Mul, InWgt_N, InAct_W};
+        if(Reset)
+            OutPsum <= Signed_Mul;
+        else
+            OutPsum <= OutPsum + Signed_Mul;
+        OutWgt_S    <= InWgt_N;
+        OutAct_E    <= InAct_W;
     end
 end
 

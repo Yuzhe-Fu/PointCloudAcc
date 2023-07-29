@@ -12,21 +12,25 @@
 // Create : 2020-07-14 21:09:52
 // Revise : 2020-08-13 10:33:19
 // -----------------------------------------------------------------------------
-
+`define PLL
 module CLK #(
     parameter FBDIV_WIDTH   = 5
     )(
     input                       I_BypAsysnFIFO,
-    input                       I_BypPLL    , 
     input                       I_SwClk     ,
     input                       I_SysRst_n  , 
     input                       I_SysClk    , 
     input                       I_OffClk    ,
-    input [FBDIV_WIDTH  -1 : 0] I_FBDIV     ,
+
+    `ifdef PLL 
+        input                       I_BypPLL    ,
+        input [FBDIV_WIDTH  -1 : 0] I_FBDIV     , 
+        output                      O_PLLLock   ,
+    `endif 
+
     output                      SysRst_n    ,
     output                      SysClk      ,
-    output                      OffClk      ,
-    output                      O_PLLLock    
+    output                      OffClk      
 );
 
 //=====================================================================================================================
@@ -37,8 +41,6 @@ module CLK #(
 //=====================================================================================================================
 // Variable Definition :
 //=====================================================================================================================
-wire                PLLclk;
-wire [12    -1 : 0] FBDIV;
 wire                SysClk_tmp;
 
 //=====================================================================================================================
@@ -46,18 +48,19 @@ wire                SysClk_tmp;
 //=====================================================================================================================
 assign SysRst_n = I_SysRst_n;
 
-assign SysClk_tmp = I_BypAsysnFIFO? I_OffClk : I_BypPLL? I_SysClk : PLLclk;
-
-assign FBDIV = {I_FBDIV, 4'd0};
 //=====================================================================================================================
 // Sub-Module :
 //=====================================================================================================================
 `ifdef PLL
-    PLLTS28HPMFRAC u_PLLTS28HPMFRAC (
+    wire                    PLLclk;
+    wire [12        -1 : 0] FBDIV;
+    assign SysClk_tmp   = I_BypAsysnFIFO? I_OffClk : I_BypPLL? I_SysClk : PLLclk;
+    assign FBDIV        = {I_FBDIV, 5'd0}; // Constraint: FBDIV: 16-3200
+    PLLTS28HPMFRAC u_PLLTS28HPMFRAC (// Constraint: Input 1MHz-1200MHz, Ouput: 16 MHz->3200 MHz; 
         .BYPASS         ( I_BypPLL  ),
         .DACPD          ( 1'b0      ),
         .DSMPD          ( 1'b1      ), // integer
-        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 
+        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 1M Div to 300 M -> 300 -> shift; 4'd0; 
         .FRAC           ( 24'd0     ),
         .FREF           ( I_SysClk  ),
         .PD             ( 1'b0      ),
@@ -81,9 +84,9 @@ assign FBDIV = {I_FBDIV, 4'd0};
         .FOUTVCO        (           ),
         .CLKSSCG        (           ) 
         );
+
 `else
-    assign PLLclk = I_SysClk;
-    assign O_PLLLock = I_BypPLL & (&FBDIV); // use all bits
+    assign SysClk_tmp = I_BypAsysnFIFO? I_OffClk : I_SysClk;
 `endif
 
 CLKREL u_CLKREL_SysClk(

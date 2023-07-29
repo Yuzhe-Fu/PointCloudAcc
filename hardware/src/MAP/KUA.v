@@ -11,12 +11,15 @@ module KUA #(
     // KNN
     parameter KNNISA_WIDTH      = 128*2,
     parameter SRAM_WIDTH        = 256,
-    parameter SRAM_MAXPARA      = 1,
+    parameter KNNCRD_MAXPARA    = 4,
     parameter IDX_WIDTH         = 16,
     parameter MAP_WIDTH         = 5,
     parameter CRD_WIDTH         = 8,
     parameter NUM_SORT_CORE     = 8,
     parameter KNNMON_WIDTH      = 128,
+    parameter CRD_MAXDIM        = 64,
+    parameter CRDRDWIDTH        = SRAM_WIDTH*KNNCRD_MAXPARA,
+    parameter DISTSQR_WIDTH     = CRD_WIDTH*2 + $clog2(CRD_MAXDIM),
 
     // UNT
     parameter DATA_WIDTH        = 8,
@@ -36,7 +39,7 @@ module KUA #(
     output [IDX_WIDTH           -1 : 0] KNNGLB_CrdRdAddr    ,   
     output                              KNNGLB_CrdRdAddrVld , 
     input                               GLBKNN_CrdRdAddrRdy ,
-    input  [SRAM_WIDTH          -1 : 0] GLBKNN_CrdRdDat     ,        
+    input  [CRDRDWIDTH          -1 : 0] GLBKNN_CrdRdDat     ,        
     input                               GLBKNN_CrdRdDatVld  ,     
     output                              KNNGLB_CrdRdDatRdy  ,
 
@@ -80,7 +83,7 @@ wire [KNNISA_WIDTH        -1 : 0] KUAKNN_CfgInfo            ;
 wire [IDX_WIDTH           -1 : 0] KNNKUA_CrdRdAddr          ;   
 wire                              KNNKUA_CrdRdAddrVld       ; 
 wire                              KUAKNN_CrdRdAddrRdy       ;
-wire [SRAM_WIDTH          -1 : 0] KUAKNN_CrdRdDat           ;        
+wire [CRDRDWIDTH          -1 : 0] KUAKNN_CrdRdDat           ;        
 wire                              KUAKNN_CrdRdDatVld        ;     
 wire                              KNNKUA_CrdRdDatRdy        ;
 wire [IDX_WIDTH           -1 : 0] KNNKUA_MaskRdAddr         ;
@@ -159,7 +162,7 @@ wire [4                            -1 : 0] OccIdx;
 //=====================================================================================================================
 // Logic Design: Input
 //=====================================================================================================================
-assign OccIdx = CCUKNN_CfgInfo[9 +: 3]; // 0: KNN, 1: SHF, 2: ADD, 3: CAT
+assign OccIdx = CCUKNN_CfgInfo[12 +: 3]; // 0: KNN, 1: SHF, 2: ADD, 3: CAT
 
 assign {
         KUAKNN_CfgVld,
@@ -202,7 +205,7 @@ assign {
             CCUKNN_CfgVld,
             CCUKNN_CfgInfo,
             GLBKNN_CrdRdAddrRdy,
-            GLBKNN_CrdRdDat,    
+            GLBKNN_CrdRdDat[0 +: SRAM_WIDTH],    
             GLBKNN_CrdRdDatVld,
             GLBKNN_MapWrDatRdy
         }: 0;
@@ -222,7 +225,7 @@ assign {
         CCUKNN_CfgVld,
         CCUKNN_CfgInfo,
         GLBKNN_CrdRdAddrRdy,
-        GLBKNN_CrdRdDat,    
+        GLBKNN_CrdRdDat[0 +: SRAM_WIDTH],    
         GLBKNN_CrdRdDatVld, 
         GLBKNN_MaskRdAddrRdy,
         GLBKNN_MaskRdDat,    
@@ -245,7 +248,7 @@ assign {
         CCUKNN_CfgVld,
         CCUKNN_CfgInfo,
         GLBKNN_CrdRdAddrRdy,
-        GLBKNN_CrdRdDat,    
+        GLBKNN_CrdRdDat[0 +: SRAM_WIDTH],    
         GLBKNN_CrdRdDatVld, 
         GLBKNN_MaskRdAddrRdy,
         GLBKNN_MaskRdDat,    
@@ -331,12 +334,13 @@ assign {
 KNN#(
     .KNNISA_WIDTH         ( KNNISA_WIDTH    ),
     .SRAM_WIDTH           ( SRAM_WIDTH      ),
-    .SRAM_MAXPARA         ( SRAM_MAXPARA    ),
+    .KNNCRD_MAXPARA         ( KNNCRD_MAXPARA    ),
     .IDX_WIDTH            ( IDX_WIDTH       ),
     .MAP_WIDTH            ( MAP_WIDTH       ),
     .CRD_WIDTH            ( CRD_WIDTH       ),
     .NUM_SORT_CORE        ( NUM_SORT_CORE   ),
-    .KNNMON_WIDTH         ( KNNMON_WIDTH    )
+    .KNNMON_WIDTH         ( KNNMON_WIDTH    ),
+    .CRD_MAXDIM           ( CRD_MAXDIM      )
 )u_KNN(
     .clk                    ( clk                       ),
     .rst_n                  ( rst_n                     ),

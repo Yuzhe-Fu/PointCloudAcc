@@ -88,19 +88,19 @@ wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgNum;
 wire [4                         -1 : 0] CCUSHF_CfgByteWrIncr;
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgByteWrStep;
 wire [ADDR_WIDTH                -1 : 0] CCUSHF_CfgWrBackStep;
-
+wire                                    CCUSHF_CfgStop;
 //=====================================================================================================================
 // Logic Design: Cfg
 //=====================================================================================================================
 assign {
-    CCUSHF_CfgWrBackStep,
-    CCUSHF_CfgByteWrStep,
-    CCUSHF_CfgByteWrIncr,  
-    CCUSHF_CfgInAddr,
-    CCUSHF_CfgOutAddr,
-    CCUSHF_CfgNum
-} = CCUSHF_CfgInfo[SHIFTISA_WIDTH -1 : 12];
-
+    CCUSHF_CfgWrBackStep,   // 16
+    CCUSHF_CfgByteWrStep,   // 16
+    CCUSHF_CfgByteWrIncr,   // 4
+    CCUSHF_CfgInAddr,       // 16
+    CCUSHF_CfgOutAddr,      // 16
+    CCUSHF_CfgNum           // 16
+} = CCUSHF_CfgInfo[SHIFTISA_WIDTH -1 : 16];
+assign CCUSHF_CfgStop = CCUSHF_CfgInfo[9]; //[8]==1: Rst, [9]==1: Stop
 //=====================================================================================================================
 // Logic Design: FSM
 //=====================================================================================================================
@@ -108,7 +108,7 @@ reg [ 3 -1:0 ]state;
 reg [ 3 -1:0 ]next_state;
 always @(*) begin
     case ( state )
-        IDLE :  if(SHFCCU_CfgRdy & CCUSHF_CfgVld)// 
+        IDLE :  if(SHFCCU_CfgRdy & (CCUSHF_CfgVld & !CCUSHF_CfgStop))// 
                     next_state <= COMP; //
                 else
                     next_state <= IDLE;
