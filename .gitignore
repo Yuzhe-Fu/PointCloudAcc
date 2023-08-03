@@ -53,6 +53,8 @@ hardware/vft/
 fv/
 *.gz
 hardware/impl/synth/config_temp.tcl
+hardware/impl/synth/define.vh
+*.sdf.X
 #######################################################
 #      The above part is Yuzhe Fu software part
 #      May Buddha Blesses u~
@@ -79,6 +81,7 @@ output*/
 *.dsn 
 *.trn 
 *eco*
+genus.cmd 
 
 #######################################################
 # python .gitignore

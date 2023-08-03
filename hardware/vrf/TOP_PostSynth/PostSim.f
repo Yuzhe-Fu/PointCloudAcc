@@ -1,6 +1,6 @@
 ../TOP/TOP_tb.v
 ../../src/primitives/COUNTER/counter.v
-../../work/synth/TOP/Date230720_1852_Period5_PLL0_group_Track3vt_MaxDynPwr0_OptWgt0.5_NoteRTSELDB&NOPLLSIGNALS&POL8&KNN2PAR/p+r_enc/TOP_synth.v
+/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/postend/Date230728_0509_Periodclk3.3_Periodsck10_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note_FROZEN_V9_NOPLL/TOP.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb128x256m1sso_170a/VERILOG/ts1n28hpcpuhdhvtb128x256m1sso_170a_tt0p9v25c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb256x8m4sso_170a/VERILOG/ts1n28hpcpuhdhvtb256x8m4sso_170a_tt0p9v25c.v
 ../../project/lib/mem/ts1n28hpcpuhdhvtb32x256m1sso_170a/VERILOG/ts1n28hpcpuhdhvtb32x256m1sso_170a_tt0p9v25c.v

@@ -33,7 +33,7 @@ module RAM #(
     );
 `else
     `ifdef SIM
-        parameter DELAY = `CLOCK_PERIOD/2;
+        parameter DELAY = 1;
     `else
         parameter DELAY = 0;
     `endif
@@ -78,7 +78,7 @@ module RAM #(
     end
     assign data_out = read_en_d? DO : DO_d;
 
-    // `define RTSELDB
+    `define RTSELDB
     generate
         if( SRAM_WORD == 128 && SRAM_BIT == 256 && SRAM_BYTE == 1 && DUAL_PORT == 0)begin
             `ifdef RTSELDB

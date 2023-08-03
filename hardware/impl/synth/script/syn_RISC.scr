@@ -85,7 +85,7 @@ elaborate $DESIGN
 #                              load sdf                                  #
 ##########################################################################
 read_sdc ${SDC_FILE}
-# suspend
+write_sdc > ${SYNTH_PROJDIR}/write_sdc.sdc
 check_design -unresolved
 ##########################################################################
 #                          Setting constraints                           #
