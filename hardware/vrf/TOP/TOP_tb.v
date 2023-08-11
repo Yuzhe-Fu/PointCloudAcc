@@ -1,8 +1,8 @@
 `timescale  1 ns / 100 ps
 
-`define CLOCK_PERIOD 10 // Core clock: <= 1000/16=60 when PLL
-`define OFFCLOCK_PERIOD 100 // 
-// `define PLL
+`define CLOCK_PERIOD 5 // Core clock: <= 1000/16=60 when PLL
+`define OFFCLOCK_PERIOD 10 // 
+`define PLL
 `define SIM
 // `define FUNC_SIM
 `define POST_SIM
@@ -146,7 +146,8 @@ initial begin
     I_SysClk = 1;
     @(posedge I_OffClk); // wait I_FBDIV
     `ifdef PLL
-        forever #(`CLOCK_PERIOD*{I_FBDIV, 5'd0}/2)   I_SysClk=~I_SysClk;
+        forever #(`CLOCK_PERIOD*1024/((7*I_FBDIV)*2))   I_SysClk=~I_SysClk;
+        // forever #(500)   I_SysClk=~I_SysClk;
     `else
         forever #(`CLOCK_PERIOD/2)  I_SysClk=~I_SysClk;
     `endif
@@ -159,12 +160,13 @@ initial begin
 end
 
 initial begin
-    I_BypAsysnFIFO  = 1'b1;
+    I_BypAsysnFIFO  = 1'b0;
     I_BypOE         = 1'b0;
     I_OffOE         = 1'b0;
     I_SwClk         = 1'b0;
-    I_BypPLL        = 1'b1;
-    I_FBDIV         = 3'd7;
+    I_BypPLL        = 1'b0;
+    I_FBDIV         = 3'd1; // Max Frequency: 3200/7=457MHz, 2.18ns->3ns test; Min Frequency: 1024/49=20.9M, 50ns->46ns test;
+    // == 1024/49-1024/7: 20x-146x DIV;
     I_MonSel        = 4'd0;
 
     @(posedge rst_n);
@@ -226,8 +228,8 @@ begin
         // Delay
         ISAIdx = 6; // DO NOT DELETE!
         ISAIdx_tmp = ISAIdx;
-        // repeat(ISADelay) @(posedge u_TOP.clk);
-        repeat(ISADelay) @(posedge O_SysClk);
+        repeat(ISADelay) @(posedge u_TOP.u_ITF.clk);
+        // repeat(ISADelay) @(posedge O_SysClk);
         ISAIdx = ISAIdx_tmp;
         cntISA = cntISA + 1;
     end
@@ -248,7 +250,7 @@ end
 
 `ifdef POST_SIM
     initial begin 
-        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/postend/Date230728_0509_Periodclk3.3_Periodsck10_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note_FROZEN_V9_NOPLL/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
+        $sdf_annotate ("/workspace/home/zhoucc/Proj_HW/PointCloudAcc/hardware/work/postend/Date230729_0931_Periodclk3.3_Periodsck10_PLL1_group_Track3vt_MaxDynPwr0_OptWgt0.5_Note_FROZEN_V9_PLLREDUCEPAD/TOP.sdf", u_TOP, , "TOP_sdf.log", "MAXIMUM", "1.0:1.0:1.0", "FROM_MAXIMUM");
     end 
 
     reg EnTcf;
@@ -436,7 +438,7 @@ TOP u_TOP (
         .I_FBDIV_PAD        ( I_FBDIV       ),
         .O_PLLLock_PAD      ( O_PLLLock     ), 
     `endif
-    .O_SysClk_PAD       ( O_SysClk      ),
+    // .O_SysClk_PAD       ( O_SysClk      ),
     // .O_OffClk_PAD       ( O_OffClk      ),
     // .O_CfgRdy_PAD       ( O_CfgRdy      ),
     // .O_MonState_PAD     (               ),
@@ -450,9 +452,9 @@ TOP u_TOP (
     .I_DatRdy_PAD       ( I_DatRdy      ),
     .I_ISAVld_PAD       ( I_ISAVld      ),
     .O_CmdVld_PAD       ( O_CmdVld      ),
-    .IO_Dat_PAD         ( IO_Dat        )
-    // .I_MonSel_PAD       ( I_MonSel      ),
-    // .O_MonDat_PAD       ( O_MonDat      )
+    .IO_Dat_PAD         ( IO_Dat        ),
+    .I_MonSel_PAD       ( I_MonSel      ),
+    .O_MonDat_PAD       ( O_MonDat      )
 );
 
 endmodule

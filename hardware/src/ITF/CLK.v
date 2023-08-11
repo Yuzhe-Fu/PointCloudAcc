@@ -53,23 +53,21 @@ assign SysRst_n = I_SysRst_n;
 //=====================================================================================================================
 `ifdef PLL
     wire                    PLLclk;
-    wire [12        -1 : 0] FBDIV;
     assign SysClk_tmp   = I_BypAsysnFIFO? I_OffClk : I_BypPLL? I_SysClk : PLLclk;
-    assign FBDIV        = {I_FBDIV, 5'd0}; // Constraint: FBDIV: 16-3200
-    PLLTS28HPMFRAC u_PLLTS28HPMFRAC (// Constraint: Input 1MHz-1200MHz, Ouput: 16 MHz->3200 MHz; 
+    PLLTS28HPMFRAC u_PLLTS28HPMFRAC (
         .BYPASS         ( I_BypPLL  ),
         .DACPD          ( 1'b0      ),
-        .DSMPD          ( 1'b1      ), // integer
-        .FBDIV          ( FBDIV     ), // 12 bit: 1-300MHz, 10MHz step: range = 30: 5bit; 1M Div to 300 M -> 300 -> shift; 4'd0; 
+        .DSMPD          ( 1'b1      ),
+        .FBDIV          ( 12'b0100_0000_0000 ), // 12bits: Previous: {4'b0000, I_FBDIV, 5'b00000};
         .FRAC           ( 24'd0     ),
         .FREF           ( I_SysClk  ),
         .PD             ( 1'b0      ),
         .REFDIV         ( 6'd1      ),
-        .POSTDIV1       ( 3'd1      ),
-        .POSTDIV2       ( 3'd1      ),
+        .POSTDIV1       ( 3'b111    ), // 3bits: Previous: 3'b001;
+        .POSTDIV2       ( I_FBDIV   ), // 3bits: Previous: 3'b001;
 
         .LOCK           ( O_PLLLock ),
-        .FOUTPOSTDIV    ( PLLclk    ), // output clk = FREF*FBDIV
+        .FOUTPOSTDIV    ( PLLclk    ),
 
         .FOUTPOSTDIVPD  ( 1'b0      ),
         .FOUTVCOPD      ( 1'b0      ),
