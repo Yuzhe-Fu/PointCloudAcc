@@ -2,7 +2,8 @@
 - 自研Nebula“星云”硬件平台的整体硬件架构如图所示。
     - 图中左侧红色部分是“星云”硬件平台，提供片内外异步高速接口模块、负责指令译码的中央控制器和可配置高带宽可动态分配给功能模块的存储模块。
     - 右侧蓝色部分是3个功能模块/待测模块，可挂载在“星云”平台上。具体功能模块/待测模块可根据需要自行设计挂载，满足不同场景下的需求，具有可配置可扩展易使用的特点。
-[Nebula“星云”硬件平台架构图](./hardware/docs/tutorial/Nebula_Framework.jpg)
+
+    - ![image](./hardware/docs/tutorial/Nebula_Framework.jpg)
 - “星云”硬件平台为所挂载的功能模块/待测模块提供大带宽的数据交互和高效的数据存储。
     - 接口模块Interface(ITF)采用两组高吞吐率(128bit，位宽可配置)的异步FIFO，负责连接外部低频时钟域sck和内部高速时钟域clk之间的数据传输。
     - 中央控制器模块Control Module(CCU)根据接收的指令，控制全局存储模块Global Memory Buffer (GLB)/Memory Module的控制器Global Buffer Interface Controller (GIC)，将GLB的数据通过ITF与外部数据进行传输。
