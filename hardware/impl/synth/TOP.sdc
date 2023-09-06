@@ -34,13 +34,11 @@ set_false_path -to [list \
     # [get_ports O_OffClk_PAD      ]\
 
 # Margin Fixed 7ns
-set_input_delay  -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [filter_collection [all_inputs] "full_name !~I_OffOE_PAD && full_name !~I_MonSel_PAD"]
-# Margin Fixed 7ns
-set_output_delay -clock clock_clk -clock_rise -add_delay [expr $period_clk - 7] [filter_collection [all_outputs] "full_name !~O_MonDat_PAD"]
+set_input_delay  -clock clock_clk -clock_rise -add_delay -1 [filter_collection [all_inputs] "full_name !~I_OffOE_PAD && full_name !~I_MonSel_PAD"]
+set_output_delay -clock clock_clk -clock_rise -add_delay -1 [filter_collection [all_outputs] "full_name !~O_MonDat_PAD"]
 
 # Margin Fixsed 7ns
 set_input_delay  -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [filter_collection [all_inputs] "full_name !~I_OffOE_PAD && full_name !~I_MonSel_PAD"]
-# Margin Fixed 7ns
 set_output_delay -clock clock_sck -clock_rise -add_delay [expr $period_sck - 7] [filter_collection [all_outputs] "full_name !~O_MonDat_PAD"]
 
 # Margin Fixed 7ns (report_timing < 2ns)
